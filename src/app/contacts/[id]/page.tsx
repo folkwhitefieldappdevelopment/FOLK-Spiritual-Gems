@@ -30,6 +30,8 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogHeader,
+  DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { CreateUpdatePersonDialog } from '@/components/create-update-person-dialog';
@@ -250,6 +252,9 @@ export default function PersonDetailPage() {
                           </Avatar>
                         </DialogTrigger>
                         <DialogContent className="p-0 border-0 max-w-lg bg-transparent shadow-none">
+                          <DialogHeader className="sr-only">
+                            <DialogTitle>Profile photo for {person.firstName} {person.lastName}</DialogTitle>
+                          </DialogHeader>
                           <img
                             src={person.photoUrl}
                             alt={`${person.firstName} ${person.lastName}`}
