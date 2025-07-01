@@ -328,21 +328,21 @@ export default function ContactsPage() {
                 </div>
                 </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                    <Select value={enablerFilter} onValueChange={setEnablerFilter}>
+                    <Select value={enablerFilter} onValueChange={(value) => setEnablerFilter(value === 'all' ? '' : value)}>
                         <SelectTrigger>
                             <SelectValue placeholder="Filter by Enabler" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="">All Enablers</SelectItem>
+                            <SelectItem value="all">All Enablers</SelectItem>
                             {enablerOptions.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}
                         </SelectContent>
                     </Select>
-                     <Select value={contactSourceFilter} onValueChange={setContactSourceFilter}>
+                     <Select value={contactSourceFilter} onValueChange={(value) => setContactSourceFilter(value === 'all' ? '' : value)}>
                         <SelectTrigger>
                             <SelectValue placeholder="Filter by Source" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="">All Sources</SelectItem>
+                            <SelectItem value="all">All Sources</SelectItem>
                             {contactSourceOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                         </SelectContent>
                     </Select>
