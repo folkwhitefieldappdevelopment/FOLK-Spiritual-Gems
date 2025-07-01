@@ -93,12 +93,19 @@ export function AdminModeToggle() {
       setStep('otp');
       toast({ title: 'OTP Sent', description: 'An OTP has been sent to your phone.'});
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error sending OTP:", error);
+      let description = 'Please check your Firebase configuration and try again.';
+      if (error.code === 'auth/operation-not-allowed') {
+          description = 'Phone sign-in is not enabled or your domain is not authorized. Go to Firebase Console > Authentication > Sign-in method to fix this.';
+      } else if (error.code === 'auth/invalid-phone-number') {
+          description = 'The phone number you entered is not valid.';
+      }
+
       toast({ 
           variant: 'destructive', 
           title: 'Failed to send OTP', 
-          description: 'Please check your Firebase configuration and ensure your domain is authorized.' 
+          description: description
       });
     } finally {
       setIsVerifying(false);
@@ -113,9 +120,15 @@ export function AdminModeToggle() {
       setAdmin(true);
       toast({ title: 'Admin mode enabled.' });
       setIsDialogOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error verifying OTP:", error);
-      toast({ variant: 'destructive', title: 'Invalid OTP', description: 'The code you entered is incorrect.' });
+      let description = 'The code you entered is incorrect.';
+      if (error.code === 'auth/code-expired') {
+        description = 'The OTP has expired. Please request a new one.';
+      } else if (error.code === 'auth/invalid-verification-code') {
+        description = 'The code you entered is incorrect. Please try again.';
+      }
+      toast({ variant: 'destructive', title: 'Invalid OTP', description: description });
     } finally {
       setIsVerifying(false);
     }
