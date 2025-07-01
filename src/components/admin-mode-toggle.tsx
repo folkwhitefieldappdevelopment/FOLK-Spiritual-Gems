@@ -91,7 +91,7 @@ export function AdminModeToggle() {
       if (error.code === 'auth/operation-not-allowed') {
           description = 'Phone sign-in is not enabled in your Firebase project. Go to Firebase Console > Authentication > Sign-in method to fix this.';
       } else if (error.code === 'auth/captcha-check-failed') {
-          description = "Your app's domain (e.g. localhost) is not authorized. Go to Firebase Console > Authentication > Settings and add 'localhost' to the Authorized domains list.";
+          description = "Your app's domain (localhost) is not authorized. Please double-check that 'localhost' is in the Authorized Domains list in Firebase > Authentication > Settings. Also, ensure you're using the correct Firebase project credentials.";
       } else if (error.code === 'auth/invalid-phone-number') {
           description = 'The phone number you entered is not valid.';
       }
