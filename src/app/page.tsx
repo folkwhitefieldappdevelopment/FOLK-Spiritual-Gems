@@ -21,6 +21,13 @@ import { PersonCard } from "@/components/person-card";
 import { PersonTable } from "@/components/person-table";
 import { CreateUpdatePersonDialog } from "@/components/create-update-person-dialog";
 import { AdminModeToggle } from "@/components/admin-mode-toggle";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const migratePersonData = (person: any): Person => {
   // If a new field exists, assume it's already migrated
@@ -53,12 +60,36 @@ export default function ContactsPage() {
   const { toast } = useToast();
   const [people, setPeople] = React.useState<Person[]>([]);
   const [view, setView] = React.useState<"card" | "table">("card");
+  
   const [searchTerm, setSearchTerm] = React.useState("");
+  const [enablerFilter, setEnablerFilter] = React.useState("");
+  const [contactSourceFilter, setContactSourceFilter] = React.useState("");
+  const [occupationFilter, setOccupationFilter] = React.useState("");
+  const [chantingFilter, setChantingFilter] = React.useState("");
+
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(
     undefined
   );
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const [enablerOptions, setEnablerOptions] = React.useState<string[]>([]);
+  const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
+  
+  React.useEffect(() => {
+    try {
+      const storedEnablers = localStorage.getItem('enablers');
+      if (storedEnablers) {
+        setEnablerOptions(JSON.parse(storedEnablers));
+      }
+      const storedContactSources = localStorage.getItem('contactSources');
+      if (storedContactSources) {
+        setContactSourceOptions(JSON.parse(storedContactSources));
+      }
+    } catch (error) {
+      console.error("Failed to load filter options from localStorage", error);
+    }
+  }, []);
 
   React.useEffect(() => {
     try {
@@ -89,9 +120,32 @@ export default function ContactsPage() {
       const phone = person.phone.toLowerCase();
       const nativePlace = person.nativePlace.toLowerCase();
 
-      return name.includes(search) || phone.includes(search) || nativePlace.includes(search);
+      const generalSearchMatch =
+        !search || name.includes(search) || phone.includes(search) || nativePlace.includes(search);
+
+      const enablerMatch = !enablerFilter || person.enablerInTouchWith === enablerFilter;
+      
+      const sourceMatch = !contactSourceFilter || person.contactSource === contactSourceFilter;
+
+      const occupationMatch =
+        !occupationFilter ||
+        person.occupation.toLowerCase().includes(occupationFilter.toLowerCase());
+      
+      const chantingMatch =
+        !chantingFilter ||
+        person.chantingStatus.toLowerCase().includes(chantingFilter.toLowerCase());
+
+      return generalSearchMatch && enablerMatch && sourceMatch && occupationMatch && chantingMatch;
     });
-  }, [people, searchTerm]);
+  }, [people, searchTerm, enablerFilter, contactSourceFilter, occupationFilter, chantingFilter]);
+  
+  const clearFilters = () => {
+    setSearchTerm("");
+    setEnablerFilter("");
+    setContactSourceFilter("");
+    setOccupationFilter("");
+    setChantingFilter("");
+  };
 
   const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -239,38 +293,71 @@ export default function ContactsPage() {
             </div>
           </PageHeader>
           <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by name, phone, or native place..."
-                  className="pl-10 w-full sm:w-[300px]"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center rounded-md bg-muted p-1">
-                  <Button
-                    variant={view === "card" ? "secondary" : "ghost"}
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setView("card")}
-                    aria-label="Card View"
-                  >
-                    <LayoutGrid className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={view === "table" ? "secondary" : "ghost"}
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setView("table")}
-                    aria-label="Table View"
-                  >
-                    <List className="h-4 w-4" />
-                  </Button>
+            <div className="mb-6 flex flex-col gap-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                    placeholder="Search by name, phone, or native place..."
+                    className="pl-10 w-full sm:w-[300px]"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                 </div>
-              </div>
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center rounded-md bg-muted p-1">
+                    <Button
+                        variant={view === "card" ? "secondary" : "ghost"}
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setView("card")}
+                        aria-label="Card View"
+                    >
+                        <LayoutGrid className="h-4 w-4" />
+                    </Button>
+                    <Button
+                        variant={view === "table" ? "secondary" : "ghost"}
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setView("table")}
+                        aria-label="Table View"
+                    >
+                        <List className="h-4 w-4" />
+                    </Button>
+                    </div>
+                </div>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                    <Select value={enablerFilter} onValueChange={setEnablerFilter}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Filter by Enabler" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="">All Enablers</SelectItem>
+                            {enablerOptions.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                     <Select value={contactSourceFilter} onValueChange={setContactSourceFilter}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Filter by Source" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="">All Sources</SelectItem>
+                            {contactSourceOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <Input 
+                        placeholder="Filter by Occupation"
+                        value={occupationFilter}
+                        onChange={(e) => setOccupationFilter(e.target.value)}
+                    />
+                    <Input 
+                        placeholder="Filter by Chanting Status"
+                        value={chantingFilter}
+                        onChange={(e) => setChantingFilter(e.target.value)}
+                    />
+                    <Button variant="outline" onClick={clearFilters}>Clear Filters</Button>
+                </div>
             </div>
 
             {view === "card" ? (
