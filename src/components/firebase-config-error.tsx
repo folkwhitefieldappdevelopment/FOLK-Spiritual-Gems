@@ -19,17 +19,21 @@ export function FirebaseConfigError() {
           <CardContent className="space-y-6">
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Action Required: Check Your Firestore Security Rules</AlertTitle>
+              <AlertTitle>Action Required: Check Your Firebase Setup</AlertTitle>
               <AlertDescription>
-                This is the most likely cause of the error. In the Firebase Console, go to the Firestore Database section and click the **Rules** tab. For development, your rules must allow read and write access.
+                This error happens when the app cannot read from your database. Please carefully check the following common issues in your Firebase project.
               </AlertDescription>
             </Alert>
             
             <p>Please follow these steps in your Firebase project:</p>
             <ol className="list-decimal space-y-4 pl-5 text-sm">
               <li>
-                <strong>Update your Security Rules.</strong>
-                <p className="mt-1">Copy and paste the following rules into the **Rules** tab in the Firestore section of the <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="underline text-primary">Firebase Console</a>. This will allow the app to connect for development.</p>
+                <strong>1. Ensure Firestore Database is created.</strong>
+                <p className="mt-1">In the Firebase Console, go to the <strong>Firestore Database</strong> section. If you see a "Create database" button, you must click it. When prompted, select a location and choose to <strong>start in test mode</strong>. This automatically sets the correct security rules for 30 days and is the most common fix.</p>
+              </li>
+              <li>
+                <strong>2. Verify your Security Rules.</strong>
+                <p className="mt-1">If you already have a database, check its security rules. In the Firebase Console, go to the Firestore Database section and click the <strong>Rules</strong> tab. For development, your rules must allow read and write access. Copy and paste the following rules and click "Publish".</p>
                 <pre className="mt-2 w-full whitespace-pre-wrap rounded-md bg-muted p-2 font-code text-xs text-foreground">
                     {`rules_version = '2';
 service cloud.firestore {
@@ -42,18 +46,14 @@ service cloud.firestore {
 }`}
                 </pre>
               </li>
-              <li>
-                <strong>Ensure Firestore Database is enabled.</strong>
-                <p className="mt-1">In the Firebase Console, go to **Firestore Database**. If you see a "Create database" button, you must click it. When prompted, select a location and choose to **start in test mode**. This automatically sets the correct security rules for 30 days.</p>
-              </li>
                <li>
-                  <strong>Double-check your credentials.</strong>
+                  <strong>3. Double-check your credentials.</strong>
                   <p className="mt-1">Just in case, make sure the `firebaseConfig` object in <code className="bg-muted px-1 py-0.5 rounded-sm font-code">src/lib/firebase.ts</code> perfectly matches the one from your Firebase Project Settings.</p>
               </li>
             </ol>
           </CardContent>
           <CardFooter>
-            <p className="text-xs text-muted-foreground">After fixing the rules in the Firebase Console, please refresh this page.</p>
+            <p className="text-xs text-muted-foreground">After fixing the configuration in the Firebase Console, please refresh this page.</p>
           </CardFooter>
         </Card>
       </div>
