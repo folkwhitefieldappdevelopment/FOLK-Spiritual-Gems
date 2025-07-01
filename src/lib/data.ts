@@ -1,6 +1,6 @@
 import type { Person, Group, ChecklistItem } from './types';
 
-const baseChecklist: Omit<ChecklistItem, 'isChecked'>[] = [
+export const baseChecklist: Omit<ChecklistItem, 'isChecked'>[] = [
   { id: 'c1', statement: 'Initial contact made' },
   { id: 'c2', statement: 'Follow-up email sent' },
   { id: 'c3', statement: 'Product demo scheduled' },
