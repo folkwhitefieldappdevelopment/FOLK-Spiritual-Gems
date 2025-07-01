@@ -96,8 +96,11 @@ export function AdminModeToggle() {
     } catch (error: any) {
       console.error("Error sending OTP:", error);
       let description = 'Please check your Firebase configuration and try again.';
+      
       if (error.code === 'auth/operation-not-allowed') {
-          description = 'Phone sign-in is not enabled or your domain is not authorized. Go to Firebase Console > Authentication > Sign-in method to fix this.';
+          description = 'Phone sign-in is not enabled in your Firebase project. Go to Firebase Console > Authentication > Sign-in method to fix this.';
+      } else if (error.code === 'auth/captcha-check-failed') {
+          description = "Your app's domain (e.g. localhost) is not authorized. Go to Firebase Console > Authentication > Settings and add 'localhost' to the Authorized domains list.";
       } else if (error.code === 'auth/invalid-phone-number') {
           description = 'The phone number you entered is not valid.';
       }
