@@ -14,6 +14,7 @@ const defaultEnablers = ['Veeranna', 'Sarthak', 'Jayant', 'Rohit', 'Nitin', 'Abh
 const defaultContactSources = ['Govinda Temple', 'ITPL', 'HK hill'];
 
 const settingsDocRef = doc(db, 'settings', 'options');
+const adminDocRef = doc(db, 'settings', 'admin');
 
 const ensureSettingsDoc = async () => {
     const docSnap = await getDoc(settingsDocRef);
@@ -24,6 +25,23 @@ const ensureSettingsDoc = async () => {
         });
     }
     return docSnap.data() || { enablers: defaultEnablers, contactSources: defaultContactSources };
+}
+
+const ensureAdminDoc = async () => {
+    const docSnap = await getDoc(adminDocRef);
+    if (!docSnap.exists()) {
+        const initialAdminNumber = '7355585913';
+        await setDoc(adminDocRef, {
+            phoneNumbers: [initialAdminNumber],
+        });
+        return { phoneNumbers: [initialAdminNumber] };
+    }
+    return docSnap.data() || { phoneNumbers: [] };
+}
+
+export const getAdminPhoneNumbers = async (): Promise<string[]> => {
+    const adminSettings = await ensureAdminDoc();
+    return adminSettings.phoneNumbers || [];
 }
 
 export const getEnablers = async (): Promise<string[]> => {

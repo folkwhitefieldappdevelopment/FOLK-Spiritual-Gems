@@ -2,16 +2,15 @@
 'use client';
 
 import * as React from 'react';
+import { getAdminPhoneNumbers } from '@/services/settings-service';
 
 type AdminContextType = {
   isAdmin: boolean;
-  login: (pin: string) => boolean;
+  login: (phoneNumber: string) => Promise<boolean>;
   logout: () => void;
 };
 
 const AdminContext = React.createContext<AdminContextType | undefined>(undefined);
-
-const ADMIN_PIN = '3690';
 
 export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = React.useState(false);
@@ -28,13 +27,19 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const login = (pin: string): boolean => {
-    if (pin === ADMIN_PIN) {
-      localStorage.setItem('isAdmin', 'true');
-      setIsAdmin(true);
-      return true;
+  const login = async (phoneNumber: string): Promise<boolean> => {
+    try {
+      const adminNumbers = await getAdminPhoneNumbers();
+      if (adminNumbers.includes(phoneNumber)) {
+        localStorage.setItem('isAdmin', 'true');
+        setIsAdmin(true);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Failed to verify admin phone number", error);
+      return false;
     }
-    return false;
   };
 
   const logout = () => {

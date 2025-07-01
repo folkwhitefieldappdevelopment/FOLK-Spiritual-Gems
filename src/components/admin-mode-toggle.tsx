@@ -22,7 +22,7 @@ export function AdminModeToggle() {
   const { isAdmin, login, logout } = useAdmin();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-  const [pin, setPin] = React.useState('');
+  const [phoneNumber, setPhoneNumber] = React.useState('');
 
   const handleSwitchChange = (checked: boolean) => {
     if (checked) {
@@ -35,25 +35,26 @@ export function AdminModeToggle() {
     }
   };
 
-  const handlePinSubmit = () => {
-    if (login(pin)) {
+  const handleLoginSubmit = async () => {
+    const success = await login(phoneNumber);
+    if (success) {
       toast({ title: 'Admin mode enabled.' });
       setIsDialogOpen(false);
-      setPin('');
+      setPhoneNumber('');
     } else {
       toast({
         variant: 'destructive',
-        title: 'Incorrect PIN',
-        description: 'Please try again.',
+        title: 'Incorrect Phone Number',
+        description: 'This number is not authorized for admin access.',
       });
-      setPin('');
+      setPhoneNumber('');
     }
   };
 
   const handleDialogClose = (open: boolean) => {
       if (!open) {
           setIsDialogOpen(false);
-          setPin('');
+          setPhoneNumber('');
       }
   }
 
@@ -72,29 +73,29 @@ export function AdminModeToggle() {
       <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Enter Admin PIN</DialogTitle>
+            <DialogTitle>Enter Admin Phone Number</DialogTitle>
             <DialogDescription>
-              Enter the 4-digit PIN to enable admin mode.
+              Enter an authorized phone number to enable admin mode.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="pin" className="text-right">
-                PIN
+              <Label htmlFor="phone-number" className="text-right">
+                Phone
               </Label>
               <Input
-                id="pin"
-                type="password"
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
+                id="phone-number"
+                type="tel"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
                 className="col-span-3"
-                maxLength={4}
-                onKeyDown={(e) => e.key === 'Enter' && handlePinSubmit()}
+                onKeyDown={(e) => e.key === 'Enter' && handleLoginSubmit()}
+                placeholder="e.g. 7355585913"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit" onClick={handlePinSubmit}>
+            <Button type="submit" onClick={handleLoginSubmit}>
               Unlock
             </Button>
           </DialogFooter>
