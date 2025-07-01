@@ -1,3 +1,4 @@
+
 export const progressCategories = [
   'Association',
   'Book Reading',
@@ -8,9 +9,15 @@ export const progressCategories = [
 
 export type ProgressCategoryName = (typeof progressCategories)[number];
 
+export type ProgressLevelAnswers = {
+  l1: string;
+  l2: string;
+  l3: string;
+};
+
 export type ProgressCategoryAnswers = {
   name: ProgressCategoryName;
-  answers: [string, string, string][];
+  answers: ProgressLevelAnswers[];
 };
 
 export type Person = {

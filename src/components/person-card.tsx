@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { User, Briefcase } from "lucide-react";
-import type { Person, ProgressCategoryAnswers } from "@/lib/types";
+import type { Person, ProgressCategoryAnswers, ProgressLevelAnswers } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { checklistData } from '@/lib/data';
 import { useAdmin } from '@/contexts/admin-context';
@@ -34,9 +34,11 @@ const calculateScore = (categoryProgress: ProgressCategoryAnswers): number => {
   if (categoryInfo.category === 'Chanting') {
     const chantingItemIndex = categoryInfo.items.findIndex(item => item.question.includes('Chanting'));
     if (chantingItemIndex !== -1) {
-      const answers = categoryProgress.answers[chantingItemIndex] || [];
-      const rounds = Math.max(0, ...answers.map(a => parseNumber(a) || 0));
-      return (rounds / 16) * 100;
+      const answerObj = categoryProgress.answers[chantingItemIndex];
+       if (answerObj) {
+          const rounds = Math.max(0, ...Object.values(answerObj).map(a => parseNumber(a) || 0));
+          return (rounds / 16) * 100;
+        }
     }
   }
 
@@ -49,7 +51,10 @@ const calculateScore = (categoryProgress: ProgressCategoryAnswers): number => {
       const goalStr = (goal || "").trim();
       if (goalStr && goalStr !== '-') {
         totalGoals++;
-        const answer = categoryProgress.answers[itemIndex]?.[levelIndex] || '';
+        
+        const answerObj = categoryProgress.answers[itemIndex];
+        const levelKey = `l${levelIndex + 1}` as keyof ProgressLevelAnswers;
+        const answer = answerObj ? answerObj[levelKey] || '' : '';
         const normAnswer = answer.trim().toLowerCase();
         const normGoal = goalStr.toLowerCase();
 

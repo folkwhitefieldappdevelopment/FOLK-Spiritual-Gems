@@ -1,3 +1,4 @@
+
 import type { ProgressCategoryAnswers } from './types';
 
 export const checklistData = [
@@ -76,6 +77,6 @@ export const checklistData = [
 export const createInitialProgress = (): ProgressCategoryAnswers[] => {
   return checklistData.map((category) => ({
     name: category.category as any,
-    answers: category.items.map(() => ['', '', '']),
+    answers: category.items.map(() => ({ l1: '', l2: '', l3: '' })),
   }));
 };

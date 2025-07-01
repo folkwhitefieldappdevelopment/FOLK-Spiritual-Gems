@@ -5,7 +5,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { checklistData } from '@/lib/data';
-import type { ProgressCategoryAnswers } from '@/lib/types';
+import type { ProgressCategoryAnswers, ProgressLevelAnswers } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import {
   Table,
@@ -77,7 +77,8 @@ export function ProgressTracker({
     levelIndex: number
   ) => {
     const goalValue = checklistData[catIndex].items[itemIndex].levels[levelIndex];
-    const currentValue = progress[catIndex].answers[itemIndex][levelIndex];
+    const levelKey = `l${levelIndex + 1}` as keyof ProgressLevelAnswers;
+    const currentValue = progress[catIndex].answers[itemIndex][levelKey];
 
     if (goalValue.toLowerCase() === 'yes') {
       return (
@@ -175,8 +176,8 @@ export function ProgressTracker({
                           className={cn(
                             'text-center text-sm align-top p-0',
                             getCellClass(
-                              progress[catIndex].answers[itemIndex][levelIndex],
-                              goal
+                               progress[catIndex].answers[itemIndex][`l${levelIndex + 1}` as keyof ProgressLevelAnswers],
+                               goal
                             )
                           )}
                         >

@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Edit, Trash2 } from 'lucide-react';
-import type { Person, ProgressCategoryAnswers } from '@/lib/types';
+import type { Person, ProgressCategoryAnswers, ProgressLevelAnswers } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAdmin } from '@/contexts/admin-context';
 import { cn } from '@/lib/utils';
@@ -118,7 +118,8 @@ export default function PersonDetailPage() {
     if (!person) return;
 
     const newProgress = JSON.parse(JSON.stringify(person.progress));
-    newProgress[catIndex].answers[itemIndex][levelIndex] = value;
+    const levelKey = `l${levelIndex + 1}` as keyof ProgressLevelAnswers;
+    newProgress[catIndex].answers[itemIndex][levelKey] = value;
     
     const updatedPerson = { ...person, progress: newProgress };
     
