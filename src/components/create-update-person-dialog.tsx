@@ -489,14 +489,17 @@ export function CreateUpdatePersonDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Contact Source</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || ""}>
+                      <Select
+                        onValueChange={(value) => field.onChange(value === '__NONE__' ? '' : value)}
+                        value={field.value || '__NONE__'}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select a source" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                           <SelectItem value="">None</SelectItem>
+                           <SelectItem value="__NONE__">None</SelectItem>
                           {contactSourceOptions.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
                         </SelectContent>
                       </Select>
@@ -525,14 +528,17 @@ export function CreateUpdatePersonDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Enabler in touch with</FormLabel>
-                     <Select onValueChange={field.onChange} value={field.value || ""}>
+                     <Select
+                        onValueChange={(value) => field.onChange(value === '__NONE__' ? '' : value)}
+                        value={field.value || '__NONE__'}
+                      >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select an enabler" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
+                        <SelectItem value="__NONE__">None</SelectItem>
                         {enablerOptions.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
                       </SelectContent>
                     </Select>
