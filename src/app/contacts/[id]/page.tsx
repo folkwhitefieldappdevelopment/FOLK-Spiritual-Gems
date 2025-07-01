@@ -27,6 +27,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { CreateUpdatePersonDialog } from '@/components/create-update-person-dialog';
 import { ProgressTracker } from '@/components/progress-tracker';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
@@ -51,7 +56,8 @@ export default function PersonDetailPage() {
       try {
         const personData = await getPerson(personId);
         if (personData) {
-          if (!personData.progress || !Array.isArray(personData.progress) || personData.progress.length === 0) {
+          // Robustly check for valid progress data structure
+          if (!personData.progress || !Array.isArray(personData.progress) || personData.progress.length === 0 || !personData.progress[0]?.answers || !Array.isArray(personData.progress[0].answers)) {
             personData.progress = createInitialProgress();
           }
           setPerson(personData);
@@ -229,17 +235,28 @@ export default function PersonDetailPage() {
                 <div className={cn(isAdmin ? "lg:col-span-1" : "lg:col-span-3")}>
                   <Card>
                     <CardContent className="pt-6 text-center flex flex-col items-center">
-                      <Avatar className="h-32 w-32 mb-4">
-                        <AvatarImage
-                          src={person.photoUrl}
-                          alt={`${person.firstName} ${person.lastName}`}
-                          data-ai-hint="person portrait"
-                        />
-                        <AvatarFallback>
-                          {person.firstName.charAt(0)}
-                          {person.lastName.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Avatar className="h-32 w-32 mb-4 cursor-pointer hover:opacity-80 transition-opacity">
+                            <AvatarImage
+                              src={person.photoUrl}
+                              alt={`${person.firstName} ${person.lastName}`}
+                              data-ai-hint="person portrait"
+                            />
+                            <AvatarFallback>
+                              {person.firstName.charAt(0)}
+                              {person.lastName.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                        </DialogTrigger>
+                        <DialogContent className="p-0 border-0 max-w-lg bg-transparent shadow-none">
+                          <img
+                            src={person.photoUrl}
+                            alt={`${person.firstName} ${person.lastName}`}
+                            className="rounded-lg w-full h-auto object-contain"
+                          />
+                        </DialogContent>
+                      </Dialog>
                       <h2 className="text-2xl font-bold">
                         {person.firstName} {person.lastName}
                       </h2>
