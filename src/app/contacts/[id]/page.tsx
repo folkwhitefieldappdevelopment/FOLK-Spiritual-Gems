@@ -7,6 +7,8 @@ import { ArrowLeft, Edit, Trash2 } from 'lucide-react';
 import type { Person, ProgressCategoryAnswers } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { checklistData } from '@/lib/data';
+import { useAdmin } from '@/contexts/admin-context';
+import { cn } from '@/lib/utils';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -63,6 +65,7 @@ export default function PersonDetailPage() {
   const params = useParams();
   const { toast } = useToast();
   const personId = params.id as string;
+  const { isAdmin } = useAdmin();
 
   const [people, setPeople] = React.useState<Person[]>([]);
   const [person, setPerson] = React.useState<Person | null>(null);
@@ -200,7 +203,7 @@ export default function PersonDetailPage() {
           </PageHeader>
           <main className="flex-1 overflow-y-auto p-4 sm:p-6">
             <div className="mx-auto max-w-4xl">
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              <div className={cn("grid grid-cols-1 gap-6", isAdmin && "lg:grid-cols-3")}>
                 <div className="lg:col-span-1">
                   <Card>
                     <CardContent className="pt-6 text-center flex flex-col items-center">
@@ -257,12 +260,14 @@ export default function PersonDetailPage() {
                     </CardContent>
                   </Card>
                 </div>
-                <div className="lg:col-span-2">
-                   <ProgressTracker 
-                     progress={person.progress}
-                     onProgressChange={handleProgressChange}
-                   />
-                </div>
+                {isAdmin && (
+                  <div className="lg:col-span-2">
+                    <ProgressTracker 
+                      progress={person.progress}
+                      onProgressChange={handleProgressChange}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </main>
