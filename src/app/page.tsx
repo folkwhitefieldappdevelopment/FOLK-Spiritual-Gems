@@ -97,9 +97,7 @@ export default function HomePage() {
     });
   };
 
-  const handleSavePerson = (
-    personData: Omit<Person, "id" | "photoUrl" | "checklist">
-  ) => {
+  const handleSavePerson = (personData: Omit<Person, "id" | "checklist">) => {
     if (editingPerson) {
       setPeople((prev) =>
         prev.map((p) =>
@@ -113,7 +111,6 @@ export default function HomePage() {
     } else {
       const newPerson: Person = {
         id: `person-${Date.now()}`,
-        photoUrl: `https://placehold.co/100x100.png`,
         checklist: baseChecklist.map((item) => ({ ...item, isChecked: false })),
         ...personData,
       };
