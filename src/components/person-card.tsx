@@ -3,8 +3,9 @@
 
 import Link from 'next/link';
 import { User, Briefcase } from "lucide-react";
-import type { Person } from "@/lib/types";
+import type { Person, ProgressCategoryAnswers } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { checklistData } from '@/lib/data';
 import {
   Card,
   CardContent,
@@ -16,6 +17,63 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 type PersonCardProps = {
   person: Person;
+};
+
+const calculateCategoryProgress = (categoryProgress: ProgressCategoryAnswers): number => {
+    const categoryInfo = checklistData.find(c => c.category === categoryProgress.name);
+    if (!categoryInfo || !categoryProgress.answers) return 0;
+
+    let totalGoals = 0;
+    let achievedGoals = 0;
+
+    const parseNumber = (str: string): number | null => {
+        if (!str) return null;
+        const match = str.match(/\d+/);
+        return match ? parseInt(match[0], 10) : null;
+    }
+    
+    const isAchieved = (answer: string, goal: string): boolean => {
+        const normAnswer = (answer || "").trim().toLowerCase();
+        const normGoal = (goal || "").trim().toLowerCase();
+
+        if (!normAnswer) return false;
+        if (normGoal === 'yes') return normAnswer === 'yes';
+        
+        const goalNum = parseNumber(normGoal);
+        const answerNum = parseNumber(normAnswer);
+
+        if (goalNum !== null && answerNum !== null) {
+            return answerNum >= goalNum;
+        }
+
+        if (normGoal !== 'yes' && goalNum === null) {
+            return true;
+        }
+
+        return false;
+    };
+
+    categoryInfo.items.forEach((item, itemIndex) => {
+        item.levels.forEach((goal, levelIndex) => {
+            if (goal && goal.trim() !== '-') {
+                totalGoals++;
+                const answer = categoryProgress.answers[itemIndex]?.[levelIndex] || '';
+                if (isAchieved(answer, goal)) {
+                    achievedGoals++;
+                }
+            }
+        });
+    });
+
+    if (totalGoals === 0) return 0;
+    return (achievedGoals / totalGoals) * 100;
+};
+
+const getProgressColor = (percentage: number): string => {
+    if (percentage >= 80) return 'bg-green-500';
+    if (percentage >= 50) return 'bg-yellow-400';
+    if (percentage > 0) return 'bg-orange-400';
+    return 'bg-red-500';
 };
 
 export function PersonCard({ person }: PersonCardProps) {
@@ -57,13 +115,16 @@ export function PersonCard({ person }: PersonCardProps) {
                 </h4>
                 <div className="space-y-1.5">
                     {person.progress.map((category) => {
-                        const hasProgress = category.answers.some(answerTuple => answerTuple.some(answer => answer && answer.trim() !== ''));
+                        const progressPercentage = calculateCategoryProgress(category);
+                        const progressColor = getProgressColor(progressPercentage);
+                        const hasProgress = progressPercentage > 0;
+                        
                         return (
                         <div key={category.name} className="flex items-center text-sm">
                             <span
                             className={cn(
                                 "h-2.5 w-2.5 rounded-full mr-2 shrink-0",
-                                hasProgress ? "bg-green-500" : "bg-red-500"
+                                progressColor
                             )}
                             />
                             <span
