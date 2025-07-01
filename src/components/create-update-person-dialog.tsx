@@ -62,7 +62,7 @@ type PersonFormValues = z.infer<typeof personFormSchema>;
 type CreateUpdatePersonDialogProps = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  onSave: (data: Omit<Person, "id" | "progress">, person?: Person) => void;
+  onSave: (data: Omit<Person, "id" | "progress">) => void;
   person?: Person;
 };
 
@@ -249,7 +249,7 @@ export function CreateUpdatePersonDialog({
         photoPreview ||
         person?.photoUrl ||
         `https://placehold.co/100x100.png`,
-    }, person);
+    });
     setIsOpen(false);
   };
 

@@ -228,13 +228,13 @@ export default function ContactsPage() {
     }
   };
 
-  const handleSavePerson = async (personData: Omit<Person, "id" | "progress">, existingPerson?: Person) => {
+  const handleSavePerson = async (personData: Omit<Person, "id" | "progress">) => {
     try {
-      if (existingPerson) {
-        await updatePerson(existingPerson.id, personData);
+      if (editingPerson) {
+        await updatePerson(editingPerson.id, personData);
         setPeople((prev) =>
           prev.map((p) =>
-            p.id === existingPerson.id ? { ...existingPerson, ...personData } : p
+            p.id === editingPerson.id ? { ...editingPerson, ...personData } : p
           )
         );
         toast({
@@ -254,6 +254,7 @@ export default function ContactsPage() {
         });
       }
     } catch(error) {
+      console.error("Failed to save person:", error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -402,7 +403,7 @@ export default function ContactsPage() {
       <CreateUpdatePersonDialog
         isOpen={isDialogOpen}
         setIsOpen={setIsDialogOpen}
-        onSave={(data) => handleSavePerson(data, editingPerson)}
+        onSave={handleSavePerson}
         person={editingPerson}
       />
       <input
