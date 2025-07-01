@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from 'next/link';
@@ -19,60 +18,74 @@ type PersonCardProps = {
   person: Person;
 };
 
-const calculateCategoryProgress = (categoryProgress: ProgressCategoryAnswers): number => {
-    const categoryInfo = checklistData.find(c => c.category === categoryProgress.name);
-    if (!categoryInfo || !categoryProgress.answers) return 0;
+const calculateScore = (categoryProgress: ProgressCategoryAnswers): number => {
+  const categoryInfo = checklistData.find(c => c.category === categoryProgress.name);
+  if (!categoryInfo || !categoryProgress.answers) return -Infinity; // Special value for no data
 
-    let totalGoals = 0;
-    let achievedGoals = 0;
+  const parseNumber = (str: string): number | null => {
+    if (!str) return null;
+    const match = str.match(/\d+/);
+    return match ? parseInt(match[0], 10) : null;
+  };
 
-    const parseNumber = (str: string): number | null => {
-        if (!str) return null;
-        const match = str.match(/\d+/);
-        return match ? parseInt(match[0], 10) : null;
+  // Special handling for Chanting. Score from 0 to 100.
+  if (categoryInfo.category === 'Chanting') {
+    const chantingItemIndex = categoryInfo.items.findIndex(item => item.question.includes('Chanting'));
+    if (chantingItemIndex !== -1) {
+      const answers = categoryProgress.answers[chantingItemIndex] || [];
+      const rounds = Math.max(0, ...answers.map(a => parseNumber(a) || 0));
+      return (rounds / 16) * 100;
     }
-    
-    const isAchieved = (answer: string, goal: string): boolean => {
-        const normAnswer = (answer || "").trim().toLowerCase();
-        const normGoal = (goal || "").trim().toLowerCase();
+  }
 
-        if (!normAnswer) return false;
-        if (normGoal === 'yes') return normAnswer === 'yes';
-        
-        const goalNum = parseNumber(normGoal);
-        const answerNum = parseNumber(normAnswer);
+  let totalGoals = 0;
+  let score = 0;
+  let hasAnyInput = false;
 
-        if (goalNum !== null && answerNum !== null) {
-            return answerNum >= goalNum;
+  categoryInfo.items.forEach((item, itemIndex) => {
+    item.levels.forEach((goal, levelIndex) => {
+      const goalStr = (goal || "").trim();
+      if (goalStr && goalStr !== '-') {
+        totalGoals++;
+        const answer = categoryProgress.answers[itemIndex]?.[levelIndex] || '';
+        const normAnswer = answer.trim().toLowerCase();
+        const normGoal = goalStr.toLowerCase();
+
+        if (normAnswer && normAnswer !== '-') {
+          hasAnyInput = true;
         }
 
-        if (normGoal !== 'yes' && goalNum === null) {
-            return true;
+        if (normGoal === 'yes') {
+          if (normAnswer === 'yes') {
+            score++;
+          } else if (normAnswer === 'no') {
+            score--; // Negative score for 'No'
+          }
+        } else {
+          const goalNum = parseNumber(normGoal);
+          const answerNum = parseNumber(normAnswer);
+
+          if (goalNum !== null && answerNum !== null) {
+            score += Math.min(1, answerNum / goalNum);
+          } else if (normAnswer && normAnswer !== '-') {
+            score++;
+          }
         }
-
-        return false;
-    };
-
-    categoryInfo.items.forEach((item, itemIndex) => {
-        item.levels.forEach((goal, levelIndex) => {
-            if (goal && goal.trim() !== '-') {
-                totalGoals++;
-                const answer = categoryProgress.answers[itemIndex]?.[levelIndex] || '';
-                if (isAchieved(answer, goal)) {
-                    achievedGoals++;
-                }
-            }
-        });
+      }
     });
+  });
 
-    if (totalGoals === 0) return 0;
-    return (achievedGoals / totalGoals) * 100;
+  if (!hasAnyInput) return -Infinity;
+  if (totalGoals === 0) return -Infinity;
+  
+  return (score / totalGoals) * 100;
 };
 
-const getProgressColor = (percentage: number): string => {
-    if (percentage >= 80) return 'bg-green-500';
-    if (percentage >= 50) return 'bg-yellow-400';
-    if (percentage > 0) return 'bg-orange-400';
+const getProgressColor = (score: number): string => {
+    if (score === -Infinity) return 'bg-gray-400';
+    if (score >= 75) return 'bg-green-500';
+    if (score >= 25) return 'bg-yellow-400';
+    if (score > -25) return 'bg-orange-400';
     return 'bg-red-500';
 };
 
@@ -115,9 +128,9 @@ export function PersonCard({ person }: PersonCardProps) {
                 </h4>
                 <div className="space-y-1.5">
                     {person.progress.map((category) => {
-                        const progressPercentage = calculateCategoryProgress(category);
-                        const progressColor = getProgressColor(progressPercentage);
-                        const hasProgress = progressPercentage > 0;
+                        const score = calculateScore(category);
+                        const progressColor = getProgressColor(score);
+                        const hasProgress = score > -Infinity;
                         
                         return (
                         <div key={category.name} className="flex items-center text-sm">
