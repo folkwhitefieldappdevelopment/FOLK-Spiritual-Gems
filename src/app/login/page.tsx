@@ -36,6 +36,7 @@ export default function LoginPage() {
   const { toast } = useToast();
   const [isSigningIn, setIsSigningIn] = React.useState(false);
   const [configError, setConfigError] = React.useState(false);
+  const [authError, setAuthError] = React.useState<any>(null);
 
   React.useEffect(() => {
     if (!loading && user) {
@@ -46,12 +47,18 @@ export default function LoginPage() {
   const handleSignIn = async () => {
     setIsSigningIn(true);
     setConfigError(false);
+    setAuthError(null);
     try {
       await signInWithGoogle();
       // The useEffect will handle the redirection
     } catch (error: any) {
       console.error('Google sign-in error', error);
-      if (error.code === 'auth/unauthorized-domain' || error.code === 'auth/configuration-not-found') {
+      if (
+        error.code === 'auth/unauthorized-domain' ||
+        error.code === 'auth/configuration-not-found' ||
+        (error.message && error.message.includes('requests-from-referer'))
+      ) {
+        setAuthError(error);
         setConfigError(true);
       } else {
         toast({
@@ -73,7 +80,7 @@ export default function LoginPage() {
   }
 
   if (configError) {
-      return <FirebaseConfigError />;
+      return <FirebaseConfigError error={authError} />;
   }
 
   return (

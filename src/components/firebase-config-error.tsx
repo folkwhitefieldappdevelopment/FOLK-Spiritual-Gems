@@ -1,11 +1,27 @@
+
 'use client';
 
+import * as React from 'react';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-export function FirebaseConfigError() {
+export function FirebaseConfigError({ error }: { error?: any }) {
+  const [domainToAdd, setDomainToAdd] = React.useState('localhost');
+
+  React.useEffect(() => {
+    if (error?.message && error.message.includes('requests-from-referer')) {
+      const match = error.message.match(/referer-(.*?)-are-blocked/);
+      if (match && match[1]) {
+        setDomainToAdd(match[1]);
+      }
+    } else if (typeof window !== 'undefined') {
+        // Fallback for generic auth/unauthorized-domain errors
+        setDomainToAdd(window.location.hostname);
+    }
+  }, [error]);
+
   return (
     <>
       <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
@@ -29,7 +45,9 @@ export function FirebaseConfigError() {
             <ol className="list-decimal space-y-4 pl-5 text-sm">
               <li>
                 <strong>1. Authorize your domain for authentication.</strong>
-                <p className="mt-1">This is the most likely cause of an <code className="bg-muted px-1 py-0.5 rounded-sm font-code">auth/unauthorized-domain</code> error. In the Firebase Console, go to the <strong>Authentication</strong> section, click the <strong>Settings</strong> tab, and add <code className="bg-muted px-1 py-0.5 rounded-sm font-code">localhost</code> to the list of <strong>Authorized domains</strong>. This is required for Google Sign-In to work during local development.</p>
+                <p className="mt-1">This is the most likely cause of the error. In the Firebase Console, go to the <strong>Authentication</strong> section, click the <strong>Settings</strong> tab, and add the following domain to the list of <strong>Authorized domains</strong>. This is required for Google Sign-In to work.</p>
+                <p className="mt-2 font-semibold">Domain to add:</p>
+                <code className="bg-muted px-2 py-1 rounded-md font-code text-destructive block my-2 break-all">{domainToAdd}</code>
               </li>
               <li>
                 <strong>2. Ensure Firestore Database is created.</strong>
