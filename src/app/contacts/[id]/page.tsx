@@ -5,7 +5,6 @@ import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Mail, Phone, MapPin, Edit, Trash2 } from 'lucide-react';
 import type { Person } from '@/lib/types';
-import { progressCategories } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
 import { AppSidebar } from '@/components/app-sidebar';
@@ -27,6 +26,7 @@ import {
 import { CreateUpdatePersonDialog } from '@/components/create-update-person-dialog';
 import { ProgressTracker } from '@/components/progress-tracker';
 import { cn } from '@/lib/utils';
+import { progressCategories } from '@/lib/types';
 
 export default function PersonDetailPage() {
   const router = useRouter();
@@ -212,7 +212,7 @@ export default function PersonDetailPage() {
                   </Card>
                 </div>
                 <div className="lg:col-span-2">
-                   <ProgressTracker person={person} onPersonUpdate={handlePersonUpdate} />
+                   <ProgressTracker />
                 </div>
               </div>
             </div>

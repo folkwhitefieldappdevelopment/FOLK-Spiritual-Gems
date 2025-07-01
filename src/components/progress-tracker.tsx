@@ -2,217 +2,170 @@
 'use client';
 
 import * as React from 'react';
-import type { Person, ProgressCategoryName, ProgressItem } from '@/lib/types';
-import { Plus, Trash2, Edit, X } from 'lucide-react';
-import { Button } from './ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
+import Link from 'next/link';
+import { cn } from '@/lib/utils';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from './ui/accordion';
-import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
-import { Input } from './ui/input';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogClose,
-} from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from './ui/table';
 
+const checklistData = [
+  {
+    category: 'Association',
+    items: [
+      {
+        question: 'FR Staying (Or) FR Visiting',
+        levels: ['Yes', 'Yes', 'Yes'],
+      },
+      {
+        question: 'Special Association of Senior devotees',
+        levels: ['1', '1', '1'],
+      },
+      {
+        question: 'One-on-One Association (>20 min)',
+        levels: ['6', '8', '12'],
+      },
+      {
+        question: 'Weekly programs attended (No.s)',
+        levels: ['Attended 6 classes', 'Attended 6 classes', 'Attended 8 classes'],
+      },
+      { question: 'Guru issue related', levels: ['SP office quotes', 'Final order', '-'] },
+    ],
+  },
+  {
+    category: 'Book Reading',
+    items: [
+      { question: 'Reading (mins per day)', levels: ['30 mins', '45 mins', '60 mins'] },
+      { question: 'SP Biography: Messenger of Godhead', levels: ['Yes', 'Yes', 'Yes'] },
+      { question: 'Small Books 4', levels: ['Yes', 'Yes', 'Yes'] },
+      { question: 'Guru Issue', link: 'https://drive.google.com/drive/folders/1RpPVuzGPUXA5xAdi4nvD9-mlVM4k_Bdl?usp=share_link', levels: ['Yes', 'Yes', 'Yes'] },
+      { question: '6 Goswamis', levels: ['Yes', 'Yes', 'Yes'] },
+      { question: 'Vaishnava Saints', levels: ['Yes', 'Yes', 'Yes'] },
+      { question: 'BG', levels: ['', 'Yes', 'Yes'] },
+      { question: 'SSR', levels: ['', 'Yes', 'Yes'] },
+      { question: 'JSD - Journey of Self Discovery', levels: ['', 'Yes', 'Yes'] },
+      { question: 'Krishna Book', levels: ['', 'Yes', 'Yes'] },
+      { question: 'Krishna Sharanam', levels: ['', '', 'Yes'] },
+      { question: 'SB 7.6 Prahlad Maharaj Instructions', levels: ['', '', 'Yes'] },
+      { question: 'SB 5.5.1 Rishabhadev Instructions', levels: ['', '', 'Yes'] },
+      { question: 'SB 7.2.1 Yamraj in guise of small boy instructions', levels: ['', '', 'Yes'] },
+      { question: 'SB 8.22: Bali Maharaj surrender', levels: ['', '', 'Yes'] },
+      { question: 'SB 5.14: Material Enjoyment is like Forest Fire', levels: ['', '', 'Yes'] },
+      { question: 'SB 3.28 & 29: Kapila Maharaj instructions', levels: ['', '', 'Yes'] },
+      { question: 'SB 6.5: Narada cursed by Prajapati Daksha', levels: ['', '', 'Yes'] },
+      { question: 'SB 9.18: King Yayati attains Liberation', levels: ['', '', 'Yes'] },
+    ],
+  },
+  {
+    category: 'Chanting',
+    items: [{ question: 'Chanting (No of rounds)', levels: ['16', '16', '16'] }],
+  },
+  {
+    category: 'Devotional Service (or) Deity Darshan (or) Diet',
+    items: [
+      { question: 'Book Distribution (Total in Hrs)', levels: ['8 Hrs', '12 Hrs', '16 Hrs'] },
+      { question: 'Service (Total in Hrs)', levels: ['8 Hrs', '12 Hrs', '16 Hrs'] },
+      { question: 'Festival Service / Organizing preaching programs (Total No of Days)', levels: ['1', '1', '1'] },
+      { question: 'No of MA / Overnight stay in the temple', levels: ['8 Aratis (MA/DA/SA)', '8 Aratis (MA/DA/SA)', '8 Aratis (MA/DA/SA)'] },
+      { question: 'Ekadashi & Spl day fasting', levels: ['Yes', 'Yes', 'Yes'] },
+      { question: '4 regulative principles', levels: ['Yes', 'Yes', 'Yes'] },
+      { question: 'Avoid Non - veg', levels: ['Yes', 'Yes', 'Yes'] },
+      { question: 'Rise early', levels: ['Yes', 'Yes', 'Yes'] },
+      { question: 'Avoid Onion & Garlic', levels: ['Yes', 'Yes', 'Yes'] },
+      { question: 'Avoid Coffee/Tea', levels: ['Yes', 'Yes', 'Yes'] },
+    ],
+  },
+  {
+    category: 'Expedition',
+    items: [{ question: 'Folk Trips', levels: ['1 long trip', '1 long trip', '1 long trip'] }],
+  },
+];
 
-type ProgressTrackerProps = {
-  person: Person;
-  onPersonUpdate: (updatedPerson: Person) => void;
+const getCellClass = (value: string) => {
+  if (!value || value.trim() === '-') return 'bg-gray-200/50 dark:bg-gray-800/50';
+  if (value.toLowerCase() === 'yes')
+    return 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200 font-medium';
+  if (/\d/.test(value)) return 'bg-blue-100 dark:bg-blue-900/50';
+  return 'bg-gray-100 dark:bg-gray-800/50';
 };
 
-type DialogState = {
-    isOpen: boolean;
-    categoryName: ProgressCategoryName | null;
-    itemToEdit: ProgressItem | null;
-}
-
-export function ProgressTracker({ person, onPersonUpdate }: ProgressTrackerProps) {
-    const [dialogState, setDialogState] = React.useState<DialogState>({isOpen: false, categoryName: null, itemToEdit: null });
-    const [questionText, setQuestionText] = React.useState('');
-
-    const handleAnswerChange = (categoryName: ProgressCategoryName, itemId: string, newAnswer: string) => {
-        const updatedProgress = person.progress.map(category => {
-            if (category.name === categoryName) {
-                return {
-                    ...category,
-                    items: category.items.map(item => item.id === itemId ? {...item, answer: newAnswer} : item)
-                }
-            }
-            return category;
-        });
-        onPersonUpdate({...person, progress: updatedProgress});
-    };
-
-    const openDialog = (categoryName: ProgressCategoryName, itemToEdit: ProgressItem | null = null) => {
-        setDialogState({ isOpen: true, categoryName, itemToEdit });
-        setQuestionText(itemToEdit ? itemToEdit.question : '');
-    };
-
-    const closeDialog = () => {
-        setDialogState({ isOpen: false, categoryName: null, itemToEdit: null });
-        setQuestionText('');
-    }
-
-    const handleSaveQuestion = () => {
-        if (!dialogState.categoryName || !questionText.trim()) return;
-
-        const { categoryName, itemToEdit } = dialogState;
-
-        const updatedProgress = person.progress.map(cat => {
-            if (cat.name === categoryName) {
-                const newItems = itemToEdit
-                ? cat.items.map(it => it.id === itemToEdit.id ? {...it, question: questionText} : it) // Edit
-                : [...cat.items, {id: `q-${Date.now()}`, question: questionText, answer: ''}]; // Add
-                return {...cat, items: newItems};
-            }
-            return cat;
-        });
-
-        onPersonUpdate({...person, progress: updatedProgress});
-        closeDialog();
-    };
-
-    const handleDeleteQuestion = (categoryName: ProgressCategoryName, itemId: string) => {
-        const updatedProgress = person.progress.map(cat => {
-            if (cat.name === categoryName) {
-                return {...cat, items: cat.items.filter(it => it.id !== itemId)};
-            }
-            return cat;
-        });
-        onPersonUpdate({...person, progress: updatedProgress});
-    };
-  
-    return (
-    <>
-      <Card>
-        <CardHeader>
-          <CardTitle>Progress Tracker</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Accordion type="multiple" className="w-full">
-            {person.progress.map((category) => (
-              <AccordionItem value={category.name} key={category.name}>
-                <AccordionTrigger>{category.name}</AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-6 pl-2">
-                    {category.items.map((item) => (
-                      <div key={item.id} className="space-y-2 group">
-                        <div className="flex justify-between items-center">
-                          <Label htmlFor={item.id} className="font-semibold text-sm">
-                            {item.question}
-                          </Label>
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openDialog(category.name, item)}>
-                                <Edit className="h-4 w-4" />
-                            </Button>
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive">
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      This will permanently delete this question and its answer.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => handleDeleteQuestion(category.name, item.id)}
-                                      className="bg-destructive hover:bg-destructive/90"
-                                    >
-                                      Delete
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                          </div>
-                        </div>
-                        <Textarea
-                          id={item.id}
-                          value={item.answer}
-                          onChange={(e) =>
-                            handleAnswerChange(
-                              category.name,
-                              item.id,
-                              e.target.value
-                            )
-                          }
-                          placeholder="Your answer..."
-                          className="text-sm"
-                        />
-                      </div>
-                    ))}
-                    {category.items.length === 0 && (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        No questions in this category yet.
-                      </p>
-                    )}
-                    <div className="mt-4 flex justify-start">
-                        <Button variant="outline" size="sm" onClick={() => openDialog(category.name)}>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add Question
-                        </Button>
-                    </div>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        </CardContent>
-      </Card>
-      
-      <Dialog open={dialogState.isOpen} onOpenChange={closeDialog}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>{dialogState.itemToEdit ? 'Edit Question' : 'Add Question'}</DialogTitle>
-                <DialogDescription>
-                    {dialogState.itemToEdit ? 'Update the question text.' : `Add a new question to the "${dialogState.categoryName}" category.`}
-                </DialogDescription>
-            </DialogHeader>
-            <div className="py-4">
-                <Label htmlFor="question-text">Question</Label>
-                <Input 
-                    id="question-text"
-                    value={questionText}
-                    onChange={(e) => setQuestionText(e.target.value)}
-                    placeholder="e.g. What did you learn?"
-                    className="mt-2"
-                />
-            </div>
-            <DialogFooter>
-                <DialogClose asChild>
-                    <Button variant="outline">Cancel</Button>
-                </DialogClose>
-                <Button onClick={handleSaveQuestion}>Save Question</Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+export function ProgressTracker() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Progress Checklist</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="border rounded-lg overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50 hover:bg-muted/50">
+                <TableHead className="w-[350px] font-bold text-foreground">
+                  Category
+                </TableHead>
+                <TableHead className="text-center font-bold text-foreground">
+                  L-1
+                  <p className="font-normal text-xs text-muted-foreground">
+                    4 months
+                  </p>
+                </TableHead>
+                <TableHead className="text-center font-bold text-foreground">
+                  L-2
+                  <p className="font-normal text-xs text-muted-foreground">
+                    4 months
+                  </p>
+                </TableHead>
+                <TableHead className="text-center font-bold text-foreground">
+                  L-3
+                  <p className="font-normal text-xs text-muted-foreground">
+                    4 months
+                  </p>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {checklistData.map((category) => (
+                <React.Fragment key={category.category}>
+                  <TableRow className="bg-secondary/50">
+                    <TableCell
+                      colSpan={4}
+                      className="font-bold text-primary"
+                    >
+                      {category.category}
+                    </TableCell>
+                  </TableRow>
+                  {category.items.map((item) => (
+                    <TableRow key={item.question}>
+                      <TableCell className="font-medium text-sm text-muted-foreground align-top">
+                        {item.link ? (
+                           <Link href={item.link} target="_blank" rel="noopener noreferrer" className="underline text-blue-600 hover:text-blue-800">
+                             {item.question}
+                           </Link>
+                        ) : (
+                            item.question
+                        )}
+                      </TableCell>
+                      {item.levels.map((level, index) => (
+                        <TableCell
+                          key={index}
+                          className={cn('text-center text-sm align-top', getCellClass(level))}
+                        >
+                          {level || '-'}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </React.Fragment>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
