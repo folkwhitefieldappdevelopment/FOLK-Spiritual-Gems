@@ -18,7 +18,7 @@ export function AppSidebar() {
   return (
     <TooltipProvider delayDuration={0}>
       <aside className="sticky top-0 left-0 hidden h-screen w-16 flex-col border-r bg-card sm:flex">
-        <nav className="flex flex-col items-center gap-4 px-2 py-4">
+        <nav className="flex flex-1 flex-col items-center gap-4 px-2 py-4">
           <Link
             href="/"
             className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base"
@@ -43,8 +43,7 @@ export function AppSidebar() {
               <TooltipContent side="right">{item.label}</TooltipContent>
             </Tooltip>
           ))}
-        </nav>
-        <nav className="mt-auto flex flex-col items-center gap-4 px-2 py-4">
+          <div className="mt-auto">
             <Tooltip>
                 <TooltipTrigger asChild>
                     <Link
@@ -60,6 +59,7 @@ export function AppSidebar() {
                 </TooltipTrigger>
                 <TooltipContent side="right">Settings</TooltipContent>
             </Tooltip>
+          </div>
         </nav>
       </aside>
     </TooltipProvider>
