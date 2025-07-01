@@ -8,6 +8,7 @@ import type { Person, Group } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { getGroup, updateGroup } from '@/services/groups-service';
 import { getPeople, updatePerson } from '@/services/people-service';
+import { createInitialProgress } from '@/lib/data';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -43,11 +44,18 @@ export default function GroupDetailPage() {
           getPeople(),
         ]);
         
-        setAllPeople(peopleData);
+        const sanitizedPeople = peopleData.map(person => {
+          if (!person.progress || !Array.isArray(person.progress) || person.progress.length === 0 || !person.progress[0]?.answers) {
+            person.progress = createInitialProgress();
+          }
+          return person;
+        });
+        
+        setAllPeople(sanitizedPeople);
         
         if (groupData) {
           setGroup(groupData);
-          const groupMembers = peopleData.filter(p => groupData.peopleIds.includes(p.id));
+          const groupMembers = sanitizedPeople.filter(p => groupData.peopleIds.includes(p.id));
           setMembers(groupMembers);
         } else {
           toast({
