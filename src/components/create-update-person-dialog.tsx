@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -65,10 +66,6 @@ type CreateUpdatePersonDialogProps = {
 };
 
 const ageOptions = Array.from({ length: 25 }, (_, i) => i + 16);
-const enablerOptions = [
-  'Veeranna', 'Sarthak', 'Jayant', 'Rohit', 'Nitin', 'Abhishek', 'Nikhil', 'Ravi', 'Narayan'
-];
-
 
 export function CreateUpdatePersonDialog({
   isOpen,
@@ -103,9 +100,28 @@ export function CreateUpdatePersonDialog({
   >(null);
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [enablerOptions, setEnablerOptions] = React.useState<string[]>([]);
+
 
   React.useEffect(() => {
     if (isOpen) {
+      // Load enablers from localStorage
+      try {
+        const storedEnablers = localStorage.getItem('enablers');
+        if (storedEnablers) {
+            setEnablerOptions(JSON.parse(storedEnablers));
+        } else {
+            const defaultEnablers = ['Veeranna', 'Sarthak', 'Jayant', 'Rohit', 'Nitin', 'Abhishek', 'Nikhil', 'Ravi', 'Narayan'];
+            setEnablerOptions(defaultEnablers);
+            localStorage.setItem('enablers', JSON.stringify(defaultEnablers));
+        }
+      } catch (error) {
+        console.error('Failed to load enablers for dialog', error);
+        toast({ variant: 'destructive', title: 'Could not load enablers.' });
+        setEnablerOptions([]);
+      }
+
+      // Reset form with person data or clear it
       if (person) {
         form.reset({
           firstName: person.firstName,
@@ -144,7 +160,7 @@ export function CreateUpdatePersonDialog({
       setShowCamera(false);
       setHasCameraPermission(null);
     }
-  }, [person, form, isOpen]);
+  }, [person, form, isOpen, toast]);
 
   React.useEffect(() => {
     if (!showCamera) {
@@ -502,7 +518,7 @@ export function CreateUpdatePersonDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Enabler in touch with</FormLabel>
-                     <Select onValueChange={field.onChange} value={field.value}>
+                     <Select onValueChange={field.onChange} value={field.value || ""}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select an enabler" />
