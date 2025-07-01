@@ -27,49 +27,34 @@ export function FirebaseConfigError({ error }: { error?: any }) {
       <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
         <Card className="max-w-2xl">
           <CardHeader>
-            <CardTitle className="text-destructive">Connection to Firebase Failed</CardTitle>
+            <CardTitle className="text-destructive">Authentication Setup Incomplete</CardTitle>
             <CardDescription>
-              Errors like <code className="bg-muted px-1 py-0.5 rounded-sm font-code text-destructive">auth/unauthorized-domain</code> or <code className="bg-muted px-1 py-0.5 rounded-sm font-code text-destructive">Missing or insufficient permissions</code> usually indicate a problem with your Firebase project configuration, not the application code.
+              The application is running into Firebase authentication errors. This usually indicates that the Firebase project is not fully configured to handle sign-in requests from this app.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Action Required: Check Your Firebase Setup</AlertTitle>
+              <AlertTitle>Action Required: Check Your Authentication Setup</AlertTitle>
               <AlertDescription>
-                This error happens when the app cannot connect to or authenticate with Firebase. Please carefully check the following common issues in your Firebase project.
+                Please carefully check the following common issues in your Firebase project's authentication settings.
               </AlertDescription>
             </Alert>
             
             <p>Please follow these steps in your Firebase project:</p>
             <ol className="list-decimal space-y-4 pl-5 text-sm">
               <li>
-                <strong>1. Authorize your domain for authentication.</strong>
-                <p className="mt-1">This is the most likely cause of the error. In the Firebase Console, go to the <strong>Authentication</strong> section, click the <strong>Settings</strong> tab, and add the following domain to the list of <strong>Authorized domains</strong>. This is required for Google Sign-In to work.</p>
+                <strong>1. Enable the Identity Platform API.</strong>
+                <p className="mt-1">The error <code className="bg-muted px-1 py-0.5 rounded-sm font-code">requests-to-this-api...-are-blocked</code> means a required Google Cloud service is disabled. Go to the <a href="https://console.cloud.google.com/apis/library/identitytoolkit.googleapis.com" target="_blank" rel="noopener noreferrer" className="underline text-primary">Identity Platform API page</a> in the Google Cloud Console, ensure your project is selected, and click **Enable**. This is the most likely cause of the current error.</p>
+              </li>
+              <li>
+                <strong>2. Authorize your domain for authentication.</strong>
+                <p className="mt-1">The error <code className="bg-muted px-1 py-0.5 rounded-sm font-code text-destructive">auth/unauthorized-domain</code> can also occur. In the Firebase Console, go to <strong>Authentication</strong> &gt; <strong>Settings</strong> and add the following domain to the list of <strong>Authorized domains</strong>.</p>
                 <p className="mt-2 font-semibold">Domain to add:</p>
                 <code className="bg-muted px-2 py-1 rounded-md font-code text-destructive block my-2 break-all">{domainToAdd}</code>
               </li>
-              <li>
-                <strong>2. Ensure Firestore Database is created.</strong>
-                <p className="mt-1">In the Firebase Console, go to the <strong>Firestore Database</strong> section. If you see a "Create database" button, you must click it. When prompted, select a location and choose to <strong>start in test mode</strong>. This automatically sets the correct security rules for 30 days.</p>
-              </li>
-              <li>
-                <strong>3. Verify your Security Rules.</strong>
-                <p className="mt-1">If you already have a database, check its security rules. In the Firebase Console, go to the Firestore Database section and click the <strong>Rules</strong> tab. For development, your rules must allow read and write access. Copy and paste the following rules and click "Publish".</p>
-                <pre className="mt-2 w-full whitespace-pre-wrap rounded-md bg-muted p-2 font-code text-xs text-foreground">
-                    {`rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      // WARNING: Insecure rules, for development only.
-      allow read, write: if true;
-    }
-  }
-}`}
-                </pre>
-              </li>
                <li>
-                  <strong>4. Double-check your credentials.</strong>
+                  <strong>3. Double-check your web app credentials.</strong>
                   <p className="mt-1">Just in case, make sure the `firebaseConfig` object in <code className="bg-muted px-1 py-0.5 rounded-sm font-code">src/lib/firebase.ts</code> perfectly matches the one from your Firebase Project Settings.</p>
               </li>
             </ol>
