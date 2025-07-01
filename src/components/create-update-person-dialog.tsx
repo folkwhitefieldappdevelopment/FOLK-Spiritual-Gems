@@ -101,11 +101,12 @@ export function CreateUpdatePersonDialog({
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [enablerOptions, setEnablerOptions] = React.useState<string[]>([]);
+  const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
 
 
   React.useEffect(() => {
     if (isOpen) {
-      // Load enablers from localStorage
+      // Load enablers and contact sources from localStorage
       try {
         const storedEnablers = localStorage.getItem('enablers');
         if (storedEnablers) {
@@ -113,12 +114,20 @@ export function CreateUpdatePersonDialog({
         } else {
             const defaultEnablers = ['Veeranna', 'Sarthak', 'Jayant', 'Rohit', 'Nitin', 'Abhishek', 'Nikhil', 'Ravi', 'Narayan'];
             setEnablerOptions(defaultEnablers);
-            localStorage.setItem('enablers', JSON.stringify(defaultEnablers));
+        }
+
+        const storedContactSources = localStorage.getItem('contactSources');
+        if (storedContactSources) {
+            setContactSourceOptions(JSON.parse(storedContactSources));
+        } else {
+            const defaultSources = ['Govinda Temple', 'ITPL', 'HK hill'];
+            setContactSourceOptions(defaultSources);
         }
       } catch (error) {
-        console.error('Failed to load enablers for dialog', error);
-        toast({ variant: 'destructive', title: 'Could not load enablers.' });
+        console.error('Failed to load dropdown options for dialog', error);
+        toast({ variant: 'destructive', title: 'Could not load dropdown options.' });
         setEnablerOptions([]);
+        setContactSourceOptions([]);
       }
 
       // Reset form with person data or clear it
@@ -490,9 +499,16 @@ export function CreateUpdatePersonDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Contact Source</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. University" {...field} />
-                      </FormControl>
+                      <Select onValueChange={field.onChange} value={field.value || ""}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a source" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {contactSourceOptions.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}

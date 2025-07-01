@@ -24,13 +24,22 @@ import {
 } from '@/components/ui/alert-dialog';
 
 const defaultEnablers = ['Veeranna', 'Sarthak', 'Jayant', 'Rohit', 'Nitin', 'Abhishek', 'Nikhil', 'Ravi', 'Narayan'];
+const defaultContactSources = ['Govinda Temple', 'ITPL', 'HK hill'];
 
 export default function SettingsPage() {
   const { toast } = useToast();
+  
+  // Enabler states
   const [enablers, setEnablers] = React.useState<string[]>([]);
   const [newEnabler, setNewEnabler] = React.useState('');
-  const [editingIndex, setEditingIndex] = React.useState<number | null>(null);
-  const [editingValue, setEditingValue] = React.useState('');
+  const [editingEnablerIndex, setEditingEnablerIndex] = React.useState<number | null>(null);
+  const [editingEnablerValue, setEditingEnablerValue] = React.useState('');
+
+  // Contact Source states
+  const [contactSources, setContactSources] = React.useState<string[]>([]);
+  const [newContactSource, setNewContactSource] = React.useState('');
+  const [editingSourceIndex, setEditingSourceIndex] = React.useState<number | null>(null);
+  const [editingSourceValue, setEditingSourceValue] = React.useState('');
 
   React.useEffect(() => {
     try {
@@ -41,21 +50,21 @@ export default function SettingsPage() {
         setEnablers(defaultEnablers);
         localStorage.setItem('enablers', JSON.stringify(defaultEnablers));
       }
+
+      const storedContactSources = localStorage.getItem('contactSources');
+      if (storedContactSources) {
+        setContactSources(JSON.parse(storedContactSources));
+      } else {
+        setContactSources(defaultContactSources);
+        localStorage.setItem('contactSources', JSON.stringify(defaultContactSources));
+      }
     } catch (error) {
-      console.error('Failed to load enablers from localStorage', error);
+      console.error('Failed to load settings from localStorage', error);
       setEnablers(defaultEnablers);
+      setContactSources(defaultContactSources);
     }
   }, []);
 
-  const updateEnablersInStorage = (updatedEnablers: string[]) => {
-    localStorage.setItem('enablers', JSON.stringify(updatedEnablers));
-    setEnablers(updatedEnablers);
-  };
-  
-  const updatePeopleInStorage = (updatedPeople: Person[]) => {
-    localStorage.setItem('people', JSON.stringify(updatedPeople));
-  };
-  
   const getPeopleFromStorage = (): Person[] => {
       try {
         const storedPeople = localStorage.getItem('people');
@@ -65,6 +74,16 @@ export default function SettingsPage() {
         return [];
       }
   }
+
+  const updatePeopleInStorage = (updatedPeople: Person[]) => {
+    localStorage.setItem('people', JSON.stringify(updatedPeople));
+  };
+  
+  // Enabler functions
+  const updateEnablersInStorage = (updatedEnablers: string[]) => {
+    localStorage.setItem('enablers', JSON.stringify(updatedEnablers));
+    setEnablers(updatedEnablers);
+  };
 
   const handleAddEnabler = () => {
     if (newEnabler.trim() && !enablers.includes(newEnabler.trim())) {
@@ -97,33 +116,33 @@ export default function SettingsPage() {
     toast({ title: 'Enabler Deleted' });
   };
 
-  const handleStartEdit = (index: number) => {
-    setEditingIndex(index);
-    setEditingValue(enablers[index]);
+  const handleStartEditEnabler = (index: number) => {
+    setEditingEnablerIndex(index);
+    setEditingEnablerValue(enablers[index]);
   };
 
-  const handleCancelEdit = () => {
-    setEditingIndex(null);
-    setEditingValue('');
+  const handleCancelEditEnabler = () => {
+    setEditingEnablerIndex(null);
+    setEditingEnablerValue('');
   }
 
-  const handleSaveEdit = (index: number) => {
-    if (editingValue.trim() && !enablers.some((e, i) => e === editingValue.trim() && i !== index)) {
+  const handleSaveEditEnabler = (index: number) => {
+    if (editingEnablerValue.trim() && !enablers.some((e, i) => e === editingEnablerValue.trim() && i !== index)) {
       const oldEnablerName = enablers[index];
       const updatedEnablers = [...enablers];
-      updatedEnablers[index] = editingValue.trim();
+      updatedEnablers[index] = editingEnablerValue.trim();
       updateEnablersInStorage(updatedEnablers);
 
       const people = getPeopleFromStorage();
       const updatedPeople = people.map(p => {
           if (p.enablerInTouchWith === oldEnablerName) {
-              return { ...p, enablerInTouchWith: editingValue.trim() };
+              return { ...p, enablerInTouchWith: editingEnablerValue.trim() };
           }
           return p;
       });
       updatePeopleInStorage(updatedPeople);
       
-      handleCancelEdit();
+      handleCancelEditEnabler();
       toast({ title: 'Enabler Updated' });
     } else {
        toast({
@@ -134,6 +153,79 @@ export default function SettingsPage() {
     }
   };
 
+  // Contact Source functions
+  const updateContactSourcesInStorage = (updatedSources: string[]) => {
+    localStorage.setItem('contactSources', JSON.stringify(updatedSources));
+    setContactSources(updatedSources);
+  };
+  
+  const handleAddContactSource = () => {
+    if (newContactSource.trim() && !contactSources.includes(newContactSource.trim())) {
+      const updatedSources = [...contactSources, newContactSource.trim()];
+      updateContactSourcesInStorage(updatedSources);
+      setNewContactSource('');
+      toast({ title: 'Contact Source Added' });
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Contact source name cannot be empty or a duplicate.',
+      });
+    }
+  };
+
+  const handleDeleteContactSource = (sourceToDelete: string) => {
+    const updatedSources = contactSources.filter(s => s !== sourceToDelete);
+    updateContactSourcesInStorage(updatedSources);
+  
+    const people = getPeopleFromStorage();
+    const updatedPeople = people.map(p => {
+        if (p.contactSource === sourceToDelete) {
+            return { ...p, contactSource: '' };
+        }
+        return p;
+    });
+    updatePeopleInStorage(updatedPeople);
+  
+    toast({ title: 'Contact Source Deleted' });
+  };
+  
+  const handleStartEditSource = (index: number) => {
+    setEditingSourceIndex(index);
+    setEditingSourceValue(contactSources[index]);
+  };
+  
+  const handleCancelEditSource = () => {
+    setEditingSourceIndex(null);
+    setEditingSourceValue('');
+  };
+  
+  const handleSaveEditSource = (index: number) => {
+    if (editingSourceValue.trim() && !contactSources.some((s, i) => s === editingSourceValue.trim() && i !== index)) {
+      const oldSourceName = contactSources[index];
+      const updatedSources = [...contactSources];
+      updatedSources[index] = editingSourceValue.trim();
+      updateContactSourcesInStorage(updatedSources);
+  
+      const people = getPeopleFromStorage();
+      const updatedPeople = people.map(p => {
+          if (p.contactSource === oldSourceName) {
+              return { ...p, contactSource: editingSourceValue.trim() };
+          }
+          return p;
+      });
+      updatePeopleInStorage(updatedPeople);
+      
+      handleCancelEditSource();
+      toast({ title: 'Contact Source Updated' });
+    } else {
+       toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Contact source name cannot be empty or a duplicate.',
+      });
+    }
+  };
 
   return (
     <div className="flex min-h-screen w-full">
@@ -144,7 +236,7 @@ export default function SettingsPage() {
           description="Manage application settings."
         />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-          <div className="mx-auto max-w-2xl">
+          <div className="mx-auto max-w-2xl space-y-8">
             <Card>
               <CardHeader>
                 <CardTitle>Manage Enablers</CardTitle>
@@ -169,19 +261,19 @@ export default function SettingsPage() {
                     {enablers.length > 0 ? (
                       enablers.map((enabler, index) => (
                         <div key={index} className="flex items-center justify-between gap-2 rounded-md p-2 hover:bg-muted/50">
-                          {editingIndex === index ? (
+                          {editingEnablerIndex === index ? (
                             <>
                               <Input 
-                                value={editingValue}
-                                onChange={(e) => setEditingValue(e.target.value)}
+                                value={editingEnablerValue}
+                                onChange={(e) => setEditingEnablerValue(e.target.value)}
                                 className="h-8"
-                                onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit(index)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleSaveEditEnabler(index)}
                               />
                               <div className="flex gap-1">
-                                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleSaveEdit(index)}>
+                                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleSaveEditEnabler(index)}>
                                   <Save className="h-4 w-4" />
                                 </Button>
-                                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleCancelEdit}>
+                                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleCancelEditEnabler}>
                                   <X className="h-4 w-4" />
                                 </Button>
                               </div>
@@ -190,7 +282,7 @@ export default function SettingsPage() {
                             <>
                               <span className="font-medium">{enabler}</span>
                               <div className="flex gap-1">
-                                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleStartEdit(index)}>
+                                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleStartEditEnabler(index)}>
                                   <Edit className="h-4 w-4" />
                                 </Button>
                                 <AlertDialog>
@@ -229,6 +321,92 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Manage Contact Sources</CardTitle>
+                <CardDescription>
+                  Add, edit, or delete contact sources.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex gap-2">
+                    <Input
+                      value={newContactSource}
+                      onChange={(e) => setNewContactSource(e.target.value)}
+                      placeholder="Enter new contact source"
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddContactSource()}
+                    />
+                    <Button onClick={handleAddContactSource}>
+                      <PlusCircle className="mr-2 h-4 w-4" /> Add
+                    </Button>
+                  </div>
+                  <div className="space-y-2 rounded-md border p-2">
+                    {contactSources.length > 0 ? (
+                      contactSources.map((source, index) => (
+                        <div key={index} className="flex items-center justify-between gap-2 rounded-md p-2 hover:bg-muted/50">
+                          {editingSourceIndex === index ? (
+                            <>
+                              <Input 
+                                value={editingSourceValue}
+                                onChange={(e) => setEditingSourceValue(e.target.value)}
+                                className="h-8"
+                                onKeyDown={(e) => e.key === 'Enter' && handleSaveEditSource(index)}
+                              />
+                              <div className="flex gap-1">
+                                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleSaveEditSource(index)}>
+                                  <Save className="h-4 w-4" />
+                                </Button>
+                                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleCancelEditSource}>
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <span className="font-medium">{source}</span>
+                              <div className="flex gap-1">
+                                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleStartEditSource(index)}>
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        This will delete the source '{source}'. Any contacts using this source will have the field cleared. This action cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => handleDeleteContactSource(source)}
+                                        className="bg-destructive hover:bg-destructive/90"
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-center text-muted-foreground p-4">No contact sources found. Add one to get started.</p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
           </div>
         </main>
       </div>
