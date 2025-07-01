@@ -39,9 +39,6 @@ export function AdminModeToggle() {
     setOtp('');
     setConfirmationResult(null);
     setIsVerifying(false);
-    if ((window as any).recaptchaVerifier) {
-      (window as any).recaptchaVerifier.clear();
-    }
   };
 
   const handleSwitchChange = (checked: boolean) => {
@@ -75,16 +72,10 @@ export function AdminModeToggle() {
         return;
       }
       
-      if ((window as any).recaptchaVerifier) {
-        (window as any).recaptchaVerifier.clear();
-      }
-
       const verifier = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
         'size': 'invisible',
         'callback': () => {},
       });
-
-      (window as any).recaptchaVerifier = verifier;
 
       const fullPhoneNumber = `+91${phoneNumber}`; 
       const confirmation = await signInWithPhoneNumber(auth, fullPhoneNumber, verifier);
