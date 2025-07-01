@@ -39,6 +39,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "./ui/checkbox";
+import { ScrollArea } from "./ui/scroll-area";
 
 const personFormSchema = z.object({
   firstName: z.string().min(1, { message: "First name is required." }),
@@ -300,277 +301,280 @@ export function CreateUpdatePersonDialog({
           <Form {...form}>
             <form
               onSubmit={form.handleSubmit(onSubmit)}
-              className="space-y-4 pt-4"
             >
-              <div className="flex flex-col items-center gap-4">
-                <Avatar className="h-24 w-24">
-                  <AvatarImage src={currentPhoto} alt="Person photo" />
-                  <AvatarFallback>{fallbackName}</AvatarFallback>
-                </Avatar>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    Gallery
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowCamera(true)}
-                  >
-                    <Camera className="mr-2 h-4 w-4" />
-                    Camera
-                  </Button>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className="hidden"
-                    accept="image/*"
-                  />
-                </div>
-              </div>
+              <ScrollArea className="h-[60vh]">
+                <div className="space-y-4 pr-6">
+                  <div className="flex flex-col items-center gap-4 pt-4">
+                    <Avatar className="h-24 w-24">
+                      <AvatarImage src={currentPhoto} alt="Person photo" />
+                      <AvatarFallback>{fallbackName}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <Upload className="mr-2 h-4 w-4" />
+                        Gallery
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowCamera(true)}
+                      >
+                        <Camera className="mr-2 h-4 w-4" />
+                        Camera
+                      </Button>
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        className="hidden"
+                        accept="image/*"
+                      />
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="firstName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>First Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="John" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="lastName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Last Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Doe" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="firstName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>First Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="John" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="lastName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Last Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Doe" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
-               <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="phone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Phone Number</FormLabel>
+                            <FormControl>
+                              <Input placeholder="9876543210" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    <FormField
+                        control={form.control}
+                        name="age"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Age</FormLabel>
+                            <Select onValueChange={(value) => field.onChange(Number(value))} value={String(field.value)}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select age" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {ageOptions.map(age => <SelectItem key={age} value={String(age)}>{age}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                  </div>
+
                   <FormField
                     control={form.control}
-                    name="phone"
+                    name="stayingWith"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Phone Number</FormLabel>
-                        <FormControl>
-                          <Input placeholder="9876543210" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                 <FormField
-                    control={form.control}
-                    name="age"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Age</FormLabel>
-                        <Select onValueChange={(value) => field.onChange(Number(value))} value={String(field.value)}>
+                        <FormLabel>Staying At & With</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select age" />
+                              <SelectValue placeholder="Select accommodation" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {ageOptions.map(age => <SelectItem key={age} value={String(age)}>{age}</SelectItem>)}
+                            <SelectItem value="PG / Hostel">PG / Hostel</SelectItem>
+                            <SelectItem value="Flat">Flat</SelectItem>
+                            <SelectItem value="Family">Family</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-              </div>
 
-              <FormField
-                control={form.control}
-                name="stayingWith"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Staying At & With</FormLabel>
-                     <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select accommodation" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="PG / Hostel">PG / Hostel</SelectItem>
-                        <SelectItem value="Flat">Flat</SelectItem>
-                        <SelectItem value="Family">Family</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="occupation"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Working / Studying At</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g. Acme Corp" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="rentDetails"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>PG/Flat Rent</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g. 5000/month" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="occupation"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Working / Studying At</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. Acme Corp" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="rentDetails"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>PG/Flat Rent</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. 5000/month" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="nativePlace"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Native</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g. New Delhi" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="sgRating"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>SG Rating</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g. A+" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="contactSource"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Contact Source</FormLabel>
+                          <Select
+                            onValueChange={(value) => field.onChange(value === '__NONE__' ? '' : value)}
+                            value={field.value || '__NONE__'}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a source" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="__NONE__">None</SelectItem>
+                              {contactSourceOptions.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="chantingStatus"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Chanting Status</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g. 16 rounds" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <FormField
+                    control={form.control}
+                    name="enablerInTouchWith"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Enabler in touch with</FormLabel>
+                        <Select
+                            onValueChange={(value) => field.onChange(value === '__NONE__' ? '' : value)}
+                            value={field.value || '__NONE__'}
+                          >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select an enabler" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="__NONE__">None</SelectItem>
+                            {enablerOptions.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="nativePlace"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Native</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. New Delhi" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                 <FormField
-                  control={form.control}
-                  name="sgRating"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>SG Rating</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. A+" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                 <FormField
-                  control={form.control}
-                  name="contactSource"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Contact Source</FormLabel>
-                      <Select
-                        onValueChange={(value) => field.onChange(value === '__NONE__' ? '' : value)}
-                        value={field.value || '__NONE__'}
-                      >
+                  <FormField
+                    control={form.control}
+                    name="fromOtherCamp"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a source" />
-                          </SelectTrigger>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
                         </FormControl>
-                        <SelectContent>
-                           <SelectItem value="__NONE__">None</SelectItem>
-                          {contactSourceOptions.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="chantingStatus"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Chanting Status</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. 16 rounds" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              
-              <FormField
-                control={form.control}
-                name="enablerInTouchWith"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Enabler in touch with</FormLabel>
-                     <Select
-                        onValueChange={(value) => field.onChange(value === '__NONE__' ? '' : value)}
-                        value={field.value || '__NONE__'}
-                      >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select an enabler" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="__NONE__">None</SelectItem>
-                        {enablerOptions.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="fromOtherCamp"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>
-                        From another camp?
-                      </FormLabel>
-                      <FormDescription>
-                        Check this if the contact has come from another spiritual group or camp.
-                      </FormDescription>
-                    </div>
-                  </FormItem>
-                )}
-              />
-
-              <DialogFooter>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>
+                            From another camp?
+                          </FormLabel>
+                          <FormDescription>
+                            Check this if the contact has come from another spiritual group or camp.
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </ScrollArea>
+              <DialogFooter className="pt-4">
+                <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
                 <Button type="submit">Save changes</Button>
               </DialogFooter>
             </form>
