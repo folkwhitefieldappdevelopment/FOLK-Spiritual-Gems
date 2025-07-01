@@ -2,12 +2,10 @@
 'use client';
 
 import * as React from 'react';
-import { getAdminPhoneNumbers } from '@/services/settings-service';
 
 type AdminContextType = {
   isAdmin: boolean;
-  login: (phoneNumber: string) => Promise<boolean>;
-  logout: () => void;
+  setAdmin: (status: boolean) => void;
 };
 
 const AdminContext = React.createContext<AdminContextType | undefined>(undefined);
@@ -23,31 +21,21 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('Failed to parse isAdmin from localStorage', error);
+      localStorage.removeItem('isAdmin');
       setIsAdmin(false);
     }
   }, []);
 
-  const login = async (phoneNumber: string): Promise<boolean> => {
-    try {
-      const adminNumbers = await getAdminPhoneNumbers();
-      if (adminNumbers.includes(phoneNumber)) {
-        localStorage.setItem('isAdmin', 'true');
-        setIsAdmin(true);
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error("Failed to verify admin phone number", error);
-      return false;
+  const setAdmin = (status: boolean) => {
+    if (status) {
+      localStorage.setItem('isAdmin', 'true');
+    } else {
+      localStorage.removeItem('isAdmin');
     }
+    setIsAdmin(status);
   };
 
-  const logout = () => {
-    localStorage.removeItem('isAdmin');
-    setIsAdmin(false);
-  };
-
-  const value = { isAdmin, login, logout };
+  const value = { isAdmin, setAdmin };
 
   return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>;
 }

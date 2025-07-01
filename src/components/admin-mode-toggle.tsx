@@ -3,6 +3,9 @@
 
 import * as React from 'react';
 import { Lock, Unlock } from 'lucide-react';
+import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { getAdminPhoneNumbers } from '@/services/settings-service';
 import { useAdmin } from '@/contexts/admin-context';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -19,44 +22,104 @@ import { Label } from '@/components/ui/label';
 import { Switch } from './ui/switch';
 
 export function AdminModeToggle() {
-  const { isAdmin, login, logout } = useAdmin();
+  const { isAdmin, setAdmin } = useAdmin();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [step, setStep] = React.useState<'phone' | 'otp'>('phone');
   const [phoneNumber, setPhoneNumber] = React.useState('');
+  const [otp, setOtp] = React.useState('');
+  const [confirmationResult, setConfirmationResult] = React.useState<ConfirmationResult | null>(null);
+  const [isVerifying, setIsVerifying] = React.useState(false);
+  
+  const recaptchaContainerRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!isDialogOpen || !recaptchaContainerRef.current) return;
+    
+    const verifier = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
+      'size': 'invisible',
+      'callback': () => {},
+    });
+    
+    (window as any).recaptchaVerifier = verifier;
+    
+    return () => {
+      verifier.clear();
+    };
+  }, [isDialogOpen]);
+
+  const resetState = () => {
+    setStep('phone');
+    setPhoneNumber('');
+    setOtp('');
+    setConfirmationResult(null);
+    setIsVerifying(false);
+  };
 
   const handleSwitchChange = (checked: boolean) => {
     if (checked) {
-      // Trying to enable admin mode
       setIsDialogOpen(true);
     } else {
-      // Disabling admin mode
-      logout();
+      setAdmin(false);
       toast({ title: 'Admin mode disabled.' });
     }
   };
 
-  const handleLoginSubmit = async () => {
-    const success = await login(phoneNumber);
-    if (success) {
+  const handlePhoneSubmit = async () => {
+    setIsVerifying(true);
+    if (!phoneNumber) {
+      toast({ variant: 'destructive', title: 'Phone number is required.' });
+      setIsVerifying(false);
+      return;
+    }
+
+    try {
+      const adminNumbers = await getAdminPhoneNumbers();
+      if (!adminNumbers.includes(phoneNumber)) {
+        toast({ variant: 'destructive', title: 'This number is not authorized.' });
+        setIsVerifying(false);
+        return;
+      }
+
+      const appVerifier = (window as any).recaptchaVerifier;
+      // Firebase expects E.164 format, we prepend +91 for Indian numbers.
+      const fullPhoneNumber = `+91${phoneNumber}`; 
+      const confirmation = await signInWithPhoneNumber(auth, fullPhoneNumber, appVerifier);
+      
+      setConfirmationResult(confirmation);
+      setStep('otp');
+      toast({ title: 'OTP Sent', description: 'An OTP has been sent to your phone.'});
+
+    } catch (error) {
+      console.error("Error sending OTP:", error);
+      toast({ variant: 'destructive', title: 'Failed to send OTP', description: 'Please check console and Firebase Auth config.' });
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleOtpSubmit = async () => {
+    if (!confirmationResult || !otp) return;
+    setIsVerifying(true);
+    try {
+      await confirmationResult.confirm(otp);
+      setAdmin(true);
       toast({ title: 'Admin mode enabled.' });
       setIsDialogOpen(false);
-      setPhoneNumber('');
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'Incorrect Phone Number',
-        description: 'This number is not authorized for admin access.',
-      });
-      setPhoneNumber('');
+    } catch (error) {
+      console.error("Error verifying OTP:", error);
+      toast({ variant: 'destructive', title: 'Invalid OTP', description: 'The code you entered is incorrect.' });
+    } finally {
+      setIsVerifying(false);
     }
   };
 
   const handleDialogClose = (open: boolean) => {
-      if (!open) {
-          setIsDialogOpen(false);
-          setPhoneNumber('');
-      }
-  }
+    if (!open) {
+      setIsDialogOpen(false);
+      resetState();
+    }
+  };
 
   return (
     <>
@@ -72,35 +135,76 @@ export function AdminModeToggle() {
 
       <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
         <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Enter Admin Phone Number</DialogTitle>
-            <DialogDescription>
-              Enter an authorized phone number to enable admin mode.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="phone-number" className="text-right">
-                Phone
-              </Label>
-              <Input
-                id="phone-number"
-                type="tel"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                className="col-span-3"
-                onKeyDown={(e) => e.key === 'Enter' && handleLoginSubmit()}
-                placeholder="e.g. 7355585913"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="submit" onClick={handleLoginSubmit}>
-              Unlock
-            </Button>
-          </DialogFooter>
+          {step === 'phone' ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Enter Admin Phone Number</DialogTitle>
+                <DialogDescription>
+                  An OTP will be sent to the authorized phone number.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="phone-number" className="text-right">
+                    Phone
+                  </Label>
+                  <Input
+                    id="phone-number"
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    className="col-span-3"
+                    onKeyDown={(e) => e.key === 'Enter' && handlePhoneSubmit()}
+                    placeholder="e.g. 7355585913"
+                    disabled={isVerifying}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="submit" onClick={handlePhoneSubmit} disabled={isVerifying}>
+                  {isVerifying ? 'Sending...' : 'Send OTP'}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Enter OTP</DialogTitle>
+                <DialogDescription>
+                  Enter the 6-digit code sent to +91{phoneNumber}.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="otp" className="text-right">
+                    OTP
+                  </Label>
+                  <Input
+                    id="otp"
+                    type="text"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    className="col-span-3"
+                    onKeyDown={(e) => e.key === 'Enter' && handleOtpSubmit()}
+                    maxLength={6}
+                    placeholder="e.g. 123456"
+                    disabled={isVerifying}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setStep('phone')} disabled={isVerifying}>
+                  Back
+                </Button>
+                <Button type="submit" onClick={handleOtpSubmit} disabled={isVerifying}>
+                  {isVerifying ? 'Verifying...' : 'Unlock'}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
+      <div ref={recaptchaContainerRef}></div>
     </>
   );
 }
