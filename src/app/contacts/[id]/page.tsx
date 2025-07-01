@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { CreateUpdatePersonDialog } from '@/components/create-update-person-dialog';
 import { ProgressTracker } from '@/components/progress-tracker';
+import { FirebaseConfigError } from '@/components/firebase-config-error';
 
 export default function PersonDetailPage() {
   const router = useRouter();
@@ -39,6 +40,7 @@ export default function PersonDetailPage() {
   const [person, setPerson] = React.useState<Person | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  const [configError, setConfigError] = React.useState(false);
 
   React.useEffect(() => {
     if (!personId) return;
@@ -59,11 +61,15 @@ export default function PersonDetailPage() {
         }
       } catch (error) {
         console.error('Failed to load person data', error);
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Could not load person data.',
-        });
+         if (error instanceof Error && error.message.includes('offline')) {
+          setConfigError(true);
+        } else {
+          toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Could not load person data.',
+          });
+        }
       } finally {
         setIsLoading(false);
       }
@@ -130,6 +136,10 @@ export default function PersonDetailPage() {
       setPerson(person); 
     }
   };
+
+  if (configError) {
+    return <FirebaseConfigError />;
+  }
 
   if (isLoading) {
     return (

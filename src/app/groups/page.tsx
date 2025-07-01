@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { GroupCard } from "@/components/group-card";
 import { CreateUpdateGroupDialog } from "@/components/create-update-group-dialog";
+import { FirebaseConfigError } from "@/components/firebase-config-error";
 
 export default function GroupsPage() {
   const { toast } = useToast();
@@ -20,6 +21,7 @@ export default function GroupsPage() {
   const [editingGroup, setEditingGroup] = React.useState<Group | undefined>(
     undefined
   );
+  const [configError, setConfigError] = React.useState(false);
 
   React.useEffect(() => {
     const fetchGroups = async () => {
@@ -29,11 +31,15 @@ export default function GroupsPage() {
         setGroups(groupsData);
       } catch (error) {
         console.error("Failed to fetch groups", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Could not load groups.",
-        });
+        if (error instanceof Error && error.message.includes('offline')) {
+          setConfigError(true);
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not load groups.",
+          });
+        }
       } finally {
         setIsLoading(false);
       }
@@ -122,6 +128,10 @@ export default function GroupsPage() {
         ))}
       </div>
     );
+  }
+  
+  if (configError) {
+    return <FirebaseConfigError />;
   }
 
   return (

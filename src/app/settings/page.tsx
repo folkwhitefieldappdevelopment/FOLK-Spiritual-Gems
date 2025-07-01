@@ -31,11 +31,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { FirebaseConfigError } from '@/components/firebase-config-error';
 
 export default function SettingsPage() {
   const { toast } = useToast();
   
   const [isLoading, setIsLoading] = React.useState(true);
+  const [configError, setConfigError] = React.useState(false);
 
   // Enabler states
   const [enablers, setEnablers] = React.useState<string[]>([]);
@@ -61,7 +63,11 @@ export default function SettingsPage() {
         setContactSources(sourcesData);
       } catch (error) {
         console.error('Failed to load settings from Firebase', error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not load settings.'});
+        if (error instanceof Error && error.message.includes('offline')) {
+          setConfigError(true);
+        } else {
+          toast({ variant: 'destructive', title: 'Error', description: 'Could not load settings.'});
+        }
       } finally {
         setIsLoading(false);
       }
@@ -189,6 +195,10 @@ export default function SettingsPage() {
     }
   };
   
+  if (configError) {
+    return <FirebaseConfigError />;
+  }
+
   const renderContent = () => {
     if (isLoading) {
       return <div className="text-center p-12">Loading settings...</div>;

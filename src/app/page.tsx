@@ -21,6 +21,7 @@ import { PersonCard } from "@/components/person-card";
 import { PersonTable } from "@/components/person-table";
 import { CreateUpdatePersonDialog } from "@/components/create-update-person-dialog";
 import { AdminModeToggle } from "@/components/admin-mode-toggle";
+import { FirebaseConfigError } from "@/components/firebase-config-error";
 import {
   Select,
   SelectContent,
@@ -57,6 +58,7 @@ export default function ContactsPage() {
 
   const [enablerOptions, setEnablerOptions] = React.useState<string[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
+  const [configError, setConfigError] = React.useState(false);
   
   React.useEffect(() => {
     const fetchData = async () => {
@@ -72,11 +74,15 @@ export default function ContactsPage() {
         setContactSourceOptions(sourcesData);
       } catch (error) {
         console.error("Failed to load data:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Could not load data. Please check your connection or Firebase setup.",
-        });
+        if (error instanceof Error && error.message.includes('offline')) {
+          setConfigError(true);
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not load data. Please check your connection or Firebase setup.",
+          });
+        }
       } finally {
         setIsLoading(false);
       }
@@ -255,6 +261,10 @@ export default function ContactsPage() {
       });
     }
   };
+  
+  if (configError) {
+    return <FirebaseConfigError />;
+  }
 
   const renderContent = () => {
     if (isLoading) {
@@ -298,21 +308,21 @@ export default function ContactsPage() {
             </div>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                <Select value={enablerFilter} onValueChange={(value) => setEnablerFilter(value === 'all' ? '' : value)}>
+                <Select value={enablerFilter} onValueChange={(value) => setEnablerFilter(value === '__all__' ? '' : value)}>
                     <SelectTrigger>
                         <SelectValue placeholder="Filter by Enabler" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="all">All Enablers</SelectItem>
+                        <SelectItem value="__all__">All Enablers</SelectItem>
                         {enablerOptions.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}
                     </SelectContent>
                 </Select>
-                  <Select value={contactSourceFilter} onValueChange={(value) => setContactSourceFilter(value === 'all' ? '' : value)}>
+                  <Select value={contactSourceFilter} onValueChange={(value) => setContactSourceFilter(value === '__all__' ? '' : value)}>
                     <SelectTrigger>
                         <SelectValue placeholder="Filter by Source" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="all">All Sources</SelectItem>
+                        <SelectItem value="__all__">All Sources</SelectItem>
                         {contactSourceOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                     </SelectContent>
                 </Select>

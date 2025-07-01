@@ -16,6 +16,7 @@ import { PersonTable } from '@/components/person-table';
 import { CreateUpdatePersonDialog } from '@/components/create-update-person-dialog';
 import { ManageGroupMembersDialog } from '@/components/manage-group-members-dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { FirebaseConfigError } from '@/components/firebase-config-error';
 
 export default function GroupDetailPage() {
   const router = useRouter();
@@ -30,6 +31,7 @@ export default function GroupDetailPage() {
   
   const [isManageMembersDialogOpen, setIsManageMembersDialogOpen] = React.useState(false);
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(undefined);
+  const [configError, setConfigError] = React.useState(false);
 
   React.useEffect(() => {
     if (!groupId) return;
@@ -56,11 +58,15 @@ export default function GroupDetailPage() {
         }
       } catch (error) {
         console.error('Failed to load group data', error);
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Could not load group data.',
-        });
+        if (error instanceof Error && error.message.includes('offline')) {
+          setConfigError(true);
+        } else {
+          toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Could not load group data.',
+          });
+        }
       } finally {
         setIsLoading(false);
       }
@@ -129,6 +135,10 @@ export default function GroupDetailPage() {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not update group members.'});
     }
   };
+  
+  if (configError) {
+    return <FirebaseConfigError />;
+  }
 
   if (isLoading) {
     return (
