@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import type { Person } from "@/lib/types";
-import { Camera, Upload } from "lucide-react";
+import { Camera, Upload, SwitchCamera } from "lucide-react";
 import { getEnablers, getContactSources } from "@/services/settings-service";
 
 import {
@@ -100,6 +100,8 @@ export function CreateUpdatePersonDialog({
   const [hasCameraPermission, setHasCameraPermission] = React.useState<
     boolean | null
   >(null);
+  const [cameraMode, setCameraMode] = React.useState<'user' | 'environment'>('user');
+  const [hasMultipleCameras, setHasMultipleCameras] = React.useState(false);
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [enablerOptions, setEnablerOptions] = React.useState<string[]>([]);
@@ -159,27 +161,39 @@ export function CreateUpdatePersonDialog({
       }
       setShowCamera(false);
       setHasCameraPermission(null);
+      setCameraMode('user');
     }
   }, [person, form, isOpen, toast]);
 
+  const handleSwitchCamera = () => {
+    setCameraMode((prev) => (prev === 'user' ? 'environment' : 'user'));
+  };
+
   React.useEffect(() => {
     if (!showCamera) {
-      if (videoRef.current?.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach((track) => track.stop());
-        videoRef.current.srcObject = null;
-      }
-      return;
+      return; // Do nothing if camera view is not active.
     }
 
+    let activeStream: MediaStream | null = null;
     const getCameraPermission = async () => {
       try {
+        // Enumerate devices to check for multiple cameras.
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoInputs = devices.filter(d => d.kind === 'videoinput');
+        setHasMultipleCameras(videoInputs.length > 1);
+        
+        // Request the camera with the current facing mode
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
+          video: { facingMode: cameraMode },
         });
+        activeStream = stream; // store for cleanup
         setHasCameraPermission(true);
 
         if (videoRef.current) {
+          // Make sure to stop previous stream if it exists
+          if (videoRef.current.srcObject) {
+            (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+          }
           videoRef.current.srcObject = stream;
         }
       } catch (error) {
@@ -196,13 +210,14 @@ export function CreateUpdatePersonDialog({
 
     getCameraPermission();
 
+    // Cleanup function that will run when the component unmounts or dependencies change
     return () => {
-      if (videoRef.current?.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach((track) => track.stop());
+      if (activeStream) {
+        activeStream.getTracks().forEach((track) => track.stop());
       }
     };
-  }, [showCamera, toast]);
+  }, [showCamera, cameraMode, toast]);
+
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -289,10 +304,21 @@ export function CreateUpdatePersonDialog({
               </Alert>
             )}
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowCamera(false)}>
+              <Button variant="outline" size="sm" onClick={() => setShowCamera(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleCapture} disabled={!hasCameraPermission}>
+              {hasMultipleCameras && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSwitchCamera}
+                >
+                  <SwitchCamera className="mr-2 h-4 w-4" />
+                  Switch
+                </Button>
+              )}
+              <Button size="sm" onClick={handleCapture} disabled={!hasCameraPermission}>
                 Capture Photo
               </Button>
             </div>
