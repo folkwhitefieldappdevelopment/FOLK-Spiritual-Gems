@@ -2,13 +2,14 @@
 
 import * as React from "react";
 import {
-  FileDown,
   Filter,
   List,
   PlusCircle,
   Search,
   LayoutGrid,
+  Upload,
 } from "lucide-react";
+import { read, utils } from "xlsx";
 import { mockPeople, baseChecklist } from "@/lib/data";
 import type { Person } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ export default function HomePage() {
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(
     undefined
   );
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     try {
@@ -72,11 +74,75 @@ export default function HomePage() {
     });
   }, [people, searchTerm, statusFilter]);
 
-  const handleExport = (format: "PDF" | "Excel") => {
-    toast({
-      title: "Exporting Data",
-      description: `Your data will be exported as a ${format} file. This feature is coming soon!`,
-    });
+  const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = e.target?.result;
+        const workbook = read(data, { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const json = utils.sheet_to_json<any>(worksheet);
+
+        const newPeople: Person[] = json
+          .map((row: any) => {
+            if (!row.firstName || !row.lastName || !row.email) {
+              console.warn("Skipping row due to missing data:", row);
+              return null;
+            }
+
+            return {
+              id: `person-${Date.now()}-${Math.random()}`,
+              firstName: String(row.firstName),
+              lastName: String(row.lastName),
+              email: String(row.email),
+              phone: String(row.phone || ""),
+              location: String(row.location || ""),
+              status: ["Active", "Inactive", "Pending"].includes(row.status)
+                ? row.status
+                : "Pending",
+              photoUrl: `https://placehold.co/100x100.png`,
+              checklist: baseChecklist.map((item) => ({
+                ...item,
+                isChecked: false,
+              })),
+            };
+          })
+          .filter((p): p is Person => p !== null);
+
+        if (newPeople.length === 0) {
+          toast({
+            variant: "destructive",
+            title: "Import Failed",
+            description:
+              "No valid contacts found in file. Ensure columns are named: firstName, lastName, email.",
+          });
+          return;
+        }
+
+        setPeople((prev) => [...prev, ...newPeople]);
+        toast({
+          title: "Import Successful",
+          description: `${newPeople.length} new contacts have been added.`,
+        });
+      } catch (error) {
+        console.error("Error importing file:", error);
+        toast({
+          variant: "destructive",
+          title: "Import Failed",
+          description:
+            "There was an error processing your file. Please ensure it's a valid Excel or CSV file.",
+        });
+      } finally {
+        if (event.target) {
+          event.target.value = "";
+        }
+      }
+    };
+    reader.readAsArrayBuffer(file);
   };
 
   const handleAddPerson = () => {
@@ -135,18 +201,10 @@ export default function HomePage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleExport("Excel")}
+                onClick={() => fileInputRef.current?.click()}
               >
-                <FileDown className="mr-2 h-4 w-4" />
-                Excel Export
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleExport("PDF")}
-              >
-                <FileDown className="mr-2 h-4 w-4" />
-                PDF Export
+                <Upload className="mr-2 h-4 w-4" />
+                Import from Excel
               </Button>
               <Button size="sm" onClick={handleAddPerson}>
                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -227,6 +285,13 @@ export default function HomePage() {
         setIsOpen={setIsDialogOpen}
         onSave={handleSavePerson}
         person={editingPerson}
+      />
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileImport}
+        className="hidden"
+        accept=".xlsx, .xls, .csv"
       />
     </>
   );
