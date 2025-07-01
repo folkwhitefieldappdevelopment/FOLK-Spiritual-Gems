@@ -50,7 +50,7 @@ type PersonFormValues = z.infer<typeof personFormSchema>;
 type CreateUpdatePersonDialogProps = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  onSave: (data: Omit<Person, "id" | "checklist">) => void;
+  onSave: (data: Omit<Person, "id" | "progress">) => void;
   person?: Person;
 };
 

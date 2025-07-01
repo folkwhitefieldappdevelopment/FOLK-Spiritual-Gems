@@ -12,8 +12,9 @@ import {
   Upload,
 } from "lucide-react";
 import { read, utils } from "xlsx";
-import { mockPeople, baseChecklist } from "@/lib/data";
+import { mockPeople } from "@/lib/data";
 import type { Person } from "@/lib/types";
+import { progressCategories } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -107,9 +108,9 @@ export default function ContactsPage() {
                 ? row.status
                 : "Pending",
               photoUrl: `https://placehold.co/100x100.png`,
-              checklist: baseChecklist.map((item) => ({
-                ...item,
-                isChecked: false,
+              progress: progressCategories.map((name) => ({
+                name,
+                items: [],
               })),
             };
           })
@@ -165,7 +166,7 @@ export default function ContactsPage() {
     });
   };
 
-  const handleSavePerson = (personData: Omit<Person, "id" | "checklist">) => {
+  const handleSavePerson = (personData: Omit<Person, "id" | "progress">) => {
     if (editingPerson) {
       setPeople((prev) =>
         prev.map((p) =>
@@ -179,8 +180,8 @@ export default function ContactsPage() {
     } else {
       const newPerson: Person = {
         id: `person-${Date.now()}`,
-        checklist: baseChecklist.map((item) => ({ ...item, isChecked: false })),
         ...personData,
+        progress: progressCategories.map((name) => ({ name, items: [] })),
       };
       setPeople((prev) => [newPerson, ...prev]);
       toast({

@@ -1,7 +1,22 @@
-export type ChecklistItem = {
+export type ProgressItem = {
   id: string;
-  statement: string;
-  isChecked: boolean;
+  question: string;
+  answer: string;
+};
+
+export const progressCategories = [
+  'Association',
+  'Book Reading',
+  'Chanting',
+  'Devotional Service',
+  'Expedition',
+] as const;
+
+export type ProgressCategoryName = (typeof progressCategories)[number];
+
+export type ProgressCategory = {
+  name: ProgressCategoryName;
+  items: ProgressItem[];
 };
 
 export type Person = {
@@ -13,7 +28,7 @@ export type Person = {
   photoUrl: string;
   location: string;
   status: 'Active' | 'Inactive' | 'Pending';
-  checklist: ChecklistItem[];
+  progress: ProgressCategory[];
 };
 
 export type Group = {

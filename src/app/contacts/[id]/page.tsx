@@ -11,9 +11,7 @@ import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +24,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { CreateUpdatePersonDialog } from '@/components/create-update-person-dialog';
+import { ProgressTracker } from '@/components/progress-tracker';
 import { cn } from '@/lib/utils';
 
 export default function PersonDetailPage() {
@@ -61,31 +60,19 @@ export default function PersonDetailPage() {
     localStorage.setItem('people', JSON.stringify(updatedPeople));
     setPeople(updatedPeople);
   };
-
-  const handleChecklistChange = (itemId: string, isChecked: boolean) => {
-    if (!person) return;
-
-    const updatedChecklist = person.checklist.map((item) =>
-      item.id === itemId ? { ...item, isChecked } : item
-    );
-
-    const updatedPerson = { ...person, checklist: updatedChecklist };
+  
+  const handlePersonUpdate = (updatedPerson: Person) => {
     setPerson(updatedPerson);
-
     const updatedPeople = people.map((p) =>
       p.id === personId ? updatedPerson : p
     );
     updatePeopleInStorage(updatedPeople);
   };
 
-  const handleSavePerson = (personData: Omit<Person, 'id' | 'checklist'>) => {
+  const handleSavePersonDialog = (personData: Omit<Person, 'id' | 'progress'>) => {
     if (!person) return;
     const updatedPerson = { ...person, ...personData };
-    setPerson(updatedPerson);
-    const updatedPeople = people.map((p) =>
-      p.id === personId ? updatedPerson : p
-    );
-    updatePeopleInStorage(updatedPeople);
+    handlePersonUpdate(updatedPerson);
     toast({
       title: 'Person Updated',
       description: "The person's details have been saved.",
@@ -213,32 +200,7 @@ export default function PersonDetailPage() {
                   </Card>
                 </div>
                 <div className="lg:col-span-2">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Progress Checklist</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                {person.checklist.map((item) => (
-                                    <div key={item.id} className="flex items-center space-x-3">
-                                        <Checkbox
-                                            id={item.id}
-                                            checked={item.isChecked}
-                                            onCheckedChange={(checked) =>
-                                                handleChecklistChange(item.id, !!checked)
-                                            }
-                                        />
-                                        <Label
-                                            htmlFor={item.id}
-                                            className={cn("text-sm font-medium leading-none", item.isChecked ? 'line-through text-muted-foreground' : 'text-foreground')}
-                                        >
-                                            {item.statement}
-                                        </Label>
-                                    </div>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
+                   <ProgressTracker person={person} onPersonUpdate={handlePersonUpdate} />
                 </div>
               </div>
             </div>
@@ -248,7 +210,7 @@ export default function PersonDetailPage() {
       <CreateUpdatePersonDialog
         isOpen={isEditDialogOpen}
         setIsOpen={setIsEditDialogOpen}
-        onSave={handleSavePerson}
+        onSave={handleSavePersonDialog}
         person={person}
       />
     </>

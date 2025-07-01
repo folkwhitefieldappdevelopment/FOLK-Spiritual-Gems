@@ -69,31 +69,36 @@ export function PersonCard({ person }: PersonCardProps) {
                     <span className="truncate">{person.location}</span>
                 </div>
             )}
-            {person.checklist && person.checklist.length > 0 && (
+            {person.progress && person.progress.length > 0 && (
             <div className="mt-4 pt-4 border-t space-y-2">
-                <h4 className="text-sm font-semibold text-foreground mb-1">
-                Contact Progress
+                <h4 className="text-sm font-semibold text-foreground mb-2">
+                Progress Overview
                 </h4>
-                {person.checklist.slice(0, 3).map((item) => (
-                <div key={item.id} className="flex items-center text-sm">
-                    <span
-                    className={cn(
-                        "h-2 w-2 rounded-full mr-2 shrink-0",
-                        item.isChecked ? "bg-green-500" : "bg-red-500"
-                    )}
-                    />
-                    <span
-                    className={cn(
-                        "truncate",
-                        item.isChecked
-                        ? "text-foreground"
-                        : "text-muted-foreground"
-                    )}
-                    >
-                    {item.statement}
-                    </span>
+                <div className="space-y-1.5">
+                    {person.progress.map((category) => {
+                        const hasProgress = category.items.some(item => item.answer.trim() !== '');
+                        return (
+                        <div key={category.name} className="flex items-center text-sm">
+                            <span
+                            className={cn(
+                                "h-2.5 w-2.5 rounded-full mr-2 shrink-0",
+                                hasProgress ? "bg-green-500" : "bg-red-500"
+                            )}
+                            />
+                            <span
+                            className={cn(
+                                "truncate",
+                                hasProgress
+                                ? "text-foreground"
+                                : "text-muted-foreground"
+                            )}
+                            >
+                            {category.name}
+                            </span>
+                        </div>
+                        );
+                    })}
                 </div>
-                ))}
             </div>
             )}
         </CardContent>

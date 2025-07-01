@@ -1,12 +1,18 @@
-import type { Person, Group, ChecklistItem } from './types';
+import type { Person, Group, ProgressCategory } from './types';
+import { progressCategories } from './types';
 
-export const baseChecklist: Omit<ChecklistItem, 'isChecked'>[] = [
-  { id: 'c1', statement: 'Initial contact made' },
-  { id: 'c2', statement: 'Follow-up email sent' },
-  { id: 'c3', statement: 'Product demo scheduled' },
-  { id: 'c4', statement: 'Proposal sent' },
-  { id: 'c5', statement: 'Contract signed' },
-];
+const createInitialProgress = (): ProgressCategory[] => {
+  return progressCategories.map(name => ({
+    name,
+    items: []
+  }));
+};
+
+const johnsProgress = createInitialProgress();
+johnsProgress.find(c => c.name === 'Association')!.items.push({ id: 'a1', question: 'Who did you associate with this week?', answer: 'Attended the weekly program.' });
+johnsProgress.find(c => c.name === 'Book Reading')!.items.push({ id: 'b1', question: 'Which book are you reading?', answer: 'Bhagavad-gita As It Is' });
+johnsProgress.find(c => c.name === 'Chanting')!.items.push({ id: 'c1', question: 'How many rounds did you chant today?', answer: '16' });
+
 
 export const mockPeople: Person[] = [
   {
@@ -18,13 +24,7 @@ export const mockPeople: Person[] = [
     photoUrl: 'https://placehold.co/100x100.png',
     location: 'New York, USA',
     status: 'Active',
-    checklist: [
-      { ...baseChecklist[0], isChecked: true },
-      { ...baseChecklist[1], isChecked: true },
-      { ...baseChecklist[2], isChecked: true },
-      { ...baseChecklist[3], isChecked: false },
-      { ...baseChecklist[4], isChecked: false },
-    ]
+    progress: johnsProgress,
   },
   {
     id: '2',
@@ -35,13 +35,7 @@ export const mockPeople: Person[] = [
     photoUrl: 'https://placehold.co/100x100.png',
     location: 'London, UK',
     status: 'Active',
-    checklist: [
-      { ...baseChecklist[0], isChecked: true },
-      { ...baseChecklist[1], isChecked: true },
-      { ...baseChecklist[2], isChecked: true },
-      { ...baseChecklist[3], isChecked: true },
-      { ...baseChecklist[4], isChecked: true },
-    ]
+    progress: createInitialProgress(),
   },
   {
     id: '3',
@@ -52,13 +46,7 @@ export const mockPeople: Person[] = [
     photoUrl: 'https://placehold.co/100x100.png',
     location: 'Sydney, Australia',
     status: 'Inactive',
-    checklist: [
-      { ...baseChecklist[0], isChecked: true },
-      { ...baseChecklist[1], isChecked: false },
-      { ...baseChecklist[2], isChecked: false },
-      { ...baseChecklist[3], isChecked: false },
-      { ...baseChecklist[4], isChecked: false },
-    ]
+    progress: createInitialProgress(),
   },
   {
     id: '4',
@@ -69,13 +57,7 @@ export const mockPeople: Person[] = [
     photoUrl: 'https://placehold.co/100x100.png',
     location: 'Toronto, Canada',
     status: 'Pending',
-    checklist: [
-      { ...baseChecklist[0], isChecked: true },
-      { ...baseChecklist[1], isChecked: true },
-      { ...baseChecklist[2], isChecked: false },
-      { ...baseChecklist[3], isChecked: false },
-      { ...baseChecklist[4], isChecked: false },
-    ]
+    progress: createInitialProgress(),
   },
   {
     id: '5',
@@ -86,13 +68,7 @@ export const mockPeople: Person[] = [
     photoUrl: 'https://placehold.co/100x100.png',
     location: 'Paris, France',
     status: 'Active',
-    checklist: [
-      { ...baseChecklist[0], isChecked: true },
-      { ...baseChecklist[1], isChecked: true },
-      { ...baseChecklist[2], isChecked: true },
-      { ...baseChecklist[3], isChecked: true },
-      { ...baseChecklist[4], isChecked: false },
-    ]
+    progress: createInitialProgress(),
   },
   {
     id: '6',
@@ -103,13 +79,7 @@ export const mockPeople: Person[] = [
     photoUrl: 'https://placehold.co/100x100.png',
     location: 'Berlin, Germany',
     status: 'Active',
-    checklist: [
-        { ...baseChecklist[0], isChecked: true },
-        { ...baseChecklist[1], isChecked: true },
-        { ...baseChecklist[2], isChecked: false },
-        { ...baseChecklist[3], isChecked: false },
-        { ...baseChecklist[4], isChecked: false },
-      ]
+    progress: createInitialProgress(),
   },
     {
     id: '7',
@@ -120,13 +90,7 @@ export const mockPeople: Person[] = [
     photoUrl: 'https://placehold.co/100x100.png',
     location: 'Tokyo, Japan',
     status: 'Inactive',
-    checklist: [
-        { ...baseChecklist[0], isChecked: false },
-        { ...baseChecklist[1], isChecked: false },
-        { ...baseChecklist[2], isChecked: false },
-        { ...baseChecklist[3], isChecked: false },
-        { ...baseChecklist[4], isChecked: false },
-      ]
+    progress: createInitialProgress(),
   },
   {
     id: '8',
@@ -137,13 +101,7 @@ export const mockPeople: Person[] = [
     photoUrl: 'https://placehold.co/100x100.png',
     location: 'Madrid, Spain',
     status: 'Pending',
-    checklist: [
-        { ...baseChecklist[0], isChecked: true },
-        { ...baseChecklist[1], isChecked: true },
-        { ...baseChecklist[2], isChecked: true },
-        { ...baseChecklist[3], isChecked: false },
-        { ...baseChecklist[4], isChecked: false },
-      ]
+    progress: createInitialProgress(),
   },
 ];
 
