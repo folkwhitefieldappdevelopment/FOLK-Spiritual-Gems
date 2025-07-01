@@ -47,7 +47,17 @@ export default function ContactsPage() {
     try {
       const storedPeople = localStorage.getItem("people");
       if (storedPeople) {
-        setPeople(JSON.parse(storedPeople));
+        const parsedPeople: Person[] = JSON.parse(storedPeople);
+        const migratedPeople = parsedPeople.map((p) => {
+          if (p.progress) {
+            return p;
+          }
+          return {
+            ...p,
+            progress: progressCategories.map((name) => ({ name, items: [] })),
+          };
+        });
+        setPeople(migratedPeople);
       } else {
         setPeople(mockPeople);
       }

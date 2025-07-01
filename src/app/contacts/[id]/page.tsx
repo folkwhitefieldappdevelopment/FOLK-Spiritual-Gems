@@ -5,6 +5,7 @@ import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Mail, Phone, MapPin, Edit, Trash2 } from 'lucide-react';
 import type { Person } from '@/lib/types';
+import { progressCategories } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
 import { AppSidebar } from '@/components/app-sidebar';
@@ -42,8 +43,19 @@ export default function PersonDetailPage() {
       const storedPeople = localStorage.getItem('people');
       if (storedPeople) {
         const parsedPeople: Person[] = JSON.parse(storedPeople);
-        setPeople(parsedPeople);
-        const currentPerson = parsedPeople.find((p) => p.id === personId);
+        
+        const migratedPeople = parsedPeople.map((p) => {
+          if (p.progress) {
+            return p;
+          }
+          return {
+            ...p,
+            progress: progressCategories.map((name) => ({ name, items: [] })),
+          };
+        });
+
+        setPeople(migratedPeople);
+        const currentPerson = migratedPeople.find((p) => p.id === personId);
         setPerson(currentPerson || null);
       }
     } catch (error) {
