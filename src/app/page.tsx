@@ -9,7 +9,7 @@ import {
   LayoutGrid,
   Upload,
 } from "lucide-react";
-import { read, utils } from "xlsx";
+import { read, utils, writeFile } from "xlsx";
 import { createInitialProgress } from "@/lib/data";
 import type { Person } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   getPeople,
   createPerson,
@@ -122,6 +128,33 @@ export default function ContactsPage() {
     setContactSourceFilter("");
     setOccupationFilter("");
     setChantingFilter("");
+  };
+
+  const handleSampleDownload = () => {
+    const headers = [
+      "firstName", "lastName", "phone", "age", "stayingWith",
+      "occupation", "rentDetails", "nativePlace", "sgRating",
+      "contactSource", "chantingStatus", "fromOtherCamp"
+    ];
+    const dummyContact = [{
+      firstName: "John",
+      lastName: "Doe",
+      phone: "9876543210",
+      age: 25,
+      stayingWith: "PG / Hostel",
+      occupation: "Software Engineer",
+      rentDetails: "7000/month",
+      nativePlace: "Mumbai",
+      sgRating: "A",
+      contactSource: "Govinda Temple",
+      chantingStatus: "4 rounds",
+      fromOtherCamp: false
+    }];
+
+    const worksheet = utils.json_to_sheet(dummyContact, { header: headers });
+    const workbook = utils.book_new();
+    utils.book_append_sheet(workbook, worksheet, "Contacts");
+    writeFile(workbook, "contacts_sample.xlsx");
   };
 
   const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -228,13 +261,14 @@ export default function ContactsPage() {
     }
   };
 
-  const handleSavePerson = async (personData: Omit<Person, "id" | "progress">) => {
+  const handleSavePerson = async (personData: Omit<Person, "id" | "progress" | "photoUrl"> & { photoUrl: string }) => {
     try {
       if (editingPerson) {
+        const updatedData = { ...editingPerson, ...personData };
         await updatePerson(editingPerson.id, personData);
         setPeople((prev) =>
           prev.map((p) =>
-            p.id === editingPerson.id ? { ...editingPerson, ...personData } : p
+            p.id === editingPerson.id ? updatedData : p
           )
         );
         toast({
@@ -380,14 +414,23 @@ export default function ContactsPage() {
             <div className="flex items-center gap-4">
               <AdminModeToggle />
               <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="mr-2 h-4 w-4" />
-                  Import from Excel
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Upload className="mr-2 h-4 w-4" />
+                      Import / Export
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                      Import from Excel
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleSampleDownload}>
+                      Download Sample Excel
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
                 <Button size="sm" onClick={handleAddPerson}>
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Add Person
