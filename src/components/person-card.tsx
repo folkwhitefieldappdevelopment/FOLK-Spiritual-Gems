@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -5,6 +6,7 @@ import { User, Briefcase } from "lucide-react";
 import type { Person, ProgressCategoryAnswers } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { checklistData } from '@/lib/data';
+import { useAdmin } from '@/contexts/admin-context';
 import {
   Card,
   CardContent,
@@ -90,6 +92,8 @@ const getProgressColor = (score: number): string => {
 };
 
 export function PersonCard({ person }: PersonCardProps) {
+  const { isAdmin } = useAdmin();
+
   return (
     <Link href={`/contacts/${person.id}`} className="block transition-all hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg">
         <Card className="flex flex-col h-full">
@@ -121,7 +125,7 @@ export function PersonCard({ person }: PersonCardProps) {
                 <Briefcase className="mr-2 h-4 w-4" />
                 <span className="truncate">{person.occupation || 'N/A'}</span>
             </div>
-            {person.progress && person.progress.length > 0 && (
+            {isAdmin && person.progress && person.progress.length > 0 && (
             <div className="mt-4 pt-4 border-t space-y-2">
                 <h4 className="text-sm font-semibold text-foreground mb-2">
                 Progress Overview

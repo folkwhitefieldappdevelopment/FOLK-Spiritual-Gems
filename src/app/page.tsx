@@ -20,6 +20,7 @@ import { PageHeader } from "@/components/page-header";
 import { PersonCard } from "@/components/person-card";
 import { PersonTable } from "@/components/person-table";
 import { CreateUpdatePersonDialog } from "@/components/create-update-person-dialog";
+import { AdminModeToggle } from "@/components/admin-mode-toggle";
 
 const migratePersonData = (person: any): Person => {
   // If a new field exists, assume it's already migrated
@@ -219,19 +220,22 @@ export default function ContactsPage() {
             title="Contacts"
             description={`Manage data for ${filteredPeople.length} people.`}
           >
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                Import from Excel
-              </Button>
-              <Button size="sm" onClick={handleAddPerson}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Person
-              </Button>
+            <div className="flex items-center gap-4">
+              <AdminModeToggle />
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Import from Excel
+                </Button>
+                <Button size="sm" onClick={handleAddPerson}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add Person
+                </Button>
+              </div>
             </div>
           </PageHeader>
           <main className="flex-1 overflow-y-auto p-4 sm:p-6">
