@@ -22,6 +22,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -30,16 +41,17 @@ import {
 
 type PersonTableProps = {
   people: Person[];
+  onEdit: (person: Person) => void;
+  onDelete: (personId: string) => void;
 };
 
 const statusBadgeVariants = {
-    Active: "default",
-    Inactive: "destructive",
-    Pending: "secondary",
+  Active: "default",
+  Inactive: "destructive",
+  Pending: "secondary",
 } as const;
 
-
-export function PersonTable({ people }: PersonTableProps) {
+export function PersonTable({ people, onEdit, onDelete }: PersonTableProps) {
   return (
     <TooltipProvider>
       <div className="rounded-lg border">
@@ -59,7 +71,11 @@ export function PersonTable({ people }: PersonTableProps) {
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <Avatar>
-                      <AvatarImage src={person.photoUrl} alt={`${person.firstName} ${person.lastName}`} data-ai-hint="person portrait" />
+                      <AvatarImage
+                        src={person.photoUrl}
+                        alt={`${person.firstName} ${person.lastName}`}
+                        data-ai-hint="person portrait"
+                      />
                       <AvatarFallback>
                         {person.firstName.charAt(0)}
                         {person.lastName.charAt(0)}
@@ -71,7 +87,11 @@ export function PersonTable({ people }: PersonTableProps) {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={statusBadgeVariants[person.status] || 'default'}>{person.status}</Badge>
+                  <Badge
+                    variant={statusBadgeVariants[person.status] || "default"}
+                  >
+                    {person.status}
+                  </Badge>
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-col gap-1">
@@ -99,23 +119,48 @@ export function PersonTable({ people }: PersonTableProps) {
                   </span>
                 </TableCell>
                 <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive">
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <AlertDialog>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onEdit(person)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-start px-2 py-1.5 text-sm font-normal text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </Button>
+                        </AlertDialogTrigger>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action cannot be undone. This will permanently
+                          delete {person.firstName} {person.lastName}.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => onDelete(person.id)}
+                          className="bg-destructive hover:bg-destructive/90"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </TableCell>
               </TableRow>
             ))}

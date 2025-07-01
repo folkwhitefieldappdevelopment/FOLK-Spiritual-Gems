@@ -3,6 +3,7 @@ import * as React from "react";
 import { PlusCircle } from "lucide-react";
 import { mockGroups } from "@/lib/data";
 import type { Group } from "@/lib/types";
+import { useToast } from "@/hooks/use-toast";
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { PageHeader } from "@/components/page-header";
@@ -11,11 +12,33 @@ import { GroupCard } from "@/components/group-card";
 import { CreateUpdateGroupDialog } from "@/components/create-update-group-dialog";
 
 export default function GroupsPage() {
-  const [groups, setGroups] = React.useState<Group[]>(mockGroups);
+  const { toast } = useToast();
+  const [groups, setGroups] = React.useState<Group[]>([]);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [editingGroup, setEditingGroup] = React.useState<Group | undefined>(
     undefined
   );
+
+  React.useEffect(() => {
+    try {
+      const storedGroups = localStorage.getItem("groups");
+      if (storedGroups) {
+        setGroups(JSON.parse(storedGroups));
+      } else {
+        setGroups(mockGroups);
+      }
+    } catch (error) {
+      console.error("Failed to parse groups from localStorage", error);
+      setGroups(mockGroups);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    // A simple check to avoid overwriting on initial empty state
+    if (groups.length > 0) {
+      localStorage.setItem("groups", JSON.stringify(groups));
+    }
+  }, [groups]);
 
   const handleCreateGroup = () => {
     setEditingGroup(undefined);
@@ -29,9 +52,12 @@ export default function GroupsPage() {
 
   const handleDeleteGroup = (groupId: string) => {
     setGroups((prev) => prev.filter((g) => g.id !== groupId));
+    toast({ title: "Group Deleted", description: "The group has been removed." });
   };
 
-  const handleSaveGroup = (groupData: Omit<Group, "id" | "memberCount" | "peopleIds">) => {
+  const handleSaveGroup = (
+    groupData: Omit<Group, "id" | "memberCount" | "peopleIds">
+  ) => {
     if (editingGroup) {
       // Update existing group
       setGroups((prev) =>
@@ -39,6 +65,10 @@ export default function GroupsPage() {
           g.id === editingGroup.id ? { ...g, ...groupData } : g
         )
       );
+      toast({
+        title: "Group Updated",
+        description: "The group details have been saved.",
+      });
     } else {
       // Create new group
       const newGroup: Group = {
@@ -48,6 +78,10 @@ export default function GroupsPage() {
         ...groupData,
       };
       setGroups((prev) => [...prev, newGroup]);
+      toast({
+        title: "Group Created",
+        description: "The new group has been added.",
+      });
     }
   };
 
