@@ -4,8 +4,9 @@
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Mail, Phone, MapPin, Edit, Trash2 } from 'lucide-react';
-import type { Person } from '@/lib/types';
+import type { Person, ProgressCategoryAnswers } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { checklistData } from '@/lib/data';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -26,7 +27,14 @@ import {
 import { CreateUpdatePersonDialog } from '@/components/create-update-person-dialog';
 import { ProgressTracker } from '@/components/progress-tracker';
 import { cn } from '@/lib/utils';
-import { progressCategories } from '@/lib/types';
+
+const createInitialProgress = (): ProgressCategoryAnswers[] => {
+  return checklistData.map((category) => ({
+    name: category.category as any,
+    answers: category.items.map(() => ['', '', '']),
+  }));
+};
+
 
 export default function PersonDetailPage() {
   const router = useRouter();
@@ -45,13 +53,11 @@ export default function PersonDetailPage() {
         const parsedPeople: Person[] = JSON.parse(storedPeople);
         
         const migratedPeople = parsedPeople.map((p) => {
-          if (p.progress) {
-            return p;
+          // Migration logic: if progress is old format or missing, create the new one
+          if (!p.progress || !Array.isArray(p.progress) || p.progress.length === 0 || !p.progress[0]?.answers) {
+            return { ...p, progress: createInitialProgress() };
           }
-          return {
-            ...p,
-            progress: progressCategories.map((name) => ({ name, items: [] })),
-          };
+          return p;
         });
 
         setPeople(migratedPeople);
@@ -98,7 +104,25 @@ export default function PersonDetailPage() {
       title: 'Person Deleted',
       description: 'The person has been removed from your contacts.',
     });
-    router.push('/contacts');
+    router.push('/');
+  };
+
+  const handleProgressChange = (catIndex: number, itemIndex: number, levelIndex: number, value: string) => {
+    if (!person) return;
+
+    // Create a deep copy to avoid direct state mutation
+    const newProgress = JSON.parse(JSON.stringify(person.progress));
+    
+    newProgress[catIndex].answers[itemIndex][levelIndex] = value;
+    
+    const updatedPerson = { ...person, progress: newProgress };
+    
+    setPerson(updatedPerson); 
+
+    const updatedPeople = people.map((p) =>
+      p.id === personId ? updatedPerson : p
+    );
+    updatePeopleInStorage(updatedPeople);
   };
 
   if (!person) {
@@ -131,7 +155,7 @@ export default function PersonDetailPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => router.push('/contacts')}
+                onClick={() => router.push('/')}
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back
@@ -212,7 +236,10 @@ export default function PersonDetailPage() {
                   </Card>
                 </div>
                 <div className="lg:col-span-2">
-                   <ProgressTracker />
+                   <ProgressTracker 
+                     progress={person.progress}
+                     onProgressChange={handleProgressChange}
+                   />
                 </div>
               </div>
             </div>

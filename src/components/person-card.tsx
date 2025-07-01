@@ -76,7 +76,7 @@ export function PersonCard({ person }: PersonCardProps) {
                 </h4>
                 <div className="space-y-1.5">
                     {person.progress.map((category) => {
-                        const hasProgress = category.items.some(item => item.answer.trim() !== '');
+                        const hasProgress = category.answers.some(answerTuple => answerTuple.some(answer => answer && answer.trim() !== ''));
                         return (
                         <div key={category.name} className="flex items-center text-sm">
                             <span

@@ -1,22 +1,16 @@
-export type ProgressItem = {
-  id: string;
-  question: string;
-  answer: string;
-};
-
 export const progressCategories = [
   'Association',
   'Book Reading',
   'Chanting',
-  'Devotional Service',
+  'Devotional Service (or) Deity Darshan (or) Diet',
   'Expedition',
 ] as const;
 
 export type ProgressCategoryName = (typeof progressCategories)[number];
 
-export type ProgressCategory = {
+export type ProgressCategoryAnswers = {
   name: ProgressCategoryName;
-  items: ProgressItem[];
+  answers: [string, string, string][];
 };
 
 export type Person = {
@@ -28,7 +22,7 @@ export type Person = {
   photoUrl: string;
   location: string;
   status: 'Active' | 'Inactive' | 'Pending';
-  progress: ProgressCategory[];
+  progress: ProgressCategoryAnswers[];
 };
 
 export type Group = {

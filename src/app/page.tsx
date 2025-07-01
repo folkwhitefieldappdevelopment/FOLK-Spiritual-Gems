@@ -2,7 +2,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import {
   Filter,
   List,
@@ -12,9 +11,8 @@ import {
   Upload,
 } from "lucide-react";
 import { read, utils } from "xlsx";
-import { mockPeople } from "@/lib/data";
+import { mockPeople, createInitialProgress } from "@/lib/data";
 import type { Person } from "@/lib/types";
-import { progressCategories } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -49,12 +47,12 @@ export default function ContactsPage() {
       if (storedPeople) {
         const parsedPeople: Person[] = JSON.parse(storedPeople);
         const migratedPeople = parsedPeople.map((p) => {
-          if (p.progress) {
+          if (p.progress && Array.isArray(p.progress) && p.progress[0]?.answers) {
             return p;
           }
           return {
             ...p,
-            progress: progressCategories.map((name) => ({ name, items: [] })),
+            progress: createInitialProgress(),
           };
         });
         setPeople(migratedPeople);
@@ -118,10 +116,7 @@ export default function ContactsPage() {
                 ? row.status
                 : "Pending",
               photoUrl: `https://placehold.co/100x100.png`,
-              progress: progressCategories.map((name) => ({
-                name,
-                items: [],
-              })),
+              progress: createInitialProgress(),
             };
           })
           .filter((p): p is Person => p !== null);
@@ -180,7 +175,7 @@ export default function ContactsPage() {
     if (editingPerson) {
       setPeople((prev) =>
         prev.map((p) =>
-          p.id === editingPerson.id ? { ...p, ...personData } : p
+          p.id === editingPerson.id ? { ...editingPerson, ...personData } : p
         )
       );
       toast({
@@ -191,7 +186,7 @@ export default function ContactsPage() {
       const newPerson: Person = {
         id: `person-${Date.now()}`,
         ...personData,
-        progress: progressCategories.map((name) => ({ name, items: [] })),
+        progress: createInitialProgress(),
       };
       setPeople((prev) => [newPerson, ...prev]);
       toast({
