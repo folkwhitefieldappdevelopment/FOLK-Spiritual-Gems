@@ -34,7 +34,7 @@ const calculateScore = (categoryProgress: ProgressCategoryAnswers): number => {
   if (categoryInfo.category === 'Chanting') {
     const chantingItemIndex = categoryInfo.items.findIndex(item => item.question.includes('Chanting'));
     if (chantingItemIndex !== -1) {
-      const answerObj = categoryProgress.answers[chantingItemIndex];
+      const answerObj = categoryProgress.answers?.[chantingItemIndex];
        if (answerObj) {
           const rounds = Math.max(0, ...Object.values(answerObj).map(a => parseNumber(a) || 0));
           return (rounds / 16) * 100;
@@ -52,7 +52,7 @@ const calculateScore = (categoryProgress: ProgressCategoryAnswers): number => {
       if (goalStr && goalStr !== '-') {
         totalGoals++;
         
-        const answerObj = categoryProgress.answers[itemIndex];
+        const answerObj = categoryProgress.answers?.[itemIndex];
         const levelKey = `l${levelIndex + 1}` as keyof ProgressLevelAnswers;
         const answer = answerObj ? answerObj[levelKey] || '' : '';
         const normAnswer = answer.trim().toLowerCase();

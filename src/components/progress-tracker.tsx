@@ -78,7 +78,7 @@ export function ProgressTracker({
   ) => {
     const goalValue = checklistData[catIndex].items[itemIndex].levels[levelIndex];
     const levelKey = `l${levelIndex + 1}` as keyof ProgressLevelAnswers;
-    const currentValue = progress[catIndex].answers[itemIndex][levelKey];
+    const currentValue = progress?.[catIndex]?.answers?.[itemIndex]?.[levelKey] || '';
 
     if (goalValue.toLowerCase() === 'yes') {
       return (
@@ -176,7 +176,7 @@ export function ProgressTracker({
                           className={cn(
                             'text-center text-sm align-top p-0',
                             getCellClass(
-                               progress[catIndex].answers[itemIndex][`l${levelIndex + 1}` as keyof ProgressLevelAnswers],
+                               progress?.[catIndex]?.answers?.[itemIndex]?.[`l${levelIndex + 1}` as keyof ProgressLevelAnswers] || '',
                                goal
                             )
                           )}

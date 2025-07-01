@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAdmin } from '@/contexts/admin-context';
 import { cn } from '@/lib/utils';
 import { getPerson, updatePerson, deletePerson } from '@/services/people-service';
+import { createInitialProgress } from '@/lib/data';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -50,6 +51,9 @@ export default function PersonDetailPage() {
       try {
         const personData = await getPerson(personId);
         if (personData) {
+          if (!personData.progress || !Array.isArray(personData.progress) || personData.progress.length === 0) {
+            personData.progress = createInitialProgress();
+          }
           setPerson(personData);
         } else {
           toast({
@@ -119,6 +123,11 @@ export default function PersonDetailPage() {
 
     const newProgress = JSON.parse(JSON.stringify(person.progress));
     const levelKey = `l${levelIndex + 1}` as keyof ProgressLevelAnswers;
+    
+    if (!newProgress[catIndex]) return;
+    if (!newProgress[catIndex].answers) newProgress[catIndex].answers = [];
+    if (!newProgress[catIndex].answers[itemIndex]) newProgress[catIndex].answers[itemIndex] = {l1:'', l2:'', l3:''};
+    
     newProgress[catIndex].answers[itemIndex][levelKey] = value;
     
     const updatedPerson = { ...person, progress: newProgress };
