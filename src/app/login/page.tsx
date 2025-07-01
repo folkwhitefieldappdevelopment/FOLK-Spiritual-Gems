@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { FirebaseConfigError } from '@/components/firebase-config-error';
+import { useToast } from '@/hooks/use-toast';
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 48 48" width="24" height="24" {...props}>
@@ -20,7 +22,7 @@ const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <path
       fill="#4CAF50"
       d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"
-    />
+p    />
     <path
       fill="#1976D2"
       d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C39.99,34.556,44,29.865,44,24C44,22.659,43.862,21.35,43.611,20.083z"
@@ -31,7 +33,9 @@ const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
 export default function LoginPage() {
   const { user, signInWithGoogle, loading } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
   const [isSigningIn, setIsSigningIn] = React.useState(false);
+  const [configError, setConfigError] = React.useState(false);
 
   React.useEffect(() => {
     if (!loading && user) {
@@ -41,11 +45,21 @@ export default function LoginPage() {
 
   const handleSignIn = async () => {
     setIsSigningIn(true);
+    setConfigError(false);
     try {
       await signInWithGoogle();
       // The useEffect will handle the redirection
-    } catch (error) {
+    } catch (error: any) {
       console.error('Google sign-in error', error);
+      if (error.code === 'auth/unauthorized-domain' || error.code === 'auth/configuration-not-found') {
+        setConfigError(true);
+      } else {
+        toast({
+            variant: 'destructive',
+            title: 'Sign-in Failed',
+            description: 'An unexpected error occurred. Please try again.',
+        });
+      }
       setIsSigningIn(false);
     }
   };
@@ -56,6 +70,10 @@ export default function LoginPage() {
         Loading...
       </div>
     );
+  }
+
+  if (configError) {
+      return <FirebaseConfigError />;
   }
 
   return (
