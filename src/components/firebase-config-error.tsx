@@ -11,9 +11,9 @@ export function FirebaseConfigError() {
       <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
         <Card className="max-w-2xl">
           <CardHeader>
-            <CardTitle className="text-destructive">Connection to Database Failed</CardTitle>
+            <CardTitle className="text-destructive">Connection to Firebase Failed</CardTitle>
             <CardDescription>
-              The error message <code className="bg-muted px-1 py-0.5 rounded-sm font-code text-destructive">Error source: Firestore Rules</code> indicates the problem is in your Firebase project configuration, not the application code.
+              Errors like <code className="bg-muted px-1 py-0.5 rounded-sm font-code text-destructive">auth/unauthorized-domain</code> or <code className="bg-muted px-1 py-0.5 rounded-sm font-code text-destructive">Missing or insufficient permissions</code> usually indicate a problem with your Firebase project configuration, not the application code.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -21,18 +21,22 @@ export function FirebaseConfigError() {
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Action Required: Check Your Firebase Setup</AlertTitle>
               <AlertDescription>
-                This error happens when the app cannot read from your database. Please carefully check the following common issues in your Firebase project.
+                This error happens when the app cannot connect to or authenticate with Firebase. Please carefully check the following common issues in your Firebase project.
               </AlertDescription>
             </Alert>
             
             <p>Please follow these steps in your Firebase project:</p>
             <ol className="list-decimal space-y-4 pl-5 text-sm">
               <li>
-                <strong>1. Ensure Firestore Database is created.</strong>
-                <p className="mt-1">In the Firebase Console, go to the <strong>Firestore Database</strong> section. If you see a "Create database" button, you must click it. When prompted, select a location and choose to <strong>start in test mode</strong>. This automatically sets the correct security rules for 30 days and is the most common fix.</p>
+                <strong>1. Authorize your domain for authentication.</strong>
+                <p className="mt-1">This is the most likely cause of an <code className="bg-muted px-1 py-0.5 rounded-sm font-code">auth/unauthorized-domain</code> error. In the Firebase Console, go to the <strong>Authentication</strong> section, click the <strong>Settings</strong> tab, and add <code className="bg-muted px-1 py-0.5 rounded-sm font-code">localhost</code> to the list of <strong>Authorized domains</strong>. This is required for Google Sign-In to work during local development.</p>
               </li>
               <li>
-                <strong>2. Verify your Security Rules.</strong>
+                <strong>2. Ensure Firestore Database is created.</strong>
+                <p className="mt-1">In the Firebase Console, go to the <strong>Firestore Database</strong> section. If you see a "Create database" button, you must click it. When prompted, select a location and choose to <strong>start in test mode</strong>. This automatically sets the correct security rules for 30 days.</p>
+              </li>
+              <li>
+                <strong>3. Verify your Security Rules.</strong>
                 <p className="mt-1">If you already have a database, check its security rules. In the Firebase Console, go to the Firestore Database section and click the <strong>Rules</strong> tab. For development, your rules must allow read and write access. Copy and paste the following rules and click "Publish".</p>
                 <pre className="mt-2 w-full whitespace-pre-wrap rounded-md bg-muted p-2 font-code text-xs text-foreground">
                     {`rules_version = '2';
@@ -47,7 +51,7 @@ service cloud.firestore {
                 </pre>
               </li>
                <li>
-                  <strong>3. Double-check your credentials.</strong>
+                  <strong>4. Double-check your credentials.</strong>
                   <p className="mt-1">Just in case, make sure the `firebaseConfig` object in <code className="bg-muted px-1 py-0.5 rounded-sm font-code">src/lib/firebase.ts</code> perfectly matches the one from your Firebase Project Settings.</p>
               </li>
             </ol>

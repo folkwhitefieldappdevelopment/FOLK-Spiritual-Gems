@@ -42,7 +42,7 @@ export default function GroupsPage() {
         setGroups(groupsData);
       } catch (error) {
         console.error("Failed to fetch groups", error);
-        if (error instanceof Error && error.message.includes('offline')) {
+        if (error instanceof Error && (error.message.includes('offline') || error.message.includes('permission-denied'))) {
           setConfigError(true);
         } else {
           toast({
@@ -120,6 +120,10 @@ export default function GroupsPage() {
       </div>
     );
   }
+  
+  if (configError) {
+    return <FirebaseConfigError />;
+  }
 
   const renderContent = () => {
     if (isLoading) {
@@ -147,10 +151,6 @@ export default function GroupsPage() {
         ))}
       </div>
     );
-  }
-  
-  if (configError) {
-    return <FirebaseConfigError />;
   }
 
   return (

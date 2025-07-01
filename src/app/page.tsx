@@ -94,7 +94,7 @@ export default function ContactsPage() {
         setContactSourceOptions(sourcesData);
       } catch (error) {
         console.error("Failed to load data:", error);
-        if (error instanceof Error && error.message.includes('offline')) {
+        if (error instanceof Error && (error.message.includes('offline') || error.message.includes('permission-denied'))) {
           setConfigError(true);
         } else {
           toast({
