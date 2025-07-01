@@ -6,9 +6,9 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Edit, Trash2 } from 'lucide-react';
 import type { Person, ProgressCategoryAnswers } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { checklistData } from '@/lib/data';
 import { useAdmin } from '@/contexts/admin-context';
 import { cn } from '@/lib/utils';
+import { getPerson, updatePerson, deletePerson } from '@/services/people-service';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -29,37 +29,6 @@ import {
 import { CreateUpdatePersonDialog } from '@/components/create-update-person-dialog';
 import { ProgressTracker } from '@/components/progress-tracker';
 
-const createInitialProgress = (): ProgressCategoryAnswers[] => {
-  return checklistData.map((category) => ({
-    name: category.category as any,
-    answers: category.items.map(() => ['', '', '']),
-  }));
-};
-
-const migratePersonData = (person: any): Person => {
-  if (person.enablerInTouchWith !== undefined) {
-    return person as Person;
-  }
-  return {
-    id: person.id,
-    firstName: person.firstName,
-    lastName: person.lastName,
-    phone: person.phone || '',
-    photoUrl: person.photoUrl || 'https://placehold.co/100x100.png',
-    age: 25,
-    stayingWith: 'Family',
-    occupation: '',
-    rentDetails: '',
-    nativePlace: person.location || '',
-    sgRating: person.status || 'N/A',
-    contactSource: '',
-    chantingStatus: 'N/A',
-    fromOtherCamp: false,
-    enablerInTouchWith: '',
-    progress: (person.progress && Array.isArray(person.progress) && person.progress[0]?.answers) ? person.progress : createInitialProgress(),
-  };
-};
-
 export default function PersonDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -67,64 +36,79 @@ export default function PersonDetailPage() {
   const personId = params.id as string;
   const { isAdmin } = useAdmin();
 
-  const [people, setPeople] = React.useState<Person[]>([]);
   const [person, setPerson] = React.useState<Person | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
 
   React.useEffect(() => {
-    try {
-      const storedPeople = localStorage.getItem('people');
-      if (storedPeople) {
-        const parsedPeople = JSON.parse(storedPeople);
-        const migratedPeople = parsedPeople.map(migratePersonData);
-        setPeople(migratedPeople);
-        const currentPerson = migratedPeople.find((p) => p.id === personId);
-        setPerson(currentPerson || null);
+    if (!personId) return;
+
+    const fetchPerson = async () => {
+      setIsLoading(true);
+      try {
+        const personData = await getPerson(personId);
+        if (personData) {
+          setPerson(personData);
+        } else {
+          toast({
+            variant: 'destructive',
+            title: 'Not Found',
+            description: 'This person could not be found.',
+          });
+          router.push('/');
+        }
+      } catch (error) {
+        console.error('Failed to load person data', error);
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Could not load person data.',
+        });
+      } finally {
+        setIsLoading(false);
       }
+    };
+
+    fetchPerson();
+  }, [personId, router, toast]);
+
+  const handleSavePersonDialog = async (personData: Omit<Person, 'id' | 'progress'>) => {
+    if (!person) return;
+    try {
+      const updatedPersonData = { ...person, ...personData };
+      await updatePerson(personId, personData);
+      setPerson(updatedPersonData);
+      toast({
+        title: 'Person Updated',
+        description: "The person's details have been saved.",
+      });
     } catch (error) {
-      console.error('Failed to parse people from localStorage', error);
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Could not load person data.',
+        description: 'Could not update person.',
       });
     }
-  }, [personId, toast]);
-
-  const updatePeopleInStorage = (updatedPeople: Person[]) => {
-    localStorage.setItem('people', JSON.stringify(updatedPeople));
-    setPeople(updatedPeople);
-  };
-  
-  const handlePersonUpdate = (updatedPerson: Person) => {
-    setPerson(updatedPerson);
-    const updatedPeople = people.map((p) =>
-      p.id === personId ? updatedPerson : p
-    );
-    updatePeopleInStorage(updatedPeople);
   };
 
-  const handleSavePersonDialog = (personData: Omit<Person, 'id' | 'progress'>) => {
-    if (!person) return;
-    const updatedPerson = { ...person, ...personData };
-    handlePersonUpdate(updatedPerson);
-    toast({
-      title: 'Person Updated',
-      description: "The person's details have been saved.",
-    });
+  const handleDeletePerson = async () => {
+    try {
+      await deletePerson(personId);
+      toast({
+        title: 'Person Deleted',
+        description: 'The person has been removed from your contacts.',
+      });
+      router.push('/');
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not delete person.',
+      });
+    }
   };
 
-  const handleDeletePerson = () => {
-    const updatedPeople = people.filter((p) => p.id !== personId);
-    updatePeopleInStorage(updatedPeople);
-    toast({
-      title: 'Person Deleted',
-      description: 'The person has been removed from your contacts.',
-    });
-    router.push('/');
-  };
-
-  const handleProgressChange = (catIndex: number, itemIndex: number, levelIndex: number, value: string) => {
+  const handleProgressChange = async (catIndex: number, itemIndex: number, levelIndex: number, value: string) => {
     if (!person) return;
 
     const newProgress = JSON.parse(JSON.stringify(person.progress));
@@ -132,20 +116,38 @@ export default function PersonDetailPage() {
     
     const updatedPerson = { ...person, progress: newProgress };
     
-    setPerson(updatedPerson); 
+    setPerson(updatedPerson); // Optimistic update
 
-    const updatedPeople = people.map((p) =>
-      p.id === personId ? updatedPerson : p
-    );
-    updatePeopleInStorage(updatedPeople);
+    try {
+      await updatePerson(personId, { progress: newProgress });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Sync Error',
+        description: 'Could not save progress changes.',
+      });
+      // Revert if API call fails
+      setPerson(person); 
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen w-full">
+        <AppSidebar />
+        <div className="flex flex-1 flex-col items-center justify-center bg-background">
+          Loading contact details...
+        </div>
+      </div>
+    );
+  }
 
   if (!person) {
     return (
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <div className="flex flex-1 flex-col items-center justify-center bg-background">
-          Loading...
+          Person not found.
         </div>
       </div>
     );
@@ -204,7 +206,7 @@ export default function PersonDetailPage() {
           <main className="flex-1 overflow-y-auto p-4 sm:p-6">
             <div className="mx-auto max-w-4xl">
               <div className={cn("grid grid-cols-1 gap-6", isAdmin && "lg:grid-cols-3")}>
-                <div className="lg:col-span-1">
+                <div className={cn(isAdmin ? "lg:col-span-1" : "lg:col-span-3")}>
                   <Card>
                     <CardContent className="pt-6 text-center flex flex-col items-center">
                       <Avatar className="h-32 w-32 mb-4">
@@ -276,7 +278,7 @@ export default function PersonDetailPage() {
       <CreateUpdatePersonDialog
         isOpen={isEditDialogOpen}
         setIsOpen={setIsEditDialogOpen}
-        onSave={handleSavePersonDialog}
+        onSave={(data) => handleSavePersonDialog(data)}
         person={person}
       />
     </>

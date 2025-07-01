@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -5,6 +6,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, UserPlus } from 'lucide-react';
 import type { Person, Group } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { getGroup, updateGroup } from '@/services/groups-service';
+import { getPeople, updatePerson } from '@/services/people-service';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -20,8 +23,8 @@ export default function GroupDetailPage() {
   const { toast } = useToast();
   const groupId = params.id as string;
 
+  const [isLoading, setIsLoading] = React.useState(true);
   const [allPeople, setAllPeople] = React.useState<Person[]>([]);
-  const [groups, setGroups] = React.useState<Group[]>([]);
   const [group, setGroup] = React.useState<Group | null>(null);
   const [members, setMembers] = React.useState<Person[]>([]);
   
@@ -29,42 +32,41 @@ export default function GroupDetailPage() {
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(undefined);
 
   React.useEffect(() => {
-    try {
-      const storedPeople = localStorage.getItem('people');
-      const storedGroups = localStorage.getItem('groups');
-
-      const parsedPeople: Person[] = storedPeople ? JSON.parse(storedPeople) : [];
-      const parsedGroups: Group[] = storedGroups ? JSON.parse(storedGroups) : [];
-
-      setAllPeople(parsedPeople);
-      setGroups(parsedGroups);
-
-      const currentGroup = parsedGroups.find(g => g.id === groupId);
-      if (currentGroup) {
-        setGroup(currentGroup);
-        const groupMembers = parsedPeople.filter(p => currentGroup.peopleIds.includes(p.id));
-        setMembers(groupMembers);
-      } else {
+    if (!groupId) return;
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const [groupData, peopleData] = await Promise.all([
+          getGroup(groupId),
+          getPeople(),
+        ]);
+        
+        setAllPeople(peopleData);
+        
+        if (groupData) {
+          setGroup(groupData);
+          const groupMembers = peopleData.filter(p => groupData.peopleIds.includes(p.id));
+          setMembers(groupMembers);
+        } else {
+          toast({
+            variant: 'destructive',
+            title: 'Group not found',
+          });
+          router.push('/groups');
+        }
+      } catch (error) {
+        console.error('Failed to load group data', error);
         toast({
           variant: 'destructive',
-          title: 'Group not found',
+          title: 'Error',
+          description: 'Could not load group data.',
         });
-        router.push('/groups');
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Failed to load data from localStorage', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Could not load group data.',
-      });
-    }
+    };
+    fetchData();
   }, [groupId, router, toast]);
-
-  const updateGroupsInStorage = (updatedGroups: Group[]) => {
-    localStorage.setItem('groups', JSON.stringify(updatedGroups));
-    setGroups(updatedGroups);
-  };
   
   const handleEditPerson = (person: Person) => {
     setEditingPerson(person);
@@ -83,42 +85,52 @@ export default function GroupDetailPage() {
     });
   };
 
-  const handleSavePersonDialog = (personData: Omit<Person, 'id' | 'progress'>) => {
+  const handleSavePersonDialog = async (personData: Omit<Person, 'id' | 'progress'>) => {
     if (!editingPerson) return;
     
-    const updatedPerson = { ...editingPerson, ...personData };
+    try {
+      await updatePerson(editingPerson.id, personData);
+      
+      const updatedPerson = { ...editingPerson, ...personData };
 
-    const updatedAllPeople = allPeople.map(p => p.id === updatedPerson.id ? updatedPerson : p);
-    localStorage.setItem('people', JSON.stringify(updatedAllPeople));
-    setAllPeople(updatedAllPeople);
-    
-    setMembers(members.map(m => m.id === updatedPerson.id ? updatedPerson : m));
-    setEditingPerson(undefined);
+      const updatedAllPeople = allPeople.map(p => p.id === updatedPerson.id ? updatedPerson : p);
+      setAllPeople(updatedAllPeople);
+      
+      setMembers(members.map(m => m.id === updatedPerson.id ? updatedPerson : m));
+      setEditingPerson(undefined);
 
-    toast({
-      title: 'Person Updated',
-      description: "The person's details have been saved.",
-    });
+      toast({
+        title: 'Person Updated',
+        description: "The person's details have been saved.",
+      });
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not update person details.'});
+    }
   };
   
-  const handleSaveMembers = (memberIds: string[]) => {
+  const handleSaveMembers = async (memberIds: string[]) => {
     if (!group) return;
 
-    const updatedGroup = { ...group, peopleIds: memberIds, memberCount: memberIds.length };
-    const updatedGroups = groups.map(g => g.id === groupId ? updatedGroup : g);
-    updateGroupsInStorage(updatedGroups);
+    try {
+      const updatedGroupData = { peopleIds: memberIds, memberCount: memberIds.length };
+      await updateGroup(groupId, updatedGroupData);
 
-    setGroup(updatedGroup);
-    const groupMembers = allPeople.filter(p => memberIds.includes(p.id));
-    setMembers(groupMembers);
+      const updatedGroup = { ...group, ...updatedGroupData };
+      setGroup(updatedGroup);
 
-    toast({
-      title: 'Group Members Updated',
-      description: `The group now has ${memberIds.length} members.`,
-    });
+      const groupMembers = allPeople.filter(p => memberIds.includes(p.id));
+      setMembers(groupMembers);
+
+      toast({
+        title: 'Group Members Updated',
+        description: `The group now has ${memberIds.length} members.`,
+      });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not update group members.'});
+    }
   };
 
-  if (!group) {
+  if (isLoading) {
     return (
       <div className="flex min-h-screen w-full">
         <AppSidebar />
@@ -127,6 +139,10 @@ export default function GroupDetailPage() {
         </div>
       </div>
     );
+  }
+
+  if (!group) {
+    return null; // Should be redirected by useEffect
   }
 
   return (
@@ -186,7 +202,7 @@ export default function GroupDetailPage() {
         <CreateUpdatePersonDialog
           isOpen={!!editingPerson}
           setIsOpen={() => setEditingPerson(undefined)}
-          onSave={handleSavePersonDialog}
+          onSave={(data) => handleSavePersonDialog(data)}
           person={editingPerson}
         />
       )}

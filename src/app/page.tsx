@@ -10,7 +10,7 @@ import {
   Upload,
 } from "lucide-react";
 import { read, utils } from "xlsx";
-import { mockPeople, createInitialProgress } from "@/lib/data";
+import { createInitialProgress } from "@/lib/data";
 import type { Person } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,37 +28,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-const migratePersonData = (person: any): Person => {
-  // If a new field exists, assume it's already migrated
-  if (person.enablerInTouchWith !== undefined) {
-    return person as Person;
-  }
-  // Otherwise, it's an old record, migrate it to the new structure
-  return {
-    id: person.id,
-    firstName: person.firstName,
-    lastName: person.lastName,
-    phone: person.phone || '',
-    photoUrl: person.photoUrl || 'https://placehold.co/100x100.png',
-    age: 25, // default age
-    stayingWith: 'Family', // default
-    occupation: '',
-    rentDetails: '',
-    nativePlace: person.location || '', // migrate old location
-    sgRating: person.status || 'N/A', // migrate old status
-    contactSource: '',
-    chantingStatus: 'N/A',
-    fromOtherCamp: false,
-    enablerInTouchWith: '',
-    progress: (person.progress && Array.isArray(person.progress) && person.progress[0]?.answers) ? person.progress : createInitialProgress(),
-  };
-};
-
+import {
+  getPeople,
+  createPerson,
+  updatePerson,
+  deletePerson,
+  importPeople,
+} from "@/services/people-service";
+import { getEnablers, getContactSources } from "@/services/settings-service";
 
 export default function ContactsPage() {
   const { toast } = useToast();
   const [people, setPeople] = React.useState<Person[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
   const [view, setView] = React.useState<"card" | "table">("card");
   
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -77,41 +59,30 @@ export default function ContactsPage() {
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
   
   React.useEffect(() => {
-    try {
-      const storedEnablers = localStorage.getItem('enablers');
-      if (storedEnablers) {
-        setEnablerOptions(JSON.parse(storedEnablers));
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const [peopleData, enablersData, sourcesData] = await Promise.all([
+          getPeople(),
+          getEnablers(),
+          getContactSources(),
+        ]);
+        setPeople(peopleData);
+        setEnablerOptions(enablersData);
+        setContactSourceOptions(sourcesData);
+      } catch (error) {
+        console.error("Failed to load data:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Could not load data. Please check your connection or Firebase setup.",
+        });
+      } finally {
+        setIsLoading(false);
       }
-      const storedContactSources = localStorage.getItem('contactSources');
-      if (storedContactSources) {
-        setContactSourceOptions(JSON.parse(storedContactSources));
-      }
-    } catch (error) {
-      console.error("Failed to load filter options from localStorage", error);
-    }
-  }, []);
-
-  React.useEffect(() => {
-    try {
-      const storedPeople = localStorage.getItem("people");
-      if (storedPeople) {
-        const parsedPeople = JSON.parse(storedPeople);
-        const migratedPeople = parsedPeople.map(migratePersonData);
-        setPeople(migratedPeople);
-      } else {
-        setPeople(mockPeople);
-      }
-    } catch (error) {
-      console.error("Failed to parse people from localStorage", error);
-      setPeople(mockPeople);
-    }
-  }, []);
-
-  React.useEffect(() => {
-    if (people.length > 0) {
-      localStorage.setItem("people", JSON.stringify(people));
-    }
-  }, [people]);
+    };
+    fetchData();
+  }, [toast]);
 
   const filteredPeople = React.useMemo(() => {
     return people.filter((person) => {
@@ -152,7 +123,7 @@ export default function ContactsPage() {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const data = e.target?.result;
         const workbook = read(data, { type: "array" });
@@ -160,7 +131,7 @@ export default function ContactsPage() {
         const worksheet = workbook.Sheets[sheetName];
         const json = utils.sheet_to_json<any>(worksheet);
 
-        const newPeople: Person[] = json
+        const newPeople: Omit<Person, 'id'>[] = json
           .map((row: any) => {
             if (!row.firstName || !row.lastName || !row.phone) {
               console.warn("Skipping row due to missing data: firstName, lastName, and phone are required.", row);
@@ -172,7 +143,6 @@ export default function ContactsPage() {
             const stayingWith = ["PG / Hostel", "Flat", "Family"].includes(row.stayingWith) ? row.stayingWith : "Family";
 
             return {
-              id: `person-${Date.now()}-${Math.random()}`,
               firstName: String(row.firstName),
               lastName: String(row.lastName),
               phone: String(row.phone),
@@ -190,7 +160,7 @@ export default function ContactsPage() {
               progress: createInitialProgress(),
             };
           })
-          .filter((p): p is Person => p !== null);
+          .filter((p): p is Omit<Person, 'id'> => p !== null);
 
         if (newPeople.length === 0) {
           toast({
@@ -201,7 +171,10 @@ export default function ContactsPage() {
           return;
         }
 
-        setPeople((prev) => [...prev, ...newPeople]);
+        await importPeople(newPeople);
+        const updatedPeople = await getPeople();
+        setPeople(updatedPeople);
+
         toast({
           title: "Import Successful",
           description: `${newPeople.length} new contacts have been added.`,
@@ -211,7 +184,7 @@ export default function ContactsPage() {
         toast({
           variant: "destructive",
           title: "Import Failed",
-          description: "There was an error processing your file. Please ensure it's a valid Excel or CSV file.",
+          description: "There was an error processing your file. Please check your Firebase setup.",
         });
       } finally {
         if (event.target) {
@@ -232,38 +205,157 @@ export default function ContactsPage() {
     setIsDialogOpen(true);
   };
 
-  const handleDeletePerson = (personId: string) => {
-    setPeople((prev) => prev.filter((p) => p.id !== personId));
-    toast({
-      title: "Person Deleted",
-      description: "The person has been removed from your contacts.",
-    });
-  };
-
-  const handleSavePerson = (personData: Omit<Person, "id" | "progress">) => {
-    if (editingPerson) {
-      setPeople((prev) =>
-        prev.map((p) =>
-          p.id === editingPerson.id ? { ...editingPerson, ...personData } : p
-        )
-      );
+  const handleDeletePerson = async (personId: string) => {
+    try {
+      await deletePerson(personId);
+      setPeople((prev) => prev.filter((p) => p.id !== personId));
       toast({
-        title: "Person Updated",
-        description: "The person's details have been saved.",
+        title: "Person Deleted",
+        description: "The person has been removed from your contacts.",
       });
-    } else {
-      const newPerson: Person = {
-        id: `person-${Date.now()}`,
-        ...personData,
-        progress: createInitialProgress(),
-      };
-      setPeople((prev) => [newPerson, ...prev]);
+    } catch(error) {
       toast({
-        title: "Person Added",
-        description: "The new person has been added to your contacts.",
+        variant: "destructive",
+        title: "Error",
+        description: "Could not delete person.",
       });
     }
   };
+
+  const handleSavePerson = async (personData: Omit<Person, "id" | "progress">, existingPerson?: Person) => {
+    try {
+      if (existingPerson) {
+        await updatePerson(existingPerson.id, personData);
+        setPeople((prev) =>
+          prev.map((p) =>
+            p.id === existingPerson.id ? { ...existingPerson, ...personData } : p
+          )
+        );
+        toast({
+          title: "Person Updated",
+          description: "The person's details have been saved.",
+        });
+      } else {
+        const newPersonData = {
+          ...personData,
+          progress: createInitialProgress(),
+        };
+        const newPerson = await createPerson(newPersonData);
+        setPeople((prev) => [newPerson, ...prev]);
+        toast({
+          title: "Person Added",
+          description: "The new person has been added to your contacts.",
+        });
+      }
+    } catch(error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not save person.",
+      });
+    }
+  };
+
+  const renderContent = () => {
+    if (isLoading) {
+      return <div className="text-center p-12">Loading contacts...</div>;
+    }
+
+    return (
+      <>
+        <div className="mb-6 flex flex-col gap-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                placeholder="Search by name, phone, or native place..."
+                className="pl-10 w-full sm:w-[300px]"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
+            <div className="flex items-center gap-2">
+                <div className="flex items-center rounded-md bg-muted p-1">
+                <Button
+                    variant={view === "card" ? "secondary" : "ghost"}
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setView("card")}
+                    aria-label="Card View"
+                >
+                    <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button
+                    variant={view === "table" ? "secondary" : "ghost"}
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setView("table")}
+                    aria-label="Table View"
+                >
+                    <List className="h-4 w-4" />
+                </Button>
+                </div>
+            </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                <Select value={enablerFilter} onValueChange={(value) => setEnablerFilter(value === 'all' ? '' : value)}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Filter by Enabler" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Enablers</SelectItem>
+                        {enablerOptions.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+                  <Select value={contactSourceFilter} onValueChange={(value) => setContactSourceFilter(value === 'all' ? '' : value)}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Filter by Source" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Sources</SelectItem>
+                        {contactSourceOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+                <Input 
+                    placeholder="Filter by Occupation"
+                    value={occupationFilter}
+                    onChange={(e) => setOccupationFilter(e.target.value)}
+                />
+                <Input 
+                    placeholder="Filter by Chanting Status"
+                    value={chantingFilter}
+                    onChange={(e) => setChantingFilter(e.target.value)}
+                />
+                <Button variant="outline" onClick={clearFilters}>Clear Filters</Button>
+            </div>
+        </div>
+
+        {filteredPeople.length === 0 && (
+          <div className="text-center py-12 text-muted-foreground">
+            <p>No contacts found.</p>
+            <p className="text-sm">Try adjusting your filters or add a new person.</p>
+          </div>
+        )}
+
+        {view === "card" ? (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filteredPeople.map((person) => (
+              <PersonCard
+                key={person.id}
+                person={person}
+              />
+            ))}
+          </div>
+        ) : (
+          <PersonTable
+            people={filteredPeople}
+            onEdit={handleEditPerson}
+            onDelete={handleDeletePerson}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <>
@@ -293,96 +385,14 @@ export default function ContactsPage() {
             </div>
           </PageHeader>
           <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-            <div className="mb-6 flex flex-col gap-4">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                    placeholder="Search by name, phone, or native place..."
-                    className="pl-10 w-full sm:w-[300px]"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="flex items-center rounded-md bg-muted p-1">
-                    <Button
-                        variant={view === "card" ? "secondary" : "ghost"}
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setView("card")}
-                        aria-label="Card View"
-                    >
-                        <LayoutGrid className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant={view === "table" ? "secondary" : "ghost"}
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setView("table")}
-                        aria-label="Table View"
-                    >
-                        <List className="h-4 w-4" />
-                    </Button>
-                    </div>
-                </div>
-                </div>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                    <Select value={enablerFilter} onValueChange={(value) => setEnablerFilter(value === 'all' ? '' : value)}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Filter by Enabler" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Enablers</SelectItem>
-                            {enablerOptions.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                     <Select value={contactSourceFilter} onValueChange={(value) => setContactSourceFilter(value === 'all' ? '' : value)}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Filter by Source" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Sources</SelectItem>
-                            {contactSourceOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    <Input 
-                        placeholder="Filter by Occupation"
-                        value={occupationFilter}
-                        onChange={(e) => setOccupationFilter(e.target.value)}
-                    />
-                    <Input 
-                        placeholder="Filter by Chanting Status"
-                        value={chantingFilter}
-                        onChange={(e) => setChantingFilter(e.target.value)}
-                    />
-                    <Button variant="outline" onClick={clearFilters}>Clear Filters</Button>
-                </div>
-            </div>
-
-            {view === "card" ? (
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {filteredPeople.map((person) => (
-                  <PersonCard
-                    key={person.id}
-                    person={person}
-                  />
-                ))}
-              </div>
-            ) : (
-              <PersonTable
-                people={filteredPeople}
-                onEdit={handleEditPerson}
-                onDelete={handleDeletePerson}
-              />
-            )}
+            {renderContent()}
           </main>
         </div>
       </div>
       <CreateUpdatePersonDialog
         isOpen={isDialogOpen}
         setIsOpen={setIsDialogOpen}
-        onSave={handleSavePerson}
+        onSave={(data) => handleSavePerson(data, editingPerson)}
         person={editingPerson}
       />
       <input

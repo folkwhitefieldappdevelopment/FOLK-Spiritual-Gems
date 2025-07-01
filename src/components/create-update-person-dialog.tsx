@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import type { Person } from "@/lib/types";
 import { Camera, Upload } from "lucide-react";
+import { getEnablers, getContactSources } from "@/services/settings-service";
 
 import {
   Dialog,
@@ -61,7 +62,7 @@ type PersonFormValues = z.infer<typeof personFormSchema>;
 type CreateUpdatePersonDialogProps = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  onSave: (data: Omit<Person, "id" | "progress">) => void;
+  onSave: (data: Omit<Person, "id" | "progress">, person?: Person) => void;
   person?: Person;
 };
 
@@ -105,30 +106,19 @@ export function CreateUpdatePersonDialog({
 
 
   React.useEffect(() => {
-    if (isOpen) {
-      // Load enablers and contact sources from localStorage
-      try {
-        const storedEnablers = localStorage.getItem('enablers');
-        if (storedEnablers) {
-            setEnablerOptions(JSON.parse(storedEnablers));
-        } else {
-            const defaultEnablers = ['Veeranna', 'Sarthak', 'Jayant', 'Rohit', 'Nitin', 'Abhishek', 'Nikhil', 'Ravi', 'Narayan'];
-            setEnablerOptions(defaultEnablers);
+    const loadOptions = async () => {
+        try {
+            const [enablers, sources] = await Promise.all([getEnablers(), getContactSources()]);
+            setEnablerOptions(enablers);
+            setContactSourceOptions(sources);
+        } catch (error) {
+            console.error('Failed to load dropdown options for dialog', error);
+            toast({ variant: 'destructive', title: 'Could not load dropdown options.' });
         }
+    }
 
-        const storedContactSources = localStorage.getItem('contactSources');
-        if (storedContactSources) {
-            setContactSourceOptions(JSON.parse(storedContactSources));
-        } else {
-            const defaultSources = ['Govinda Temple', 'ITPL', 'HK hill'];
-            setContactSourceOptions(defaultSources);
-        }
-      } catch (error) {
-        console.error('Failed to load dropdown options for dialog', error);
-        toast({ variant: 'destructive', title: 'Could not load dropdown options.' });
-        setEnablerOptions([]);
-        setContactSourceOptions([]);
-      }
+    if (isOpen) {
+      loadOptions();
 
       // Reset form with person data or clear it
       if (person) {
@@ -259,7 +249,7 @@ export function CreateUpdatePersonDialog({
         photoPreview ||
         person?.photoUrl ||
         `https://placehold.co/100x100.png`,
-    });
+    }, person);
     setIsOpen(false);
   };
 
@@ -506,6 +496,7 @@ export function CreateUpdatePersonDialog({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                           <SelectItem value="">None</SelectItem>
                           {contactSourceOptions.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
                         </SelectContent>
                       </Select>
@@ -541,6 +532,7 @@ export function CreateUpdatePersonDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="">None</SelectItem>
                         {enablerOptions.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
                       </SelectContent>
                     </Select>
