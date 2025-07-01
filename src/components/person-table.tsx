@@ -1,6 +1,7 @@
+
 "use client";
 
-import Image from "next/image";
+import Link from 'next/link';
 import { MoreHorizontal, Mail, Phone, MapPin, Trash2, Edit } from "lucide-react";
 import type { Person } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -69,7 +70,7 @@ export function PersonTable({ people, onEdit, onDelete }: PersonTableProps) {
             {people.map((person) => (
               <TableRow key={person.id}>
                 <TableCell>
-                  <div className="flex items-center gap-3">
+                  <Link href={`/contacts/${person.id}`} className="flex items-center gap-3 group">
                     <Avatar>
                       <AvatarImage
                         src={person.photoUrl}
@@ -81,10 +82,10 @@ export function PersonTable({ people, onEdit, onDelete }: PersonTableProps) {
                         {person.lastName.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="font-medium">
+                    <div className="font-medium group-hover:underline">
                       {person.firstName} {person.lastName}
                     </div>
-                  </div>
+                  </Link>
                 </TableCell>
                 <TableCell>
                   <Badge

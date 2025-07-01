@@ -1,6 +1,8 @@
+
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   Filter,
   List,
@@ -28,7 +30,7 @@ import { PersonCard } from "@/components/person-card";
 import { PersonTable } from "@/components/person-table";
 import { CreateUpdatePersonDialog } from "@/components/create-update-person-dialog";
 
-export default function HomePage() {
+export default function ContactsPage() {
   const { toast } = useToast();
   const [people, setPeople] = React.useState<Person[]>([]);
   const [view, setView] = React.useState<"card" | "table">("card");
@@ -265,8 +267,6 @@ export default function HomePage() {
                   <PersonCard
                     key={person.id}
                     person={person}
-                    onEdit={() => handleEditPerson(person)}
-                    onDelete={() => handleDeletePerson(person.id)}
                   />
                 ))}
               </div>
