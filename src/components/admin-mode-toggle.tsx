@@ -33,27 +33,15 @@ export function AdminModeToggle() {
   
   const recaptchaContainerRef = React.useRef<HTMLDivElement>(null);
 
-  React.useEffect(() => {
-    if (!isDialogOpen || !recaptchaContainerRef.current) return;
-    
-    const verifier = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
-      'size': 'invisible',
-      'callback': () => {},
-    });
-    
-    (window as any).recaptchaVerifier = verifier;
-    
-    return () => {
-      verifier.clear();
-    };
-  }, [isDialogOpen]);
-
   const resetState = () => {
     setStep('phone');
     setPhoneNumber('');
     setOtp('');
     setConfirmationResult(null);
     setIsVerifying(false);
+    if ((window as any).recaptchaVerifier) {
+      (window as any).recaptchaVerifier.clear();
+    }
   };
 
   const handleSwitchChange = (checked: boolean) => {
@@ -72,6 +60,12 @@ export function AdminModeToggle() {
       setIsVerifying(false);
       return;
     }
+    
+    if (!recaptchaContainerRef.current) {
+        toast({ variant: 'destructive', title: 'reCAPTCHA Error', description: 'Container element not found.' });
+        setIsVerifying(false);
+        return;
+    }
 
     try {
       const adminNumbers = await getAdminPhoneNumbers();
@@ -80,11 +74,20 @@ export function AdminModeToggle() {
         setIsVerifying(false);
         return;
       }
+      
+      if ((window as any).recaptchaVerifier) {
+        (window as any).recaptchaVerifier.clear();
+      }
 
-      const appVerifier = (window as any).recaptchaVerifier;
-      // Firebase expects E.164 format, we prepend +91 for Indian numbers.
+      const verifier = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
+        'size': 'invisible',
+        'callback': () => {},
+      });
+
+      (window as any).recaptchaVerifier = verifier;
+
       const fullPhoneNumber = `+91${phoneNumber}`; 
-      const confirmation = await signInWithPhoneNumber(auth, fullPhoneNumber, appVerifier);
+      const confirmation = await signInWithPhoneNumber(auth, fullPhoneNumber, verifier);
       
       setConfirmationResult(confirmation);
       setStep('otp');
@@ -92,7 +95,11 @@ export function AdminModeToggle() {
 
     } catch (error) {
       console.error("Error sending OTP:", error);
-      toast({ variant: 'destructive', title: 'Failed to send OTP', description: 'Please check console and Firebase Auth config.' });
+      toast({ 
+          variant: 'destructive', 
+          title: 'Failed to send OTP', 
+          description: 'Please check your Firebase configuration and ensure your domain is authorized.' 
+      });
     } finally {
       setIsVerifying(false);
     }
@@ -159,6 +166,7 @@ export function AdminModeToggle() {
                     disabled={isVerifying}
                   />
                 </div>
+                 <div ref={recaptchaContainerRef}></div>
               </div>
               <DialogFooter>
                 <Button type="submit" onClick={handlePhoneSubmit} disabled={isVerifying}>
@@ -204,7 +212,6 @@ export function AdminModeToggle() {
           )}
         </DialogContent>
       </Dialog>
-      <div ref={recaptchaContainerRef}></div>
     </>
   );
 }
