@@ -33,6 +33,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -134,7 +135,7 @@ export default function ContactsPage() {
     const headers = [
       "firstName", "lastName", "phone", "age", "stayingWith",
       "occupation", "rentDetails", "nativePlace", "sgRating",
-      "contactSource", "chantingStatus", "fromOtherCamp"
+      "contactSource", "chantingStatus", "fromOtherCamp", "enablerInTouchWith"
     ];
     const dummyContact = [{
       firstName: "John",
@@ -148,13 +149,51 @@ export default function ContactsPage() {
       sgRating: "A",
       contactSource: "Govinda Temple",
       chantingStatus: "4 rounds",
-      fromOtherCamp: false
+      fromOtherCamp: false,
+      enablerInTouchWith: "Sarthak",
     }];
 
     const worksheet = utils.json_to_sheet(dummyContact, { header: headers });
     const workbook = utils.book_new();
     utils.book_append_sheet(workbook, worksheet, "Contacts");
     writeFile(workbook, "contacts_sample.xlsx");
+  };
+
+  const handleExport = () => {
+    if (filteredPeople.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "No Contacts to Export",
+        description: "There are no contacts in the current view to export.",
+      });
+      return;
+    }
+
+    const exportData = filteredPeople.map(p => ({
+        firstName: p.firstName,
+        lastName: p.lastName,
+        phone: p.phone,
+        age: p.age,
+        stayingWith: p.stayingWith,
+        occupation: p.occupation,
+        rentDetails: p.rentDetails,
+        nativePlace: p.nativePlace,
+        sgRating: p.sgRating,
+        contactSource: p.contactSource,
+        chantingStatus: p.chantingStatus,
+        fromOtherCamp: p.fromOtherCamp,
+        enablerInTouchWith: p.enablerInTouchWith,
+    }));
+
+    const worksheet = utils.json_to_sheet(exportData);
+    const workbook = utils.book_new();
+    utils.book_append_sheet(workbook, worksheet, "Contacts");
+    writeFile(workbook, "contacts_export.xlsx");
+
+    toast({
+      title: 'Export Successful',
+      description: `Exported ${filteredPeople.length} contacts.`
+    });
   };
 
   const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -261,7 +300,7 @@ export default function ContactsPage() {
     }
   };
 
-  const handleSavePerson = async (personData: Omit<Person, "id" | "progress" | "photoUrl"> & { photoUrl: string }) => {
+  const handleSavePerson = async (personData: Omit<Person, "id" | "progress">) => {
     try {
       if (editingPerson) {
         const updatedData = { ...editingPerson, ...personData };
@@ -425,6 +464,10 @@ export default function ContactsPage() {
                     <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
                       Import from Excel
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleExport}>
+                      Export to Excel
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleSampleDownload}>
                       Download Sample Excel
                     </DropdownMenuItem>
