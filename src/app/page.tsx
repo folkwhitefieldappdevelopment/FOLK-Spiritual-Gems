@@ -23,7 +23,7 @@ import { CreateUpdatePersonDialog } from "@/components/create-update-person-dial
 
 const migratePersonData = (person: any): Person => {
   // If a new field exists, assume it's already migrated
-  if (person.nativePlace !== undefined) {
+  if (person.enablerInTouchWith !== undefined) {
     return person as Person;
   }
   // Otherwise, it's an old record, migrate it to the new structure
@@ -42,6 +42,7 @@ const migratePersonData = (person: any): Person => {
     contactSource: '',
     chantingStatus: 'N/A',
     fromOtherCamp: false,
+    enablerInTouchWith: '',
     progress: (person.progress && Array.isArray(person.progress) && person.progress[0]?.answers) ? person.progress : createInitialProgress(),
   };
 };
@@ -129,6 +130,7 @@ export default function ContactsPage() {
               contactSource: String(row.contactSource || ""),
               chantingStatus: String(row.chantingStatus || ""),
               fromOtherCamp: String(row.fromOtherCamp).toLowerCase() === 'yes' || String(row.fromOtherCamp) === 'true',
+              enablerInTouchWith: '',
               photoUrl: `https://placehold.co/100x100.png`,
               progress: createInitialProgress(),
             };

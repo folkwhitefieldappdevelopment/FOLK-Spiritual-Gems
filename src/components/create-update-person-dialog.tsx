@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import type { Person } from "@/lib/types";
-import { Camera, Upload, Check, ChevronsUpDown } from "lucide-react";
+import { Camera, Upload } from "lucide-react";
 
 import {
   Dialog,
@@ -51,6 +51,7 @@ const personFormSchema = z.object({
   contactSource: z.string().optional(),
   chantingStatus: z.string().optional(),
   fromOtherCamp: z.boolean().default(false),
+  enablerInTouchWith: z.string().optional(),
 });
 
 
@@ -64,6 +65,10 @@ type CreateUpdatePersonDialogProps = {
 };
 
 const ageOptions = Array.from({ length: 25 }, (_, i) => i + 16);
+const enablerOptions = [
+  'Veeranna', 'Sarthak', 'Jayant', 'Rohit', 'Nitin', 'Abhishek', 'Nikhil', 'Ravi', 'Narayan'
+];
+
 
 export function CreateUpdatePersonDialog({
   isOpen,
@@ -87,6 +92,7 @@ export function CreateUpdatePersonDialog({
       contactSource: "",
       chantingStatus: "",
       fromOtherCamp: false,
+      enablerInTouchWith: "",
     },
   });
 
@@ -114,6 +120,7 @@ export function CreateUpdatePersonDialog({
           contactSource: person.contactSource,
           chantingStatus: person.chantingStatus,
           fromOtherCamp: person.fromOtherCamp,
+          enablerInTouchWith: person.enablerInTouchWith,
         });
         setPhotoPreview(person.photoUrl);
       } else {
@@ -130,6 +137,7 @@ export function CreateUpdatePersonDialog({
           contactSource: "",
           chantingStatus: "",
           fromOtherCamp: false,
+          enablerInTouchWith: "",
         });
         setPhotoPreview(null);
       }
@@ -221,6 +229,7 @@ export function CreateUpdatePersonDialog({
       sgRating: data.sgRating || "",
       contactSource: data.contactSource || "",
       chantingStatus: data.chantingStatus || "",
+      enablerInTouchWith: data.enablerInTouchWith || "",
       photoUrl:
         photoPreview ||
         person?.photoUrl ||
@@ -487,6 +496,27 @@ export function CreateUpdatePersonDialog({
                 />
               </div>
               
+              <FormField
+                control={form.control}
+                name="enablerInTouchWith"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Enabler in touch with</FormLabel>
+                     <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select an enabler" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {enablerOptions.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="fromOtherCamp"

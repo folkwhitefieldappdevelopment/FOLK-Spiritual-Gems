@@ -35,7 +35,7 @@ const createInitialProgress = (): ProgressCategoryAnswers[] => {
 };
 
 const migratePersonData = (person: any): Person => {
-  if (person.nativePlace !== undefined) {
+  if (person.enablerInTouchWith !== undefined) {
     return person as Person;
   }
   return {
@@ -53,6 +53,7 @@ const migratePersonData = (person: any): Person => {
     contactSource: '',
     chantingStatus: 'N/A',
     fromOtherCamp: false,
+    enablerInTouchWith: '',
     progress: (person.progress && Array.isArray(person.progress) && person.progress[0]?.answers) ? person.progress : createInitialProgress(),
   };
 };
@@ -248,6 +249,9 @@ export default function PersonDetailPage() {
 
                           <div className="font-semibold text-muted-foreground">From Other Camp</div>
                           <div>{person.fromOtherCamp ? 'Yes' : 'No'}</div>
+                          
+                          <div className="font-semibold text-muted-foreground">Enabler</div>
+                          <div>{person.enablerInTouchWith || 'N/A'}</div>
                       </div>
 
                     </CardContent>

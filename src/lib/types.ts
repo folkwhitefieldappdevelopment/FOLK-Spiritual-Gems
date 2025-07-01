@@ -28,6 +28,7 @@ export type Person = {
   contactSource: string;
   chantingStatus: string;
   fromOtherCamp: boolean;
+  enablerInTouchWith: string;
   progress: ProgressCategoryAnswers[];
 };
 

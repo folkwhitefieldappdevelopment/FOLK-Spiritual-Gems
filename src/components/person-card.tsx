@@ -2,7 +2,7 @@
 "use client";
 
 import Link from 'next/link';
-import { Phone, MapPin, Sunrise } from "lucide-react";
+import { User, Briefcase } from "lucide-react";
 import type { Person } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -43,16 +43,12 @@ export function PersonCard({ person }: PersonCardProps) {
         </CardHeader>
         <CardContent className="flex-grow space-y-3">
             <div className="flex items-center text-sm text-muted-foreground">
-              <Phone className="mr-2 h-4 w-4" />
-              <span className="truncate">{person.phone}</span>
+              <User className="mr-2 h-4 w-4" />
+              <span className="truncate">{person.age} years old</span>
             </div>
             <div className="flex items-center text-sm text-muted-foreground">
-                <MapPin className="mr-2 h-4 w-4" />
-                <span className="truncate">{person.nativePlace || 'N/A'}</span>
-            </div>
-             <div className="flex items-center text-sm text-muted-foreground">
-                <Sunrise className="mr-2 h-4 w-4" />
-                <span className="truncate">{person.chantingStatus || 'N/A'}</span>
+                <Briefcase className="mr-2 h-4 w-4" />
+                <span className="truncate">{person.occupation || 'N/A'}</span>
             </div>
             {person.progress && person.progress.length > 0 && (
             <div className="mt-4 pt-4 border-t space-y-2">
