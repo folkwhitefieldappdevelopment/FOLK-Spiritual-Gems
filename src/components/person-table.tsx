@@ -2,9 +2,8 @@
 "use client";
 
 import Link from 'next/link';
-import { MoreHorizontal, Mail, Phone, MapPin, Trash2, Edit } from "lucide-react";
+import { MoreHorizontal, Phone, MapPin, Trash2, Edit, Sunrise } from "lucide-react";
 import type { Person } from "@/lib/types";
-import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -14,7 +13,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -46,12 +44,6 @@ type PersonTableProps = {
   onDelete: (personId: string) => void;
 };
 
-const statusBadgeVariants = {
-  Active: "default",
-  Inactive: "destructive",
-  Pending: "secondary",
-} as const;
-
 export function PersonTable({ people, onEdit, onDelete }: PersonTableProps) {
   return (
     <TooltipProvider>
@@ -60,9 +52,9 @@ export function PersonTable({ people, onEdit, onDelete }: PersonTableProps) {
           <TableHeader>
             <TableRow>
               <TableHead className="w-[250px]">Name</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Contact</TableHead>
-              <TableHead>Location</TableHead>
+              <TableHead>Phone</TableHead>
+              <TableHead>Native Place</TableHead>
+              <TableHead>Chanting Status</TableHead>
               <TableHead className="w-[50px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -88,36 +80,29 @@ export function PersonTable({ people, onEdit, onDelete }: PersonTableProps) {
                   </Link>
                 </TableCell>
                 <TableCell>
-                  <Badge
-                    variant={statusBadgeVariants[person.status] || "default"}
-                  >
-                    {person.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col gap-1">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="flex items-center gap-2 truncate text-sm text-muted-foreground">
-                          <Mail className="h-4 w-4 shrink-0" />
-                          <span className="truncate">{person.email}</span>
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{person.email}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                    <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Phone className="h-4 w-4 shrink-0" />
-                      {person.phone}
-                    </span>
-                  </div>
+                  <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Phone className="h-4 w-4 shrink-0" />
+                    {person.phone}
+                  </span>
                 </TableCell>
                 <TableCell>
                   <span className="flex items-center gap-2 text-sm text-muted-foreground">
                     <MapPin className="h-4 w-4 shrink-0" />
-                    {person.location}
+                    {person.nativePlace || 'N/A'}
                   </span>
+                </TableCell>
+                <TableCell>
+                  <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="flex items-center gap-2 truncate text-sm text-muted-foreground">
+                          <Sunrise className="h-4 w-4 shrink-0" />
+                          <span className="truncate">{person.chantingStatus || 'N/A'}</span>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{person.chantingStatus || 'N/A'}</p>
+                      </TooltipContent>
+                    </Tooltip>
                 </TableCell>
                 <TableCell className="text-right">
                   <AlertDialog>

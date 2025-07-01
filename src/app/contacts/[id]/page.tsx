@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Mail, Phone, MapPin, Edit, Trash2 } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2 } from 'lucide-react';
 import type { Person, ProgressCategoryAnswers } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { checklistData } from '@/lib/data';
@@ -26,7 +26,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { CreateUpdatePersonDialog } from '@/components/create-update-person-dialog';
 import { ProgressTracker } from '@/components/progress-tracker';
-import { cn } from '@/lib/utils';
 
 const createInitialProgress = (): ProgressCategoryAnswers[] => {
   return checklistData.map((category) => ({
@@ -35,6 +34,28 @@ const createInitialProgress = (): ProgressCategoryAnswers[] => {
   }));
 };
 
+const migratePersonData = (person: any): Person => {
+  if (person.nativePlace !== undefined) {
+    return person as Person;
+  }
+  return {
+    id: person.id,
+    firstName: person.firstName,
+    lastName: person.lastName,
+    phone: person.phone || '',
+    photoUrl: person.photoUrl || 'https://placehold.co/100x100.png',
+    age: 25,
+    stayingWith: 'Family',
+    occupation: '',
+    rentDetails: '',
+    nativePlace: person.location || '',
+    sgRating: person.status || 'N/A',
+    contactSource: '',
+    chantingStatus: 'N/A',
+    fromOtherCamp: false,
+    progress: (person.progress && Array.isArray(person.progress) && person.progress[0]?.answers) ? person.progress : createInitialProgress(),
+  };
+};
 
 export default function PersonDetailPage() {
   const router = useRouter();
@@ -50,16 +71,8 @@ export default function PersonDetailPage() {
     try {
       const storedPeople = localStorage.getItem('people');
       if (storedPeople) {
-        const parsedPeople: Person[] = JSON.parse(storedPeople);
-        
-        const migratedPeople = parsedPeople.map((p) => {
-          // Migration logic: if progress is old format or missing, create the new one
-          if (!p.progress || !Array.isArray(p.progress) || p.progress.length === 0 || !p.progress[0]?.answers) {
-            return { ...p, progress: createInitialProgress() };
-          }
-          return p;
-        });
-
+        const parsedPeople = JSON.parse(storedPeople);
+        const migratedPeople = parsedPeople.map(migratePersonData);
         setPeople(migratedPeople);
         const currentPerson = migratedPeople.find((p) => p.id === personId);
         setPerson(currentPerson || null);
@@ -110,9 +123,7 @@ export default function PersonDetailPage() {
   const handleProgressChange = (catIndex: number, itemIndex: number, levelIndex: number, value: string) => {
     if (!person) return;
 
-    // Create a deep copy to avoid direct state mutation
     const newProgress = JSON.parse(JSON.stringify(person.progress));
-    
     newProgress[catIndex].answers[itemIndex][levelIndex] = value;
     
     const updatedPerson = { ...person, progress: newProgress };
@@ -135,12 +146,6 @@ export default function PersonDetailPage() {
       </div>
     );
   }
-
-  const statusColors = {
-    Active: 'bg-green-500',
-    Inactive: 'bg-red-500',
-    Pending: 'bg-yellow-500',
-  };
 
   return (
     <>
@@ -212,24 +217,37 @@ export default function PersonDetailPage() {
                       <h2 className="text-2xl font-bold">
                         {person.firstName} {person.lastName}
                       </h2>
-                      <div className="flex items-center gap-2 text-muted-foreground mt-1">
-                          <div className={cn("h-2.5 w-2.5 rounded-full", statusColors[person.status])} />
-                          <p>{person.status}</p>
-                      </div>
+                      <p className="text-muted-foreground mt-1">
+                          {person.sgRating || 'No rating'}
+                      </p>
 
-                      <div className="mt-6 w-full text-left space-y-3">
-                         <div className="flex items-center text-sm">
-                            <Mail className="mr-3 h-4 w-4 text-muted-foreground" />
-                            <span className="truncate">{person.email}</span>
-                        </div>
-                         <div className="flex items-center text-sm">
-                            <Phone className="mr-3 h-4 w-4 text-muted-foreground" />
-                            <span>{person.phone || 'N/A'}</span>
-                        </div>
-                         <div className="flex items-center text-sm">
-                            <MapPin className="mr-3 h-4 w-4 text-muted-foreground" />
-                            <span>{person.location || 'N/A'}</span>
-                        </div>
+                      <div className="mt-6 w-full text-left grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                          <div className="font-semibold text-muted-foreground">Phone</div>
+                          <div>{person.phone}</div>
+
+                          <div className="font-semibold text-muted-foreground">Age</div>
+                          <div>{person.age}</div>
+
+                          <div className="font-semibold text-muted-foreground">Staying With</div>
+                          <div>{person.stayingWith}</div>
+
+                          <div className="font-semibold text-muted-foreground">Occupation</div>
+                          <div>{person.occupation || 'N/A'}</div>
+
+                          <div className="font-semibold text-muted-foreground">Rent Details</div>
+                          <div>{person.rentDetails || 'N/A'}</div>
+
+                          <div className="font-semibold text-muted-foreground">Native Place</div>
+                          <div>{person.nativePlace || 'N/A'}</div>
+
+                          <div className="font-semibold text-muted-foreground">Contact Source</div>
+                          <div>{person.contactSource || 'N/A'}</div>
+
+                          <div className="font-semibold text-muted-foreground">Chanting Status</div>
+                          <div>{person.chantingStatus || 'N/A'}</div>
+
+                          <div className="font-semibold text-muted-foreground">From Other Camp</div>
+                          <div>{person.fromOtherCamp ? 'Yes' : 'No'}</div>
                       </div>
 
                     </CardContent>

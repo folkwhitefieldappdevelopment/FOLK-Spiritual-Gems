@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import type { Person } from "@/lib/types";
-import { Camera, Upload } from "lucide-react";
+import { Camera, Upload, Check, ChevronsUpDown } from "lucide-react";
 
 import {
   Dialog,
@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -35,15 +36,23 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
+import { Checkbox } from "./ui/checkbox";
 
 const personFormSchema = z.object({
   firstName: z.string().min(1, { message: "First name is required." }),
   lastName: z.string().min(1, { message: "Last name is required." }),
-  email: z.string().email({ message: "Invalid email address." }),
-  phone: z.string().optional(),
-  location: z.string().optional(),
-  status: z.enum(["Active", "Inactive", "Pending"]),
+  phone: z.string().regex(/^[6-9]\d{9}$/, { message: "Please enter a valid 10-digit Indian mobile number." }),
+  age: z.coerce.number().min(16, "Must be at least 16").max(40, "Must be at most 40"),
+  stayingWith: z.enum(["PG / Hostel", "Flat", "Family"]),
+  occupation: z.string().optional(),
+  rentDetails: z.string().optional(),
+  nativePlace: z.string().optional(),
+  sgRating: z.string().optional(),
+  contactSource: z.string().optional(),
+  chantingStatus: z.string().optional(),
+  fromOtherCamp: z.boolean().default(false),
 });
+
 
 type PersonFormValues = z.infer<typeof personFormSchema>;
 
@@ -53,6 +62,8 @@ type CreateUpdatePersonDialogProps = {
   onSave: (data: Omit<Person, "id" | "progress">) => void;
   person?: Person;
 };
+
+const ageOptions = Array.from({ length: 25 }, (_, i) => i + 16);
 
 export function CreateUpdatePersonDialog({
   isOpen,
@@ -66,10 +77,16 @@ export function CreateUpdatePersonDialog({
     defaultValues: {
       firstName: "",
       lastName: "",
-      email: "",
       phone: "",
-      location: "",
-      status: "Pending",
+      age: 18,
+      stayingWith: "Family",
+      occupation: "",
+      rentDetails: "",
+      nativePlace: "",
+      sgRating: "",
+      contactSource: "",
+      chantingStatus: "",
+      fromOtherCamp: false,
     },
   });
 
@@ -87,20 +104,32 @@ export function CreateUpdatePersonDialog({
         form.reset({
           firstName: person.firstName,
           lastName: person.lastName,
-          email: person.email,
           phone: person.phone,
-          location: person.location,
-          status: person.status,
+          age: person.age,
+          stayingWith: person.stayingWith,
+          occupation: person.occupation,
+          rentDetails: person.rentDetails,
+          nativePlace: person.nativePlace,
+          sgRating: person.sgRating,
+          contactSource: person.contactSource,
+          chantingStatus: person.chantingStatus,
+          fromOtherCamp: person.fromOtherCamp,
         });
         setPhotoPreview(person.photoUrl);
       } else {
         form.reset({
           firstName: "",
           lastName: "",
-          email: "",
           phone: "",
-          location: "",
-          status: "Pending",
+          age: 18,
+          stayingWith: "Family",
+          occupation: "",
+          rentDetails: "",
+          nativePlace: "",
+          sgRating: "",
+          contactSource: "",
+          chantingStatus: "",
+          fromOtherCamp: false,
         });
         setPhotoPreview(null);
       }
@@ -186,8 +215,12 @@ export function CreateUpdatePersonDialog({
   const onSubmit = (data: PersonFormValues) => {
     onSave({
       ...data,
-      phone: data.phone || "",
-      location: data.location || "",
+      occupation: data.occupation || "",
+      rentDetails: data.rentDetails || "",
+      nativePlace: data.nativePlace || "",
+      sgRating: data.sgRating || "",
+      contactSource: data.contactSource || "",
+      chantingStatus: data.chantingStatus || "",
       photoUrl:
         photoPreview ||
         person?.photoUrl ||
@@ -307,72 +340,176 @@ export function CreateUpdatePersonDialog({
                   )}
                 />
               </div>
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="john.doe@example.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone (Optional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="123-456-7890" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="location"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Location (Optional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="New York, USA" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+
+               <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Phone Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="9876543210" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                 <FormField
+                    control={form.control}
+                    name="age"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Age</FormLabel>
+                        <Select onValueChange={(value) => field.onChange(Number(value))} value={String(field.value)}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select age" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {ageOptions.map(age => <SelectItem key={age} value={String(age)}>{age}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
               </div>
+
               <FormField
                 control={form.control}
-                name="status"
+                name="stayingWith"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                    >
+                    <FormLabel>Staying At & With</FormLabel>
+                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select a status" />
+                          <SelectValue placeholder="Select accommodation" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="Active">Active</SelectItem>
-                        <SelectItem value="Inactive">Inactive</SelectItem>
-                        <SelectItem value="Pending">Pending</SelectItem>
+                        <SelectItem value="PG / Hostel">PG / Hostel</SelectItem>
+                        <SelectItem value="Flat">Flat</SelectItem>
+                        <SelectItem value="Family">Family</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="occupation"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Working / Studying At</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. Acme Corp" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="rentDetails"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>PG/Flat Rent</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. 5000/month" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="nativePlace"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Native</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. New Delhi" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="sgRating"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>SG Rating</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. A+" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                 <FormField
+                  control={form.control}
+                  name="contactSource"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contact Source</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. University" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="chantingStatus"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Chanting Status</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. 16 rounds" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <FormField
+                control={form.control}
+                name="fromOtherCamp"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        From another camp?
+                      </FormLabel>
+                      <FormDescription>
+                        Check this if the contact has come from another spiritual group or camp.
+                      </FormDescription>
+                    </div>
+                  </FormItem>
+                )}
+              />
+
               <DialogFooter>
                 <Button type="submit">Save changes</Button>
               </DialogFooter>

@@ -2,7 +2,7 @@
 "use client";
 
 import Link from 'next/link';
-import { Mail, Phone, MapPin } from "lucide-react";
+import { Phone, MapPin, Sunrise } from "lucide-react";
 import type { Person } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -16,12 +16,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 type PersonCardProps = {
   person: Person;
-};
-
-const statusColors = {
-  Active: "bg-green-500",
-  Inactive: "bg-red-500",
-  Pending: "bg-yellow-500",
 };
 
 export function PersonCard({ person }: PersonCardProps) {
@@ -41,34 +35,25 @@ export function PersonCard({ person }: PersonCardProps) {
             </AvatarFallback>
             </Avatar>
             <div className="flex-1">
-            <CardTitle className="text-xl">
-                {person.firstName} {person.lastName}
-            </CardTitle>
-            <div className="flex items-center gap-2">
-                <div
-                className={cn("h-2 w-2 rounded-full", statusColors[person.status])}
-                />
-                <CardDescription>{person.status}</CardDescription>
-            </div>
+              <CardTitle className="text-xl">
+                  {person.firstName} {person.lastName}
+              </CardTitle>
+              <CardDescription>{person.sgRating || 'No rating'}</CardDescription>
             </div>
         </CardHeader>
         <CardContent className="flex-grow space-y-3">
             <div className="flex items-center text-sm text-muted-foreground">
-            <Mail className="mr-2 h-4 w-4" />
-            <span className="truncate">{person.email}</span>
+              <Phone className="mr-2 h-4 w-4" />
+              <span className="truncate">{person.phone}</span>
             </div>
-            {person.phone && (
-                <div className="flex items-center text-sm text-muted-foreground">
-                    <Phone className="mr-2 h-4 w-4" />
-                    <span>{person.phone}</span>
-                </div>
-            )}
-            {person.location && (
-                <div className="flex items-center text-sm text-muted-foreground">
-                    <MapPin className="mr-2 h-4 w-4" />
-                    <span className="truncate">{person.location}</span>
-                </div>
-            )}
+            <div className="flex items-center text-sm text-muted-foreground">
+                <MapPin className="mr-2 h-4 w-4" />
+                <span className="truncate">{person.nativePlace || 'N/A'}</span>
+            </div>
+             <div className="flex items-center text-sm text-muted-foreground">
+                <Sunrise className="mr-2 h-4 w-4" />
+                <span className="truncate">{person.chantingStatus || 'N/A'}</span>
+            </div>
             {person.progress && person.progress.length > 0 && (
             <div className="mt-4 pt-4 border-t space-y-2">
                 <h4 className="text-sm font-semibold text-foreground mb-2">

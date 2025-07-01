@@ -17,11 +17,17 @@ export type Person = {
   id: string;
   firstName: string;
   lastName: string;
-  email: string;
   phone: string;
   photoUrl: string;
-  location: string;
-  status: 'Active' | 'Inactive' | 'Pending';
+  age: number;
+  stayingWith: 'PG / Hostel' | 'Flat' | 'Family';
+  occupation: string;
+  rentDetails: string;
+  nativePlace: string;
+  sgRating: string;
+  contactSource: string;
+  chantingStatus: string;
+  fromOtherCamp: boolean;
   progress: ProgressCategoryAnswers[];
 };
 
