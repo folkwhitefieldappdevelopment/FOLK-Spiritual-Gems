@@ -11,8 +11,8 @@ export function AppSidebar() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: "/", label: "Contact", icon: Users },
-    { href: "/groups", label: "Group", icon: UserSquare },
+    { href: "/", label: "Contacts", icon: Users },
+    { href: "/groups", label: "Groups", icon: UserSquare },
   ];
 
   return (

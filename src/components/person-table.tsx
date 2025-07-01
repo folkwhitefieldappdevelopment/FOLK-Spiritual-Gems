@@ -51,9 +51,9 @@ export function PersonTable({ people, onEdit, onDelete }: PersonTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[250px]">Name</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Native Place</TableHead>
+              <TableHead className="w-[200px] sm:w-[250px]">Name</TableHead>
+              <TableHead className="hidden sm:table-cell">Phone</TableHead>
+              <TableHead className="hidden md:table-cell">Native Place</TableHead>
               <TableHead>Chanting Status</TableHead>
               <TableHead className="w-[50px] text-right">Actions</TableHead>
             </TableRow>
@@ -79,13 +79,13 @@ export function PersonTable({ people, onEdit, onDelete }: PersonTableProps) {
                     </div>
                   </Link>
                 </TableCell>
-                <TableCell>
+                <TableCell className="hidden sm:table-cell">
                   <span className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Phone className="h-4 w-4 shrink-0" />
                     {person.phone}
                   </span>
                 </TableCell>
-                <TableCell>
+                <TableCell className="hidden md:table-cell">
                   <span className="flex items-center gap-2 text-sm text-muted-foreground">
                     <MapPin className="h-4 w-4 shrink-0" />
                     {person.nativePlace || 'N/A'}

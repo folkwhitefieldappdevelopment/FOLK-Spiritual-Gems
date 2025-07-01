@@ -139,7 +139,7 @@ export function AdminModeToggle() {
     <>
       <div className="flex items-center space-x-2">
         {isAdmin ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-        <Label htmlFor="admin-mode-switch">Admin Mode</Label>
+        <Label htmlFor="admin-mode-switch" className="hidden sm:inline">Admin Mode</Label>
         <Switch
           id="admin-mode-switch"
           checked={isAdmin}

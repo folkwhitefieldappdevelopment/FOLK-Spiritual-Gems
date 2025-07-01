@@ -450,14 +450,13 @@ export default function ContactsPage() {
             title="Contacts"
             description={`Manage data for ${filteredPeople.length} people.`}
           >
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
               <AdminModeToggle />
-              <div className="flex items-center gap-2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <Upload className="mr-2 h-4 w-4" />
-                      Import / Export
+                    <Button variant="outline" size="sm" className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3">
+                      <Upload className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Import/Export</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
@@ -474,11 +473,10 @@ export default function ContactsPage() {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                <Button size="sm" onClick={handleAddPerson}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Person
+                <Button size="sm" onClick={handleAddPerson} className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3">
+                  <PlusCircle className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Add Person</span>
                 </Button>
-              </div>
             </div>
           </PageHeader>
           <main className="flex-1 overflow-y-auto p-4 sm:p-6">
