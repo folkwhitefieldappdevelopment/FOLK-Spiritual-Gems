@@ -1,7 +1,9 @@
 
 "use client";
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { PlusCircle } from "lucide-react";
+import { useAuth } from "@/contexts/auth-context";
 import type { Group } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { getGroups, createGroup, updateGroup, deleteGroup } from "@/services/groups-service";
@@ -14,6 +16,8 @@ import { CreateUpdateGroupDialog } from "@/components/create-update-group-dialog
 import { FirebaseConfigError } from "@/components/firebase-config-error";
 
 export default function GroupsPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const { toast } = useToast();
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -24,6 +28,13 @@ export default function GroupsPage() {
   const [configError, setConfigError] = React.useState(false);
 
   React.useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
+
+  React.useEffect(() => {
+    if (!user) return;
     const fetchGroups = async () => {
       setIsLoading(true);
       try {
@@ -45,7 +56,7 @@ export default function GroupsPage() {
       }
     };
     fetchGroups();
-  }, [toast]);
+  }, [toast, user]);
 
   const handleCreateGroup = () => {
     setEditingGroup(undefined);
@@ -102,6 +113,14 @@ export default function GroupsPage() {
     }
   };
   
+  if (authLoading || !user) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        Loading...
+      </div>
+    );
+  }
+
   const renderContent = () => {
     if (isLoading) {
       return <div className="text-center p-12">Loading groups...</div>

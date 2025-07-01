@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import {
   List,
   PlusCircle,
@@ -10,6 +11,7 @@ import {
   Upload,
 } from "lucide-react";
 import { read, utils, writeFile } from "xlsx";
+import { useAuth } from "@/contexts/auth-context";
 import { createInitialProgress } from "@/lib/data";
 import type { Person } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -46,7 +48,10 @@ import {
 import { getEnablers, getContactSources } from "@/services/settings-service";
 
 export default function ContactsPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const { toast } = useToast();
+
   const [people, setPeople] = React.useState<Person[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [view, setView] = React.useState<"card" | "table">("card");
@@ -66,8 +71,16 @@ export default function ContactsPage() {
   const [enablerOptions, setEnablerOptions] = React.useState<string[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
   const [configError, setConfigError] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
   
   React.useEffect(() => {
+    if (!user) return; // Don't fetch data if not logged in
+
     const fetchData = async () => {
       setIsLoading(true);
       try {
@@ -95,7 +108,7 @@ export default function ContactsPage() {
       }
     };
     fetchData();
-  }, [toast]);
+  }, [toast, user]);
 
   const filteredPeople = React.useMemo(() => {
     return people.filter((person) => {
@@ -336,6 +349,14 @@ export default function ContactsPage() {
     }
   };
   
+  if (authLoading || !user) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        Loading...
+      </div>
+    );
+  }
+
   if (configError) {
     return <FirebaseConfigError />;
   }

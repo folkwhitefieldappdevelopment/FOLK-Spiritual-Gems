@@ -8,6 +8,7 @@ import { Menu, LayoutDashboard, Users, UserSquare, Settings } from 'lucide-react
 import { Button } from './ui/button';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 import { cn } from '@/lib/utils';
+import { UserNav } from './user-nav';
 
 type PageHeaderProps = {
   title: string;
@@ -76,6 +77,7 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
       </div>
       <div className="flex items-center gap-2">
         {children}
+        <UserNav />
       </div>
     </header>
   );

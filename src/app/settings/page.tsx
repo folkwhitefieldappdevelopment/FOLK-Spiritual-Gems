@@ -2,7 +2,9 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 
 import { AppSidebar } from '@/components/app-sidebar';
@@ -47,6 +49,8 @@ type DialogMode = 'add' | 'edit';
 type ItemType = 'enabler' | 'source';
 
 export default function SettingsPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(true);
   const [configError, setConfigError] = React.useState(false);
@@ -61,6 +65,13 @@ export default function SettingsPage() {
   const [itemName, setItemName] = React.useState('');
 
   React.useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
+
+  React.useEffect(() => {
+    if (!user) return;
     const fetchData = async () => {
       setIsLoading(true);
       setConfigError(false);
@@ -87,7 +98,7 @@ export default function SettingsPage() {
       }
     };
     fetchData();
-  }, [toast]);
+  }, [toast, user]);
 
   const openDialog = (mode: DialogMode, type: ItemType, name = '') => {
     setDialogMode(mode);
@@ -146,6 +157,14 @@ export default function SettingsPage() {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not delete the item.' });
     }
   };
+
+  if (authLoading || !user) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        Loading...
+      </div>
+    );
+  }
 
   if (configError) {
     return <FirebaseConfigError />;
