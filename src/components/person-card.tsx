@@ -82,6 +82,24 @@ export function PersonCard({ person }: PersonCardProps) {
            <MapPin className="mr-2 h-4 w-4" />
            <span>{person.location}</span>
          </div>
+         {person.checklist && person.checklist.length > 0 && (
+          <div className="mt-4 pt-4 border-t space-y-2">
+             <h4 className="text-sm font-semibold text-foreground mb-1">Contact Progress</h4>
+            {person.checklist.map((item) => (
+              <div key={item.id} className="flex items-center text-sm">
+                <span className={cn(
+                  "h-2 w-2 rounded-full mr-2 shrink-0",
+                  item.isChecked ? "bg-green-500" : "bg-red-500"
+                )} />
+                <span className={cn(
+                  item.isChecked ? "text-foreground" : "text-muted-foreground"
+                )}>
+                  {item.statement}
+                </span>
+              </div>
+            ))}
+          </div>
+         )}
       </CardContent>
     </Card>
   );

@@ -1,4 +1,12 @@
-import type { Person, Group } from './types';
+import type { Person, Group, ChecklistItem } from './types';
+
+const baseChecklist: Omit<ChecklistItem, 'isChecked'>[] = [
+  { id: 'c1', statement: 'Initial contact made' },
+  { id: 'c2', statement: 'Follow-up email sent' },
+  { id: 'c3', statement: 'Product demo scheduled' },
+  { id: 'c4', statement: 'Proposal sent' },
+  { id: 'c5', statement: 'Contract signed' },
+];
 
 export const mockPeople: Person[] = [
   {
@@ -10,6 +18,13 @@ export const mockPeople: Person[] = [
     photoUrl: 'https://placehold.co/100x100.png',
     location: 'New York, USA',
     status: 'Active',
+    checklist: [
+      { ...baseChecklist[0], isChecked: true },
+      { ...baseChecklist[1], isChecked: true },
+      { ...baseChecklist[2], isChecked: true },
+      { ...baseChecklist[3], isChecked: false },
+      { ...baseChecklist[4], isChecked: false },
+    ]
   },
   {
     id: '2',
@@ -20,6 +35,13 @@ export const mockPeople: Person[] = [
     photoUrl: 'https://placehold.co/100x100.png',
     location: 'London, UK',
     status: 'Active',
+    checklist: [
+      { ...baseChecklist[0], isChecked: true },
+      { ...baseChecklist[1], isChecked: true },
+      { ...baseChecklist[2], isChecked: true },
+      { ...baseChecklist[3], isChecked: true },
+      { ...baseChecklist[4], isChecked: true },
+    ]
   },
   {
     id: '3',
@@ -30,6 +52,13 @@ export const mockPeople: Person[] = [
     photoUrl: 'https://placehold.co/100x100.png',
     location: 'Sydney, Australia',
     status: 'Inactive',
+    checklist: [
+      { ...baseChecklist[0], isChecked: true },
+      { ...baseChecklist[1], isChecked: false },
+      { ...baseChecklist[2], isChecked: false },
+      { ...baseChecklist[3], isChecked: false },
+      { ...baseChecklist[4], isChecked: false },
+    ]
   },
   {
     id: '4',
@@ -40,6 +69,13 @@ export const mockPeople: Person[] = [
     photoUrl: 'https://placehold.co/100x100.png',
     location: 'Toronto, Canada',
     status: 'Pending',
+    checklist: [
+      { ...baseChecklist[0], isChecked: true },
+      { ...baseChecklist[1], isChecked: true },
+      { ...baseChecklist[2], isChecked: false },
+      { ...baseChecklist[3], isChecked: false },
+      { ...baseChecklist[4], isChecked: false },
+    ]
   },
   {
     id: '5',
@@ -50,6 +86,13 @@ export const mockPeople: Person[] = [
     photoUrl: 'https://placehold.co/100x100.png',
     location: 'Paris, France',
     status: 'Active',
+    checklist: [
+      { ...baseChecklist[0], isChecked: true },
+      { ...baseChecklist[1], isChecked: true },
+      { ...baseChecklist[2], isChecked: true },
+      { ...baseChecklist[3], isChecked: true },
+      { ...baseChecklist[4], isChecked: false },
+    ]
   },
   {
     id: '6',
@@ -60,6 +103,13 @@ export const mockPeople: Person[] = [
     photoUrl: 'https://placehold.co/100x100.png',
     location: 'Berlin, Germany',
     status: 'Active',
+    checklist: [
+        { ...baseChecklist[0], isChecked: true },
+        { ...baseChecklist[1], isChecked: true },
+        { ...baseChecklist[2], isChecked: false },
+        { ...baseChecklist[3], isChecked: false },
+        { ...baseChecklist[4], isChecked: false },
+      ]
   },
     {
     id: '7',
@@ -70,6 +120,13 @@ export const mockPeople: Person[] = [
     photoUrl: 'https://placehold.co/100x100.png',
     location: 'Tokyo, Japan',
     status: 'Inactive',
+    checklist: [
+        { ...baseChecklist[0], isChecked: false },
+        { ...baseChecklist[1], isChecked: false },
+        { ...baseChecklist[2], isChecked: false },
+        { ...baseChecklist[3], isChecked: false },
+        { ...baseChecklist[4], isChecked: false },
+      ]
   },
   {
     id: '8',
@@ -80,6 +137,13 @@ export const mockPeople: Person[] = [
     photoUrl: 'https://placehold.co/100x100.png',
     location: 'Madrid, Spain',
     status: 'Pending',
+    checklist: [
+        { ...baseChecklist[0], isChecked: true },
+        { ...baseChecklist[1], isChecked: true },
+        { ...baseChecklist[2], isChecked: true },
+        { ...baseChecklist[3], isChecked: false },
+        { ...baseChecklist[4], isChecked: false },
+      ]
   },
 ];
 

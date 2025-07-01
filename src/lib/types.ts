@@ -1,3 +1,9 @@
+export type ChecklistItem = {
+  id: string;
+  statement: string;
+  isChecked: boolean;
+};
+
 export type Person = {
   id: string;
   firstName: string;
@@ -7,6 +13,7 @@ export type Person = {
   photoUrl: string;
   location: string;
   status: 'Active' | 'Inactive' | 'Pending';
+  checklist: ChecklistItem[];
 };
 
 export type Group = {
