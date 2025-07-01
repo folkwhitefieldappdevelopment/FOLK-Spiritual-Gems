@@ -38,10 +38,13 @@ export default function LoginPage() {
               <Input id="password" type="password" required />
             </div>
           </CardContent>
-          <CardFooter>
+          <CardFooter className="flex flex-col items-center gap-2">
             <Button className="w-full" type="submit">
               Sign in
             </Button>
+            <p className="text-xs text-muted-foreground">
+              Spiritual Gems is always free.
+            </p>
           </CardFooter>
         </form>
       </Card>
