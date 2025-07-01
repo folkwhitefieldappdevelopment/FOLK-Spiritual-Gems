@@ -10,7 +10,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyBNPDxhvkC-80BBCkfmo1FI3tVf3xSCkmM",
   authDomain: "personal-data-hub-y5fe0.firebaseapp.com",
   projectId: "personal-data-hub-y5fe0",
-  storageBucket: "personal-data-hub-y5fe0.appspot.com",
+  storageBucket: "personal-data-hub-y5fe0.firebasestorage.app",
   messagingSenderId: "377269984088",
   appId: "1:377269984088:web:0ed631cb9a448a2845a32d"
 };
