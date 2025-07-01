@@ -7,12 +7,12 @@ import { getFirestore } from "firebase/firestore";
 // For more info, see: https://firebase.google.com/docs/web/setup#available-libraries
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyBNPDxhvkC-80BBCkfmo1FI3tVf3xSCkmM",
+  authDomain: "personal-data-hub-y5fe0.firebaseapp.com",
+  projectId: "personal-data-hub-y5fe0",
+  storageBucket: "personal-data-hub-y5fe0.appspot.com",
+  messagingSenderId: "377269984088",
+  appId: "1:377269984088:web:0ed631cb9a448a2845a32d"
 };
 
 // Initialize Firebase
