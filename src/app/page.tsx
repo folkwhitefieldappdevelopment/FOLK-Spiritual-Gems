@@ -8,6 +8,8 @@ import {
   Search,
   LayoutGrid,
   Upload,
+  Briefcase,
+  Sunrise,
 } from "lucide-react";
 import { read, utils, writeFile } from "xlsx";
 import { createInitialProgress } from "@/lib/data";
@@ -441,16 +443,24 @@ export default function ContactsPage() {
                         {contactSourceOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                     </SelectContent>
                 </Select>
-                <Input 
-                    placeholder="Filter by Occupation"
-                    value={occupationFilter}
-                    onChange={(e) => setOccupationFilter(e.target.value)}
-                />
-                <Input 
-                    placeholder="Filter by Chanting Status"
-                    value={chantingFilter}
-                    onChange={(e) => setChantingFilter(e.target.value)}
-                />
+                <div className="relative">
+                  <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                      placeholder="Filter by Occupation"
+                      value={occupationFilter}
+                      onChange={(e) => setOccupationFilter(e.target.value)}
+                      className="pl-10"
+                  />
+                </div>
+                <div className="relative">
+                  <Sunrise className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                      placeholder="Filter by Chanting Status"
+                      value={chantingFilter}
+                      onChange={(e) => setChantingFilter(e.target.value)}
+                      className="pl-10"
+                  />
+                </div>
                 <Button variant="outline" onClick={clearFilters}>Clear Filters</Button>
             </div>
         </div>

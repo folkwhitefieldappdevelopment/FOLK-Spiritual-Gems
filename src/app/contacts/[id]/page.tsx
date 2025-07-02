@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Edit, Trash2 } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Phone } from 'lucide-react';
 import type { Person, ProgressCategoryAnswers, ProgressLevelAnswers, CustomField } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAdmin } from '@/contexts/admin-context';
@@ -295,7 +295,8 @@ export default function PersonDetailPage() {
                       <div className="mt-6 w-full text-left grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                           <div className="font-semibold text-muted-foreground">Phone</div>
                           <div>
-                            <a href={`tel:${person.phone}`} className="text-primary hover:underline">
+                            <a href={`tel:${person.phone}`} className="flex items-center gap-2 text-primary hover:underline">
+                              <Phone className="h-4 w-4" />
                               {person.phone}
                             </a>
                           </div>
