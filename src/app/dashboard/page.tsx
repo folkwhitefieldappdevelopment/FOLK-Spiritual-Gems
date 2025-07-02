@@ -72,9 +72,9 @@ export default function DashboardPage() {
     return null;
   }
 
-  const { totalContacts, newThisWeek, contactsByEnabler, newContactsByWeek, contactsByChantingStatus } = React.useMemo(() => {
+  const { totalContacts, newThisWeek, contactsByEnabler, newContactsByWeek, contactsByChantingStatus, contactsByOccupation } = React.useMemo(() => {
     if (!people.length) {
-      return { totalContacts: 0, newThisWeek: 0, contactsByEnabler: [], newContactsByWeek: [], contactsByChantingStatus: [] };
+      return { totalContacts: 0, newThisWeek: 0, contactsByEnabler: [], newContactsByWeek: [], contactsByChantingStatus: [], contactsByOccupation: [] };
     }
     
     // Total & New This Week
@@ -124,12 +124,21 @@ export default function DashboardPage() {
     });
     const chantingData = Array.from(chantingMap.entries()).map(([name, value]) => ({ name, value }));
 
+    // Contacts by Occupation Status
+    const occupationMap = new Map<string, number>();
+    people.forEach(p => {
+      const status = p.occupation || 'Not specified';
+      occupationMap.set(status, (occupationMap.get(status) || 0) + 1);
+    });
+    const occupationData = Array.from(occupationMap.entries()).map(([name, value]) => ({ name, value }));
+
     return { 
       totalContacts: people.length,
       newThisWeek: newThisWeekCount,
       contactsByEnabler: enablerData,
       newContactsByWeek: newContactsByWeekData,
-      contactsByChantingStatus: chantingData
+      contactsByChantingStatus: chantingData,
+      contactsByOccupation: occupationData
     };
   }, [people]);
 
@@ -229,6 +238,41 @@ export default function DashboardPage() {
                 </PieChart>
               </ChartContainer>
             </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-3">
+          <CardHeader>
+            <CardTitle>By Occupation Status</CardTitle>
+            <CardDescription>
+              Breakdown of contacts by their current occupation.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={{}} className="h-[300px] w-full">
+              <PieChart>
+                <Tooltip content={<ChartTooltipContent nameKey="name" />} />
+                <Legend content={<ChartLegendContent />} />
+                <Pie
+                  data={contactsByOccupation}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={80}
+                  labelLine={false}
+                  label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                >
+                  {contactsByOccupation.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={CHART_COLORS[index % CHART_COLORS.length]}
+                    />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ChartContainer>
+          </CardContent>
         </Card>
 
       </div>
