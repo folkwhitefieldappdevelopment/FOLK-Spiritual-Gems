@@ -4,7 +4,12 @@
 import * as React from 'react';
 import { type User } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
-import { signInWithPopup, signOut as firebaseSignOut } from 'firebase/auth';
+import {
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  signOut as firebaseSignOut,
+} from 'firebase/auth';
 
 type AuthContextType = {
   user: User | null;
@@ -20,19 +25,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
+    // onAuthStateChanged is the primary listener for auth state.
+    // It will fire when the user is signed in (after popup or redirect) or signed out.
     const unsubscribe = auth.onAuthStateChanged(user => {
       setUser(user);
       setLoading(false);
     });
+
+    // We also check for a redirect result on initial load.
+    // This is to handle any errors that might have occurred during the redirect.
+    // The user object itself will be set by the onAuthStateChanged listener.
+    getRedirectResult(auth)
+      .catch(error => {
+        // This catches errors from the redirect flow, e.g., if the user
+        // cancels the sign-in on the Google page.
+        console.error("Error from sign-in redirect", error);
+      });
 
     return () => unsubscribe();
   }, []);
 
   const signInWithGoogle = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      // Use redirect for mobile devices as popups can be problematic.
+      // Use popup for desktop for a smoother UX without a full page reload.
+      const isMobile = window.matchMedia("(max-width: 767px)").matches;
+
+      if (isMobile) {
+        await signInWithRedirect(auth, googleProvider);
+      } else {
+        await signInWithPopup(auth, googleProvider);
+      }
     } catch (error) {
-      console.error('Error signing in with Google', error);
+      // This will primarily catch errors from signInWithPopup, such as the user closing the popup.
+      console.error('Error initiating sign in with Google', error);
       throw error;
     }
   };
