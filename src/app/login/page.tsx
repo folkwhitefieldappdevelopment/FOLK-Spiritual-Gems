@@ -55,6 +55,13 @@ export default function LoginPage() {
       console.error('Google sign-in error', error);
       const errorMessage = error.message || '';
       const errorCode = error.code || '';
+      
+      // This error code means the user closed the popup.
+      // We can safely ignore it and just reset the button state.
+      if (errorCode === 'auth/popup-closed-by-user') {
+        setIsSigningIn(false);
+        return;
+      }
 
       if (
         errorCode === 'auth/unauthorized-domain' ||
