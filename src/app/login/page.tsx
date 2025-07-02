@@ -52,16 +52,18 @@ export default function LoginPage() {
       await signInWithGoogle();
       // The useEffect will handle the redirection
     } catch (error: any) {
-      console.error('Google sign-in error', error);
-      const errorMessage = error.message || '';
       const errorCode = error.code || '';
       
       // This error code means the user closed the popup.
-      // We can safely ignore it and just reset the button state.
+      // We can safely ignore it and just reset the button state without logging an error.
       if (errorCode === 'auth/popup-closed-by-user') {
         setIsSigningIn(false);
         return;
       }
+      
+      // For all other errors, log them and handle them.
+      console.error('Google sign-in error', error);
+      const errorMessage = error.message || '';
 
       if (
         errorCode === 'auth/unauthorized-domain' ||
