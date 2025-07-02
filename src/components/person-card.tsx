@@ -99,6 +99,12 @@ const getProgressColor = (score: number): string => {
 export function PersonCard({ person }: PersonCardProps) {
   const { isAdmin } = useAdmin();
 
+  let occupationDisplay = person.occupation;
+  if ((person.occupation === 'Working' || person.occupation === 'Student') && person.organisation) {
+    occupationDisplay = `${person.occupation} at ${person.organisation}`;
+  }
+
+
   return (
     <Link href={`/contacts/${person.id}`} className="block transition-all hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg">
         <Card className="flex flex-col h-full">
@@ -128,7 +134,7 @@ export function PersonCard({ person }: PersonCardProps) {
             </div>
             <div className="flex items-center text-sm text-muted-foreground">
                 <Briefcase className="mr-2 h-4 w-4" />
-                <span className="truncate">{person.occupation || 'N/A'}</span>
+                <span className="truncate">{occupationDisplay || 'N/A'}</span>
             </div>
             {isAdmin && person.progress && person.progress.length > 0 && (
             <div className="mt-4 pt-4 border-t space-y-2">

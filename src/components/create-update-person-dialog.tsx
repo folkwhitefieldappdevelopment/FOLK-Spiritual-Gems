@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import type { Person, CustomField } from "@/lib/types";
+import { occupationStatuses } from "@/lib/types";
 import { Camera, Upload, SwitchCamera } from "lucide-react";
 import { getEnablers, getContactSources, getCustomPersonFields } from "@/services/settings-service";
 
@@ -51,7 +52,8 @@ const createPersonFormSchema = (allPeople: Person[], currentPersonId?: string) =
     phone: z.string().regex(/^[6-9]\d{9}$/, { message: "Please enter a valid 10-digit Indian mobile number." }),
     age: z.coerce.number().min(16, "Must be at least 16").max(40, "Must be at most 40"),
     stayingWith: z.enum(["PG / Hostel", "Flat", "Family"]),
-    occupation: z.string().optional(),
+    occupation: z.enum(occupationStatuses),
+    organisation: z.string().optional(),
     rentDetails: z.string().optional(),
     nativePlace: z.string().optional(),
     sgRating: z.coerce.number().min(0).max(10).default(0),
@@ -100,7 +102,8 @@ export function CreateUpdatePersonDialog({
       phone: "",
       age: 18,
       stayingWith: "Family",
-      occupation: "",
+      occupation: "Working",
+      organisation: "",
       rentDetails: "",
       nativePlace: "",
       sgRating: 0,
@@ -146,15 +149,18 @@ export function CreateUpdatePersonDialog({
     if (isOpen) {
       loadOptions();
 
-      // Reset form with person data or clear it
       if (person) {
+        // This logic handles migration from the old 'occupation' string field
+        const isStandardOccupation = occupationStatuses.includes(person.occupation);
+
         form.reset({
           firstName: person.firstName,
           lastName: person.lastName,
           phone: person.phone,
           age: person.age,
           stayingWith: person.stayingWith,
-          occupation: person.occupation,
+          occupation: isStandardOccupation ? person.occupation : 'Working',
+          organisation: person.organisation || (!isStandardOccupation ? person.occupation : ''),
           rentDetails: person.rentDetails,
           nativePlace: person.nativePlace,
           sgRating: person.sgRating || 0,
@@ -172,7 +178,8 @@ export function CreateUpdatePersonDialog({
           phone: "",
           age: 18,
           stayingWith: "Family",
-          occupation: "",
+          occupation: "Working",
+          organisation: "",
           rentDetails: "",
           nativePlace: "",
           sgRating: 0,
@@ -279,7 +286,7 @@ export function CreateUpdatePersonDialog({
   const onSubmit = (data: PersonFormValues) => {
     onSave({
       ...data,
-      occupation: data.occupation || "",
+      organisation: data.organisation || "",
       rentDetails: data.rentDetails || "",
       nativePlace: data.nativePlace || "",
       contactSource: data.contactSource || "",
@@ -503,30 +510,52 @@ export function CreateUpdatePersonDialog({
                       name="occupation"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Working / Studying At</FormLabel>
-                          <FormControl>
-                            <Input placeholder="e.g. Acme Corp" {...field} />
-                          </FormControl>
-                          <FormMessage />
+                            <FormLabel>Occupation Status</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    <SelectItem value="Working">Working</SelectItem>
+                                    <SelectItem value="Student">Student</SelectItem>
+                                    <SelectItem value="Searching for job">Searching for job</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
                         </FormItem>
                       )}
                     />
                     <FormField
                       control={form.control}
-                      name="rentDetails"
+                      name="organisation"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>PG/Flat Rent</FormLabel>
-                          <FormControl>
-                            <Input placeholder="e.g. 5000/month" {...field} />
-                          </FormControl>
-                          <FormMessage />
+                            <FormLabel>Organisation Name</FormLabel>
+                            <FormControl>
+                                <Input placeholder="e.g. Acme Corp" {...field} />
+                            </FormControl>
+                            <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField
+                        control={form.control}
+                        name="rentDetails"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>PG/Flat Rent</FormLabel>
+                            <FormControl>
+                                <Input placeholder="e.g. 5000/month" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
                     <FormField
                       control={form.control}
                       name="nativePlace"
@@ -540,10 +569,12 @@ export function CreateUpdatePersonDialog({
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="sgRating"
-                      render={({ field }) => (
+                  </div>
+                  
+                  <FormField
+                    control={form.control}
+                    name="sgRating"
+                    render={({ field }) => (
                         <FormItem>
                             <FormLabel>SG Rating</FormLabel>
                             <Select
@@ -564,9 +595,8 @@ export function CreateUpdatePersonDialog({
                             </Select>
                             <FormMessage />
                         </FormItem>
-                      )}
+                    )}
                     />
-                  </div>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField

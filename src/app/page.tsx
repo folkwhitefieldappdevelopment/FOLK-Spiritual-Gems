@@ -14,6 +14,7 @@ import {
 import { read, utils, writeFile } from "xlsx";
 import { createInitialProgress } from "@/lib/data";
 import type { Person } from "@/lib/types";
+import { occupationStatuses } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -115,9 +116,7 @@ export default function ContactsPage() {
       
       const sourceMatch = !contactSourceFilter || person.contactSource === contactSourceFilter;
 
-      const occupationMatch =
-        !occupationFilter ||
-        person.occupation.toLowerCase().includes(occupationFilter.toLowerCase());
+      const occupationMatch = !occupationFilter || person.occupation === occupationFilter;
       
       const chantingMatch =
         !chantingFilter ||
@@ -166,7 +165,7 @@ export default function ContactsPage() {
   const handleSampleDownload = () => {
     const headers = [
       "firstName", "lastName", "phone", "age", "stayingWith",
-      "occupation", "rentDetails", "nativePlace", "sgRating",
+      "occupation", "organisation", "rentDetails", "nativePlace", "sgRating",
       "contactSource", "chantingStatus", "fromOtherCamp", "enablerInTouchWith"
     ];
     const dummyContact = [{
@@ -175,7 +174,8 @@ export default function ContactsPage() {
       phone: "9876543210",
       age: 25,
       stayingWith: "PG / Hostel",
-      occupation: "Software Engineer",
+      occupation: "Working",
+      organisation: "Acme Inc.",
       rentDetails: "7000/month",
       nativePlace: "Mumbai",
       sgRating: 8,
@@ -208,6 +208,7 @@ export default function ContactsPage() {
         age: p.age,
         stayingWith: p.stayingWith,
         occupation: p.occupation,
+        organisation: p.organisation,
         rentDetails: p.rentDetails,
         nativePlace: p.nativePlace,
         sgRating: p.sgRating || 0,
@@ -258,6 +259,8 @@ export default function ContactsPage() {
             const rating = parseInt(String(row.sgRating), 10);
             const isValidRating = !isNaN(rating) && rating >= 0 && rating <= 10;
             const phone = String(row.phone).replace(/\s+/g, '');
+            const occupation = occupationStatuses.includes(row.occupation) ? row.occupation : "Working";
+
 
             return {
               firstName: String(row.firstName),
@@ -265,7 +268,8 @@ export default function ContactsPage() {
               phone,
               age: isValidAge ? age : 25,
               stayingWith: stayingWith,
-              occupation: String(row.occupation || ""),
+              occupation: occupation,
+              organisation: String(row.organisation || ""),
               rentDetails: String(row.rentDetails || ""),
               nativePlace: String(row.nativePlace || ""),
               sgRating: isValidRating ? rating : 0,
@@ -464,15 +468,15 @@ export default function ContactsPage() {
                         {contactSourceOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                     </SelectContent>
                 </Select>
-                <div className="relative">
-                  <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                      placeholder="Filter by Occupation"
-                      value={occupationFilter}
-                      onChange={(e) => setOccupationFilter(e.target.value)}
-                      className="pl-10"
-                  />
-                </div>
+                <Select value={occupationFilter} onValueChange={(value) => setOccupationFilter(value === '__all__' ? '' : value)}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Filter by Occupation" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="__all__">All Occupations</SelectItem>
+                        {occupationStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    </SelectContent>
+                </Select>
                 <div className="relative">
                   <Sunrise className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input 

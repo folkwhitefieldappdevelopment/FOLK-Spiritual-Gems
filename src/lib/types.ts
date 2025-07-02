@@ -23,6 +23,9 @@ export type ProgressCategoryAnswers = {
 export const customFieldTypes = ['text', 'textarea', 'number', 'date', 'boolean'] as const;
 export type CustomFieldType = (typeof customFieldTypes)[number];
 
+export const occupationStatuses = ['Working', 'Student', 'Searching for job'] as const;
+export type OccupationStatus = (typeof occupationStatuses)[number];
+
 export type Person = {
   id: string;
   firstName: string;
@@ -31,7 +34,8 @@ export type Person = {
   photoUrl: string;
   age: number;
   stayingWith: 'PG / Hostel' | 'Flat' | 'Family';
-  occupation: string;
+  occupation: OccupationStatus;
+  organisation: string;
   rentDetails: string;
   nativePlace: string;
   sgRating: number;

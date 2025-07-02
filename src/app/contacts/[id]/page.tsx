@@ -52,6 +52,8 @@ export default function PersonDetailPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [configError, setConfigError] = React.useState(false);
+  const [allPeople, setAllPeople] = React.useState<Person[]>([]);
+
 
   React.useEffect(() => {
     if (!personId) return;
@@ -307,8 +309,11 @@ export default function PersonDetailPage() {
                           <div className="font-semibold text-muted-foreground">Staying With</div>
                           <div>{person.stayingWith}</div>
 
-                          <div className="font-semibold text-muted-foreground">Occupation</div>
+                          <div className="font-semibold text-muted-foreground">Occupation Status</div>
                           <div>{person.occupation || 'N/A'}</div>
+
+                          <div className="font-semibold text-muted-foreground">Organisation Name</div>
+                          <div>{person.organisation || 'N/A'}</div>
 
                           <div className="font-semibold text-muted-foreground">Rent Details</div>
                           <div>{person.rentDetails || 'N/A'}</div>
@@ -376,6 +381,7 @@ export default function PersonDetailPage() {
         setIsOpen={setIsEditDialogOpen}
         onSave={(data) => handleSavePersonDialog(data)}
         person={person}
+        allPeople={allPeople}
       />
     </>
   );
