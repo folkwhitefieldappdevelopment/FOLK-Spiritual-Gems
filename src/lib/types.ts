@@ -37,6 +37,7 @@ export type Person = {
   fromOtherCamp: boolean;
   enablerInTouchWith: string;
   progress: ProgressCategoryAnswers[];
+  customData?: { [key: string]: string };
 };
 
 export type Group = {
@@ -45,4 +46,9 @@ export type Group = {
   description: string;
   memberCount: number;
   peopleIds: string[];
+};
+
+export type CustomField = {
+  id: string;
+  label: string;
 };

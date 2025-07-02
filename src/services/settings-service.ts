@@ -10,6 +10,8 @@ import {
   where,
   getDocs,
 } from 'firebase/firestore';
+import type { CustomField } from '@/lib/types';
+
 
 const defaultEnablers = ['Veeranna', 'Sarthak', 'Jayant', 'Rohit', 'Nitin', 'Abhishek', 'Nikhil', 'Ravi', 'Narayan'];
 const defaultContactSources = ['Govinda Temple', 'ITPL', 'HK hill'];
@@ -22,9 +24,19 @@ const ensureSettingsDoc = async () => {
         await setDoc(settingsDocRef, {
             enablers: defaultEnablers,
             contactSources: defaultContactSources,
+            customPersonFields: [],
         });
     }
-    return docSnap.data() || { enablers: defaultEnablers, contactSources: defaultContactSources };
+    const data = docSnap.data() || {};
+    if (!data.customPersonFields) {
+        await setDoc(settingsDocRef, { customPersonFields: [] }, { merge: true });
+    }
+    
+    return {
+        enablers: data.enablers || defaultEnablers,
+        contactSources: data.contactSources || defaultContactSources,
+        customPersonFields: data.customPersonFields || [],
+    };
 }
 
 export const getEnablers = async (): Promise<string[]> => {
@@ -132,3 +144,13 @@ export const deleteContactSource = async (sourceToDelete: string) => {
     await batch.commit();
     return updatedSources;
 }
+
+// Custom Person Fields
+export const getCustomPersonFields = async (): Promise<CustomField[]> => {
+    const settings = await ensureSettingsDoc();
+    return settings.customPersonFields;
+};
+
+export const saveCustomPersonFields = async (fields: CustomField[]): Promise<void> => {
+    await setDoc(settingsDocRef, { customPersonFields: fields }, { merge: true });
+};
