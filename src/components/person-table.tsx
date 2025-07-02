@@ -80,10 +80,10 @@ export function PersonTable({ people, onEdit, onDelete }: PersonTableProps) {
                   </Link>
                 </TableCell>
                 <TableCell className="hidden sm:table-cell">
-                  <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <a href={`tel:${person.phone}`} className="flex items-center gap-2 text-sm text-primary hover:underline">
                     <Phone className="h-4 w-4 shrink-0" />
                     {person.phone}
-                  </span>
+                  </a>
                 </TableCell>
                 <TableCell className="hidden md:table-cell">
                   <span className="flex items-center gap-2 text-sm text-muted-foreground">

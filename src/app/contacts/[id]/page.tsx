@@ -294,7 +294,11 @@ export default function PersonDetailPage() {
 
                       <div className="mt-6 w-full text-left grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                           <div className="font-semibold text-muted-foreground">Phone</div>
-                          <div>{person.phone}</div>
+                          <div>
+                            <a href={`tel:${person.phone}`} className="text-primary hover:underline">
+                              {person.phone}
+                            </a>
+                          </div>
 
                           <div className="font-semibold text-muted-foreground">Age</div>
                           <div>{person.age}</div>
