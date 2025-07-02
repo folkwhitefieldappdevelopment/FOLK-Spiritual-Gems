@@ -44,30 +44,40 @@ import { Separator } from "./ui/separator";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 
-const personFormSchema = z.object({
-  firstName: z.string().min(1, { message: "First name is required." }),
-  lastName: z.string().min(1, { message: "Last name is required." }),
-  phone: z.string().regex(/^[6-9]\d{9}$/, { message: "Please enter a valid 10-digit Indian mobile number." }),
-  age: z.coerce.number().min(16, "Must be at least 16").max(40, "Must be at most 40"),
-  stayingWith: z.enum(["PG / Hostel", "Flat", "Family"]),
-  occupation: z.string().optional(),
-  rentDetails: z.string().optional(),
-  nativePlace: z.string().optional(),
-  sgRating: z.coerce.number().min(0).max(10).default(0),
-  contactSource: z.string().optional(),
-  chantingStatus: z.string().optional(),
-  fromOtherCamp: z.boolean().default(false),
-  enablerInTouchWith: z.string().optional(),
-});
+const createPersonFormSchema = (allPeople: Person[], currentPersonId?: string) => 
+  z.object({
+    firstName: z.string().min(1, { message: "First name is required." }),
+    lastName: z.string().min(1, { message: "Last name is required." }),
+    phone: z.string().regex(/^[6-9]\d{9}$/, { message: "Please enter a valid 10-digit Indian mobile number." }),
+    age: z.coerce.number().min(16, "Must be at least 16").max(40, "Must be at most 40"),
+    stayingWith: z.enum(["PG / Hostel", "Flat", "Family"]),
+    occupation: z.string().optional(),
+    rentDetails: z.string().optional(),
+    nativePlace: z.string().optional(),
+    sgRating: z.coerce.number().min(0).max(10).default(0),
+    contactSource: z.string().optional(),
+    chantingStatus: z.string().optional(),
+    fromOtherCamp: z.boolean().default(false),
+    enablerInTouchWith: z.string().optional(),
+  }).refine(
+    (data) => {
+      // Return false if a different person already has this phone number
+      return !allPeople.some(p => p.phone === data.phone && p.id !== currentPersonId);
+    },
+    {
+      message: "This phone number is already registered to another contact.",
+      path: ["phone"],
+    }
+  );
 
-
-type PersonFormValues = z.infer<typeof personFormSchema>;
+type PersonFormValues = z.infer<ReturnType<typeof createPersonFormSchema>>;
 
 type CreateUpdatePersonDialogProps = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   onSave: (data: Omit<Person, "id" | "progress" | "createdAt">) => void;
   person?: Person;
+  allPeople: Person[];
 };
 
 const ageOptions = Array.from({ length: 25 }, (_, i) => i + 16);
@@ -77,8 +87,11 @@ export function CreateUpdatePersonDialog({
   setIsOpen,
   onSave,
   person,
+  allPeople,
 }: CreateUpdatePersonDialogProps) {
   const { toast } = useToast();
+  const personFormSchema = createPersonFormSchema(allPeople, person?.id);
+  
   const form = useForm<PersonFormValues>({
     resolver: zodResolver(personFormSchema),
     defaultValues: {

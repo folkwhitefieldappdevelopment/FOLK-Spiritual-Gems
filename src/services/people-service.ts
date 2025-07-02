@@ -9,6 +9,8 @@ import {
   deleteDoc,
   writeBatch,
   serverTimestamp,
+  query,
+  where,
 } from 'firebase/firestore';
 import type { Person } from '@/lib/types';
 
@@ -29,6 +31,12 @@ export const getPerson = async (id: string): Promise<Person | null> => {
 };
 
 export const createPerson = async (personData: Omit<Person, 'id' | 'createdAt'>): Promise<Person> => {
+  const q = query(peopleCollection, where("phone", "==", personData.phone));
+  const querySnapshot = await getDocs(q);
+  if (!querySnapshot.empty) {
+    throw new Error(`A contact with phone number ${personData.phone} already exists.`);
+  }
+
   const dataToSave = {
     ...personData,
     createdAt: serverTimestamp(),
@@ -44,6 +52,14 @@ export const createPerson = async (personData: Omit<Person, 'id' | 'createdAt'>)
 };
 
 export const updatePerson = async (id: string, personData: Partial<Omit<Person, 'id'>>): Promise<void> => {
+  if (personData.phone) {
+    const q = query(peopleCollection, where("phone", "==", personData.phone));
+    const querySnapshot = await getDocs(q);
+    const conflictingPerson = querySnapshot.docs.find(doc => doc.id !== id);
+    if (conflictingPerson) {
+        throw new Error(`A contact with phone number ${personData.phone} already exists.`);
+    }
+  }
   const docRef = doc(db, 'people', id);
   await updateDoc(docRef, personData);
 };
@@ -54,6 +70,8 @@ export const deletePerson = async (id: string): Promise<void> => {
 };
 
 export const importPeople = async (people: Omit<Person, 'id' | 'createdAt'>[]): Promise<void> => {
+    if (people.length === 0) return;
+    
     const batch = writeBatch(db);
     people.forEach((person) => {
         const docRef = doc(collection(db, 'people'));

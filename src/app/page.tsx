@@ -241,6 +241,10 @@ export default function ContactsPage() {
         const worksheet = workbook.Sheets[sheetName];
         const json = utils.sheet_to_json<any>(worksheet);
 
+        const totalRows = json.length;
+        const existingPhones = new Set(people.map(p => p.phone));
+        const phonesInThisFile = new Set<string>();
+
         const newPeople: Omit<Person, 'id' | 'createdAt'>[] = json
           .map((row: any) => {
             if (!row.firstName || !row.lastName || !row.phone) {
@@ -253,11 +257,12 @@ export default function ContactsPage() {
             const stayingWith = ["PG / Hostel", "Flat", "Family"].includes(row.stayingWith) ? row.stayingWith : "Family";
             const rating = parseInt(String(row.sgRating), 10);
             const isValidRating = !isNaN(rating) && rating >= 0 && rating <= 10;
+            const phone = String(row.phone).replace(/\s+/g, '');
 
             return {
               firstName: String(row.firstName),
               lastName: String(row.lastName),
-              phone: String(row.phone),
+              phone,
               age: isValidAge ? age : 25,
               stayingWith: stayingWith,
               occupation: String(row.occupation || ""),
@@ -273,13 +278,26 @@ export default function ContactsPage() {
               customData: {},
             };
           })
-          .filter((p): p is Omit<Person, 'id' | 'createdAt'> => p !== null);
+          .filter((p): p is Omit<Person, 'id' | 'createdAt'> => {
+             if (p === null) return false;
+    
+            // Check for duplicates
+            if (existingPhones.has(p.phone) || phonesInThisFile.has(p.phone)) {
+                console.warn(`Skipping duplicate phone number during import: ${p.phone}`);
+                return false;
+            }
+            phonesInThisFile.add(p.phone);
+            return true;
+          });
+        
+        const importedCount = newPeople.length;
+        const skippedCount = totalRows - importedCount;
 
-        if (newPeople.length === 0) {
+        if (importedCount === 0) {
           toast({
             variant: "destructive",
             title: "Import Failed",
-            description: "No valid contacts found. Ensure columns include at least: firstName, lastName, phone.",
+            description: skippedCount > 0 ? "All contacts in the file were duplicates or invalid." : "No valid contacts found. Ensure columns include at least: firstName, lastName, phone.",
           });
           return;
         }
@@ -290,7 +308,7 @@ export default function ContactsPage() {
 
         toast({
           title: "Import Successful",
-          description: `${newPeople.length} new contacts have been added.`,
+          description: `${importedCount} new contacts added. ${skippedCount > 0 ? `${skippedCount} duplicates skipped.` : ''}`,
         });
       } catch (error) {
         console.error("Error importing file:", error);
@@ -363,10 +381,11 @@ export default function ContactsPage() {
       }
     } catch(error) {
       console.error("Failed to save person:", error);
+      const errorMessage = error instanceof Error ? error.message : "Could not save person.";
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Could not save person.",
+        description: errorMessage,
       });
     }
   };
@@ -542,6 +561,7 @@ export default function ContactsPage() {
         setIsOpen={setIsDialogOpen}
         onSave={handleSavePerson}
         person={editingPerson}
+        allPeople={people}
       />
       <input
         type="file"
