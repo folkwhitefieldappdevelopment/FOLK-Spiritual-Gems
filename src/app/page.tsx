@@ -237,6 +237,7 @@ export default function ContactsPage() {
               enablerInTouchWith: '',
               photoUrl: `https://placehold.co/100x100.png`,
               progress: createInitialProgress(),
+              customData: {},
             };
           })
           .filter((p): p is Omit<Person, 'id'> => p !== null);

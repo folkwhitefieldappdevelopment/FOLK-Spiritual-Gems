@@ -44,7 +44,9 @@ import {
   saveCustomPersonFields,
 } from '@/services/settings-service';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { CustomField } from '@/lib/types';
+import type { CustomField, CustomFieldType } from '@/lib/types';
+import { customFieldTypes } from '@/lib/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type DialogMode = 'add' | 'edit';
 type ItemType = 'enabler' | 'source' | 'customField';
@@ -61,9 +63,15 @@ export default function SettingsPage() {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [dialogMode, setDialogMode] = React.useState<DialogMode>('add');
   const [itemType, setItemType] = React.useState<ItemType>('enabler');
+  
+  // State for simple item dialog (enablers, sources)
   const [originalName, setOriginalName] = React.useState('');
   const [itemName, setItemName] = React.useState('');
+
+  // State for custom field dialog
   const [editingField, setEditingField] = React.useState<CustomField | null>(null);
+  const [fieldName, setFieldName] = React.useState('');
+  const [fieldType, setFieldType] = React.useState<CustomFieldType>('text');
 
   React.useEffect(() => {
     const fetchData = async () => {
@@ -103,7 +111,8 @@ export default function SettingsPage() {
     if (type === 'customField') {
         const field = data as CustomField | null;
         setEditingField(field);
-        setItemName(field ? field.label : '');
+        setFieldName(field ? field.label : '');
+        setFieldType(field ? field.type : 'text');
     } else {
         const name = data as string | null;
         setOriginalName(name || '');
@@ -114,8 +123,9 @@ export default function SettingsPage() {
   };
 
   const handleSave = async () => {
-    if (!itemName.trim()) {
-      toast({ variant: 'destructive', title: 'Name cannot be empty.' });
+    const valueToSave = itemType === 'customField' ? fieldName : itemName;
+    if (!valueToSave.trim()) {
+      toast({ variant: 'destructive', title: 'Name/Label cannot be empty.' });
       return;
     }
 
@@ -153,12 +163,13 @@ export default function SettingsPage() {
     let updatedFields: CustomField[];
     if (editingField) { // Edit mode
         updatedFields = customFields.map(f => 
-            f.id === editingField.id ? { ...f, label: itemName.trim() } : f
+            f.id === editingField.id ? { ...f, label: fieldName.trim() } : f
         );
     } else { // Add mode
         const newField: CustomField = {
             id: crypto.randomUUID(),
-            label: itemName.trim(),
+            label: fieldName.trim(),
+            type: fieldType,
         };
         if (customFields.some(f => f.label.toLowerCase() === newField.label.toLowerCase())) {
             toast({ variant: 'destructive', title: 'A field with this label already exists.' });
@@ -262,7 +273,7 @@ export default function SettingsPage() {
     <Card>
       <CardHeader>
         <CardTitle>Manage Custom Person Fields</CardTitle>
-        <CardDescription>Add, edit, or remove custom text fields for your contacts. The field type cannot be changed.</CardDescription>
+        <CardDescription>Add, edit, or remove custom fields for your contacts. The field type cannot be changed after creation.</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="border rounded-md">
@@ -270,6 +281,7 @@ export default function SettingsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Field Label</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead className="text-right w-[120px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -278,6 +290,7 @@ export default function SettingsPage() {
                 customFields.map((field) => (
                   <TableRow key={field.id}>
                     <TableCell className="font-medium">{field.label}</TableCell>
+                    <TableCell className="capitalize text-muted-foreground">{field.type}</TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDialog('edit', 'customField', field)}>
                         <Edit className="h-4 w-4" />
@@ -306,7 +319,7 @@ export default function SettingsPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={2} className="text-center text-muted-foreground h-24">
+                  <TableCell colSpan={3} className="text-center text-muted-foreground h-24">
                     No custom fields found.
                   </TableCell>
                 </TableRow>
@@ -323,6 +336,54 @@ export default function SettingsPage() {
       return `${dialogMode === 'edit' ? 'Edit' : 'Add'} Custom Field`;
     }
     return `${dialogMode === 'edit' ? 'Edit' : 'Add'} ${itemType === 'enabler' ? 'Enabler' : 'Contact Source'}`;
+  }
+
+  const renderDialogContent = () => {
+    if (itemType === 'customField') {
+      return (
+        <div className="space-y-4 py-4">
+          <div>
+            <Label htmlFor="fieldName">Field Label</Label>
+            <Input
+              id="fieldName"
+              value={fieldName}
+              onChange={(e) => setFieldName(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="fieldType">Field Type</Label>
+            <Select
+              value={fieldType}
+              onValueChange={(value) => setFieldType(value as CustomFieldType)}
+              disabled={dialogMode === 'edit'}
+            >
+              <SelectTrigger id="fieldType" className="mt-1">
+                <SelectValue placeholder="Select a type" />
+              </SelectTrigger>
+              <SelectContent>
+                {customFieldTypes.map(type => (
+                  <SelectItem key={type} value={type} className="capitalize">{type}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {dialogMode === 'edit' && <p className="text-xs text-muted-foreground mt-1">Field type cannot be changed after creation.</p>}
+          </div>
+        </div>
+      );
+    } else {
+      return (
+        <div className="py-4">
+          <Label htmlFor="itemName">Name</Label>
+          <Input
+            id="itemName"
+            value={itemName}
+            onChange={(e) => setItemName(e.target.value)}
+            className="mt-1"
+          />
+        </div>
+      )
+    }
   }
 
   return (
@@ -373,19 +434,14 @@ export default function SettingsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{getDialogTitle()}</DialogTitle>
-            <DialogDescription>
-              Enter the name for the item below.
+             <DialogDescription>
+              {itemType === 'customField' 
+                ? 'Define a new custom field for your contacts.'
+                : 'Enter the name for the item below.'
+              }
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Label htmlFor="itemName">Name</Label>
-            <Input
-              id="itemName"
-              value={itemName}
-              onChange={(e) => setItemName(e.target.value)}
-              className="mt-1"
-            />
-          </div>
+          {renderDialogContent()}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleSave}>Save</Button>

@@ -5,9 +5,9 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import type { Person } from "@/lib/types";
+import type { Person, CustomField } from "@/lib/types";
 import { Camera, Upload, SwitchCamera } from "lucide-react";
-import { getEnablers, getContactSources } from "@/services/settings-service";
+import { getEnablers, getContactSources, getCustomPersonFields } from "@/services/settings-service";
 
 import {
   Dialog,
@@ -40,6 +40,7 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "./ui/checkbox";
 import { ScrollArea } from "./ui/scroll-area";
+import { Separator } from "./ui/separator";
 
 const personFormSchema = z.object({
   firstName: z.string().min(1, { message: "First name is required." }),
@@ -63,7 +64,7 @@ type PersonFormValues = z.infer<typeof personFormSchema>;
 type CreateUpdatePersonDialogProps = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  onSave: (data: Omit<Person, "id" | "progress" | "photoUrl"> & { photoUrl: string }) => void;
+  onSave: (data: Omit<Person, "id" | "progress">) => void;
   person?: Person;
 };
 
@@ -104,19 +105,26 @@ export function CreateUpdatePersonDialog({
   const [hasMultipleCameras, setHasMultipleCameras] = React.useState(false);
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  
   const [enablerOptions, setEnablerOptions] = React.useState<string[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
-
+  const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
+  const [customData, setCustomData] = React.useState<{ [key: string]: any }>({});
 
   React.useEffect(() => {
     const loadOptions = async () => {
         try {
-            const [enablers, sources] = await Promise.all([getEnablers(), getContactSources()]);
+            const [enablers, sources, fields] = await Promise.all([
+              getEnablers(), 
+              getContactSources(),
+              getCustomPersonFields()
+            ]);
             setEnablerOptions(enablers);
             setContactSourceOptions(sources);
+            setCustomFields(fields);
         } catch (error) {
             console.error('Failed to load dropdown options for dialog', error);
-            toast({ variant: 'destructive', title: 'Could not load dropdown options.' });
+            toast({ variant: 'destructive', title: 'Could not load form options.' });
         }
     }
 
@@ -141,6 +149,7 @@ export function CreateUpdatePersonDialog({
           enablerInTouchWith: person.enablerInTouchWith,
         });
         setPhotoPreview(person.photoUrl);
+        setCustomData(person.customData || {});
       } else {
         form.reset({
           firstName: "",
@@ -158,6 +167,7 @@ export function CreateUpdatePersonDialog({
           enablerInTouchWith: "",
         });
         setPhotoPreview(null);
+        setCustomData({});
       }
       setShowCamera(false);
       setHasCameraPermission(null);
@@ -177,20 +187,17 @@ export function CreateUpdatePersonDialog({
     let activeStream: MediaStream | null = null;
     const getCameraPermission = async () => {
       try {
-        // Enumerate devices to check for multiple cameras.
         const devices = await navigator.mediaDevices.enumerateDevices();
         const videoInputs = devices.filter(d => d.kind === 'videoinput');
         setHasMultipleCameras(videoInputs.length > 1);
         
-        // Request the camera with the current facing mode
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: cameraMode },
         });
-        activeStream = stream; // store for cleanup
+        activeStream = stream;
         setHasCameraPermission(true);
 
         if (videoRef.current) {
-          // Make sure to stop previous stream if it exists
           if (videoRef.current.srcObject) {
             (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
           }
@@ -210,7 +217,6 @@ export function CreateUpdatePersonDialog({
 
     getCameraPermission();
 
-    // Cleanup function that will run when the component unmounts or dependencies change
     return () => {
       if (activeStream) {
         activeStream.getTracks().forEach((track) => track.stop());
@@ -251,6 +257,10 @@ export function CreateUpdatePersonDialog({
     }
   };
 
+  const handleCustomDataChange = (fieldId: string, value: any) => {
+    setCustomData(prev => ({ ...prev, [fieldId]: value }));
+  };
+
   const onSubmit = (data: PersonFormValues) => {
     onSave({
       ...data,
@@ -265,9 +275,28 @@ export function CreateUpdatePersonDialog({
         photoPreview ||
         person?.photoUrl ||
         `https://placehold.co/100x100.png`,
+      customData: customData,
     });
     setIsOpen(false);
   };
+
+  const renderCustomField = (field: CustomField) => {
+    const { id, label, type } = field;
+    const value = customData[id];
+
+    switch (type) {
+      case 'text':
+        return <Input value={value || ''} onChange={e => handleCustomDataChange(id, e.target.value)} />;
+      case 'number':
+        return <Input type="number" value={value || ''} onChange={e => handleCustomDataChange(id, e.target.valueAsNumber)} />;
+      case 'date':
+        return <Input type="date" value={value || ''} onChange={e => handleCustomDataChange(id, e.target.value)} />;
+      case 'boolean':
+        return <Checkbox checked={!!value} onCheckedChange={checked => handleCustomDataChange(id, checked)} />;
+      default:
+        return null;
+    }
+  }
 
   const currentPhoto = photoPreview || person?.photoUrl;
   const fallbackName = `${form
@@ -597,6 +626,23 @@ export function CreateUpdatePersonDialog({
                       </FormItem>
                     )}
                   />
+
+                  {customFields.length > 0 && (
+                    <>
+                      <Separator />
+                      <h3 className="text-lg font-medium">Custom Information</h3>
+                      <div className="space-y-4">
+                        {customFields.map(field => (
+                          <div key={field.id}>
+                            <Label>{field.label}</Label>
+                            <div className="mt-1">
+                              {renderCustomField(field)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
               </ScrollArea>
               <DialogFooter className="pt-4">

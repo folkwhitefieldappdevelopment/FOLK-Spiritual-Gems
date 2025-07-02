@@ -20,6 +20,9 @@ export type ProgressCategoryAnswers = {
   answers: ProgressLevelAnswers[];
 };
 
+export const customFieldTypes = ['text', 'number', 'date', 'boolean'] as const;
+export type CustomFieldType = (typeof customFieldTypes)[number];
+
 export type Person = {
   id: string;
   firstName: string;
@@ -37,7 +40,7 @@ export type Person = {
   fromOtherCamp: boolean;
   enablerInTouchWith: string;
   progress: ProgressCategoryAnswers[];
-  customData?: { [key: string]: string };
+  customData?: { [key: string]: any };
 };
 
 export type Group = {
@@ -51,4 +54,5 @@ export type Group = {
 export type CustomField = {
   id: string;
   label: string;
+  type: CustomFieldType;
 };

@@ -148,7 +148,8 @@ export const deleteContactSource = async (sourceToDelete: string) => {
 // Custom Person Fields
 export const getCustomPersonFields = async (): Promise<CustomField[]> => {
     const settings = await ensureSettingsDoc();
-    return settings.customPersonFields;
+    // Ensure all fields have a type for backward compatibility
+    return settings.customPersonFields.map((f: CustomField) => ({ ...f, type: f.type || 'text' }));
 };
 
 export const saveCustomPersonFields = async (fields: CustomField[]): Promise<void> => {

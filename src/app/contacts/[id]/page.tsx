@@ -4,11 +4,12 @@
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Edit, Trash2 } from 'lucide-react';
-import type { Person, ProgressCategoryAnswers, ProgressLevelAnswers } from '@/lib/types';
+import type { Person, ProgressCategoryAnswers, ProgressLevelAnswers, CustomField } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAdmin } from '@/contexts/admin-context';
 import { cn } from '@/lib/utils';
 import { getPerson, updatePerson, deletePerson } from '@/services/people-service';
+import { getCustomPersonFields } from '@/services/settings-service';
 import { createInitialProgress } from '@/lib/data';
 
 import { AppSidebar } from '@/components/app-sidebar';
@@ -37,6 +38,7 @@ import {
 import { CreateUpdatePersonDialog } from '@/components/create-update-person-dialog';
 import { ProgressTracker } from '@/components/progress-tracker';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
+import { Separator } from '@/components/ui/separator';
 
 export default function PersonDetailPage() {
   const router = useRouter();
@@ -46,6 +48,7 @@ export default function PersonDetailPage() {
   const { isAdmin } = useAdmin();
 
   const [person, setPerson] = React.useState<Person | null>(null);
+  const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [configError, setConfigError] = React.useState(false);
@@ -56,9 +59,14 @@ export default function PersonDetailPage() {
     const fetchPerson = async () => {
       setIsLoading(true);
       try {
-        const personData = await getPerson(personId);
+        const [personData, fieldsData] = await Promise.all([
+            getPerson(personId),
+            getCustomPersonFields(),
+        ]);
+        
+        setCustomFields(fieldsData);
+
         if (personData) {
-          // Robustly check for valid progress data structure
           if (!personData.progress || !Array.isArray(personData.progress) || personData.progress.length === 0 || !personData.progress[0]?.answers || !Array.isArray(personData.progress[0].answers)) {
             personData.progress = createInitialProgress();
           }
@@ -155,6 +163,19 @@ export default function PersonDetailPage() {
     }
   };
 
+  const formatCustomValue = (value: any, type: CustomField['type']) => {
+    if (value === null || typeof value === 'undefined' || value === '') return 'N/A';
+    if (type === 'boolean') return value ? 'Yes' : 'No';
+    if (type === 'date') {
+      try {
+        return new Date(value).toLocaleDateString();
+      } catch {
+        return 'Invalid Date';
+      }
+    }
+    return String(value);
+  }
+
   if (configError) {
     return <FirebaseConfigError />;
   }
@@ -180,6 +201,8 @@ export default function PersonDetailPage() {
       </div>
     );
   }
+
+  const hasCustomData = customFields.some(field => person.customData && person.customData[field.id]);
 
   return (
     <>
@@ -300,6 +323,24 @@ export default function PersonDetailPage() {
                           <div className="font-semibold text-muted-foreground">Enabler</div>
                           <div>{person.enablerInTouchWith || 'N/A'}</div>
                       </div>
+
+                      {hasCustomData && (
+                        <>
+                          <Separator className="my-4" />
+                          <div className="w-full text-left grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                             {customFields.map(field => {
+                                const value = person.customData?.[field.id];
+                                if (!value) return null;
+                                return (
+                                  <React.Fragment key={field.id}>
+                                    <div className="font-semibold text-muted-foreground">{field.label}</div>
+                                    <div>{formatCustomValue(value, field.type)}</div>
+                                  </React.Fragment>
+                                );
+                             })}
+                          </div>
+                        </>
+                      )}
 
                     </CardContent>
                   </Card>
