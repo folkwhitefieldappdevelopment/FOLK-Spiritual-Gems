@@ -331,6 +331,14 @@ export default function PersonDetailPage() {
                              {customFields.map(field => {
                                 const value = person.customData?.[field.id];
                                 if (!value) return null;
+                                 if (field.type === 'textarea') {
+                                  return (
+                                    <React.Fragment key={field.id}>
+                                      <div className="font-semibold text-muted-foreground col-span-2">{field.label}</div>
+                                      <div className="col-span-2 whitespace-pre-wrap">{formatCustomValue(value, field.type)}</div>
+                                    </React.Fragment>
+                                  );
+                                }
                                 return (
                                   <React.Fragment key={field.id}>
                                     <div className="font-semibold text-muted-foreground">{field.label}</div>

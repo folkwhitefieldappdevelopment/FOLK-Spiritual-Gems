@@ -20,7 +20,7 @@ export type ProgressCategoryAnswers = {
   answers: ProgressLevelAnswers[];
 };
 
-export const customFieldTypes = ['text', 'number', 'date', 'boolean'] as const;
+export const customFieldTypes = ['text', 'textarea', 'number', 'date', 'boolean'] as const;
 export type CustomFieldType = (typeof customFieldTypes)[number];
 
 export type Person = {

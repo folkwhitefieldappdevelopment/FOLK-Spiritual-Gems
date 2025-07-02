@@ -42,6 +42,7 @@ import { Checkbox } from "./ui/checkbox";
 import { ScrollArea } from "./ui/scroll-area";
 import { Separator } from "./ui/separator";
 import { Label } from "./ui/label";
+import { Textarea } from "./ui/textarea";
 
 const personFormSchema = z.object({
   firstName: z.string().min(1, { message: "First name is required." }),
@@ -288,6 +289,8 @@ export function CreateUpdatePersonDialog({
     switch (type) {
       case 'text':
         return <Input value={value || ''} onChange={e => handleCustomDataChange(id, e.target.value)} />;
+      case 'textarea':
+        return <Textarea value={value || ''} onChange={e => handleCustomDataChange(id, e.target.value)} />;
       case 'number':
         return <Input type="number" value={value || ''} onChange={e => handleCustomDataChange(id, e.target.valueAsNumber)} />;
       case 'date':
