@@ -53,8 +53,23 @@ export function FirebaseConfigError({ error }: { error?: any }) {
                 <p className="mt-2 font-semibold">Domain to add:</p>
                 <code className="bg-muted px-2 py-1 rounded-md font-code text-destructive block my-2 break-all">{domainToAdd}</code>
               </li>
+              <li>
+                <strong>3. Restrict your API Key.</strong>
+                <p className="mt-1">For security, your API key should be restricted. In the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="underline text-primary">Google Cloud Credentials page</a>, find the API key used in your app and apply two types of restrictions:</p>
+                <ul className="list-disc pl-5 mt-2 space-y-1">
+                    <li><strong>Application restriction:</strong> Select "Websites" and add your app's domains (like <code>{domainToAdd}</code> and any deployed URLs).</li>
+                    <li><strong>API restrictions:</strong> Select "Restrict key" and enable only the APIs your app needs. For this app, you'll need:
+                        <ul className="list-none pl-5 mt-1 font-mono text-xs">
+                            <li>Identity Toolkit API</li>
+                            <li>Cloud Firestore API</li>
+                            <li>Token Service API</li>
+                        </ul>
+                    </li>
+                </ul>
+                <p className="mt-1 text-xs text-muted-foreground">Mismatched or missing restrictions can also cause authentication to fail.</p>
+              </li>
                <li>
-                  <strong>3. Double-check your web app credentials.</strong>
+                  <strong>4. Double-check your web app credentials.</strong>
                   <p className="mt-1">Just in case, make sure the `firebaseConfig` object in <code className="bg-muted px-1 py-0.5 rounded-sm font-code">src/lib/firebase.ts</code> perfectly matches the one from your Firebase Project Settings.</p>
               </li>
             </ol>
