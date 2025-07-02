@@ -328,7 +328,10 @@ export function CreateUpdatePersonDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className="sm:max-w-md"
+        onPointerDownOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>{person ? "Edit Person" : "Add Person"}</DialogTitle>
           <DialogDescription>

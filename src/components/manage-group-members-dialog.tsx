@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -56,7 +57,10 @@ export function ManageGroupMembersDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className="sm:max-w-md"
+        onPointerDownOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>Manage Members</DialogTitle>
           <DialogDescription>
