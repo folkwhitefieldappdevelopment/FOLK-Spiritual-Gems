@@ -53,10 +53,14 @@ export default function LoginPage() {
       // The useEffect will handle the redirection
     } catch (error: any) {
       console.error('Google sign-in error', error);
+      const errorMessage = error.message || '';
+      const errorCode = error.code || '';
+
       if (
-        error.code === 'auth/unauthorized-domain' ||
-        error.code === 'auth/configuration-not-found' ||
-        (error.message && error.message.includes('requests-from-referer'))
+        errorCode === 'auth/unauthorized-domain' ||
+        errorCode === 'auth/configuration-not-found' ||
+        errorMessage.includes('requests-from-referer') ||
+        errorMessage.includes('requests-to-this-api-identitytoolkit')
       ) {
         setAuthError(error);
         setConfigError(true);
