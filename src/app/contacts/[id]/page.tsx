@@ -4,7 +4,6 @@
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Edit, Trash2 } from 'lucide-react';
-import { useAuth } from '@/contexts/auth-context';
 import type { Person, ProgressCategoryAnswers, ProgressLevelAnswers } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAdmin } from '@/contexts/admin-context';
@@ -40,7 +39,6 @@ import { ProgressTracker } from '@/components/progress-tracker';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 
 export default function PersonDetailPage() {
-  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
@@ -53,13 +51,7 @@ export default function PersonDetailPage() {
   const [configError, setConfigError] = React.useState(false);
 
   React.useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, authLoading, router]);
-
-  React.useEffect(() => {
-    if (!personId || !user) return;
+    if (!personId) return;
 
     const fetchPerson = async () => {
       setIsLoading(true);
@@ -96,7 +88,7 @@ export default function PersonDetailPage() {
     };
 
     fetchPerson();
-  }, [personId, router, toast, user]);
+  }, [personId, router, toast]);
 
   const handleSavePersonDialog = async (personData: Omit<Person, 'id' | 'progress'>) => {
     if (!person) return;
@@ -162,14 +154,6 @@ export default function PersonDetailPage() {
       setPerson(person); 
     }
   };
-
-  if (authLoading || !user) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        Loading...
-      </div>
-    );
-  }
 
   if (configError) {
     return <FirebaseConfigError />;

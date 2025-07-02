@@ -4,7 +4,6 @@
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, UserPlus } from 'lucide-react';
-import { useAuth } from '@/contexts/auth-context';
 import type { Person, Group } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { getGroup, updateGroup } from '@/services/groups-service';
@@ -21,7 +20,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 
 export default function GroupDetailPage() {
-  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
@@ -37,13 +35,7 @@ export default function GroupDetailPage() {
   const [configError, setConfigError] = React.useState(false);
 
   React.useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, authLoading, router]);
-
-  React.useEffect(() => {
-    if (!groupId || !user) return;
+    if (!groupId) return;
     const fetchData = async () => {
       setIsLoading(true);
       try {
@@ -88,7 +80,7 @@ export default function GroupDetailPage() {
       }
     };
     fetchData();
-  }, [groupId, router, toast, user]);
+  }, [groupId, router, toast]);
   
   const handleEditPerson = (person: Person) => {
     setEditingPerson(person);
@@ -152,14 +144,6 @@ export default function GroupDetailPage() {
     }
   };
   
-  if (authLoading || !user) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        Loading...
-      </div>
-    );
-  }
-
   if (configError) {
     return <FirebaseConfigError />;
   }
