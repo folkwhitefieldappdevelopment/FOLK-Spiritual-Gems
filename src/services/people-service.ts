@@ -8,7 +8,7 @@ import {
   updateDoc,
   deleteDoc,
   writeBatch,
-  serverTimestamp, // Not used, but good for future
+  serverTimestamp,
 } from 'firebase/firestore';
 import type { Person } from '@/lib/types';
 
@@ -28,9 +28,19 @@ export const getPerson = async (id: string): Promise<Person | null> => {
   return null;
 };
 
-export const createPerson = async (personData: Omit<Person, 'id'>): Promise<Person> => {
-  const docRef = await addDoc(peopleCollection, personData);
-  return { id: docRef.id, ...personData };
+export const createPerson = async (personData: Omit<Person, 'id' | 'createdAt'>): Promise<Person> => {
+  const dataToSave = {
+    ...personData,
+    createdAt: serverTimestamp(),
+  };
+  const docRef = await addDoc(peopleCollection, dataToSave);
+  // For optimistic update, return a client-side date
+  const newPerson: Person = {
+    ...personData,
+    id: docRef.id,
+    createdAt: new Date(),
+  };
+  return newPerson;
 };
 
 export const updatePerson = async (id: string, personData: Partial<Omit<Person, 'id'>>): Promise<void> => {
@@ -43,11 +53,15 @@ export const deletePerson = async (id: string): Promise<void> => {
   await deleteDoc(docRef);
 };
 
-export const importPeople = async (people: Omit<Person, 'id'>[]): Promise<void> => {
+export const importPeople = async (people: Omit<Person, 'id' | 'createdAt'>[]): Promise<void> => {
     const batch = writeBatch(db);
     people.forEach((person) => {
         const docRef = doc(collection(db, 'people'));
-        batch.set(docRef, person);
+        const dataWithTimestamp = {
+            ...person,
+            createdAt: serverTimestamp()
+        };
+        batch.set(docRef, dataWithTimestamp);
     });
     await batch.commit();
 }

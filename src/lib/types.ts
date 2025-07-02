@@ -41,6 +41,7 @@ export type Person = {
   enablerInTouchWith: string;
   progress: ProgressCategoryAnswers[];
   customData?: { [key: string]: any };
+  createdAt?: any; // Firestore Timestamp
 };
 
 export type Group = {

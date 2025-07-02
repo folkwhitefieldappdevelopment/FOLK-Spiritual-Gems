@@ -66,7 +66,7 @@ type PersonFormValues = z.infer<typeof personFormSchema>;
 type CreateUpdatePersonDialogProps = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  onSave: (data: Omit<Person, "id" | "progress">) => void;
+  onSave: (data: Omit<Person, "id" | "progress" | "createdAt">) => void;
   person?: Person;
 };
 

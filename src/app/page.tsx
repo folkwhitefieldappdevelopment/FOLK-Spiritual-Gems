@@ -57,6 +57,7 @@ export default function ContactsPage() {
   const [contactSourceFilter, setContactSourceFilter] = React.useState("");
   const [occupationFilter, setOccupationFilter] = React.useState("");
   const [chantingFilter, setChantingFilter] = React.useState("");
+  const [sortBy, setSortBy] = React.useState("createdAt_desc");
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(
@@ -99,7 +100,7 @@ export default function ContactsPage() {
   }, [toast]);
 
   const filteredPeople = React.useMemo(() => {
-    return people.filter((person) => {
+    const filtered = people.filter((person) => {
       const search = searchTerm.toLowerCase();
       const name = `${person.firstName} ${person.lastName}`.toLowerCase();
       const phone = person.phone.toLowerCase();
@@ -122,7 +123,34 @@ export default function ContactsPage() {
 
       return generalSearchMatch && enablerMatch && sourceMatch && occupationMatch && chantingMatch;
     });
-  }, [people, searchTerm, enablerFilter, contactSourceFilter, occupationFilter, chantingFilter]);
+
+    return filtered.sort((a, b) => {
+      if (sortBy === "name_asc") {
+        return `${a.firstName} ${a.lastName}`.localeCompare(
+          `${b.firstName} ${b.lastName}`
+        );
+      }
+      if (sortBy === "name_desc") {
+        return `${b.firstName} ${b.lastName}`.localeCompare(
+          `${a.firstName} ${a.lastName}`
+        );
+      }
+      if (sortBy === "createdAt_desc") {
+        const dateA = a.createdAt
+          ? a.createdAt.toDate
+            ? a.createdAt.toDate()
+            : a.createdAt
+          : new Date(0);
+        const dateB = b.createdAt
+          ? b.createdAt.toDate
+            ? b.createdAt.toDate()
+            : b.createdAt
+          : new Date(0);
+        return dateB.getTime() - dateA.getTime();
+      }
+      return 0;
+    });
+  }, [people, searchTerm, enablerFilter, contactSourceFilter, occupationFilter, chantingFilter, sortBy]);
   
   const clearFilters = () => {
     setSearchTerm("");
@@ -130,6 +158,7 @@ export default function ContactsPage() {
     setContactSourceFilter("");
     setOccupationFilter("");
     setChantingFilter("");
+    setSortBy("createdAt_desc");
   };
 
   const handleSampleDownload = () => {
@@ -210,7 +239,7 @@ export default function ContactsPage() {
         const worksheet = workbook.Sheets[sheetName];
         const json = utils.sheet_to_json<any>(worksheet);
 
-        const newPeople: Omit<Person, 'id'>[] = json
+        const newPeople: Omit<Person, 'id' | 'createdAt'>[] = json
           .map((row: any) => {
             if (!row.firstName || !row.lastName || !row.phone) {
               console.warn("Skipping row due to missing data: firstName, lastName, and phone are required.", row);
@@ -240,7 +269,7 @@ export default function ContactsPage() {
               customData: {},
             };
           })
-          .filter((p): p is Omit<Person, 'id'> => p !== null);
+          .filter((p): p is Omit<Person, 'id' | 'createdAt'> => p !== null);
 
         if (newPeople.length === 0) {
           toast({
@@ -302,7 +331,7 @@ export default function ContactsPage() {
     }
   };
 
-  const handleSavePerson = async (personData: Omit<Person, "id" | "progress">) => {
+  const handleSavePerson = async (personData: Omit<Person, "id" | "progress" | "createdAt">) => {
     try {
       if (editingPerson) {
         const updatedData = { ...editingPerson, ...personData };
@@ -321,7 +350,7 @@ export default function ContactsPage() {
           ...personData,
           progress: createInitialProgress(),
         };
-        const newPerson = await createPerson(newPersonData);
+        const newPerson = await createPerson(newPersonData as Omit<Person, 'id' | 'createdAt'>);
         setPeople((prev) => [newPerson, ...prev]);
         toast({
           title: "Person Added",
@@ -361,6 +390,16 @@ export default function ContactsPage() {
                 />
             </div>
             <div className="flex items-center gap-2">
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Sort by..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="createdAt_desc">Recently Added</SelectItem>
+                    <SelectItem value="name_asc">Alphabetical (A-Z)</SelectItem>
+                    <SelectItem value="name_desc">Alphabetical (Z-A)</SelectItem>
+                  </SelectContent>
+                </Select>
                 <div className="flex items-center rounded-md bg-muted p-1">
                 <Button
                     variant={view === "card" ? "secondary" : "ghost"}
