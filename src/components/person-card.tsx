@@ -118,7 +118,7 @@ export function PersonCard({ person }: PersonCardProps) {
               <CardTitle className="text-xl">
                   {person.firstName} {person.lastName}
               </CardTitle>
-              <CardDescription>{person.sgRating || 'No rating'}</CardDescription>
+              <CardDescription>{person.sgRating ? `Rating: ${person.sgRating}/10` : 'No rating'}</CardDescription>
             </div>
         </CardHeader>
         <CardContent className="flex-grow space-y-3">

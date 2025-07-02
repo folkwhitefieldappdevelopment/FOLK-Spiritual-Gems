@@ -289,7 +289,7 @@ export default function PersonDetailPage() {
                         {person.firstName} {person.lastName}
                       </h2>
                       <p className="text-muted-foreground mt-1">
-                          {person.sgRating || 'No rating'}
+                          {person.sgRating ? `Rating: ${person.sgRating}/10` : 'No rating'}
                       </p>
 
                       <div className="mt-6 w-full text-left grid grid-cols-2 gap-x-4 gap-y-3 text-sm">

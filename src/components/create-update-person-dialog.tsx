@@ -53,7 +53,7 @@ const personFormSchema = z.object({
   occupation: z.string().optional(),
   rentDetails: z.string().optional(),
   nativePlace: z.string().optional(),
-  sgRating: z.string().optional(),
+  sgRating: z.coerce.number().min(0).max(10).default(0),
   contactSource: z.string().optional(),
   chantingStatus: z.string().optional(),
   fromOtherCamp: z.boolean().default(false),
@@ -90,7 +90,7 @@ export function CreateUpdatePersonDialog({
       occupation: "",
       rentDetails: "",
       nativePlace: "",
-      sgRating: "",
+      sgRating: 0,
       contactSource: "",
       chantingStatus: "",
       fromOtherCamp: false,
@@ -144,7 +144,7 @@ export function CreateUpdatePersonDialog({
           occupation: person.occupation,
           rentDetails: person.rentDetails,
           nativePlace: person.nativePlace,
-          sgRating: person.sgRating,
+          sgRating: person.sgRating || 0,
           contactSource: person.contactSource,
           chantingStatus: person.chantingStatus,
           fromOtherCamp: person.fromOtherCamp,
@@ -162,7 +162,7 @@ export function CreateUpdatePersonDialog({
           occupation: "",
           rentDetails: "",
           nativePlace: "",
-          sgRating: "",
+          sgRating: 0,
           contactSource: "",
           chantingStatus: "",
           fromOtherCamp: false,
@@ -269,7 +269,6 @@ export function CreateUpdatePersonDialog({
       occupation: data.occupation || "",
       rentDetails: data.rentDetails || "",
       nativePlace: data.nativePlace || "",
-      sgRating: data.sgRating || "",
       contactSource: data.contactSource || "",
       chantingStatus: data.chantingStatus || "",
       enablerInTouchWith: data.enablerInTouchWith || "",
@@ -533,11 +532,24 @@ export function CreateUpdatePersonDialog({
                       name="sgRating"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>SG Rating</FormLabel>
-                          <FormControl>
-                            <Input placeholder="e.g. A+" {...field} />
-                          </FormControl>
-                          <FormMessage />
+                            <FormLabel>SG Rating</FormLabel>
+                            <Select
+                                onValueChange={(value) => field.onChange(Number(value))}
+                                value={String(field.value)}
+                            >
+                                <FormControl>
+                                    <SelectTrigger>
+                                    <SelectValue placeholder="Select a rating" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    <SelectItem value="0">Not Rated</SelectItem>
+                                    {Array.from({ length: 10 }, (_, i) => i + 1).map(rating => (
+                                        <SelectItem key={rating} value={String(rating)}>{rating}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
                         </FormItem>
                       )}
                     />

@@ -178,7 +178,7 @@ export default function ContactsPage() {
       occupation: "Software Engineer",
       rentDetails: "7000/month",
       nativePlace: "Mumbai",
-      sgRating: "A",
+      sgRating: 8,
       contactSource: "Govinda Temple",
       chantingStatus: "4 rounds",
       fromOtherCamp: false,
@@ -210,7 +210,7 @@ export default function ContactsPage() {
         occupation: p.occupation,
         rentDetails: p.rentDetails,
         nativePlace: p.nativePlace,
-        sgRating: p.sgRating,
+        sgRating: p.sgRating || 0,
         contactSource: p.contactSource,
         chantingStatus: p.chantingStatus,
         fromOtherCamp: p.fromOtherCamp,
@@ -251,6 +251,8 @@ export default function ContactsPage() {
             const age = parseInt(String(row.age), 10);
             const isValidAge = !isNaN(age) && age >= 16 && age <= 40;
             const stayingWith = ["PG / Hostel", "Flat", "Family"].includes(row.stayingWith) ? row.stayingWith : "Family";
+            const rating = parseInt(String(row.sgRating), 10);
+            const isValidRating = !isNaN(rating) && rating >= 0 && rating <= 10;
 
             return {
               firstName: String(row.firstName),
@@ -261,7 +263,7 @@ export default function ContactsPage() {
               occupation: String(row.occupation || ""),
               rentDetails: String(row.rentDetails || ""),
               nativePlace: String(row.nativePlace || ""),
-              sgRating: String(row.sgRating || ""),
+              sgRating: isValidRating ? rating : 0,
               contactSource: String(row.contactSource || ""),
               chantingStatus: String(row.chantingStatus || ""),
               fromOtherCamp: String(row.fromOtherCamp).toLowerCase() === 'yes' || String(row.fromOtherCamp) === 'true',

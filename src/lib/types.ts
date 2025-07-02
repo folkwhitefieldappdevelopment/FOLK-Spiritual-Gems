@@ -34,7 +34,7 @@ export type Person = {
   occupation: string;
   rentDetails: string;
   nativePlace: string;
-  sgRating: string;
+  sgRating: number;
   contactSource: string;
   chantingStatus: string;
   fromOtherCamp: boolean;
