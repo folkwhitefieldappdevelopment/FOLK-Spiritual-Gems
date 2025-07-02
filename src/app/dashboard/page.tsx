@@ -5,8 +5,8 @@ import * as React from 'react';
 import type { Person } from '@/lib/types';
 import { getPeople } from '@/services/people-service';
 import { useToast } from '@/hooks/use-toast';
-import { subWeeks, startOfWeek, isAfter } from 'date-fns';
-import { Users, UserPlus } from 'lucide-react';
+import { subWeeks, startOfWeek, isAfter, format } from 'date-fns';
+import { Users, UserPlus, Briefcase } from 'lucide-react';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
