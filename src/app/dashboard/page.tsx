@@ -130,7 +130,7 @@ export default function DashboardPage() {
       const status = p.occupation || 'Not specified';
       occupationMap.set(status, (occupationMap.get(status) || 0) + 1);
     });
-    const occupationData = Array.from(occupationMap.entries()).map(([name, value]) => ({ name, value }));
+    const occupationData = Array.from(occupationMap.entries()).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value);
 
     return { 
       totalContacts: people.length,
@@ -202,7 +202,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-3">
             <CardHeader>
                 <CardTitle>Contacts by Enabler</CardTitle>
                 <CardDescription>Distribution of contacts among enablers.</CardDescription>
@@ -212,9 +212,13 @@ export default function DashboardPage() {
                 <BarChart data={contactsByEnabler} layout="vertical" margin={{ left: 10, right: 10 }}>
                   <CartesianGrid horizontal={false} />
                   <XAxis type="number" dataKey="value" allowDecimals={false} />
-                  <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 12 }} />
+                  <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 12 }} />
                   <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} content={<ChartTooltipContent />} />
-                  <Bar dataKey="value" fill="hsl(var(--primary))" radius={4} />
+                  <Bar dataKey="value" radius={4}>
+                    {contactsByEnabler.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ChartContainer>
             </CardContent>
@@ -239,8 +243,8 @@ export default function DashboardPage() {
               </ChartContainer>
             </CardContent>
         </Card>
-
-        <Card className="lg:col-span-3">
+        
+        <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>By Occupation Status</CardTitle>
             <CardDescription>
@@ -249,28 +253,17 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <ChartContainer config={{}} className="h-[300px] w-full">
-              <PieChart>
-                <Tooltip content={<ChartTooltipContent nameKey="name" />} />
-                <Legend content={<ChartLegendContent />} />
-                <Pie
-                  data={contactsByOccupation}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={80}
-                  labelLine={false}
-                  label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
-                >
-                  {contactsByOccupation.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={CHART_COLORS[index % CHART_COLORS.length]}
-                    />
-                  ))}
-                </Pie>
-              </PieChart>
+               <BarChart data={contactsByOccupation} layout="vertical" margin={{ left: 10, right: 10 }}>
+                  <CartesianGrid horizontal={false} />
+                  <XAxis type="number" dataKey="value" allowDecimals={false} />
+                  <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 12 }} />
+                  <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} content={<ChartTooltipContent />} />
+                  <Bar dataKey="value" radius={4}>
+                    {contactsByOccupation.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
             </ChartContainer>
           </CardContent>
         </Card>
