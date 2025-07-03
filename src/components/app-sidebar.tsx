@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, UserSquare, Settings, LayoutDashboard, Gem } from "lucide-react";
+import { Users, UserSquare, Settings, LayoutDashboard, Gem, PhoneCall } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 
@@ -14,6 +14,7 @@ export function AppSidebar() {
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/", label: "Contacts", icon: Users },
     { href: "/groups", label: "Groups", icon: UserSquare },
+    { href: "/call-analyzer", label: "Call Analyzer", icon: PhoneCall },
   ];
   
   const isActive = (href: string) => {

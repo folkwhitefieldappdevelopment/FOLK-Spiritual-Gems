@@ -4,7 +4,7 @@
 import type { ReactNode } from "react";
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Menu, LayoutDashboard, Users, UserSquare, Settings, Gem } from 'lucide-react';
+import { Menu, LayoutDashboard, Users, UserSquare, Settings, Gem, PhoneCall } from 'lucide-react';
 import { Button } from './ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from './ui/sheet';
 import { cn } from '@/lib/utils';
@@ -20,6 +20,7 @@ const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/", label: "Contacts", icon: Users },
     { href: "/groups", label: "Groups", icon: UserSquare },
+    { href: "/call-analyzer", label: "Call Analyzer", icon: PhoneCall },
 ];
 
 export function PageHeader({ title, description, children }: PageHeaderProps) {
