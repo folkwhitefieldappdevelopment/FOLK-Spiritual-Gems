@@ -15,7 +15,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter
 } from '@/components/ui/card';
 import {
   Table,
@@ -24,16 +23,21 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableFooter,
 } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+type CallStatusCounts = { picked: number; notPicked: number };
+type SgCounts = { level1: number; level2: number; level3: number };
+type FrpCounts = { itpl: number; vfr: number; bfr: number };
 
 type AnalysisResult = {
   enabler: string;
   totalContacts: number;
-  callsMade: number;
-  sgCount: number;
+  callStatus: CallStatusCounts;
+  sg: SgCounts;
+  frp: FrpCounts;
   manglaArtiCount: number;
-  frpCount: number;
 };
 
 export default function CallAnalyzerPage() {
@@ -67,48 +71,58 @@ export default function CallAnalyzerPage() {
 
           const headers = sheetData[0].map(h => (h ? String(h).toLowerCase().trim() : ''));
           
-          // Find column indices based on header names (case-insensitive)
           const callStatusIndex = headers.indexOf('call status');
           const sgIndex = headers.indexOf('sg');
           const manglaArtiIndex = headers.indexOf('mangla arti');
           const frpIndex = headers.indexOf('frp');
-          const contactNameIndex = 0; // Assume first column is always contacts
+          const contactNameIndex = 0;
 
           const dataRows = sheetData.slice(1);
           const validRows = dataRows.filter(row => Array.isArray(row) && row.length > 0 && row[contactNameIndex] !== undefined && row[contactNameIndex] !== null && String(row[contactNameIndex]).trim() !== '');
 
-          let callsMade = 0;
-          let sgCount = 0;
-          let manglaArtiCount = 0;
-          let frpCount = 0;
+          const enablerResult: AnalysisResult = {
+            enabler: sheetName,
+            totalContacts: validRows.length,
+            callStatus: { picked: 0, notPicked: 0 },
+            sg: { level1: 0, level2: 0, level3: 0 },
+            frp: { itpl: 0, vfr: 0, bfr: 0 },
+            manglaArtiCount: 0,
+          };
 
           for (const row of validRows) {
-            // A count is registered if the relevant column has any non-empty value
-            if (callStatusIndex > -1 && row[callStatusIndex] !== undefined && row[callStatusIndex] !== null && String(row[callStatusIndex]).trim() !== '') {
-              callsMade++;
-            }
-            if (sgIndex > -1 && row[sgIndex] !== undefined && row[sgIndex] !== null && String(row[sgIndex]).trim() !== '') {
-              sgCount++;
-            }
+            // Mangla Arti (any non-empty value)
             if (manglaArtiIndex > -1 && row[manglaArtiIndex] !== undefined && row[manglaArtiIndex] !== null && String(row[manglaArtiIndex]).trim() !== '') {
-              manglaArtiCount++;
+              enablerResult.manglaArtiCount++;
             }
-            if (frpIndex > -1 && row[frpIndex] !== undefined && row[frpIndex] !== null && String(row[frpIndex]).trim() !== '') {
-              frpCount++;
+
+            // Call Status
+            if (callStatusIndex > -1) {
+              const value = String(row[callStatusIndex] || '').toLowerCase().trim();
+              if (value === 'picked call') enablerResult.callStatus.picked++;
+              else if (value === 'not picked') enablerResult.callStatus.notPicked++;
+            }
+
+            // SG
+            if (sgIndex > -1) {
+              const value = String(row[sgIndex] || '').toLowerCase().trim();
+              if (value === 'level 1') enablerResult.sg.level1++;
+              else if (value === 'level 2') enablerResult.sg.level2++;
+              else if (value === 'level 3') enablerResult.sg.level3++;
+            }
+
+            // FRP
+            if (frpIndex > -1) {
+              const value = String(row[frpIndex] || '').toLowerCase().trim();
+              if (value === 'itpl fr') enablerResult.frp.itpl++;
+              else if (value === 'vfr') enablerResult.frp.vfr++;
+              else if (value === 'bfr') enablerResult.frp.bfr++;
             }
           }
           
-          analysis.push({
-            enabler: sheetName,
-            totalContacts: validRows.length,
-            callsMade,
-            sgCount,
-            manglaArtiCount,
-            frpCount,
-          });
+          analysis.push(enablerResult);
         }
         
-        setResults(analysis.sort((a, b) => b.callsMade - a.callsMade));
+        setResults(analysis.sort((a, b) => (b.callStatus.picked + b.callStatus.notPicked) - (a.callStatus.picked + a.callStatus.notPicked)));
 
         toast({
           title: 'Analysis Complete',
@@ -133,11 +147,30 @@ export default function CallAnalyzerPage() {
     reader.readAsArrayBuffer(file);
   };
 
-  const totalCalls = results.reduce((sum, item) => sum + item.callsMade, 0);
-  const totalSg = results.reduce((sum, item) => sum + item.sgCount, 0);
-  const totalManglaArti = results.reduce((sum, item) => sum + item.manglaArtiCount, 0);
-  const totalFrp = results.reduce((sum, item) => sum + item.frpCount, 0);
-  const totalContacts = results.reduce((sum, item) => sum + item.totalContacts, 0);
+  const totals = React.useMemo(() => {
+    if (!results.length) {
+      return null;
+    }
+    return results.reduce((acc, curr) => {
+        acc.totalContacts += curr.totalContacts;
+        acc.callStatus.picked += curr.callStatus.picked;
+        acc.callStatus.notPicked += curr.callStatus.notPicked;
+        acc.sg.level1 += curr.sg.level1;
+        acc.sg.level2 += curr.sg.level2;
+        acc.sg.level3 += curr.sg.level3;
+        acc.frp.itpl += curr.frp.itpl;
+        acc.frp.vfr += curr.frp.vfr;
+        acc.frp.bfr += curr.frp.bfr;
+        acc.manglaArtiCount += curr.manglaArtiCount;
+        return acc;
+    }, {
+        totalContacts: 0,
+        callStatus: { picked: 0, notPicked: 0 },
+        sg: { level1: 0, level2: 0, level3: 0 },
+        frp: { itpl: 0, vfr: 0, bfr: 0 },
+        manglaArtiCount: 0,
+    });
+  }, [results]);
 
   return (
     <>
@@ -154,7 +187,7 @@ export default function CallAnalyzerPage() {
             </Button>
           </PageHeader>
           <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-            <div className="mx-auto max-w-4xl space-y-6">
+            <div className="mx-auto max-w-6xl space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle>How it Works</CardTitle>
@@ -167,12 +200,20 @@ export default function CallAnalyzerPage() {
                     <FileQuestion className="h-4 w-4" />
                     <AlertTitle>Excel File Format</AlertTitle>
                     <AlertDescription>
-                      <ul className="list-disc pl-5 space-y-1 mt-2">
+                      <ul className="list-disc pl-5 space-y-2 mt-2">
                         <li>Each **sheet** in the Excel file should be named after an **enabler**.</li>
                         <li>The sheet must have a **header row** with column names. The tool will look for specific headers (case-insensitive).</li>
                         <li>The **first column** should always contain the **contact names**.</li>
-                        <li>Required column headers for analysis: **Call status**, **SG**, **Mangla Arti**, and **FRP**.</li>
-                        <li>To count an item, simply put **any text** (like "Y", "Done", or a date) in the cell for that contact under the correct column header. Empty cells are ignored.</li>
+                        <li>
+                          The tool analyzes these columns:
+                          <ul className="list-disc pl-6 mt-1 space-y-1">
+                            <li>**Call status**: Counts occurrences of "Picked Call" and "Not Picked".</li>
+                            <li>**SG**: Counts occurrences of "Level 1", "Level 2", and "Level 3".</li>
+                            <li>**FRP**: Counts occurrences of "ITPL FR", "VFR", and "BFR".</li>
+                            <li>**Mangla Arti**: Counts any non-empty cell.</li>
+                          </ul>
+                        </li>
+                        <li>Other columns will be ignored. The text matching for values is case-insensitive.</li>
                       </ul>
                     </AlertDescription>
                   </Alert>
@@ -194,43 +235,63 @@ export default function CallAnalyzerPage() {
                        <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Enabler</TableHead>
-                            <TableHead className="text-right">Calls Made</TableHead>
-                            <TableHead className="text-right">SG</TableHead>
-                            <TableHead className="text-right">Mangla Arti</TableHead>
-                            <TableHead className="text-right">FRP</TableHead>
-                            <TableHead className="text-right">Total Contacts</TableHead>
+                            <TableHead rowSpan={2} className="align-bottom sticky left-0 bg-card">Enabler</TableHead>
+                            <TableHead rowSpan={2} className="align-bottom text-right">Contacts</TableHead>
+                            <TableHead colSpan={2} className="text-center border-l">Call Status</TableHead>
+                            <TableHead colSpan={3} className="text-center border-l">SG</TableHead>
+                            <TableHead colSpan={3} className="text-center border-l">FRP</TableHead>
+                            <TableHead rowSpan={2} className="align-bottom text-right border-l">Mangla Arti</TableHead>
+                          </TableRow>
+                          <TableRow>
+                            <TableHead className="text-right border-l">Picked</TableHead>
+                            <TableHead className="text-right">Not Picked</TableHead>
+                            <TableHead className="text-right border-l">L1</TableHead>
+                            <TableHead className="text-right">L2</TableHead>
+                            <TableHead className="text-right">L3</TableHead>
+                            <TableHead className="text-right border-l">ITPL</TableHead>
+                            <TableHead className="text-right">VFR</TableHead>
+                            <TableHead className="text-right">BFR</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {results.map((result) => (
                             <TableRow key={result.enabler}>
-                              <TableCell className="font-medium">{result.enabler}</TableCell>
-                              <TableCell className="text-right font-semibold">{result.callsMade}</TableCell>
-                              <TableCell className="text-right">{result.sgCount}</TableCell>
-                              <TableCell className="text-right">{result.manglaArtiCount}</TableCell>
-                              <TableCell className="text-right">{result.frpCount}</TableCell>
+                              <TableCell className="font-medium sticky left-0 bg-card">{result.enabler}</TableCell>
                               <TableCell className="text-right">{result.totalContacts}</TableCell>
+                              <TableCell className="text-right font-semibold border-l">{result.callStatus.picked}</TableCell>
+                              <TableCell className="text-right">{result.callStatus.notPicked}</TableCell>
+                              <TableCell className="text-right border-l">{result.sg.level1}</TableCell>
+                              <TableCell className="text-right">{result.sg.level2}</TableCell>
+                              <TableCell className="text-right">{result.sg.level3}</TableCell>
+                              <TableCell className="text-right border-l">{result.frp.itpl}</TableCell>
+                              <TableCell className="text-right">{result.frp.vfr}</TableCell>
+                              <TableCell className="text-right">{result.frp.bfr}</TableCell>
+                              <TableCell className="text-right border-l">{result.manglaArtiCount}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
+                         {totals && (
+                           <TableFooter>
+                              <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                <TableCell className="font-bold text-primary sticky left-0 bg-muted/50">Totals</TableCell>
+                                <TableCell className="text-right font-bold">{totals.totalContacts}</TableCell>
+                                <TableCell className="text-right font-bold border-l">{totals.callStatus.picked}</TableCell>
+                                <TableCell className="text-right font-bold">{totals.callStatus.notPicked}</TableCell>
+                                <TableCell className="text-right font-bold border-l">{totals.sg.level1}</TableCell>
+                                <TableCell className="text-right font-bold">{totals.sg.level2}</TableCell>
+                                <TableCell className="text-right font-bold">{totals.sg.level3}</TableCell>
+                                <TableCell className="text-right font-bold border-l">{totals.frp.itpl}</TableCell>
+                                <TableCell className="text-right font-bold">{totals.frp.vfr}</TableCell>
+                                <TableCell className="text-right font-bold">{totals.frp.bfr}</TableCell>
+                                <TableCell className="text-right font-bold border-l">{totals.manglaArtiCount}</TableCell>
+                              </TableRow>
+                           </TableFooter>
+                         )}
                        </Table>
                     ) : (
                       <div className="text-center text-muted-foreground p-8">No results to display. Upload a file to begin.</div>
                     )}
                   </CardContent>
-                  {results.length > 0 && (
-                    <CardFooter className="bg-muted/50 p-4 rounded-b-lg">
-                      <div className="w-full grid grid-cols-2 sm:grid-cols-6 gap-2 text-sm font-semibold">
-                        <span className="sm:col-span-1 font-bold text-primary">Totals</span>
-                        <span className="text-right">Calls: {totalCalls}</span>
-                        <span className="text-right">SG: {totalSg}</span>
-                        <span className="text-right">MA: {totalManglaArti}</span>
-                        <span className="text-right">FRP: {totalFrp}</span>
-                        <span className="text-right">Contacts: {totalContacts}</span>
-                      </div>
-                    </CardFooter>
-                  )}
                 </Card>
               )}
             </div>
