@@ -26,7 +26,7 @@ import {
   updatePerson,
 } from "@/services/people-service";
 import { getEnablers, getContactSources } from "@/services/settings-service";
-import { serverTimestamp } from "firebase/firestore";
+import { serverTimestamp, arrayUnion } from "firebase/firestore";
 
 export default function CallingAssistantPage() {
   const { toast } = useToast();
@@ -135,14 +135,27 @@ export default function CallingAssistantPage() {
     updatePerson(personId, {
         lastCallRemark: remark,
         lastCallAt: serverTimestamp(),
+        // @ts-ignore
+        callHistory: arrayUnion({
+            remark: remark,
+            calledAt: serverTimestamp(),
+        })
     });
     
     // Optimistic update
-    setPeople(prev => prev.map(p => p.id === personId ? {
-        ...p,
-        lastCallRemark: remark,
-        lastCallAt: new Date(),
-    } : p));
+    setPeople(prev => prev.map(p => {
+        if (p.id === personId) {
+            const newHistoryEntry = { remark, calledAt: new Date() };
+            const newHistory = p.callHistory ? [...p.callHistory, newHistoryEntry] : [newHistoryEntry];
+            return {
+                ...p,
+                callHistory: newHistory,
+                lastCallRemark: remark,
+                lastCallAt: new Date(),
+            };
+        }
+        return p;
+    }));
   };
   
   const handleDeletePerson = () => {

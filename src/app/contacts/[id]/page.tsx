@@ -39,6 +39,7 @@ import { CreateUpdatePersonDialog } from '@/components/create-update-person-dial
 import { ProgressTracker } from '@/components/progress-tracker';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 import { Separator } from '@/components/ui/separator';
+import { CallHistory } from '@/components/call-history';
 
 export default function PersonDetailPage() {
   const router = useRouter();
@@ -259,7 +260,7 @@ export default function PersonDetailPage() {
           <main className="flex-1 overflow-y-auto p-4 sm:p-6">
             <div className="mx-auto max-w-4xl">
               <div className={cn("grid grid-cols-1 gap-6", isAdmin && "lg:grid-cols-3")}>
-                <div className={cn(isAdmin ? "lg:col-span-1" : "lg:col-span-3")}>
+                <div className={cn(isAdmin ? "lg:col-span-1" : "lg:col-span-3", "space-y-6")}>
                   <Card>
                     <CardContent className="pt-6 text-center flex flex-col items-center">
                       <Dialog>
@@ -362,6 +363,7 @@ export default function PersonDetailPage() {
 
                     </CardContent>
                   </Card>
+                  <CallHistory person={person} />
                 </div>
                 {isAdmin && (
                   <div className="lg:col-span-2">
