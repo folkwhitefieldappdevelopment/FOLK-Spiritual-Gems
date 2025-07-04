@@ -23,7 +23,22 @@ import {
   SelectValue,
 } from './ui/select';
 
-const getCellClass = (currentValue: string, goalValue: string) => {
+const getCellClass = (
+  currentValue: string,
+  goalValue: string,
+  categoryName: string
+) => {
+  if (categoryName === 'Chanting') {
+    const rounds = parseInt(currentValue, 10);
+    if (isNaN(rounds) || currentValue.trim() === '' || currentValue.trim() === '-') {
+      return 'bg-gray-200/50 dark:bg-gray-800/50';
+    }
+    if (rounds >= 16) return 'bg-green-100 dark:bg-green-900/50';
+    if (rounds >= 12) return 'bg-yellow-100 dark:bg-yellow-800/50';
+    if (rounds >= 8) return 'bg-orange-100 dark:bg-orange-800/50';
+    return 'bg-red-100 dark:bg-red-900/50';
+  }
+
   const goalIsYesNo = goalValue.toLowerCase() === 'yes';
 
   if (currentValue.toLowerCase() === 'yes') {
@@ -75,9 +90,31 @@ export function ProgressTracker({
     itemIndex: number,
     levelIndex: number
   ) => {
-    const goalValue = checklistData[catIndex].items[itemIndex].levels[levelIndex];
+    const category = checklistData[catIndex];
+    const item = category.items[itemIndex];
+    const goalValue = item.levels[levelIndex];
     const levelKey = `l${levelIndex + 1}` as keyof ProgressLevelAnswers;
     const currentValue = progress?.[catIndex]?.answers?.[itemIndex]?.[levelKey] || '';
+
+    if (category.category === 'Chanting') {
+      const options = Array.from({ length: 17 }, (_, i) => String(i));
+      return (
+        <Select
+          value={currentValue}
+          onValueChange={(value) =>
+            onProgressChange(catIndex, itemIndex, levelIndex, value === '-' ? '' : value)
+          }
+        >
+          <SelectTrigger className="w-full h-auto p-1 text-xs bg-transparent border-none focus:ring-0 focus:ring-offset-0">
+            <SelectValue placeholder="-" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="-">-</SelectItem>
+            {options.map(option => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      );
+    }
 
     if (goalValue.toLowerCase() === 'yes') {
       return (
@@ -186,7 +223,8 @@ export function ProgressTracker({
                             'text-center text-sm align-top p-0',
                             getCellClass(
                                progress?.[catIndex]?.answers?.[itemIndex]?.[`l${levelIndex + 1}` as keyof ProgressLevelAnswers] || '',
-                               goal
+                               goal,
+                               category.category
                             )
                           )}
                         >
