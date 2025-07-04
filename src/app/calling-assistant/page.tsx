@@ -132,26 +132,28 @@ export default function CallingAssistantPage() {
   };
   
   const handleSessionSave = (personId: string, remark: string) => {
+    const callTime = new Date(); // Use a client-side timestamp for the history entry
+
     updatePerson(personId, {
         lastCallRemark: remark,
-        lastCallAt: serverTimestamp(),
+        lastCallAt: serverTimestamp(), // This is fine as it's a top-level field
         // @ts-ignore
         callHistory: arrayUnion({
             remark: remark,
-            calledAt: serverTimestamp(),
+            calledAt: callTime, // Use the client-side timestamp here, which is allowed inside arrayUnion
         })
     });
     
-    // Optimistic update
+    // Optimistic update using the same client-side timestamp
     setPeople(prev => prev.map(p => {
         if (p.id === personId) {
-            const newHistoryEntry = { remark, calledAt: new Date() };
+            const newHistoryEntry = { remark, calledAt: callTime };
             const newHistory = p.callHistory ? [...p.callHistory, newHistoryEntry] : [newHistoryEntry];
             return {
                 ...p,
                 callHistory: newHistory,
                 lastCallRemark: remark,
-                lastCallAt: new Date(),
+                lastCallAt: callTime, // Show the client time in UI immediately
             };
         }
         return p;
