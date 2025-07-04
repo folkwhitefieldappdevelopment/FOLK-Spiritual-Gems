@@ -2,7 +2,8 @@
 "use client";
 
 import Link from 'next/link';
-import { MoreHorizontal, Phone, MapPin, Trash2, Edit, Sunrise } from "lucide-react";
+import { MoreHorizontal, Phone, MapPin, Trash2, Edit, Sunrise, MessageSquare, Clock } from "lucide-react";
+import { formatDistanceToNow } from 'date-fns';
 import type { Person } from "@/lib/types";
 import {
   Table,
@@ -42,9 +43,17 @@ type PersonTableProps = {
   people: Person[];
   onEdit: (person: Person) => void;
   onDelete: (personId: string) => void;
+  isCallingAssistantView?: boolean;
 };
 
-export function PersonTable({ people, onEdit, onDelete }: PersonTableProps) {
+const safeDate = (timestamp: any): Date | null => {
+    if (!timestamp) return null;
+    if (timestamp.toDate) return timestamp.toDate(); // Firestore Timestamp
+    if (timestamp instanceof Date) return timestamp; // Javascript Date
+    return null;
+}
+
+export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView = false }: PersonTableProps) {
   return (
     <TooltipProvider>
       <div className="rounded-lg border">
@@ -53,8 +62,8 @@ export function PersonTable({ people, onEdit, onDelete }: PersonTableProps) {
             <TableRow>
               <TableHead className="w-[200px] sm:w-[250px]">Name</TableHead>
               <TableHead className="hidden sm:table-cell">Phone</TableHead>
-              <TableHead className="hidden md:table-cell">Native Place</TableHead>
-              <TableHead>Chanting Status</TableHead>
+              <TableHead className="hidden md:table-cell">Last Called</TableHead>
+              <TableHead>Last Remark</TableHead>
               <TableHead className="w-[50px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -86,22 +95,36 @@ export function PersonTable({ people, onEdit, onDelete }: PersonTableProps) {
                   </a>
                 </TableCell>
                 <TableCell className="hidden md:table-cell">
-                  <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <MapPin className="h-4 w-4 shrink-0" />
-                    {person.nativePlace || 'N/A'}
-                  </span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="flex items-center gap-2 truncate text-sm text-muted-foreground">
+                          <Clock className="h-4 w-4 shrink-0" />
+                           {person.lastCallAt ? 
+                                `${formatDistanceToNow(safeDate(person.lastCallAt)!, { addSuffix: true })}` 
+                                : 'Never'
+                            }
+                        </span>
+                      </TooltipTrigger>
+                       {person.lastCallAt && (
+                         <TooltipContent>
+                            <p>{safeDate(person.lastCallAt)!.toLocaleString()}</p>
+                         </TooltipContent>
+                       )}
+                    </Tooltip>
                 </TableCell>
                 <TableCell>
                   <Tooltip>
                       <TooltipTrigger asChild>
                         <span className="flex items-center gap-2 truncate text-sm text-muted-foreground">
-                          <Sunrise className="h-4 w-4 shrink-0" />
-                          <span className="truncate">{person.chantingStatus || 'N/A'}</span>
+                          <MessageSquare className="h-4 w-4 shrink-0" />
+                          <span className="truncate">{person.lastCallRemark || 'No remarks yet'}</span>
                         </span>
                       </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{person.chantingStatus || 'N/A'}</p>
-                      </TooltipContent>
+                      {person.lastCallRemark && (
+                        <TooltipContent>
+                            <p className="max-w-xs">{person.lastCallRemark}</p>
+                        </TooltipContent>
+                      )}
                     </Tooltip>
                 </TableCell>
                 <TableCell className="text-right">
@@ -115,17 +138,19 @@ export function PersonTable({ people, onEdit, onDelete }: PersonTableProps) {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => onEdit(person)}>
                           <Edit className="mr-2 h-4 w-4" />
-                          Edit
+                          {isCallingAssistantView ? 'View/Edit Details' : 'Edit'}
                         </DropdownMenuItem>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            className="w-full justify-start px-2 py-1.5 text-sm font-normal text-destructive hover:bg-destructive/10 hover:text-destructive"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </Button>
-                        </AlertDialogTrigger>
+                        {!isCallingAssistantView && (
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              className="w-full justify-start px-2 py-1.5 text-sm font-normal text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </Button>
+                          </AlertDialogTrigger>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                     <AlertDialogContent>

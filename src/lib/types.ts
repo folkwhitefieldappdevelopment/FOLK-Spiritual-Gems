@@ -46,6 +46,8 @@ export type Person = {
   progress: ProgressCategoryAnswers[];
   customData?: { [key: string]: any };
   createdAt?: any; // Firestore Timestamp
+  lastCallRemark?: string;
+  lastCallAt?: any; // Firestore Timestamp
 };
 
 export type Group = {
