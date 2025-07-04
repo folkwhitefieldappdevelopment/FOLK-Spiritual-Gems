@@ -263,6 +263,7 @@ export default function ContactsPage() {
             const phone = String(row.phone).replace(/\s+/g, '');
             const occupation = occupationStatuses.includes(row.occupation) ? row.occupation : "Working";
             const photoUrlValue = String(row.photoUrl || '').trim();
+            const isValidPhotoUrl = photoUrlValue.startsWith('http') || photoUrlValue.startsWith('data:image');
 
             return {
               firstName: String(row.firstName),
@@ -279,7 +280,7 @@ export default function ContactsPage() {
               chantingStatus: String(row.chantingStatus || ""),
               fromOtherCamp: String(row.fromOtherCamp).toLowerCase() === 'yes' || String(row.fromOtherCamp) === 'true',
               enablerInTouchWith: '',
-              photoUrl: photoUrlValue.startsWith('http') ? photoUrlValue : `https://placehold.co/100x100.png`,
+              photoUrl: isValidPhotoUrl ? photoUrlValue : `https://placehold.co/100x100.png`,
               progress: createInitialProgress(),
               customData: {},
             };
