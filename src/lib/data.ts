@@ -73,7 +73,11 @@ export const checklistData = [
   },
   {
     category: 'Expedition',
-    items: [{ question: 'Folk Trips', levels: ['1 long trip', '1 long trip', '1 long trip'] }],
+    items: [
+      { question: 'Long Trip (Goal: 1)', levels: ['Yes', 'Yes', 'Yes'] },
+      { question: 'Short Trip (Goal: 1)', levels: ['Yes', 'Yes', 'Yes'] },
+      { question: '1 Day Trip (Goal: 2)', levels: ['Yes', 'Yes', 'Yes'] },
+    ],
   },
 ];
 
