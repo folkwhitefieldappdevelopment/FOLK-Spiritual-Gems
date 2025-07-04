@@ -25,7 +25,7 @@ export const checklistData = [
         question: 'Weekly program goal met?',
         levels: ['Yes', 'Yes', 'Yes'],
       },
-      { question: 'Guru issue related', levels: ['SP office quotes', 'Final order', '-'] },
+      { question: 'Guru issue related', levels: ['Yes', 'Yes', 'Yes'] },
     ],
   },
   {
