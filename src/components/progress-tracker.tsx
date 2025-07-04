@@ -23,23 +23,29 @@ import {
   SelectValue,
 } from './ui/select';
 
+const parseNumber = (str: string): number | null => {
+  if (!str) return null;
+  const match = str.match(/\d+/);
+  return match ? parseInt(match[0], 10) : null;
+};
+
 const getCellClass = (
   currentValue: string,
   goalValue: string,
-  categoryName: string
 ) => {
-  if (categoryName === 'Chanting') {
-    const rounds = parseInt(currentValue, 10);
-    if (isNaN(rounds) || currentValue.trim() === '' || currentValue.trim() === '-') {
+  const goalNumber = parseNumber(goalValue);
+  const currentNumber = parseNumber(currentValue);
+
+  if (goalNumber !== null && currentNumber !== null && goalNumber > 0) {
+    if (isNaN(currentNumber) || currentValue.trim() === '' || currentValue.trim() === '-') {
       return 'bg-gray-200/50 dark:bg-gray-800/50';
     }
-    if (rounds >= 16) return 'bg-green-100 dark:bg-green-900/50';
-    if (rounds >= 12) return 'bg-yellow-100 dark:bg-yellow-800/50';
-    if (rounds >= 8) return 'bg-orange-100 dark:bg-orange-800/50';
+    const ratio = currentNumber / goalNumber;
+    if (ratio >= 1) return 'bg-green-100 dark:bg-green-900/50';
+    if (ratio >= 0.75) return 'bg-yellow-100 dark:bg-yellow-800/50';
+    if (ratio >= 0.5) return 'bg-orange-100 dark:bg-orange-800/50';
     return 'bg-red-100 dark:bg-red-900/50';
   }
-
-  const goalIsYesNo = goalValue.toLowerCase() === 'yes';
 
   if (currentValue.toLowerCase() === 'yes') {
     return 'bg-green-100 dark:bg-green-900/50';
@@ -51,7 +57,7 @@ const getCellClass = (
     return 'bg-gray-200/50 dark:bg-gray-800/50';
   }
   // if it's not a yes/no goal, and has a number, make it blue
-  if (!goalIsYesNo && /\d/.test(currentValue)) {
+  if (goalValue.toLowerCase() !== 'yes' && /\d/.test(currentValue)) {
     return 'bg-blue-100 dark:bg-blue-900/50';
   }
 
@@ -95,9 +101,11 @@ export function ProgressTracker({
     const goalValue = item.levels[levelIndex];
     const levelKey = `l${levelIndex + 1}` as keyof ProgressLevelAnswers;
     const currentValue = progress?.[catIndex]?.answers?.[itemIndex]?.[levelKey] || '';
+    
+    const goalNumber = parseNumber(goalValue);
 
-    if (category.category === 'Chanting') {
-      const options = Array.from({ length: 17 }, (_, i) => String(i));
+    if (goalNumber !== null) {
+      const options = Array.from({ length: goalNumber + 1 }, (_, i) => String(i));
       return (
         <Select
           value={currentValue}
@@ -223,8 +231,7 @@ export function ProgressTracker({
                             'text-center text-sm align-top p-0',
                             getCellClass(
                                progress?.[catIndex]?.answers?.[itemIndex]?.[`l${levelIndex + 1}` as keyof ProgressLevelAnswers] || '',
-                               goal,
-                               category.category
+                               goal
                             )
                           )}
                         >
