@@ -119,9 +119,9 @@ export function ProgressTracker({
         <CardTitle>Progress Checklist</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="border rounded-lg overflow-x-auto">
+        <div className="border rounded-lg overflow-auto relative max-h-[calc(100vh-20rem)]">
           <Table>
-            <TableHeader className="sticky top-0 z-10">
+            <TableHeader className="sticky top-0 z-10 bg-card">
               <TableRow className="bg-muted/50 hover:bg-muted/50">
                 <TableHead className="w-[350px] font-bold text-foreground">
                   Category
