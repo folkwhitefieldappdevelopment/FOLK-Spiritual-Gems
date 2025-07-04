@@ -122,34 +122,42 @@ export function ProgressTracker({
           <table className="relative w-full caption-bottom text-sm border-collapse">
             <TableHeader className="sticky top-0 z-10 bg-card">
               <TableRow className="bg-muted/50 hover:bg-muted/50">
-                <TableHead className="w-[350px] font-bold text-foreground">
+                <TableHead rowSpan={2} className="w-[300px] font-bold text-foreground align-bottom">
                   Category
                 </TableHead>
-                <TableHead className="text-center font-bold text-foreground">
+                <TableHead colSpan={2} className="text-center font-bold text-foreground border-l">
                   L-1
                   <p className="font-normal text-xs text-muted-foreground">
                     4 months
                   </p>
                 </TableHead>
-                <TableHead className="text-center font-bold text-foreground">
+                <TableHead colSpan={2} className="text-center font-bold text-foreground border-l">
                   L-2
                   <p className="font-normal text-xs text-muted-foreground">
                     4 months
                   </p>
                 </TableHead>
-                <TableHead className="text-center font-bold text-foreground">
+                <TableHead colSpan={2} className="text-center font-bold text-foreground border-l">
                   L-3
                   <p className="font-normal text-xs text-muted-foreground">
                     4 months
                   </p>
                 </TableHead>
               </TableRow>
+              <TableRow className="bg-muted/50 hover:bg-muted/50">
+                <TableHead className="text-center text-xs font-semibold border-l">Goal</TableHead>
+                <TableHead className="text-center text-xs font-semibold">Achieved</TableHead>
+                <TableHead className="text-center text-xs font-semibold border-l">Goal</TableHead>
+                <TableHead className="text-center text-xs font-semibold">Achieved</TableHead>
+                <TableHead className="text-center text-xs font-semibold border-l">Goal</TableHead>
+                <TableHead className="text-center text-xs font-semibold">Achieved</TableHead>
+              </TableRow>
             </TableHeader>
             <TableBody>
               {checklistData.map((category, catIndex) => (
                 <React.Fragment key={category.category}>
                   <TableRow className="bg-secondary/50">
-                    <TableCell colSpan={4} className="font-bold text-primary">
+                    <TableCell colSpan={7} className="font-bold text-primary">
                       {category.category}
                     </TableCell>
                   </TableRow>
@@ -170,18 +178,22 @@ export function ProgressTracker({
                         )}
                       </TableCell>
                       {item.levels.map((goal, levelIndex) => (
-                        <TableCell
-                          key={levelIndex}
-                          className={cn(
-                            'text-center text-sm align-top p-0',
-                            getCellClass(
-                               progress?.[catIndex]?.answers?.[itemIndex]?.[`l${levelIndex + 1}` as keyof ProgressLevelAnswers] || '',
-                               goal
-                            )
-                          )}
-                        >
-                          {renderCellContent(catIndex, itemIndex, levelIndex)}
-                        </TableCell>
+                        <React.Fragment key={levelIndex}>
+                           <TableCell className="text-center text-xs p-1 border-l bg-muted/20 align-top">
+                             {goal || '-'}
+                           </TableCell>
+                           <TableCell
+                            className={cn(
+                              'text-center text-sm align-top p-0',
+                              getCellClass(
+                                 progress?.[catIndex]?.answers?.[itemIndex]?.[`l${levelIndex + 1}` as keyof ProgressLevelAnswers] || '',
+                                 goal
+                              )
+                            )}
+                          >
+                            {renderCellContent(catIndex, itemIndex, levelIndex)}
+                          </TableCell>
+                        </React.Fragment>
                       ))}
                     </TableRow>
                   ))}
@@ -194,4 +206,3 @@ export function ProgressTracker({
     </Card>
   );
 }
-
