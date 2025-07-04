@@ -11,7 +11,8 @@ import {
   Briefcase,
   Sunrise,
 } from "lucide-react";
-import { read, utils, writeFile } from "xlsx";
+import { read, utils, write } from "xlsx";
+import JSZip from "jszip";
 import { createInitialProgress } from "@/lib/data";
 import type { Person } from "@/lib/types";
 import { occupationStatuses } from "@/lib/types";
@@ -189,10 +190,20 @@ export default function ContactsPage() {
     const worksheet = utils.json_to_sheet(dummyContact, { header: headers });
     const workbook = utils.book_new();
     utils.book_append_sheet(workbook, worksheet, "Contacts");
-    writeFile(workbook, "contacts_sample.xlsx");
+    
+    const excelBuffer = write(workbook, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8" });
+    
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = "contacts_sample.xlsx";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (filteredPeople.length === 0) {
       toast({
         variant: "destructive",
@@ -202,11 +213,45 @@ export default function ContactsPage() {
       return;
     }
 
-    const exportData = filteredPeople.map(p => ({
+    const { dismiss, update } = toast({
+      title: "Exporting Contacts",
+      description: "Preparing your data, this may take a moment...",
+    });
+
+    const zip = new JSZip();
+    const photosFolder = zip.folder("photos");
+    const exportData = [];
+
+    for (const p of filteredPeople) {
+      let photoColumnValue = '';
+      if (p.photoUrl) {
+        if (p.photoUrl.startsWith('data:image')) {
+          try {
+            const extension = p.photoUrl.split(';')[0].split('/')[1] || 'png';
+            const fileName = `${p.firstName}_${p.lastName}_${p.id}.${extension}`;
+            photoColumnValue = `photos/${fileName}`;
+
+            const response = await fetch(p.photoUrl);
+            const blob = await response.blob();
+            
+            if (photosFolder) {
+              photosFolder.file(fileName, blob);
+            }
+
+          } catch (e) {
+            console.error(`Failed to process image for ${p.firstName}:`, e);
+            photoColumnValue = 'Error processing image';
+          }
+        } else {
+          photoColumnValue = p.photoUrl;
+        }
+      }
+      
+      exportData.push({
         firstName: p.firstName,
         lastName: p.lastName,
         phone: p.phone,
-        photoUrl: p.photoUrl && p.photoUrl.startsWith('data:image') ? '' : p.photoUrl,
+        photoUrl: photoColumnValue,
         age: p.age,
         stayingWith: p.stayingWith,
         occupation: p.occupation,
@@ -218,17 +263,41 @@ export default function ContactsPage() {
         chantingStatus: p.chantingStatus,
         fromOtherCamp: p.fromOtherCamp,
         enablerInTouchWith: p.enablerInTouchWith,
-    }));
+      });
+    }
 
     const worksheet = utils.json_to_sheet(exportData);
     const workbook = utils.book_new();
     utils.book_append_sheet(workbook, worksheet, "Contacts");
-    writeFile(workbook, "contacts_export.xlsx");
+    
+    const excelBuffer = write(workbook, { bookType: "xlsx", type: "array" });
+    zip.file("contacts.xlsx", excelBuffer);
 
-    toast({
-      title: 'Export Successful',
-      description: `Exported ${filteredPeople.length} contacts.`
-    });
+    try {
+      const content = await zip.generateAsync({ type: "blob" });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(content);
+      link.download = "contacts_export.zip";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+
+      update({
+        id: dismiss,
+        title: 'Export Successful',
+        description: `Exported ${filteredPeople.length} contacts in contacts_export.zip.`,
+      });
+
+    } catch (err) {
+      console.error("Failed to generate zip file:", err);
+      update({
+        id: dismiss,
+        variant: 'destructive',
+        title: 'Export Failed',
+        description: 'Could not create the zip file.',
+      });
+    }
   };
 
   const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
