@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -16,6 +15,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { Input } from "./ui/input";
+import { Search } from "lucide-react";
 
 type ManageGroupMembersDialogProps = {
   isOpen: boolean;
@@ -33,10 +34,12 @@ export function ManageGroupMembersDialog({
   allPeople,
 }: ManageGroupMembersDialogProps) {
   const [selectedMemberIds, setSelectedMemberIds] = React.useState<Set<string>>(new Set());
+  const [searchTerm, setSearchTerm] = React.useState("");
 
   React.useEffect(() => {
     if (isOpen) {
       setSelectedMemberIds(new Set(group.peopleIds));
+      setSearchTerm("");
     }
   }, [isOpen, group.peopleIds]);
 
@@ -55,6 +58,12 @@ export function ManageGroupMembersDialog({
     setIsOpen(false);
   };
 
+  const filteredPeople = React.useMemo(() => {
+    return allPeople.filter(person => 
+      `${person.firstName} ${person.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [allPeople, searchTerm]);
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent
@@ -67,11 +76,20 @@ export function ManageGroupMembersDialog({
             Select the contacts you want to add to the '{group.name}' group.
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4">
+        <div className="py-4 space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search members..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
           <ScrollArea className="h-72 w-full rounded-md border">
             <div className="p-4 space-y-4">
-              {allPeople.length > 0 ? (
-                allPeople.map((person) => (
+              {filteredPeople.length > 0 ? (
+                filteredPeople.map((person) => (
                   <div key={person.id} className="flex items-center space-x-3">
                     <Checkbox
                       id={`person-${person.id}`}
@@ -100,7 +118,7 @@ export function ManageGroupMembersDialog({
                 ))
               ) : (
                 <p className="text-sm text-muted-foreground text-center p-4">
-                  No contacts available to add.
+                  {allPeople.length === 0 ? "No contacts available to add." : "No contacts found."}
                 </p>
               )}
             </div>
