@@ -131,7 +131,7 @@ export default function CallingAssistantPage() {
     setEditingPerson(person);
   };
   
-  const handleSessionSave = (personId: string, remark: string) => {
+  const handleSessionSave = (personId: string, remark: string, duration: string) => {
     const callTime = new Date(); // Use a client-side timestamp for the history entry
 
     updatePerson(personId, {
@@ -141,13 +141,14 @@ export default function CallingAssistantPage() {
         callHistory: arrayUnion({
             remark: remark,
             calledAt: callTime, // Use the client-side timestamp here, which is allowed inside arrayUnion
+            duration: duration,
         })
     });
     
     // Optimistic update using the same client-side timestamp
     setPeople(prev => prev.map(p => {
         if (p.id === personId) {
-            const newHistoryEntry = { remark, calledAt: callTime };
+            const newHistoryEntry = { remark, calledAt: callTime, duration };
             const newHistory = p.callHistory ? [...p.callHistory, newHistoryEntry] : [newHistoryEntry];
             return {
                 ...p,

@@ -5,7 +5,7 @@ import * as React from 'react';
 import type { Person } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Clock } from 'lucide-react';
+import { Clock, Timer } from 'lucide-react';
 
 const safeDate = (timestamp: any): Date | null => {
     if (!timestamp) return null;
@@ -39,10 +39,18 @@ export function CallHistory({ person }: { person: Person }) {
                         <div className="space-y-6">
                             {sortedHistory.map((log, index) => (
                                 <div key={index} className="space-y-1">
-                                    <p className="text-sm font-medium flex items-center gap-2">
-                                        <Clock className="h-4 w-4 text-muted-foreground" />
-                                        <span>{safeDate(log.calledAt)?.toLocaleString() ?? 'N/A'}</span>
-                                    </p>
+                                    <div className="flex items-center justify-between text-sm">
+                                        <p className="font-medium flex items-center gap-2">
+                                            <Clock className="h-4 w-4 text-muted-foreground" />
+                                            <span>{safeDate(log.calledAt)?.toLocaleString() ?? 'N/A'}</span>
+                                        </p>
+                                        {log.duration && (
+                                            <p className="font-medium flex items-center gap-2 text-muted-foreground">
+                                                <Timer className="h-4 w-4" />
+                                                <span>{log.duration}</span>
+                                            </p>
+                                        )}
+                                    </div>
                                     <p className="text-sm text-muted-foreground pl-6">{log.remark}</p>
                                 </div>
                             ))}

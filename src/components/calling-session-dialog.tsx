@@ -37,7 +37,7 @@ type CallFormValues = z.infer<typeof callFormSchema>;
 type CallingSessionDialogProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSaveRemark: (personId: string, remark: string) => void;
+  onSaveRemark: (personId: string, remark: string, duration: string) => void;
   people: Person[];
 };
 
@@ -49,6 +49,7 @@ export function CallingSessionDialog({
 }: CallingSessionDialogProps) {
   const { toast } = useToast();
   const [currentIndex, setCurrentIndex] = React.useState(0);
+  const [callStartTime, setCallStartTime] = React.useState<Date | null>(null);
   const currentPerson = people[currentIndex];
 
   const form = useForm<CallFormValues>({
@@ -68,6 +69,7 @@ export function CallingSessionDialog({
   React.useEffect(() => {
     if (currentPerson) {
         form.reset({ remark: "" });
+        setCallStartTime(new Date());
     }
   }, [currentPerson, form]);
   
@@ -88,8 +90,15 @@ export function CallingSessionDialog({
   };
   
   const onSubmit = (data: CallFormValues) => {
-    if (!currentPerson) return;
-    onSaveRemark(currentPerson.id, data.remark);
+    if (!currentPerson || !callStartTime) return;
+    
+    const callEndTime = new Date();
+    const durationInSeconds = Math.round((callEndTime.getTime() - callStartTime.getTime()) / 1000);
+    const minutes = Math.floor(durationInSeconds / 60);
+    const seconds = durationInSeconds % 60;
+    const durationString = `${minutes}m ${seconds}s`;
+
+    onSaveRemark(currentPerson.id, data.remark, durationString);
     toast({
         title: "Remark Saved",
         description: `Remark for ${currentPerson.firstName} has been logged.`

@@ -48,7 +48,7 @@ export type Person = {
   createdAt?: any; // Firestore Timestamp
   lastCallRemark?: string;
   lastCallAt?: any; // Firestore Timestamp
-  callHistory?: { remark: string; calledAt: any; }[];
+  callHistory?: { remark: string; calledAt: any; duration?: string; }[];
 };
 
 export type Group = {
