@@ -74,9 +74,9 @@ export const checklistData = [
   {
     category: 'Expedition',
     items: [
-      { question: 'Long Trip (Goal: 1)', levels: ['Yes', 'Yes', 'Yes'] },
-      { question: 'Short Trip (Goal: 1)', levels: ['Yes', 'Yes', 'Yes'] },
-      { question: '1 Day Trip (Goal: 2)', levels: ['Yes', 'Yes', 'Yes'] },
+      { question: 'Long Trip', levels: ['1', '1', '1'] },
+      { question: 'Short Trip', levels: ['1', '1', '1'] },
+      { question: '1 Day Trip', levels: ['2', '2', '2'] },
     ],
   },
 ];

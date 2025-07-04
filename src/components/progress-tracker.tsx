@@ -116,7 +116,7 @@ export function ProgressTracker({
       );
     }
 
-    if (goalValue.toLowerCase() === 'yes') {
+    if (goalValue.toLowerCase() === 'yes' || category.category === 'Expedition') {
       return (
         <Select
           value={currentValue}
