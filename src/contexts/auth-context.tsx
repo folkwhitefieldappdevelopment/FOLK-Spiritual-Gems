@@ -56,10 +56,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         await signInWithPopup(auth, googleProvider);
       }
-    } catch (error) {
-      // This will primarily catch errors from signInWithPopup, such as the user closing the popup.
-      console.error('Error initiating sign in with Google', error);
-      throw error;
+    } catch (error: any) {
+      // This will primarily catch errors from signInWithPopup.
+      if (error.code === 'auth/popup-closed-by-user') {
+        // This is a common user action and not a critical error.
+        // We can log it quietly or ignore it to prevent console noise.
+        console.log('Sign-in popup was closed by the user.');
+      } else {
+        console.error('Error initiating sign in with Google', error);
+      }
     }
   };
 
@@ -68,7 +73,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await firebaseSignOut(auth);
     } catch (error) {
       console.error('Error signing out', error);
-      throw error;
     }
   };
 
