@@ -206,7 +206,7 @@ export default function ContactsPage() {
         firstName: p.firstName,
         lastName: p.lastName,
         phone: p.phone,
-        photoUrl: p.photoUrl,
+        photoUrl: p.photoUrl && p.photoUrl.startsWith('data:image') ? '' : p.photoUrl,
         age: p.age,
         stayingWith: p.stayingWith,
         occupation: p.occupation,
