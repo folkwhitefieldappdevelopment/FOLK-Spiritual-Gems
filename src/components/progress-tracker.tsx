@@ -121,7 +121,7 @@ export function ProgressTracker({
       <CardContent>
         <div className="border rounded-lg overflow-x-auto">
           <Table>
-            <TableHeader>
+            <TableHeader className="sticky top-0 z-10">
               <TableRow className="bg-muted/50 hover:bg-muted/50">
                 <TableHead className="w-[350px] font-bold text-foreground">
                   Category
