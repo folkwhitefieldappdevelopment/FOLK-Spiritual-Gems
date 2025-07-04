@@ -10,6 +10,7 @@ import {
   Upload,
   Briefcase,
   Sunrise,
+  Loader2,
 } from "lucide-react";
 import { read, utils, write } from "xlsx";
 import JSZip from "jszip";
@@ -54,6 +55,8 @@ export default function ContactsPage() {
 
   const [people, setPeople] = React.useState<Person[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [isImporting, setIsImporting] = React.useState(false);
+  const [isExporting, setIsExporting] = React.useState(false);
   const [view, setView] = React.useState<"card" | "table">("card");
   
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -213,10 +216,7 @@ export default function ContactsPage() {
       return;
     }
 
-    const { dismiss, update } = toast({
-      title: "Exporting Contacts",
-      description: "Preparing your data, this may take a moment...",
-    });
+    setIsExporting(true);
 
     const zip = new JSZip();
     const photosFolder = zip.folder("photos");
@@ -283,20 +283,20 @@ export default function ContactsPage() {
       document.body.removeChild(link);
       URL.revokeObjectURL(link.href);
 
-      update({
-        id: dismiss,
+      toast({
         title: 'Export Successful',
         description: `Exported ${filteredPeople.length} contacts in contacts_export.zip.`,
       });
 
     } catch (err) {
       console.error("Failed to generate zip file:", err);
-      update({
-        id: dismiss,
+      toast({
         variant: 'destructive',
         title: 'Export Failed',
         description: 'Could not create the zip file.',
       });
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -304,6 +304,7 @@ export default function ContactsPage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    setIsImporting(true);
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
@@ -397,6 +398,7 @@ export default function ContactsPage() {
         if (event.target) {
           event.target.value = "";
         }
+        setIsImporting(false);
       }
     };
     reader.readAsArrayBuffer(file);
@@ -469,6 +471,9 @@ export default function ContactsPage() {
   if (configError) {
     return <FirebaseConfigError />;
   }
+  
+  const isLoadingAction = isImporting || isExporting;
+  const loadingText = isImporting ? 'Importing...' : isExporting ? 'Exporting...' : '';
 
   const renderContent = () => {
     if (isLoading) {
@@ -602,26 +607,30 @@ export default function ContactsPage() {
               <AdminModeToggle />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3">
-                      <Upload className="h-4 w-4 sm:mr-2" />
-                      <span className="hidden sm:inline">Import/Export</span>
+                    <Button variant="outline" size="sm" className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
+                       {isLoadingAction ? (
+                        <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
+                      ) : (
+                        <Upload className="h-4 w-4 sm:mr-2" />
+                      )}
+                      <span className="hidden sm:inline">{isLoadingAction ? loadingText : 'Import/Export'}</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                    <DropdownMenuItem onClick={() => fileInputRef.current?.click()} disabled={isLoadingAction}>
                       Import from Excel
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleExport}>
+                    <DropdownMenuItem onClick={handleExport} disabled={isLoadingAction}>
                       Export to Excel
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleSampleDownload}>
+                    <DropdownMenuItem onClick={handleSampleDownload} disabled={isLoadingAction}>
                       Download Sample Excel
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                <Button size="sm" onClick={handleAddPerson} className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3">
+                <Button size="sm" onClick={handleAddPerson} className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
                   <PlusCircle className="h-4 w-4 sm:mr-2" />
                   <span className="hidden sm:inline">Add Person</span>
                 </Button>

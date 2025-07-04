@@ -2,6 +2,7 @@
 'use client';
 
 import type { ReactNode } from "react";
+import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu, LayoutDashboard, Users, UserSquare, Settings, Gem, PhoneCall } from 'lucide-react';
@@ -25,16 +26,22 @@ const navItems = [
 
 export function PageHeader({ title, description, children }: PageHeaderProps) {
   const pathname = usePathname();
+  const [isSheetOpen, setIsSheetOpen] = React.useState(false);
   
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
     return pathname.startsWith(href);
   }
 
+  // Close the sheet when the user navigates to a new page
+  React.useEffect(() => {
+    setIsSheetOpen(false);
+  }, [pathname]);
+
   return (
     <header className="sticky top-0 z-10 flex h-[60px] items-center gap-4 border-b bg-card px-4 sm:px-6">
        <div className="sm:hidden">
-         <Sheet>
+         <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
               <Button size="icon" variant="outline" className="h-8 w-8">
                 <Menu className="h-5 w-5" />
