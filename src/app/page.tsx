@@ -164,7 +164,7 @@ export default function ContactsPage() {
 
   const handleSampleDownload = () => {
     const headers = [
-      "firstName", "lastName", "phone", "age", "stayingWith",
+      "firstName", "lastName", "phone", "photoUrl", "age", "stayingWith",
       "occupation", "organisation", "rentDetails", "nativePlace", "sgRating",
       "contactSource", "chantingStatus", "fromOtherCamp", "enablerInTouchWith"
     ];
@@ -172,6 +172,7 @@ export default function ContactsPage() {
       firstName: "John",
       lastName: "Doe",
       phone: "9876543210",
+      photoUrl: "https://placehold.co/100x100.png",
       age: 25,
       stayingWith: "PG / Hostel",
       occupation: "Working",
@@ -205,6 +206,7 @@ export default function ContactsPage() {
         firstName: p.firstName,
         lastName: p.lastName,
         phone: p.phone,
+        photoUrl: p.photoUrl,
         age: p.age,
         stayingWith: p.stayingWith,
         occupation: p.occupation,
@@ -260,7 +262,7 @@ export default function ContactsPage() {
             const isValidRating = !isNaN(rating) && rating >= 0 && rating <= 10;
             const phone = String(row.phone).replace(/\s+/g, '');
             const occupation = occupationStatuses.includes(row.occupation) ? row.occupation : "Working";
-
+            const photoUrlValue = String(row.photoUrl || '').trim();
 
             return {
               firstName: String(row.firstName),
@@ -277,7 +279,7 @@ export default function ContactsPage() {
               chantingStatus: String(row.chantingStatus || ""),
               fromOtherCamp: String(row.fromOtherCamp).toLowerCase() === 'yes' || String(row.fromOtherCamp) === 'true',
               enablerInTouchWith: '',
-              photoUrl: `https://placehold.co/100x100.png`,
+              photoUrl: photoUrlValue.startsWith('http') ? photoUrlValue : `https://placehold.co/100x100.png`,
               progress: createInitialProgress(),
               customData: {},
             };
