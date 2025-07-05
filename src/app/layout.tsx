@@ -6,8 +6,8 @@ import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Personal Data Hub",
-  description: "Manage your personal data with ease.",
+  title: "Folk Contact Center",
+  description: "A contact management center for FOLK.",
 };
 
 export default function RootLayout({
