@@ -95,7 +95,7 @@ function ReferrerError() {
         <AlertCircle className="h-4 w-4" />
         <AlertTitle>Action Required: Update API Key Restrictions</AlertTitle>
         <AlertDescription>
-          Your app's API key has security settings that are blocking your own website from using it. You need to authorize your app's domain.
+          Your API key has security settings that are blocking your website from using it. You need to authorize all of your app's domains.
         </AlertDescription>
       </Alert>
 
@@ -104,15 +104,20 @@ function ReferrerError() {
             <div className="flex-shrink-0 bg-primary/10 text-primary rounded-full h-8 w-8 flex items-center justify-center">
                 <KeyRound className="h-5 w-5" />
             </div>
-            <h3 className="font-semibold">Authorize Your Website Domain</h3>
+            <h3 className="font-semibold">Authorize Your Website Domains</h3>
         </div>
         <p className="text-sm text-muted-foreground">
-            In the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="underline text-primary">Google Cloud Console</a>, navigate to the <strong>Credentials</strong> page for your project. Find the API key your app is using (usually named "Browser key"), click to edit it, and under "Website restrictions," add your app's domain and `localhost` for development.
+            Go to the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="underline text-primary">Google Cloud Credentials page</a>, edit your API key, and under "Website restrictions," add EACH of the following domains. **Do not include `https://`**.
         </p>
-        <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
-          <li>For deployed apps, add your domain (e.g., `your-project-id.firebaseapp.com`).</li>
-          <li>For local development, add your local host and port (e.g., `localhost:9002`).</li>
-        </ul>
+        <pre className="bg-muted p-3 rounded-md mt-2 text-xs overflow-x-auto font-mono text-foreground leading-relaxed">
+{`studio--personal-data-hub-y5fe0.us-central1.hosted.app
+6000-firebase-studio-1751343902620.cluster-6dx7corvpngoivimwvvljgokdw.cloudworkstations.dev
+localhost:9002
+personal-data-hub-y5fe0.firebaseapp.com`}
+        </pre>
+         <p className="text-xs text-muted-foreground">
+          It may take a minute or two for the changes to apply after you save them.
+        </p>
       </div>
     </>
   )
@@ -124,7 +129,7 @@ export function FirebaseConfigError({ error }: { error?: any }) {
 
   const isPermissionError = errorMessage.includes('permission-denied') || errorMessage.includes('offline');
   const isInitializationError = errorMessage.includes('configuration is missing');
-  const isReferrerError = errorMessage.includes('api_key_http_referrer_blocked');
+  const isReferrerError = errorMessage.includes('api_key_http_referrer_blocked') || errorMessage.includes('auth/requests-from-referer');
 
   return (
     <>
