@@ -53,7 +53,7 @@ export function FirebaseConfigError({ error }: { error?: any }) {
                 <p className="mt-2 font-semibold">Domain to add:</p>
                 <code className="bg-muted px-2 py-1 rounded-md font-code text-destructive block my-2 break-all">{domainToAdd}</code>
               </li>
-              <li>
+               <li>
                   <strong>3. (For Android Apps Only) Add SHA-1 Fingerprints.</strong>
                   <p className="mt-1">This step is **not required for this web application**, but it is essential if you have a native Android app using Google Sign-In with this Firebase project.</p>
                   <ul className="list-disc pl-5 mt-2 space-y-2">
