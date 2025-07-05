@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { Headset, Search, Sunrise } from "lucide-react";
+import { Headset, Search, Sunrise, Loader2 } from "lucide-react";
 import type { Person } from "@/lib/types";
 import { occupationStatuses } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -27,8 +27,12 @@ import {
 } from "@/services/people-service";
 import { getEnablers, getContactSources } from "@/services/settings-service";
 import { serverTimestamp, arrayUnion } from "firebase/firestore";
+import { useAuth } from "@/contexts/auth-context";
+import { useRouter } from "next/navigation";
 
 export default function CallingAssistantPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const { toast } = useToast();
 
   const [people, setPeople] = React.useState<Person[]>([]);
@@ -49,34 +53,42 @@ export default function CallingAssistantPage() {
   const [configError, setConfigError] = React.useState(false);
 
   React.useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const [peopleData, enablersData, sourcesData] = await Promise.all([
-          getPeople(),
-          getEnablers(),
-          getContactSources(),
-        ]);
-        setPeople(peopleData);
-        setEnablerOptions(enablersData);
-        setContactSourceOptions(sourcesData);
-      } catch (error) {
-        console.error("Failed to load data:", error);
-        if (error instanceof Error && (error.message.includes('offline') || error.message.includes('permission-denied'))) {
-          setConfigError(true);
-        } else {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Could not load data. Please check your connection or Firebase setup.",
-          });
+    if (!authLoading && !user) {
+      router.replace('/login');
+    }
+  }, [user, authLoading, router]);
+
+  React.useEffect(() => {
+    if (user) {
+      const fetchData = async () => {
+        setIsLoading(true);
+        try {
+          const [peopleData, enablersData, sourcesData] = await Promise.all([
+            getPeople(),
+            getEnablers(),
+            getContactSources(),
+          ]);
+          setPeople(peopleData);
+          setEnablerOptions(enablersData);
+          setContactSourceOptions(sourcesData);
+        } catch (error) {
+          console.error("Failed to load data:", error);
+          if (error instanceof Error && (error.message.includes('offline') || error.message.includes('permission-denied'))) {
+            setConfigError(true);
+          } else {
+            toast({
+              variant: "destructive",
+              title: "Error",
+              description: "Could not load data. Please check your connection or Firebase setup.",
+            });
+          }
+        } finally {
+          setIsLoading(false);
         }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
-  }, [toast]);
+      };
+      fetchData();
+    }
+  }, [user, toast]);
 
   const filteredPeople = React.useMemo(() => {
     const filtered = people.filter((person) => {
@@ -169,6 +181,14 @@ export default function CallingAssistantPage() {
     });
   };
 
+  if (authLoading || !user) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+  
   if (configError) {
     return <FirebaseConfigError />;
   }

@@ -3,12 +3,13 @@
 
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, UserPlus } from 'lucide-react';
+import { ArrowLeft, UserPlus, Loader2 } from 'lucide-react';
 import type { Person, Group } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { getGroup, updateGroup } from '@/services/groups-service';
 import { getPeople, updatePerson } from '@/services/people-service';
 import { createInitialProgress } from '@/lib/data';
+import { useAuth } from '@/contexts/auth-context';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -20,6 +21,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 
 export default function GroupDetailPage() {
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
@@ -35,7 +37,13 @@ export default function GroupDetailPage() {
   const [configError, setConfigError] = React.useState(false);
 
   React.useEffect(() => {
-    if (!groupId) return;
+    if (!authLoading && !user) {
+      router.replace('/login');
+    }
+  }, [user, authLoading, router]);
+
+  React.useEffect(() => {
+    if (!groupId || !user) return;
     const fetchData = async () => {
       setIsLoading(true);
       try {
@@ -80,7 +88,7 @@ export default function GroupDetailPage() {
       }
     };
     fetchData();
-  }, [groupId, router, toast]);
+  }, [groupId, router, toast, user]);
   
   const handleEditPerson = (person: Person) => {
     setEditingPerson(person);
@@ -143,6 +151,14 @@ export default function GroupDetailPage() {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not update group members.'});
     }
   };
+
+  if (authLoading || !user) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
   
   if (configError) {
     return <FirebaseConfigError />;

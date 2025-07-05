@@ -14,22 +14,17 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from './ui/skeleton';
-import { LogOut, LogIn } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 
 export function UserNav() {
-  const { user, loading, signInWithGoogle, signOut } = useAuth();
+  const { user, loading, signOut } = useAuth();
 
   if (loading) {
     return <Skeleton className="h-9 w-9 rounded-full" />;
   }
 
   if (!user) {
-    return (
-      <Button onClick={signInWithGoogle} variant="outline" size="sm">
-        <LogIn className="mr-2 h-4 w-4" />
-        Login
-      </Button>
-    );
+    return null;
   }
 
   return (

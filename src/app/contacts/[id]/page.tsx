@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Edit, Trash2, Phone } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Phone, Loader2 } from 'lucide-react';
 import type { Person, ProgressCategoryAnswers, ProgressLevelAnswers, CustomField } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAdmin } from '@/contexts/admin-context';
@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { getPerson, updatePerson, deletePerson } from '@/services/people-service';
 import { getCustomPersonFields } from '@/services/settings-service';
 import { createInitialProgress } from '@/lib/data';
+import { useAuth } from '@/contexts/auth-context';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -42,6 +43,7 @@ import { Separator } from '@/components/ui/separator';
 import { CallHistory } from '@/components/call-history';
 
 export default function PersonDetailPage() {
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
@@ -55,9 +57,15 @@ export default function PersonDetailPage() {
   const [configError, setConfigError] = React.useState(false);
   const [allPeople, setAllPeople] = React.useState<Person[]>([]);
 
+  React.useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/login');
+    }
+  }, [user, authLoading, router]);
+
 
   React.useEffect(() => {
-    if (!personId) return;
+    if (!personId || !user) return;
 
     const fetchPerson = async () => {
       setIsLoading(true);
@@ -99,7 +107,7 @@ export default function PersonDetailPage() {
     };
 
     fetchPerson();
-  }, [personId, router, toast]);
+  }, [personId, router, toast, user]);
 
   const handleSavePersonDialog = async (personData: Omit<Person, 'id' | 'progress'>) => {
     if (!person) return;
@@ -177,6 +185,14 @@ export default function PersonDetailPage() {
       }
     }
     return String(value);
+  }
+
+  if (authLoading || !user) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
 
   if (configError) {

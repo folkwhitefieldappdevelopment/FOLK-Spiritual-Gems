@@ -1,10 +1,12 @@
 
 "use client";
 import * as React from "react";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Loader2 } from "lucide-react";
 import type { Group } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { getGroups, createGroup, updateGroup, deleteGroup } from "@/services/groups-service";
+import { useAuth } from "@/contexts/auth-context";
+import { useRouter } from "next/navigation";
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { PageHeader } from "@/components/page-header";
@@ -14,6 +16,8 @@ import { CreateUpdateGroupDialog } from "@/components/create-update-group-dialog
 import { FirebaseConfigError } from "@/components/firebase-config-error";
 
 export default function GroupsPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const { toast } = useToast();
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -24,28 +28,36 @@ export default function GroupsPage() {
   const [configError, setConfigError] = React.useState(false);
 
   React.useEffect(() => {
-    const fetchGroups = async () => {
-      setIsLoading(true);
-      try {
-        const groupsData = await getGroups();
-        setGroups(groupsData);
-      } catch (error) {
-        console.error("Failed to fetch groups", error);
-        if (error instanceof Error && (error.message.includes('offline') || error.message.includes('permission-denied'))) {
-          setConfigError(true);
-        } else {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Could not load groups.",
-          });
+    if (!authLoading && !user) {
+      router.replace('/login');
+    }
+  }, [user, authLoading, router]);
+
+  React.useEffect(() => {
+    if (user) {
+      const fetchGroups = async () => {
+        setIsLoading(true);
+        try {
+          const groupsData = await getGroups();
+          setGroups(groupsData);
+        } catch (error) {
+          console.error("Failed to fetch groups", error);
+          if (error instanceof Error && (error.message.includes('offline') || error.message.includes('permission-denied'))) {
+            setConfigError(true);
+          } else {
+            toast({
+              variant: "destructive",
+              title: "Error",
+              description: "Could not load groups.",
+            });
+          }
+        } finally {
+          setIsLoading(false);
         }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchGroups();
-  }, [toast]);
+      };
+      fetchGroups();
+    }
+  }, [user, toast]);
 
   const handleCreateGroup = () => {
     setEditingGroup(undefined);
@@ -102,6 +114,14 @@ export default function GroupsPage() {
     }
   };
   
+  if (authLoading || !user) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
   if (configError) {
     return <FirebaseConfigError />;
   }

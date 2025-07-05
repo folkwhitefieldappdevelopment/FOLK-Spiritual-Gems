@@ -71,6 +71,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       await firebaseSignOut(auth);
+      // After sign out, redirect to login page.
+      window.location.href = '/login';
     } catch (error) {
       console.error('Error signing out', error);
     }

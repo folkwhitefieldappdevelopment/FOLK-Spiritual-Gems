@@ -2,8 +2,10 @@
 'use client';
 
 import * as React from 'react';
-import { PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/auth-context';
+import { useRouter } from 'next/navigation';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -52,6 +54,8 @@ type DialogMode = 'add' | 'edit';
 type ItemType = 'enabler' | 'source' | 'customField';
 
 export default function SettingsPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(true);
   const [configError, setConfigError] = React.useState(false);
@@ -74,35 +78,43 @@ export default function SettingsPage() {
   const [fieldType, setFieldType] = React.useState<CustomFieldType>('text');
 
   React.useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      setConfigError(false);
-      try {
-        const [enablersData, sourcesData, customFieldsData] = await Promise.all([
-          getEnablers(),
-          getContactSources(),
-          getCustomPersonFields(),
-        ]);
-        setEnablers(enablersData);
-        setSources(sourcesData);
-        setCustomFields(customFieldsData);
-      } catch (error) {
-        console.error('Failed to load settings data', error);
-        if (error instanceof Error && (error.message.includes('offline') || error.message.includes('permission-denied'))) {
-          setConfigError(true);
-        } else {
-          toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Could not load settings data.',
-          });
+    if (!authLoading && !user) {
+      router.replace('/login');
+    }
+  }, [user, authLoading, router]);
+
+  React.useEffect(() => {
+    if (user) {
+      const fetchData = async () => {
+        setIsLoading(true);
+        setConfigError(false);
+        try {
+          const [enablersData, sourcesData, customFieldsData] = await Promise.all([
+            getEnablers(),
+            getContactSources(),
+            getCustomPersonFields(),
+          ]);
+          setEnablers(enablersData);
+          setSources(sourcesData);
+          setCustomFields(customFieldsData);
+        } catch (error) {
+          console.error('Failed to load settings data', error);
+          if (error instanceof Error && (error.message.includes('offline') || error.message.includes('permission-denied'))) {
+            setConfigError(true);
+          } else {
+            toast({
+              variant: 'destructive',
+              title: 'Error',
+              description: 'Could not load settings data.',
+            });
+          }
+        } finally {
+          setIsLoading(false);
         }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
-  }, [toast]);
+      };
+      fetchData();
+    }
+  }, [user, toast]);
 
   const openDialog = (mode: DialogMode, type: ItemType, data: string | CustomField | null = null) => {
     setDialogMode(mode);
@@ -202,6 +214,14 @@ export default function SettingsPage() {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not delete the item.' });
     }
   };
+
+  if (authLoading || !user) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   if (configError) {
     return <FirebaseConfigError />;
