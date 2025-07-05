@@ -1,9 +1,8 @@
 
-
 'use client';
 
 import * as React from 'react';
-import { RefreshCw, AlertCircle, ShieldCheck, LogIn } from 'lucide-react';
+import { RefreshCw, AlertCircle, ShieldCheck, LogIn, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -89,16 +88,47 @@ service cloud.firestore {
   )
 }
 
+function ReferrerError() {
+  return (
+    <>
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Action Required: Update API Key Restrictions</AlertTitle>
+        <AlertDescription>
+          Your app's API key has security settings that are blocking your own website from using it. You need to authorize your app's domain.
+        </AlertDescription>
+      </Alert>
+
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+            <div className="flex-shrink-0 bg-primary/10 text-primary rounded-full h-8 w-8 flex items-center justify-center">
+                <KeyRound className="h-5 w-5" />
+            </div>
+            <h3 className="font-semibold">Authorize Your Website Domain</h3>
+        </div>
+        <p className="text-sm text-muted-foreground">
+            In the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="underline text-primary">Google Cloud Console</a>, navigate to the <strong>Credentials</strong> page for your project. Find the API key your app is using (usually named "Browser key"), click to edit it, and under "Website restrictions," add your app's domain and `localhost` for development.
+        </p>
+        <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
+          <li>For deployed apps, add your domain (e.g., `your-project-id.firebaseapp.com`).</li>
+          <li>For local development, add your local host and port (e.g., `localhost:9002`).</li>
+        </ul>
+      </div>
+    </>
+  )
+}
+
 
 export function FirebaseConfigError({ error }: { error?: any }) {
   const errorMessage = error?.message?.toLowerCase() || '';
 
-  const isPermissionError = errorMessage.includes('offline') || errorMessage.includes('permission-denied') || errorMessage.includes('invalid');
+  const isPermissionError = errorMessage.includes('permission-denied') || errorMessage.includes('offline');
   const isInitializationError = errorMessage.includes('configuration is missing');
+  const isReferrerError = errorMessage.includes('api_key_http_referrer_blocked');
 
   return (
     <>
-      <div className="flex w-full items-center justify-center bg-background p-4">
+      <div className="flex w-full items-center justify-center bg-background p-4 min-h-screen">
         <Card className="max-w-3xl">
           <CardHeader>
             <CardTitle className="text-destructive">Firebase Connection Error</CardTitle>
@@ -107,9 +137,10 @@ export function FirebaseConfigError({ error }: { error?: any }) {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {isPermissionError && <PermissionsError />}
+            {isReferrerError && <ReferrerError />}
+            {isPermissionError && !isReferrerError && <PermissionsError />}
             {isInitializationError && <InitializationError />}
-            {!isPermissionError && !isInitializationError && (
+            {!isPermissionError && !isInitializationError && !isReferrerError && (
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>An Unexpected Error Occurred</AlertTitle>

@@ -25,6 +25,7 @@ export default function LoginPage() {
   const { user, signInWithGoogle, loading } = useAuth();
   const router = useRouter();
   const [isSigningIn, setIsSigningIn] = React.useState(false);
+  const [signInError, setSignInError] = React.useState<Error | null>(null);
 
   React.useEffect(() => {
     if (user) {
@@ -34,6 +35,10 @@ export default function LoginPage() {
   
   if (configError) {
     return <FirebaseConfigError error={configError} />;
+  }
+  
+  if (signInError) {
+    return <FirebaseConfigError error={signInError} />;
   }
 
   if (loading || user) {
@@ -46,10 +51,18 @@ export default function LoginPage() {
 
   const handleSignIn = async () => {
     setIsSigningIn(true);
-    await signInWithGoogle();
-    // No need to setIsSigningIn(false) because the component will unmount on success.
-    // If it fails, the user is still on the page, so we can reset.
-    setTimeout(() => setIsSigningIn(false), 2000); // Reset after a delay in case of failure.
+    setSignInError(null);
+    try {
+      await signInWithGoogle();
+      // On success, useEffect will redirect to '/'
+    } catch (error) {
+      if (error instanceof Error) {
+        setSignInError(error);
+      } else {
+        setSignInError(new Error("An unknown error occurred during sign-in."));
+      }
+      setIsSigningIn(false);
+    }
   }
 
   return (

@@ -41,13 +41,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await signInWithPopup(auth, provider);
       router.push('/');
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error signing in with Google", error);
-      toast({
-        variant: "destructive",
-        title: "Sign-In Failed",
-        description: error.message || "Could not sign in with Google. Please check your Firebase settings."
-      });
+      // Re-throw the error to be caught by the calling component (LoginPage)
+      throw error;
     }
   };
 
