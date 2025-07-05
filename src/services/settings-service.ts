@@ -16,9 +16,8 @@ import type { CustomField } from '@/lib/types';
 const defaultEnablers = ['Veeranna', 'Sarthak', 'Jayant', 'Rohit', 'Nitin', 'Abhishek', 'Nikhil', 'Ravi', 'Narayan'];
 const defaultContactSources = ['Govinda Temple', 'ITPL', 'HK hill'];
 
-const settingsDocRef = doc(db, 'settings', 'options');
-
 const ensureSettingsDoc = async () => {
+    const settingsDocRef = doc(db, 'settings', 'options');
     const docSnap = await getDoc(settingsDocRef);
     if (!docSnap.exists()) {
         await setDoc(settingsDocRef, {
@@ -50,6 +49,7 @@ export const getContactSources = async (): Promise<string[]> => {
 }
 
 export const addEnabler = async (newEnabler: string) => {
+    const settingsDocRef = doc(db, 'settings', 'options');
     const currentEnablers = await getEnablers();
     if (!currentEnablers.includes(newEnabler)) {
         const updatedEnablers = [...currentEnablers, newEnabler];
@@ -60,6 +60,7 @@ export const addEnabler = async (newEnabler: string) => {
 }
 
 export const addContactSource = async (newSource: string) => {
+    const settingsDocRef = doc(db, 'settings', 'options');
     const currentSources = await getContactSources();
     if (!currentSources.includes(newSource)) {
         const updatedSources = [...currentSources, newSource];
@@ -71,6 +72,7 @@ export const addContactSource = async (newSource: string) => {
 
 export const updateEnabler = async (oldName: string, newName: string) => {
     const batch = writeBatch(db);
+    const settingsDocRef = doc(db, 'settings', 'options');
 
     // 1. Update settings document
     const currentEnablers = await getEnablers();
@@ -90,6 +92,7 @@ export const updateEnabler = async (oldName: string, newName: string) => {
 
 export const updateContactSource = async (oldName: string, newName: string) => {
     const batch = writeBatch(db);
+    const settingsDocRef = doc(db, 'settings', 'options');
 
     // 1. Update settings document
     const currentSources = await getContactSources();
@@ -109,6 +112,7 @@ export const updateContactSource = async (oldName: string, newName: string) => {
 
 export const deleteEnabler = async (enablerToDelete: string) => {
     const batch = writeBatch(db);
+    const settingsDocRef = doc(db, 'settings', 'options');
 
     // 1. Update settings document
     const currentEnablers = await getEnablers();
@@ -128,6 +132,7 @@ export const deleteEnabler = async (enablerToDelete: string) => {
 
 export const deleteContactSource = async (sourceToDelete: string) => {
     const batch = writeBatch(db);
+    const settingsDocRef = doc(db, 'settings', 'options');
 
     // 1. Update settings document
     const currentSources = await getContactSources();
@@ -153,5 +158,6 @@ export const getCustomPersonFields = async (): Promise<CustomField[]> => {
 };
 
 export const saveCustomPersonFields = async (fields: CustomField[]): Promise<void> => {
+    const settingsDocRef = doc(db, 'settings', 'options');
     await setDoc(settingsDocRef, { customPersonFields: fields }, { merge: true });
 };

@@ -14,9 +14,8 @@ import {
 } from 'firebase/firestore';
 import type { Person } from '@/lib/types';
 
-const peopleCollection = collection(db, 'people');
-
 export const getPeople = async (): Promise<Person[]> => {
+  const peopleCollection = collection(db, 'people');
   const snapshot = await getDocs(peopleCollection);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Person));
 };
@@ -31,6 +30,7 @@ export const getPerson = async (id: string): Promise<Person | null> => {
 };
 
 export const createPerson = async (personData: Omit<Person, 'id' | 'createdAt'>): Promise<Person> => {
+  const peopleCollection = collection(db, 'people');
   const q = query(peopleCollection, where("phone", "==", personData.phone));
   const querySnapshot = await getDocs(q);
   if (!querySnapshot.empty) {
@@ -53,6 +53,7 @@ export const createPerson = async (personData: Omit<Person, 'id' | 'createdAt'>)
 
 export const updatePerson = async (id: string, personData: Partial<Omit<Person, 'id'>>): Promise<void> => {
   if (personData.phone) {
+    const peopleCollection = collection(db, 'people');
     const q = query(peopleCollection, where("phone", "==", personData.phone));
     const querySnapshot = await getDocs(q);
     const conflictingPerson = querySnapshot.docs.find(doc => doc.id !== id);

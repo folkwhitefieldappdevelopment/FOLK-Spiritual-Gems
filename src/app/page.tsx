@@ -26,7 +26,6 @@ import { PersonCard } from "@/components/person-card";
 import { PersonTable } from "@/components/person-table";
 import { CreateUpdatePersonDialog } from "@/components/create-update-person-dialog";
 import { AdminModeToggle } from "@/components/admin-mode-toggle";
-import { FirebaseConfigError } from "@/components/firebase-config-error";
 import {
   Select,
   SelectContent,
@@ -49,12 +48,10 @@ import {
   importPeople,
 } from "@/services/people-service";
 import { getEnablers, getContactSources } from "@/services/settings-service";
-import { useAuth } from "@/contexts/auth-context";
-import { useRouter } from "next/navigation";
+import { configError } from "@/lib/firebase";
+import { FirebaseConfigError } from "@/components/firebase-config-error";
 
 export default function ContactsPage() {
-  const { user, loading: authLoading } = useAuth();
-  const router = useRouter();
   const { toast } = useToast();
 
   const [people, setPeople] = React.useState<Person[]>([]);
@@ -78,45 +75,39 @@ export default function ContactsPage() {
 
   const [enablerOptions, setEnablerOptions] = React.useState<string[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
-  const [configError, setConfigError] = React.useState(false);
+  const [firebaseError, setFirebaseError] = React.useState<Error | null>(null);
 
   React.useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace('/login');
+    if (configError) {
+      setFirebaseError(configError);
+      setIsLoading(false);
+      return;
     }
-  }, [user, authLoading, router]);
 
-  React.useEffect(() => {
-    if (user) {
-      const fetchData = async () => {
-        setIsLoading(true);
-        try {
-          const [peopleData, enablersData, sourcesData] = await Promise.all([
-            getPeople(),
-            getEnablers(),
-            getContactSources(),
-          ]);
-          setPeople(peopleData);
-          setEnablerOptions(enablersData);
-          setContactSourceOptions(sourcesData);
-        } catch (error) {
-          console.error("Failed to load data:", error);
-          if (error instanceof Error && (error.message.includes('offline') || error.message.includes('permission-denied') || error.message.includes('invalid-api-key'))) {
-            setConfigError(true);
-          } else {
-            toast({
-              variant: "destructive",
-              title: "Error",
-              description: "Could not load data. Please check your connection or Firebase setup.",
-            });
-          }
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      fetchData();
-    }
-  }, [user, toast]);
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const [peopleData, enablersData, sourcesData] = await Promise.all([
+          getPeople(),
+          getEnablers(),
+          getContactSources(),
+        ]);
+        setPeople(peopleData);
+        setEnablerOptions(enablersData);
+        setContactSourceOptions(sourcesData);
+      } catch (error) {
+        console.error("Failed to load data:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Could not load data. Please check your connection or Firebase setup.",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, [toast]);
 
   const filteredPeople = React.useMemo(() => {
     const filtered = people.filter((person) => {
@@ -480,24 +471,20 @@ export default function ContactsPage() {
     }
   };
   
-  if (authLoading || !user) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
-  if (configError) {
-    return <FirebaseConfigError />;
-  }
-  
   const isLoadingAction = isImporting || isExporting;
   const loadingText = isImporting ? 'Importing...' : isExporting ? 'Exporting...' : '';
 
+  if (firebaseError) {
+    return <FirebaseConfigError error={firebaseError} />;
+  }
+
   const renderContent = () => {
     if (isLoading) {
-      return <div className="text-center p-12">Loading contacts...</div>;
+      return (
+        <div className="flex min-h-[50vh] w-full items-center justify-center bg-background">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      );
     }
 
     return (

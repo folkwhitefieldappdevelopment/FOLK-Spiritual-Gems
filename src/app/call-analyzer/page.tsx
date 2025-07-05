@@ -7,9 +7,6 @@ import { read, utils } from 'xlsx';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/auth-context';
-import { useRouter } from 'next/navigation';
-
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -64,8 +61,6 @@ const parseExcelDate = (excelDate: any): Date | null => {
 }
 
 export default function CallAnalyzerPage() {
-  const { user, loading: authLoading } = useAuth();
-  const router = useRouter();
   const { toast } = useToast();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   
@@ -75,12 +70,6 @@ export default function CallAnalyzerPage() {
   
   const [allSheetData, setAllSheetData] = React.useState<Record<string, any[][]>>({});
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
-
-  React.useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace('/login');
-    }
-  }, [user, authLoading, router]);
 
   const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -224,14 +213,6 @@ export default function CallAnalyzerPage() {
         manglaArtiCount: 0,
     });
   }, [results]);
-
-  if (authLoading || !user) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
 
   const hasData = Object.keys(allSheetData).length > 0;
 

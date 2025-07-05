@@ -11,7 +11,8 @@ import { cn } from '@/lib/utils';
 import { getPerson, updatePerson, deletePerson } from '@/services/people-service';
 import { getCustomPersonFields } from '@/services/settings-service';
 import { createInitialProgress } from '@/lib/data';
-import { useAuth } from '@/contexts/auth-context';
+import { configError } from '@/lib/firebase';
+import { FirebaseConfigError } from '@/components/firebase-config-error';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -38,12 +39,10 @@ import {
 } from '@/components/ui/dialog';
 import { CreateUpdatePersonDialog } from '@/components/create-update-person-dialog';
 import { ProgressTracker } from '@/components/progress-tracker';
-import { FirebaseConfigError } from '@/components/firebase-config-error';
 import { Separator } from '@/components/ui/separator';
 import { CallHistory } from '@/components/call-history';
 
 export default function PersonDetailPage() {
-  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
@@ -54,18 +53,16 @@ export default function PersonDetailPage() {
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
-  const [configError, setConfigError] = React.useState(false);
   const [allPeople, setAllPeople] = React.useState<Person[]>([]);
+  const [firebaseError, setFirebaseError] = React.useState<Error | null>(null);
 
   React.useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace('/login');
+    if (configError) {
+      setFirebaseError(configError);
+      setIsLoading(false);
+      return;
     }
-  }, [user, authLoading, router]);
-
-
-  React.useEffect(() => {
-    if (!personId || !user) return;
+    if (!personId) return;
 
     const fetchPerson = async () => {
       setIsLoading(true);
@@ -92,22 +89,18 @@ export default function PersonDetailPage() {
         }
       } catch (error) {
         console.error('Failed to load person data', error);
-         if (error instanceof Error && (error.message.includes('offline') || error.message.includes('permission-denied') || error.message.includes('invalid-api-key'))) {
-          setConfigError(true);
-        } else {
-          toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Could not load person data.',
-          });
-        }
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Could not load person data.',
+        });
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchPerson();
-  }, [personId, router, toast, user]);
+  }, [personId, router, toast]);
 
   const handleSavePersonDialog = async (personData: Omit<Person, 'id' | 'progress'>) => {
     if (!person) return;
@@ -187,25 +180,14 @@ export default function PersonDetailPage() {
     return String(value);
   }
 
-  if (authLoading || !user) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
-  if (configError) {
-    return <FirebaseConfigError />;
+  if (firebaseError) {
+    return <FirebaseConfigError error={firebaseError} />;
   }
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen w-full">
-        <AppSidebar />
-        <div className="flex flex-1 flex-col items-center justify-center bg-background">
-          Loading contact details...
-        </div>
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }

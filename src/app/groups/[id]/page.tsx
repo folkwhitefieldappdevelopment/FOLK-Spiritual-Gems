@@ -9,7 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 import { getGroup, updateGroup } from '@/services/groups-service';
 import { getPeople, updatePerson } from '@/services/people-service';
 import { createInitialProgress } from '@/lib/data';
-import { useAuth } from '@/contexts/auth-context';
+import { configError } from '@/lib/firebase';
+import { FirebaseConfigError } from '@/components/firebase-config-error';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -18,10 +19,8 @@ import { PersonTable } from '@/components/person-table';
 import { CreateUpdatePersonDialog } from '@/components/create-update-person-dialog';
 import { ManageGroupMembersDialog } from '@/components/manage-group-members-dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FirebaseConfigError } from '@/components/firebase-config-error';
 
 export default function GroupDetailPage() {
-  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
@@ -34,16 +33,16 @@ export default function GroupDetailPage() {
   
   const [isManageMembersDialogOpen, setIsManageMembersDialogOpen] = React.useState(false);
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(undefined);
-  const [configError, setConfigError] = React.useState(false);
+  const [firebaseError, setFirebaseError] = React.useState<Error | null>(null);
 
   React.useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace('/login');
+    if (configError) {
+      setFirebaseError(configError);
+      setIsLoading(false);
+      return;
     }
-  }, [user, authLoading, router]);
-
-  React.useEffect(() => {
-    if (!groupId || !user) return;
+    if (!groupId) return;
+    
     const fetchData = async () => {
       setIsLoading(true);
       try {
@@ -74,21 +73,17 @@ export default function GroupDetailPage() {
         }
       } catch (error) {
         console.error('Failed to load group data', error);
-        if (error instanceof Error && (error.message.includes('offline') || error.message.includes('permission-denied') || error.message.includes('invalid-api-key'))) {
-          setConfigError(true);
-        } else {
-          toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Could not load group data.',
-          });
-        }
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Could not load group data.',
+        });
       } finally {
         setIsLoading(false);
       }
     };
     fetchData();
-  }, [groupId, router, toast, user]);
+  }, [groupId, router, toast]);
   
   const handleEditPerson = (person: Person) => {
     setEditingPerson(person);
@@ -152,25 +147,14 @@ export default function GroupDetailPage() {
     }
   };
 
-  if (authLoading || !user) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-  
-  if (configError) {
-    return <FirebaseConfigError />;
+  if (firebaseError) {
+    return <FirebaseConfigError error={firebaseError} />;
   }
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen w-full">
-        <AppSidebar />
-        <div className="flex flex-1 flex-col items-center justify-center bg-background">
-          Loading group...
-        </div>
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }

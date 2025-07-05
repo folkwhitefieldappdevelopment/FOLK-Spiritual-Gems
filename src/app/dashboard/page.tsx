@@ -7,12 +7,11 @@ import { getPeople } from '@/services/people-service';
 import { useToast } from '@/hooks/use-toast';
 import { subWeeks, startOfWeek, isAfter, format } from 'date-fns';
 import { Users, UserPlus, Briefcase, Loader2 } from 'lucide-react';
-import { useAuth } from '@/contexts/auth-context';
-import { useRouter } from 'next/navigation';
+import { configError } from '@/lib/firebase';
+import { FirebaseConfigError } from '@/components/firebase-config-error';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
-import { FirebaseConfigError } from '@/components/firebase-config-error';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   ChartContainer,
@@ -32,44 +31,36 @@ const CHART_COLORS = [
 ];
 
 export default function DashboardPage() {
-  const { user, loading: authLoading } = useAuth();
-  const router = useRouter();
   const { toast } = useToast();
   const [people, setPeople] = React.useState<Person[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [configError, setConfigError] = React.useState(false);
+  const [firebaseError, setFirebaseError] = React.useState<Error | null>(null);
 
   React.useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace('/login');
+    if (configError) {
+      setFirebaseError(configError);
+      setIsLoading(false);
+      return;
     }
-  }, [user, authLoading, router]);
 
-  React.useEffect(() => {
-    if (user) {
-      const fetchData = async () => {
-        setIsLoading(true);
-        try {
-          const peopleData = await getPeople();
-          setPeople(peopleData);
-        } catch (error) {
-          console.error('Failed to load dashboard data:', error);
-          if (error instanceof Error && (error.message.includes('offline') || error.message.includes('permission-denied') || error.message.includes('invalid-api-key'))) {
-            setConfigError(true);
-          } else {
-            toast({
-              variant: 'destructive',
-              title: 'Error',
-              description: 'Could not load dashboard data.',
-            });
-          }
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      fetchData();
-    }
-  }, [user, toast]);
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const peopleData = await getPeople();
+        setPeople(peopleData);
+      } catch (error) {
+        console.error('Failed to load dashboard data:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Could not load dashboard data.',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, [toast]);
   
   const safeDate = (timestamp: any): Date | null => {
     if (!timestamp) return null;
@@ -154,21 +145,17 @@ export default function DashboardPage() {
     };
   }, [people]);
   
-  if (authLoading || !user) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
-  if (configError) {
-    return <FirebaseConfigError />;
+  if (firebaseError) {
+    return <FirebaseConfigError error={firebaseError} />;
   }
   
   const renderContent = () => {
      if (isLoading) {
-      return <div className="text-center p-12">Loading dashboard...</div>;
+      return (
+        <div className="flex min-h-[50vh] w-full items-center justify-center bg-background">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      );
     }
     
     return (

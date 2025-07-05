@@ -4,8 +4,8 @@
 import * as React from 'react';
 import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/auth-context';
-import { useRouter } from 'next/navigation';
+import { configError } from '@/lib/firebase';
+import { FirebaseConfigError } from '@/components/firebase-config-error';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -32,7 +32,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { FirebaseConfigError } from '@/components/firebase-config-error';
 import {
   getEnablers,
   getContactSources,
@@ -54,11 +53,9 @@ type DialogMode = 'add' | 'edit';
 type ItemType = 'enabler' | 'source' | 'customField';
 
 export default function SettingsPage() {
-  const { user, loading: authLoading } = useAuth();
-  const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(true);
-  const [configError, setConfigError] = React.useState(false);
+  const [firebaseError, setFirebaseError] = React.useState<Error | null>(null);
 
   const [enablers, setEnablers] = React.useState<string[]>([]);
   const [sources, setSources] = React.useState<string[]>([]);
@@ -78,43 +75,36 @@ export default function SettingsPage() {
   const [fieldType, setFieldType] = React.useState<CustomFieldType>('text');
 
   React.useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace('/login');
+    if (configError) {
+      setFirebaseError(configError);
+      setIsLoading(false);
+      return;
     }
-  }, [user, authLoading, router]);
 
-  React.useEffect(() => {
-    if (user) {
-      const fetchData = async () => {
-        setIsLoading(true);
-        setConfigError(false);
-        try {
-          const [enablersData, sourcesData, customFieldsData] = await Promise.all([
-            getEnablers(),
-            getContactSources(),
-            getCustomPersonFields(),
-          ]);
-          setEnablers(enablersData);
-          setSources(sourcesData);
-          setCustomFields(customFieldsData);
-        } catch (error) {
-          console.error('Failed to load settings data', error);
-          if (error instanceof Error && (error.message.includes('offline') || error.message.includes('permission-denied') || error.message.includes('invalid-api-key'))) {
-            setConfigError(true);
-          } else {
-            toast({
-              variant: 'destructive',
-              title: 'Error',
-              description: 'Could not load settings data.',
-            });
-          }
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      fetchData();
-    }
-  }, [user, toast]);
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const [enablersData, sourcesData, customFieldsData] = await Promise.all([
+          getEnablers(),
+          getContactSources(),
+          getCustomPersonFields(),
+        ]);
+        setEnablers(enablersData);
+        setSources(sourcesData);
+        setCustomFields(customFieldsData);
+      } catch (error) {
+        console.error('Failed to load settings data', error);
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Could not load settings data.',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, [toast]);
 
   const openDialog = (mode: DialogMode, type: ItemType, data: string | CustomField | null = null) => {
     setDialogMode(mode);
@@ -214,17 +204,9 @@ export default function SettingsPage() {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not delete the item.' });
     }
   };
-
-  if (authLoading || !user) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
-  if (configError) {
-    return <FirebaseConfigError />;
+  
+  if (firebaseError) {
+    return <FirebaseConfigError error={firebaseError} />;
   }
 
   const renderList = (type: 'enabler' | 'source', items: string[]) => (
@@ -417,7 +399,9 @@ export default function SettingsPage() {
           />
           <main className="flex-1 p-4 sm:p-6">
             {isLoading ? (
-              <div className="text-center p-12">Loading settings...</div>
+              <div className="flex min-h-[50vh] w-full items-center justify-center bg-background">
+                <Loader2 className="h-8 w-8 animate-spin" />
+              </div>
             ) : (
               <div className="mx-auto max-w-4xl space-y-8">
                 <div>
