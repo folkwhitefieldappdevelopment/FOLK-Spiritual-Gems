@@ -74,7 +74,7 @@ export default function GroupDetailPage() {
         }
       } catch (error) {
         console.error('Failed to load group data', error);
-        if (error instanceof Error && (error.message.includes('offline') || error.message.includes('permission-denied'))) {
+        if (error instanceof Error && (error.message.includes('offline') || error.message.includes('permission-denied') || error.message.includes('invalid-api-key'))) {
           setConfigError(true);
         } else {
           toast({

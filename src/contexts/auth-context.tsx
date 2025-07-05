@@ -3,13 +3,14 @@
 
 import * as React from 'react';
 import { type User } from 'firebase/auth';
-import { auth, googleProvider } from '@/lib/firebase';
+import { auth, googleProvider, configError } from '@/lib/firebase';
 import {
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
   signOut as firebaseSignOut,
 } from 'firebase/auth';
+import { FirebaseConfigError } from '@/components/firebase-config-error';
 
 type AuthContextType = {
   user: User | null;
@@ -23,6 +24,12 @@ const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
   const [loading, setLoading] = React.useState(true);
+
+  // If there was an error during Firebase initialization, display the error page.
+  // This prevents the app from crashing and provides a helpful guide to the user.
+  if (configError) {
+    return <FirebaseConfigError error={configError} />;
+  }
 
   React.useEffect(() => {
     // onAuthStateChanged is the primary listener for auth state.
