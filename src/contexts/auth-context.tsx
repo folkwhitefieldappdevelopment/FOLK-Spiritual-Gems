@@ -7,6 +7,7 @@ import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut as fir
 import { auth, configError } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
+import { useToast } from '@/hooks/use-toast';
 
 type AuthContextType = {
   user: User | null;
@@ -21,6 +22,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
   const [loading, setLoading] = React.useState(true);
   const router = useRouter();
+  const { toast } = useToast();
 
   React.useEffect(() => {
     if (configError) {
@@ -39,8 +41,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await signInWithPopup(auth, provider);
       router.push('/');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error signing in with Google", error);
+      toast({
+        variant: "destructive",
+        title: "Sign-In Failed",
+        description: error.message || "Could not sign in with Google. Please check your Firebase settings."
+      });
     }
   };
 

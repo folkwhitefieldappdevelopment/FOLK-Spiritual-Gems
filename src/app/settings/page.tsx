@@ -5,6 +5,7 @@ import * as React from 'react';
 import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AuthGuard } from '@/components/auth-guard';
+import { FirebaseConfigError } from '@/components/firebase-config-error';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -54,6 +55,7 @@ type ItemType = 'enabler' | 'source' | 'customField';
 export default function SettingsPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(true);
+  const [fetchError, setFetchError] = React.useState<Error | null>(null);
 
   const [enablers, setEnablers] = React.useState<string[]>([]);
   const [sources, setSources] = React.useState<string[]>([]);
@@ -75,6 +77,7 @@ export default function SettingsPage() {
   React.useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
+      setFetchError(null);
       try {
         const [enablersData, sourcesData, customFieldsData] = await Promise.all([
           getEnablers(),
@@ -86,11 +89,11 @@ export default function SettingsPage() {
         setCustomFields(customFieldsData);
       } catch (error) {
         console.error('Failed to load settings data', error);
-        toast({
-            variant: "destructive",
-            title: "Failed to load data",
-            description: "Please check your connection and try again.",
-        });
+        if (error instanceof Error) {
+            setFetchError(error);
+        } else {
+            setFetchError(new Error("An unknown error occurred while fetching data."));
+        }
       } finally {
         setIsLoading(false);
       }
@@ -391,6 +394,8 @@ export default function SettingsPage() {
                 <div className="flex min-h-[50vh] w-full items-center justify-center bg-background">
                   <Loader2 className="h-8 w-8 animate-spin" />
                 </div>
+              ) : fetchError ? (
+                 <FirebaseConfigError error={fetchError} />
               ) : (
                 <div className="mx-auto max-w-4xl space-y-8">
                   <div>

@@ -10,6 +10,7 @@ import { getGroup, updateGroup } from '@/services/groups-service';
 import { getPeople, updatePerson } from '@/services/people-service';
 import { createInitialProgress } from '@/lib/data';
 import { AuthGuard } from '@/components/auth-guard';
+import { FirebaseConfigError } from '@/components/firebase-config-error';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -26,6 +27,7 @@ export default function GroupDetailPage() {
   const groupId = params.id as string;
 
   const [isLoading, setIsLoading] = React.useState(true);
+  const [fetchError, setFetchError] = React.useState<Error | null>(null);
   const [allPeople, setAllPeople] = React.useState<Person[]>([]);
   const [group, setGroup] = React.useState<Group | null>(null);
   const [members, setMembers] = React.useState<Person[]>([]);
@@ -38,6 +40,7 @@ export default function GroupDetailPage() {
     
     const fetchData = async () => {
       setIsLoading(true);
+      setFetchError(null);
       try {
         const [groupData, peopleData] = await Promise.all([
           getGroup(groupId),
@@ -66,11 +69,11 @@ export default function GroupDetailPage() {
         }
       } catch (error) {
         console.error('Failed to load group data', error);
-        toast({
-            variant: "destructive",
-            title: "Failed to load data",
-            description: "Please check your connection and try again.",
-        });
+        if (error instanceof Error) {
+            setFetchError(error);
+        } else {
+            setFetchError(new Error("An unknown error occurred while fetching data."));
+        }
       } finally {
         setIsLoading(false);
       }
@@ -143,39 +146,24 @@ export default function GroupDetailPage() {
   const renderContent = () => {
     if (isLoading) {
       return (
-        <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        <div className="flex min-h-[50vh] w-full items-center justify-center bg-background">
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
       );
+    }
+    if (fetchError) {
+      return (
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+          <FirebaseConfigError error={fetchError} />
+        </main>
+      )
     }
     if (!group) {
       return null; // Should be redirected by useEffect
     }
 
     return (
-      <div className="flex min-h-screen w-full">
-        <AppSidebar />
-        <div className="flex flex-1 flex-col bg-background">
-          <PageHeader
-            title={group.name}
-            description={group.description || 'No description for this group.'}
-          >
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => router.push('/groups')}
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Groups
-              </Button>
-              <Button size="sm" onClick={() => setIsManageMembersDialogOpen(true)}>
-                <UserPlus className="mr-2 h-4 w-4" />
-                Manage Members
-              </Button>
-            </div>
-          </PageHeader>
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
             <div className="mx-auto max-w-4xl">
               <Card>
                 <CardHeader>
@@ -200,16 +188,40 @@ export default function GroupDetailPage() {
                 </CardContent>
               </Card>
             </div>
-          </main>
-        </div>
-      </div>
+        </main>
     );
   };
   
   return (
     <AuthGuard>
       <>
-        {renderContent()}
+        <div className="flex min-h-screen w-full">
+            <AppSidebar />
+            <div className="flex flex-1 flex-col bg-background">
+                {group && !fetchError && (
+                    <PageHeader
+                        title={group.name}
+                        description={group.description || 'No description for this group.'}
+                    >
+                        <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => router.push('/groups')}
+                        >
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Back to Groups
+                        </Button>
+                        <Button size="sm" onClick={() => setIsManageMembersDialogOpen(true)}>
+                            <UserPlus className="mr-2 h-4 w-4" />
+                            Manage Members
+                        </Button>
+                        </div>
+                    </PageHeader>
+                )}
+                {renderContent()}
+            </div>
+        </div>
 
         {editingPerson && (
           <CreateUpdatePersonDialog

@@ -12,6 +12,7 @@ import { getPerson, updatePerson, deletePerson } from '@/services/people-service
 import { getCustomPersonFields } from '@/services/settings-service';
 import { createInitialProgress } from '@/lib/data';
 import { AuthGuard } from '@/components/auth-guard';
+import { FirebaseConfigError } from '@/components/firebase-config-error';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -51,6 +52,7 @@ export default function PersonDetailPage() {
   const [person, setPerson] = React.useState<Person | null>(null);
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [fetchError, setFetchError] = React.useState<Error | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [allPeople, setAllPeople] = React.useState<Person[]>([]);
 
@@ -59,6 +61,7 @@ export default function PersonDetailPage() {
 
     const fetchPerson = async () => {
       setIsLoading(true);
+      setFetchError(null);
       try {
         const [personData, fieldsData] = await Promise.all([
             getPerson(personId),
@@ -82,11 +85,11 @@ export default function PersonDetailPage() {
         }
       } catch (error) {
         console.error('Failed to load person data', error);
-        toast({
-            variant: "destructive",
-            title: "Failed to load data",
-            description: "Please check your connection and try again.",
-        });
+        if (error instanceof Error) {
+          setFetchError(error);
+        } else {
+          setFetchError(new Error("An unknown error occurred while fetching data."));
+        }
       } finally {
         setIsLoading(false);
       }
@@ -176,19 +179,24 @@ export default function PersonDetailPage() {
   const renderContent = () => {
     if (isLoading) {
       return (
-        <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        <div className="flex min-h-[50vh] w-full items-center justify-center bg-background">
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
       );
     }
 
+    if (fetchError) {
+      return (
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+          <FirebaseConfigError error={fetchError} />
+        </main>
+      )
+    }
+
     if (!person) {
       return (
-        <div className="flex min-h-screen w-full">
-          <AppSidebar />
-          <div className="flex flex-1 flex-col items-center justify-center bg-background">
+        <div className="flex-1 flex items-center justify-center bg-background">
             Person not found.
-          </div>
         </div>
       );
     }
@@ -196,55 +204,7 @@ export default function PersonDetailPage() {
     const hasCustomData = customFields.some(field => person.customData && person.customData[field.id]);
 
     return (
-      <div className="flex min-h-screen w-full">
-        <AppSidebar />
-        <div className="flex flex-1 flex-col bg-background">
-          <PageHeader
-            title="Contact Details"
-            description={`Viewing profile for ${person.firstName} ${person.lastName}`}
-          >
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => router.push('/')}
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back
-              </Button>
-              <Button size="sm" onClick={() => setIsEditDialogOpen(true)}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </Button>
-               <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete{' '}
-                      {person.firstName} {person.lastName}.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDeletePerson}
-                      className="bg-destructive hover:bg-destructive/90"
-                    >
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          </PageHeader>
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
             <div className="mx-auto max-w-4xl">
               <div className={cn("grid grid-cols-1 gap-6", isAdmin && "lg:grid-cols-3")}>
                 <div className={cn(isAdmin ? "lg:col-span-1" : "lg:col-span-3", "space-y-6")}>
@@ -363,8 +323,6 @@ export default function PersonDetailPage() {
               </div>
             </div>
           </main>
-        </div>
-      </div>
     );
   };
   
@@ -372,7 +330,59 @@ export default function PersonDetailPage() {
   return (
     <AuthGuard>
       <>
-        {renderContent()}
+        <div className="flex min-h-screen w-full">
+            <AppSidebar />
+            <div className="flex flex-1 flex-col bg-background">
+                {person && !fetchError && (
+                    <PageHeader
+                        title="Contact Details"
+                        description={`Viewing profile for ${person.firstName} ${person.lastName}`}
+                    >
+                        <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => router.push('/')}
+                        >
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Back
+                        </Button>
+                        <Button size="sm" onClick={() => setIsEditDialogOpen(true)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                        </Button>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                            </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete{' '}
+                                {person.firstName} {person.lastName}.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                onClick={handleDeletePerson}
+                                className="bg-destructive hover:bg-destructive/90"
+                                >
+                                Delete
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                        </div>
+                    </PageHeader>
+                )}
+                {renderContent()}
+            </div>
+        </div>
         <CreateUpdatePersonDialog
           isOpen={isEditDialogOpen}
           setIsOpen={setIsEditDialogOpen}

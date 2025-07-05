@@ -25,7 +25,7 @@ import { PageHeader } from "@/components/page-header";
 import { PersonCard } from "@/components/person-card";
 import { PersonTable } from "@/components/person-table";
 import { CreateUpdatePersonDialog } from "@/components/create-update-person-dialog";
-import { AdminModeToggle } from "@/components/admin-mode-toggle";
+import { FirebaseConfigError } from "@/components/firebase-config-error";
 import {
   Select,
   SelectContent,
@@ -55,6 +55,7 @@ export default function ContactsPage() {
 
   const [people, setPeople] = React.useState<Person[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [fetchError, setFetchError] = React.useState<Error | null>(null);
   const [isImporting, setIsImporting] = React.useState(false);
   const [isExporting, setIsExporting] = React.useState(false);
   const [view, setView] = React.useState<"card" | "table">("card");
@@ -78,6 +79,7 @@ export default function ContactsPage() {
   React.useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
+      setFetchError(null);
       try {
         const [peopleData, enablersData, sourcesData] = await Promise.all([
           getPeople(),
@@ -89,17 +91,17 @@ export default function ContactsPage() {
         setContactSourceOptions(sourcesData);
       } catch (error) {
         console.error("Failed to load data:", error);
-        toast({
-            variant: "destructive",
-            title: "Failed to load data",
-            description: "Please check your connection and try again.",
-        });
+        if (error instanceof Error) {
+            setFetchError(error);
+        } else {
+            setFetchError(new Error("An unknown error occurred while fetching data."));
+        }
       } finally {
         setIsLoading(false);
       }
     };
     fetchData();
-  }, [toast]);
+  }, []);
 
   const filteredPeople = React.useMemo(() => {
     const filtered = people.filter((person) => {
@@ -473,6 +475,10 @@ export default function ContactsPage() {
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
       );
+    }
+    
+    if (fetchError) {
+      return <FirebaseConfigError error={fetchError} />;
     }
 
     return (

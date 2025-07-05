@@ -6,6 +6,7 @@ import type { Group } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { getGroups, createGroup, updateGroup, deleteGroup } from "@/services/groups-service";
 import { AuthGuard } from "@/components/auth-guard";
+import { FirebaseConfigError } from "@/components/firebase-config-error";
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { PageHeader } from "@/components/page-header";
@@ -17,6 +18,7 @@ export default function GroupsPage() {
   const { toast } = useToast();
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [fetchError, setFetchError] = React.useState<Error | null>(null);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [editingGroup, setEditingGroup] = React.useState<Group | undefined>(
     undefined
@@ -25,22 +27,23 @@ export default function GroupsPage() {
   React.useEffect(() => {
     const fetchGroups = async () => {
       setIsLoading(true);
+      setFetchError(null);
       try {
         const groupsData = await getGroups();
         setGroups(groupsData);
       } catch (error) {
         console.error("Failed to fetch groups", error);
-        toast({
-            variant: "destructive",
-            title: "Failed to load data",
-            description: "Please check your connection and try again.",
-        });
+        if (error instanceof Error) {
+            setFetchError(error);
+        } else {
+            setFetchError(new Error("An unknown error occurred while fetching data."));
+        }
       } finally {
         setIsLoading(false);
       }
     };
     fetchGroups();
-  }, [toast]);
+  }, []);
 
   const handleCreateGroup = () => {
     setEditingGroup(undefined);
@@ -104,6 +107,10 @@ export default function GroupsPage() {
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
       );
+    }
+
+    if (fetchError) {
+      return <FirebaseConfigError error={fetchError} />;
     }
 
     if (groups.length === 0) {

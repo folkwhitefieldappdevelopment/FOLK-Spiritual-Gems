@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { subWeeks, startOfWeek, isAfter, format } from 'date-fns';
 import { Users, UserPlus, Briefcase, Loader2 } from 'lucide-react';
 import { AuthGuard } from '@/components/auth-guard';
+import { FirebaseConfigError } from '@/components/firebase-config-error';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -30,29 +31,30 @@ const CHART_COLORS = [
 ];
 
 export default function DashboardPage() {
-  const { toast } = useToast();
   const [people, setPeople] = React.useState<Person[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [fetchError, setFetchError] = React.useState<Error | null>(null);
 
   React.useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
+      setFetchError(null);
       try {
         const peopleData = await getPeople();
         setPeople(peopleData);
       } catch (error) {
         console.error('Failed to load dashboard data:', error);
-        toast({
-            variant: "destructive",
-            title: "Failed to load data",
-            description: "Please check your connection and try again.",
-        });
+        if (error instanceof Error) {
+          setFetchError(error);
+        } else {
+          setFetchError(new Error("An unknown error occurred while fetching data."));
+        }
       } finally {
         setIsLoading(false);
       }
     };
     fetchData();
-  }, [toast]);
+  }, []);
   
   const safeDate = (timestamp: any): Date | null => {
     if (!timestamp) return null;
@@ -144,6 +146,10 @@ export default function DashboardPage() {
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
       );
+    }
+
+    if (fetchError) {
+      return <FirebaseConfigError error={fetchError} />;
     }
     
     return (
