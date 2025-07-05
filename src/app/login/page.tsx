@@ -41,7 +41,7 @@ export default function LoginPage() {
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground mb-4">
               <Gem className="h-8 w-8" />
           </div>
-          <CardTitle className="text-3xl font-bold">Folk Contact Center</CardTitle>
+          <CardTitle className="text-3xl font-bold">FOLK Contact Center</CardTitle>
           <CardDescription>Sign in with your Google account to continue.</CardDescription>
         </CardHeader>
         <CardContent>
