@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
+import { AuthGuard } from '@/components/auth-guard';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -217,171 +218,173 @@ export default function CallAnalyzerPage() {
   const hasData = Object.keys(allSheetData).length > 0;
 
   return (
-    <>
-      <div className="flex min-h-screen w-full">
-        <AppSidebar />
-        <div className="flex flex-1 flex-col bg-background">
-          <PageHeader
-            title="Call Log Analyzer"
-            description="Upload an Excel file to analyze daily and total metrics per enabler."
-          >
-            <Button size="sm" onClick={() => fileInputRef.current?.click()} disabled={isProcessing}>
-              <Upload className="mr-2 h-4 w-4" />
-              {isProcessing ? 'Processing...' : 'Upload Excel Log'}
-            </Button>
-          </PageHeader>
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-            <div className="mx-auto max-w-6xl space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>How it Works</CardTitle>
-                  <CardDescription>
-                    Follow this format for your Excel file to get an accurate analysis.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Alert>
-                    <FileQuestion className="h-4 w-4" />
-                    <AlertTitle>Excel File Format</AlertTitle>
-                    <AlertDescription>
-                      <ul className="list-disc pl-5 space-y-2 mt-2">
-                        <li>Each **sheet** in the Excel file should be named after an **enabler**.</li>
-                        <li>The sheet must have a **header row** with column names. The tool will look for specific headers (case-insensitive).</li>
-                        <li>A **`Date`** column is required for daily analysis. It should contain valid dates for each row of activity.</li>
-                        <li>The **first column** should always contain the **contact names**.</li>
-                        <li>
-                          The tool analyzes these columns:
-                          <ul className="list-disc pl-6 mt-1 space-y-1">
-                             <li>**`Date`**: Used to filter activities for a specific day.</li>
-                            <li>**`Call status`**: Counts "Picked Call" and "Not Picked".</li>
-                            <li>**`SG`**: Counts "Level 1", "Level 2", and "Level 3".</li>
-                            <li>**`FRP`**: Counts "ITPL FR", "VFR", and "BFR".</li>
-                            <li>**`Mangla Arti`**: Counts any non-empty cell.</li>
-                          </ul>
-                        </li>
-                        <li>Other columns will be ignored. The text matching for values is case-insensitive.</li>
-                      </ul>
-                    </AlertDescription>
-                  </Alert>
-                </CardContent>
-              </Card>
-
-              {fileName && (
+    <AuthGuard>
+      <>
+        <div className="flex min-h-screen w-full">
+          <AppSidebar />
+          <div className="flex flex-1 flex-col bg-background">
+            <PageHeader
+              title="Call Log Analyzer"
+              description="Upload an Excel file to analyze daily and total metrics per enabler."
+            >
+              <Button size="sm" onClick={() => fileInputRef.current?.click()} disabled={isProcessing}>
+                <Upload className="mr-2 h-4 w-4" />
+                {isProcessing ? 'Processing...' : 'Upload Excel Log'}
+              </Button>
+            </PageHeader>
+            <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+              <div className="mx-auto max-w-6xl space-y-6">
                 <Card>
                   <CardHeader>
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                        <div>
-                            <CardTitle>Analysis Results</CardTitle>
-                            <CardDescription>
-                            Showing results for <span className="font-semibold text-primary">{fileName}</span>. Filtered by: <span className="font-semibold text-primary">{selectedDate ? format(selectedDate, 'PPP') : 'All Time'}</span>.
-                            </CardDescription>
-                        </div>
-                         <div className="flex items-center gap-2">
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                <Button
-                                    variant={"outline"}
-                                    className={cn(
-                                    "w-[280px] justify-start text-left font-normal",
-                                    !selectedDate && "text-muted-foreground"
-                                    )}
-                                >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
-                                </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
-                                <Calendar
-                                    mode="single"
-                                    selected={selectedDate}
-                                    onSelect={setSelectedDate}
-                                    initialFocus
-                                />
-                                </PopoverContent>
-                            </Popover>
-                             <Button variant="secondary" onClick={() => setSelectedDate(undefined)}>View All Time</Button>
-                         </div>
-                    </div>
+                    <CardTitle>How it Works</CardTitle>
+                    <CardDescription>
+                      Follow this format for your Excel file to get an accurate analysis.
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {isProcessing ? (
-                       <div className="text-center text-muted-foreground p-8">Processing file, please wait...</div>
-                    ) : results.length > 0 ? (
-                       <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead rowSpan={2} className="align-bottom sticky left-0 bg-card">Enabler</TableHead>
-                            <TableHead rowSpan={2} className="align-bottom text-right">Contacts</TableHead>
-                            <TableHead colSpan={2} className="text-center border-l">Call Status</TableHead>
-                            <TableHead colSpan={3} className="text-center border-l">SG</TableHead>
-                            <TableHead colSpan={3} className="text-center border-l">FRP</TableHead>
-                            <TableHead rowSpan={2} className="align-bottom text-right border-l">Mangla Arti</TableHead>
-                          </TableRow>
-                          <TableRow>
-                            <TableHead className="text-right border-l font-semibold">Picked</TableHead>
-                            <TableHead className="text-right">Not Picked</TableHead>
-                            <TableHead className="text-right border-l">L1</TableHead>
-                            <TableHead className="text-right">L2</TableHead>
-                            <TableHead className="text-right">L3</TableHead>
-                            <TableHead className="text-right border-l">ITPL</TableHead>
-                            <TableHead className="text-right">VFR</TableHead>
-                            <TableHead className="text-right">BFR</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {results.map((result) => (
-                            <TableRow key={result.enabler}>
-                              <TableCell className="font-medium sticky left-0 bg-card">{result.enabler}</TableCell>
-                              <TableCell className="text-right">{result.totalContacts}</TableCell>
-                              <TableCell className="text-right font-semibold border-l">{result.callStatus.picked}</TableCell>
-                              <TableCell className="text-right">{result.callStatus.notPicked}</TableCell>
-                              <TableCell className="text-right border-l">{result.sg.level1}</TableCell>
-                              <TableCell className="text-right">{result.sg.level2}</TableCell>
-                              <TableCell className="text-right">{result.sg.level3}</TableCell>
-                              <TableCell className="text-right border-l">{result.frp.itpl}</TableCell>
-                              <TableCell className="text-right">{result.frp.vfr}</TableCell>
-                              <TableCell className="text-right">{result.frp.bfr}</TableCell>
-                              <TableCell className="text-right border-l">{result.manglaArtiCount}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                         {totals && (
-                           <TableFooter>
-                              <TableRow className="bg-muted/50 hover:bg-muted/50">
-                                <TableCell className="font-bold text-primary sticky left-0 bg-muted/50">Totals</TableCell>
-                                <TableCell className="text-right font-bold">{totals.totalContacts}</TableCell>
-                                <TableCell className="text-right font-bold border-l">{totals.callStatus.picked}</TableCell>
-                                <TableCell className="text-right font-bold">{totals.callStatus.notPicked}</TableCell>
-                                <TableCell className="text-right font-bold border-l">{totals.sg.level1}</TableCell>
-                                <TableCell className="text-right font-bold">{totals.sg.level2}</TableCell>
-                                <TableCell className="text-right font-bold">{totals.sg.level3}</TableCell>
-                                <TableCell className="text-right font-bold border-l">{totals.frp.itpl}</TableCell>
-                                <TableCell className="text-right font-bold">{totals.frp.vfr}</TableCell>
-                                <TableCell className="text-right font-bold">{totals.frp.bfr}</TableCell>
-                                <TableCell className="text-right font-bold border-l">{totals.manglaArtiCount}</TableCell>
-                              </TableRow>
-                           </TableFooter>
-                         )}
-                       </Table>
-                    ) : (
-                      <div className="text-center text-muted-foreground p-8">
-                        {hasData ? `No data found for ${selectedDate ? format(selectedDate, 'PPP') : 'All Time'}.` : "No results to display. Upload a file to begin."}
-                      </div>
-                    )}
+                    <Alert>
+                      <FileQuestion className="h-4 w-4" />
+                      <AlertTitle>Excel File Format</AlertTitle>
+                      <AlertDescription>
+                        <ul className="list-disc pl-5 space-y-2 mt-2">
+                          <li>Each **sheet** in the Excel file should be named after an **enabler**.</li>
+                          <li>The sheet must have a **header row** with column names. The tool will look for specific headers (case-insensitive).</li>
+                          <li>A **`Date`** column is required for daily analysis. It should contain valid dates for each row of activity.</li>
+                          <li>The **first column** should always contain the **contact names**.</li>
+                          <li>
+                            The tool analyzes these columns:
+                            <ul className="list-disc pl-6 mt-1 space-y-1">
+                               <li>**`Date`**: Used to filter activities for a specific day.</li>
+                              <li>**`Call status`**: Counts "Picked Call" and "Not Picked".</li>
+                              <li>**`SG`**: Counts "Level 1", "Level 2", and "Level 3".</li>
+                              <li>**`FRP`**: Counts "ITPL FR", "VFR", and "BFR".</li>
+                              <li>**`Mangla Arti`**: Counts any non-empty cell.</li>
+                            </ul>
+                          </li>
+                          <li>Other columns will be ignored. The text matching for values is case-insensitive.</li>
+                        </ul>
+                      </AlertDescription>
+                    </Alert>
                   </CardContent>
                 </Card>
-              )}
-            </div>
-          </main>
+
+                {fileName && (
+                  <Card>
+                    <CardHeader>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                          <div>
+                              <CardTitle>Analysis Results</CardTitle>
+                              <CardDescription>
+                              Showing results for <span className="font-semibold text-primary">{fileName}</span>. Filtered by: <span className="font-semibold text-primary">{selectedDate ? format(selectedDate, 'PPP') : 'All Time'}</span>.
+                              </CardDescription>
+                          </div>
+                           <div className="flex items-center gap-2">
+                              <Popover>
+                                  <PopoverTrigger asChild>
+                                  <Button
+                                      variant={"outline"}
+                                      className={cn(
+                                      "w-[280px] justify-start text-left font-normal",
+                                      !selectedDate && "text-muted-foreground"
+                                      )}
+                                  >
+                                      <CalendarIcon className="mr-2 h-4 w-4" />
+                                      {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                                  </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-0">
+                                  <Calendar
+                                      mode="single"
+                                      selected={selectedDate}
+                                      onSelect={setSelectedDate}
+                                      initialFocus
+                                  />
+                                  </PopoverContent>
+                              </Popover>
+                               <Button variant="secondary" onClick={() => setSelectedDate(undefined)}>View All Time</Button>
+                           </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {isProcessing ? (
+                         <div className="text-center text-muted-foreground p-8">Processing file, please wait...</div>
+                      ) : results.length > 0 ? (
+                         <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead rowSpan={2} className="align-bottom sticky left-0 bg-card">Enabler</TableHead>
+                              <TableHead rowSpan={2} className="align-bottom text-right">Contacts</TableHead>
+                              <TableHead colSpan={2} className="text-center border-l">Call Status</TableHead>
+                              <TableHead colSpan={3} className="text-center border-l">SG</TableHead>
+                              <TableHead colSpan={3} className="text-center border-l">FRP</TableHead>
+                              <TableHead rowSpan={2} className="align-bottom text-right border-l">Mangla Arti</TableHead>
+                            </TableRow>
+                            <TableRow>
+                              <TableHead className="text-right border-l font-semibold">Picked</TableHead>
+                              <TableHead className="text-right">Not Picked</TableHead>
+                              <TableHead className="text-right border-l">L1</TableHead>
+                              <TableHead className="text-right">L2</TableHead>
+                              <TableHead className="text-right">L3</TableHead>
+                              <TableHead className="text-right border-l">ITPL</TableHead>
+                              <TableHead className="text-right">VFR</TableHead>
+                              <TableHead className="text-right">BFR</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {results.map((result) => (
+                              <TableRow key={result.enabler}>
+                                <TableCell className="font-medium sticky left-0 bg-card">{result.enabler}</TableCell>
+                                <TableCell className="text-right">{result.totalContacts}</TableCell>
+                                <TableCell className="text-right font-semibold border-l">{result.callStatus.picked}</TableCell>
+                                <TableCell className="text-right">{result.callStatus.notPicked}</TableCell>
+                                <TableCell className="text-right border-l">{result.sg.level1}</TableCell>
+                                <TableCell className="text-right">{result.sg.level2}</TableCell>
+                                <TableCell className="text-right">{result.sg.level3}</TableCell>
+                                <TableCell className="text-right border-l">{result.frp.itpl}</TableCell>
+                                <TableCell className="text-right">{result.frp.vfr}</TableCell>
+                                <TableCell className="text-right">{result.frp.bfr}</TableCell>
+                                <TableCell className="text-right border-l">{result.manglaArtiCount}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                           {totals && (
+                             <TableFooter>
+                                <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                  <TableCell className="font-bold text-primary sticky left-0 bg-muted/50">Totals</TableCell>
+                                  <TableCell className="text-right font-bold">{totals.totalContacts}</TableCell>
+                                  <TableCell className="text-right font-bold border-l">{totals.callStatus.picked}</TableCell>
+                                  <TableCell className="text-right font-bold">{totals.callStatus.notPicked}</TableCell>
+                                  <TableCell className="text-right font-bold border-l">{totals.sg.level1}</TableCell>
+                                  <TableCell className="text-right font-bold">{totals.sg.level2}</TableCell>
+                                  <TableCell className="text-right font-bold">{totals.sg.level3}</TableCell>
+                                  <TableCell className="text-right font-bold border-l">{totals.frp.itpl}</TableCell>
+                                  <TableCell className="text-right font-bold">{totals.frp.vfr}</TableCell>
+                                  <TableCell className="text-right font-bold">{totals.frp.bfr}</TableCell>
+                                  <TableCell className="text-right font-bold border-l">{totals.manglaArtiCount}</TableCell>
+                                </TableRow>
+                             </TableFooter>
+                           )}
+                         </Table>
+                      ) : (
+                        <div className="text-center text-muted-foreground p-8">
+                          {hasData ? `No data found for ${selectedDate ? format(selectedDate, 'PPP') : 'All Time'}.` : "No results to display. Upload a file to begin."}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </main>
+          </div>
         </div>
-      </div>
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileImport}
-        className="hidden"
-        accept=".xlsx, .xls"
-      />
-    </>
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileImport}
+          className="hidden"
+          accept=".xlsx, .xls"
+        />
+      </>
+    </AuthGuard>
   );
 }

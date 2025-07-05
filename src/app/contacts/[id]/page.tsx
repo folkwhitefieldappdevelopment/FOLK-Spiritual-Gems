@@ -11,8 +11,7 @@ import { cn } from '@/lib/utils';
 import { getPerson, updatePerson, deletePerson } from '@/services/people-service';
 import { getCustomPersonFields } from '@/services/settings-service';
 import { createInitialProgress } from '@/lib/data';
-import { configError } from '@/lib/firebase';
-import { FirebaseConfigError } from '@/components/firebase-config-error';
+import { AuthGuard } from '@/components/auth-guard';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -54,14 +53,8 @@ export default function PersonDetailPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [allPeople, setAllPeople] = React.useState<Person[]>([]);
-  const [firebaseError, setFirebaseError] = React.useState<Error | null>(null);
 
   React.useEffect(() => {
-    if (configError) {
-      setFirebaseError(configError);
-      setIsLoading(false);
-      return;
-    }
     if (!personId) return;
 
     const fetchPerson = async () => {
@@ -73,7 +66,6 @@ export default function PersonDetailPage() {
         ]);
         
         setCustomFields(fieldsData);
-        setFirebaseError(null);
 
         if (personData) {
           if (!personData.progress || !Array.isArray(personData.progress) || personData.progress.length === 0 || !personData.progress[0]?.answers || !Array.isArray(personData.progress[0].answers)) {
@@ -90,11 +82,11 @@ export default function PersonDetailPage() {
         }
       } catch (error) {
         console.error('Failed to load person data', error);
-        if (error instanceof Error) {
-            setFirebaseError(error);
-        } else {
-            setFirebaseError(new Error("An unknown error occurred during data fetching."));
-        }
+        toast({
+            variant: "destructive",
+            title: "Failed to load data",
+            description: "Please check your connection and try again.",
+        });
       } finally {
         setIsLoading(false);
       }
@@ -181,33 +173,29 @@ export default function PersonDetailPage() {
     return String(value);
   }
 
-  if (firebaseError) {
-    return <FirebaseConfigError error={firebaseError} />;
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
-  if (!person) {
-    return (
-      <div className="flex min-h-screen w-full">
-        <AppSidebar />
-        <div className="flex flex-1 flex-col items-center justify-center bg-background">
-          Person not found.
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="flex min-h-screen w-full items-center justify-center bg-background">
+          <Loader2 className="h-8 w-8 animate-spin" />
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  const hasCustomData = customFields.some(field => person.customData && person.customData[field.id]);
+    if (!person) {
+      return (
+        <div className="flex min-h-screen w-full">
+          <AppSidebar />
+          <div className="flex flex-1 flex-col items-center justify-center bg-background">
+            Person not found.
+          </div>
+        </div>
+      );
+    }
 
-  return (
-    <>
+    const hasCustomData = customFields.some(field => person.customData && person.customData[field.id]);
+
+    return (
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <div className="flex flex-1 flex-col bg-background">
@@ -377,13 +365,22 @@ export default function PersonDetailPage() {
           </main>
         </div>
       </div>
-      <CreateUpdatePersonDialog
-        isOpen={isEditDialogOpen}
-        setIsOpen={setIsEditDialogOpen}
-        onSave={(data) => handleSavePersonDialog(data)}
-        person={person}
-        allPeople={allPeople}
-      />
-    </>
+    );
+  };
+  
+
+  return (
+    <AuthGuard>
+      <>
+        {renderContent()}
+        <CreateUpdatePersonDialog
+          isOpen={isEditDialogOpen}
+          setIsOpen={setIsEditDialogOpen}
+          onSave={(data) => handleSavePersonDialog(data)}
+          person={person}
+          allPeople={allPeople}
+        />
+      </>
+    </AuthGuard>
   );
 }

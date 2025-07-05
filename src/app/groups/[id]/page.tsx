@@ -9,8 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getGroup, updateGroup } from '@/services/groups-service';
 import { getPeople, updatePerson } from '@/services/people-service';
 import { createInitialProgress } from '@/lib/data';
-import { configError } from '@/lib/firebase';
-import { FirebaseConfigError } from '@/components/firebase-config-error';
+import { AuthGuard } from '@/components/auth-guard';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -33,14 +32,8 @@ export default function GroupDetailPage() {
   
   const [isManageMembersDialogOpen, setIsManageMembersDialogOpen] = React.useState(false);
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(undefined);
-  const [firebaseError, setFirebaseError] = React.useState<Error | null>(null);
 
   React.useEffect(() => {
-    if (configError) {
-      setFirebaseError(configError);
-      setIsLoading(false);
-      return;
-    }
     if (!groupId) return;
     
     const fetchData = async () => {
@@ -59,7 +52,6 @@ export default function GroupDetailPage() {
         });
         
         setAllPeople(sanitizedPeople);
-        setFirebaseError(null);
         
         if (groupData) {
           setGroup(groupData);
@@ -74,11 +66,11 @@ export default function GroupDetailPage() {
         }
       } catch (error) {
         console.error('Failed to load group data', error);
-        if (error instanceof Error) {
-            setFirebaseError(error);
-        } else {
-            setFirebaseError(new Error("An unknown error occurred during data fetching."));
-        }
+        toast({
+            variant: "destructive",
+            title: "Failed to load data",
+            description: "Please check your connection and try again.",
+        });
       } finally {
         setIsLoading(false);
       }
@@ -148,24 +140,19 @@ export default function GroupDetailPage() {
     }
   };
 
-  if (firebaseError) {
-    return <FirebaseConfigError error={firebaseError} />;
-  }
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="flex min-h-screen w-full items-center justify-center bg-background">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      );
+    }
+    if (!group) {
+      return null; // Should be redirected by useEffect
+    }
 
-  if (isLoading) {
     return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
-  if (!group) {
-    return null; // Should be redirected by useEffect
-  }
-
-  return (
-    <>
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <div className="flex flex-1 flex-col bg-background">
@@ -216,23 +203,33 @@ export default function GroupDetailPage() {
           </main>
         </div>
       </div>
+    );
+  };
+  
+  return (
+    <AuthGuard>
+      <>
+        {renderContent()}
 
-      {editingPerson && (
-        <CreateUpdatePersonDialog
-          isOpen={!!editingPerson}
-          setIsOpen={() => setEditingPerson(undefined)}
-          onSave={(data) => handleSavePersonDialog(data)}
-          person={editingPerson}
-        />
-      )}
-      
-      <ManageGroupMembersDialog
-        isOpen={isManageMembersDialogOpen}
-        setIsOpen={setIsManageMembersDialogOpen}
-        onSave={handleSaveMembers}
-        group={group}
-        allPeople={allPeople}
-      />
-    </>
+        {editingPerson && (
+          <CreateUpdatePersonDialog
+            isOpen={!!editingPerson}
+            setIsOpen={() => setEditingPerson(undefined)}
+            onSave={(data) => handleSavePersonDialog(data)}
+            person={editingPerson}
+          />
+        )}
+        
+        {group && (
+          <ManageGroupMembersDialog
+            isOpen={isManageMembersDialogOpen}
+            setIsOpen={setIsManageMembersDialogOpen}
+            onSave={handleSaveMembers}
+            group={group}
+            allPeople={allPeople}
+          />
+        )}
+      </>
+    </AuthGuard>
   );
 }

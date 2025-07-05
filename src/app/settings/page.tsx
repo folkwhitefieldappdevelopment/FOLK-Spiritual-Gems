@@ -4,8 +4,7 @@
 import * as React from 'react';
 import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { configError } from '@/lib/firebase';
-import { FirebaseConfigError } from '@/components/firebase-config-error';
+import { AuthGuard } from '@/components/auth-guard';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -55,7 +54,6 @@ type ItemType = 'enabler' | 'source' | 'customField';
 export default function SettingsPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(true);
-  const [firebaseError, setFirebaseError] = React.useState<Error | null>(null);
 
   const [enablers, setEnablers] = React.useState<string[]>([]);
   const [sources, setSources] = React.useState<string[]>([]);
@@ -75,12 +73,6 @@ export default function SettingsPage() {
   const [fieldType, setFieldType] = React.useState<CustomFieldType>('text');
 
   React.useEffect(() => {
-    if (configError) {
-      setFirebaseError(configError);
-      setIsLoading(false);
-      return;
-    }
-
     const fetchData = async () => {
       setIsLoading(true);
       try {
@@ -92,20 +84,19 @@ export default function SettingsPage() {
         setEnablers(enablersData);
         setSources(sourcesData);
         setCustomFields(customFieldsData);
-        setFirebaseError(null);
       } catch (error) {
         console.error('Failed to load settings data', error);
-        if (error instanceof Error) {
-            setFirebaseError(error);
-        } else {
-            setFirebaseError(new Error("An unknown error occurred during data fetching."));
-        }
+        toast({
+            variant: "destructive",
+            title: "Failed to load data",
+            description: "Please check your connection and try again.",
+        });
       } finally {
         setIsLoading(false);
       }
     };
     fetchData();
-  }, []);
+  }, [toast]);
 
   const openDialog = (mode: DialogMode, type: ItemType, data: string | CustomField | null = null) => {
     setDialogMode(mode);
@@ -206,10 +197,6 @@ export default function SettingsPage() {
     }
   };
   
-  if (firebaseError) {
-    return <FirebaseConfigError error={firebaseError} />;
-  }
-
   const renderList = (type: 'enabler' | 'source', items: string[]) => (
     <Card>
       <CardHeader>
@@ -390,69 +377,71 @@ export default function SettingsPage() {
   }
 
   return (
-    <>
-      <div className="flex min-h-screen w-full">
-        <AppSidebar />
-        <div className="flex flex-1 flex-col bg-background">
-          <PageHeader
-            title="Settings"
-            description="Manage options for dropdown menus and custom fields across the application."
-          />
-          <main className="flex-1 p-4 sm:p-6">
-            {isLoading ? (
-              <div className="flex min-h-[50vh] w-full items-center justify-center bg-background">
-                <Loader2 className="h-8 w-8 animate-spin" />
-              </div>
-            ) : (
-              <div className="mx-auto max-w-4xl space-y-8">
-                <div>
-                    <div className="flex justify-end mb-4">
-                        <Button onClick={() => openDialog('add', 'enabler')}>
-                        <PlusCircle className="mr-2 h-4 w-4" /> Add Enabler
-                        </Button>
-                    </div>
-                    {renderList('enabler', enablers)}
+    <AuthGuard>
+      <>
+        <div className="flex min-h-screen w-full">
+          <AppSidebar />
+          <div className="flex flex-1 flex-col bg-background">
+            <PageHeader
+              title="Settings"
+              description="Manage options for dropdown menus and custom fields across the application."
+            />
+            <main className="flex-1 p-4 sm:p-6">
+              {isLoading ? (
+                <div className="flex min-h-[50vh] w-full items-center justify-center bg-background">
+                  <Loader2 className="h-8 w-8 animate-spin" />
                 </div>
-                <div>
-                     <div className="flex justify-end mb-4">
-                        <Button onClick={() => openDialog('add', 'source')}>
-                        <PlusCircle className="mr-2 h-4 w-4" /> Add Contact Source
-                        </Button>
-                    </div>
-                    {renderList('source', sources)}
+              ) : (
+                <div className="mx-auto max-w-4xl space-y-8">
+                  <div>
+                      <div className="flex justify-end mb-4">
+                          <Button onClick={() => openDialog('add', 'enabler')}>
+                          <PlusCircle className="mr-2 h-4 w-4" /> Add Enabler
+                          </Button>
+                      </div>
+                      {renderList('enabler', enablers)}
+                  </div>
+                  <div>
+                       <div className="flex justify-end mb-4">
+                          <Button onClick={() => openDialog('add', 'source')}>
+                          <PlusCircle className="mr-2 h-4 w-4" /> Add Contact Source
+                          </Button>
+                      </div>
+                      {renderList('source', sources)}
+                  </div>
+                  <div>
+                      <div className="flex justify-end mb-4">
+                          <Button onClick={() => openDialog('add', 'customField')}>
+                          <PlusCircle className="mr-2 h-4 w-4" /> Add Custom Field
+                          </Button>
+                      </div>
+                      {renderCustomFieldsList()}
+                  </div>
                 </div>
-                <div>
-                    <div className="flex justify-end mb-4">
-                        <Button onClick={() => openDialog('add', 'customField')}>
-                        <PlusCircle className="mr-2 h-4 w-4" /> Add Custom Field
-                        </Button>
-                    </div>
-                    {renderCustomFieldsList()}
-                </div>
-              </div>
-            )}
-          </main>
+              )}
+            </main>
+          </div>
         </div>
-      </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{getDialogTitle()}</DialogTitle>
-             <DialogDescription>
-              {itemType === 'customField' 
-                ? 'Define a new custom field for your contacts.'
-                : 'Enter the name for the item below.'
-              }
-            </DialogDescription>
-          </DialogHeader>
-          {renderDialogContent()}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>Save</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{getDialogTitle()}</DialogTitle>
+               <DialogDescription>
+                {itemType === 'customField' 
+                  ? 'Define a new custom field for your contacts.'
+                  : 'Enter the name for the item below.'
+                }
+              </DialogDescription>
+            </DialogHeader>
+            {renderDialogContent()}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleSave}>Save</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </>
+    </AuthGuard>
   );
 }

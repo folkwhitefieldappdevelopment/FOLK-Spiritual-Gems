@@ -48,8 +48,7 @@ import {
   importPeople,
 } from "@/services/people-service";
 import { getEnablers, getContactSources } from "@/services/settings-service";
-import { configError } from "@/lib/firebase";
-import { FirebaseConfigError } from "@/components/firebase-config-error";
+import { AuthGuard } from "@/components/auth-guard";
 
 export default function ContactsPage() {
   const { toast } = useToast();
@@ -75,15 +74,8 @@ export default function ContactsPage() {
 
   const [enablerOptions, setEnablerOptions] = React.useState<string[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
-  const [firebaseError, setFirebaseError] = React.useState<Error | null>(null);
 
   React.useEffect(() => {
-    if (configError) {
-      setFirebaseError(configError);
-      setIsLoading(false);
-      return;
-    }
-
     const fetchData = async () => {
       setIsLoading(true);
       try {
@@ -95,20 +87,19 @@ export default function ContactsPage() {
         setPeople(peopleData);
         setEnablerOptions(enablersData);
         setContactSourceOptions(sourcesData);
-        setFirebaseError(null);
       } catch (error) {
         console.error("Failed to load data:", error);
-        if (error instanceof Error) {
-            setFirebaseError(error);
-        } else {
-            setFirebaseError(new Error("An unknown error occurred during data fetching."));
-        }
+        toast({
+            variant: "destructive",
+            title: "Failed to load data",
+            description: "Please check your connection and try again.",
+        });
       } finally {
         setIsLoading(false);
       }
     };
     fetchData();
-  }, []);
+  }, [toast]);
 
   const filteredPeople = React.useMemo(() => {
     const filtered = people.filter((person) => {
@@ -475,10 +466,6 @@ export default function ContactsPage() {
   const isLoadingAction = isImporting || isExporting;
   const loadingText = isImporting ? 'Importing...' : isExporting ? 'Exporting...' : '';
 
-  if (firebaseError) {
-    return <FirebaseConfigError error={firebaseError} />;
-  }
-
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -603,66 +590,67 @@ export default function ContactsPage() {
   }
 
   return (
-    <>
-      <div className="flex min-h-screen w-full">
-        <AppSidebar />
-        <div className="flex flex-1 flex-col bg-background">
-          <PageHeader
-            title="Contacts"
-            description={`Manage data for ${filteredPeople.length} people.`}
-          >
-            <div className="flex items-center gap-2">
-              <AdminModeToggle />
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
-                       {isLoadingAction ? (
-                        <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
-                      ) : (
-                        <Upload className="h-4 w-4 sm:mr-2" />
-                      )}
-                      <span className="hidden sm:inline">{isLoadingAction ? loadingText : 'Import/Export'}</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => fileInputRef.current?.click()} disabled={isLoadingAction}>
-                      Import from Excel
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleExport} disabled={isLoadingAction}>
-                      Export to Excel
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleSampleDownload} disabled={isLoadingAction}>
-                      Download Sample Excel
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+    <AuthGuard>
+      <>
+        <div className="flex min-h-screen w-full">
+          <AppSidebar />
+          <div className="flex flex-1 flex-col bg-background">
+            <PageHeader
+              title="Contacts"
+              description={`Manage data for ${filteredPeople.length} people.`}
+            >
+              <div className="flex items-center gap-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
+                         {isLoadingAction ? (
+                          <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
+                        ) : (
+                          <Upload className="h-4 w-4 sm:mr-2" />
+                        )}
+                        <span className="hidden sm:inline">{isLoadingAction ? loadingText : 'Import/Export'}</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem onClick={() => fileInputRef.current?.click()} disabled={isLoadingAction}>
+                        Import from Excel
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleExport} disabled={isLoadingAction}>
+                        Export to Excel
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={handleSampleDownload} disabled={isLoadingAction}>
+                        Download Sample Excel
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
 
-                <Button size="sm" onClick={handleAddPerson} className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
-                  <PlusCircle className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Add Person</span>
-                </Button>
-            </div>
-          </PageHeader>
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-            {renderContent()}
-          </main>
+                  <Button size="sm" onClick={handleAddPerson} className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
+                    <PlusCircle className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Add Person</span>
+                  </Button>
+              </div>
+            </PageHeader>
+            <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+              {renderContent()}
+            </main>
+          </div>
         </div>
-      </div>
-      <CreateUpdatePersonDialog
-        isOpen={isDialogOpen}
-        setIsOpen={setIsDialogOpen}
-        onSave={handleSavePerson}
-        person={editingPerson}
-        allPeople={people}
-      />
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileImport}
-        className="hidden"
-        accept=".xlsx, .xls, .csv"
-      />
-    </>
+        <CreateUpdatePersonDialog
+          isOpen={isDialogOpen}
+          setIsOpen={setIsDialogOpen}
+          onSave={handleSavePerson}
+          person={editingPerson}
+          allPeople={people}
+        />
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileImport}
+          className="hidden"
+          accept=".xlsx, .xls, .csv"
+        />
+      </>
+    </AuthGuard>
   );
 }

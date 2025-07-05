@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/page-header";
 import { PersonTable } from "@/components/person-table";
 import { CreateUpdatePersonDialog } from "@/components/create-update-person-dialog";
 import { CallingSessionDialog } from "@/components/calling-session-dialog";
+import { AuthGuard } from "@/components/auth-guard";
 import {
   Select,
   SelectContent,
@@ -26,8 +27,6 @@ import {
 } from "@/services/people-service";
 import { getEnablers, getContactSources } from "@/services/settings-service";
 import { serverTimestamp, arrayUnion } from "firebase/firestore";
-import { configError } from "@/lib/firebase";
-import { FirebaseConfigError } from "@/components/firebase-config-error";
 
 export default function CallingAssistantPage() {
   const { toast } = useToast();
@@ -47,14 +46,8 @@ export default function CallingAssistantPage() {
 
   const [enablerOptions, setEnablerOptions] = React.useState<string[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
-  const [firebaseError, setFirebaseError] = React.useState<Error | null>(null);
 
   React.useEffect(() => {
-    if (configError) {
-      setFirebaseError(configError);
-      setIsLoading(false);
-      return;
-    }
     const fetchData = async () => {
       setIsLoading(true);
       try {
@@ -66,20 +59,19 @@ export default function CallingAssistantPage() {
         setPeople(peopleData);
         setEnablerOptions(enablersData);
         setContactSourceOptions(sourcesData);
-        setFirebaseError(null);
       } catch (error) {
         console.error("Failed to load data:", error);
-        if (error instanceof Error) {
-            setFirebaseError(error);
-        } else {
-            setFirebaseError(new Error("An unknown error occurred during data fetching."));
-        }
+        toast({
+            variant: "destructive",
+            title: "Failed to load data",
+            description: "Please check your connection and try again.",
+        });
       } finally {
         setIsLoading(false);
       }
     };
     fetchData();
-  }, []);
+  }, [toast]);
 
   const filteredPeople = React.useMemo(() => {
     const filtered = people.filter((person) => {
@@ -172,10 +164,6 @@ export default function CallingAssistantPage() {
     });
   };
 
-  if (firebaseError) {
-    return <FirebaseConfigError error={firebaseError} />;
-  }
-
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -262,36 +250,38 @@ export default function CallingAssistantPage() {
   }
 
   return (
-    <>
-      <div className="flex min-h-screen w-full">
-        <AppSidebar />
-        <div className="flex flex-1 flex-col bg-background">
-          <PageHeader
-            title="Calling Assistant"
-            description="A focused view to call contacts and log remarks."
-          />
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-            {renderContent()}
-          </main>
+    <AuthGuard>
+      <>
+        <div className="flex min-h-screen w-full">
+          <AppSidebar />
+          <div className="flex flex-1 flex-col bg-background">
+            <PageHeader
+              title="Calling Assistant"
+              description="A focused view to call contacts and log remarks."
+            />
+            <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+              {renderContent()}
+            </main>
+          </div>
         </div>
-      </div>
-      
-      <CallingSessionDialog
-        isOpen={isSessionDialogOpen}
-        onClose={() => setIsSessionDialogOpen(false)}
-        people={filteredPeople}
-        onSaveRemark={handleSessionSave}
-      />
-
-      {editingPerson && (
-         <CreateUpdatePersonDialog
-            isOpen={!!editingPerson}
-            setIsOpen={() => setEditingPerson(undefined)}
-            onSave={() => {}} // Note: The main save logic is not used here, dialog is for viewing/quick edits
-            person={editingPerson}
-            allPeople={people}
+        
+        <CallingSessionDialog
+          isOpen={isSessionDialogOpen}
+          onClose={() => setIsSessionDialogOpen(false)}
+          people={filteredPeople}
+          onSaveRemark={handleSessionSave}
         />
-      )}
-    </>
+
+        {editingPerson && (
+           <CreateUpdatePersonDialog
+              isOpen={!!editingPerson}
+              setIsOpen={() => setEditingPerson(undefined)}
+              onSave={() => {}} // Note: The main save logic is not used here, dialog is for viewing/quick edits
+              person={editingPerson}
+              allPeople={people}
+          />
+        )}
+      </>
+    </AuthGuard>
   );
 }

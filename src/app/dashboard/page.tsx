@@ -7,8 +7,7 @@ import { getPeople } from '@/services/people-service';
 import { useToast } from '@/hooks/use-toast';
 import { subWeeks, startOfWeek, isAfter, format } from 'date-fns';
 import { Users, UserPlus, Briefcase, Loader2 } from 'lucide-react';
-import { configError } from '@/lib/firebase';
-import { FirebaseConfigError } from '@/components/firebase-config-error';
+import { AuthGuard } from '@/components/auth-guard';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -34,34 +33,26 @@ export default function DashboardPage() {
   const { toast } = useToast();
   const [people, setPeople] = React.useState<Person[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [firebaseError, setFirebaseError] = React.useState<Error | null>(null);
 
   React.useEffect(() => {
-    if (configError) {
-      setFirebaseError(configError);
-      setIsLoading(false);
-      return;
-    }
-
     const fetchData = async () => {
       setIsLoading(true);
       try {
         const peopleData = await getPeople();
         setPeople(peopleData);
-        setFirebaseError(null);
       } catch (error) {
         console.error('Failed to load dashboard data:', error);
-        if (error instanceof Error) {
-            setFirebaseError(error);
-        } else {
-            setFirebaseError(new Error("An unknown error occurred during data fetching."));
-        }
+        toast({
+            variant: "destructive",
+            title: "Failed to load data",
+            description: "Please check your connection and try again.",
+        });
       } finally {
         setIsLoading(false);
       }
     };
     fetchData();
-  }, []);
+  }, [toast]);
   
   const safeDate = (timestamp: any): Date | null => {
     if (!timestamp) return null;
@@ -145,10 +136,6 @@ export default function DashboardPage() {
       contactsByOccupation: occupationData
     };
   }, [people]);
-  
-  if (firebaseError) {
-    return <FirebaseConfigError error={firebaseError} />;
-  }
   
   const renderContent = () => {
      if (isLoading) {
@@ -281,17 +268,19 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full">
-      <AppSidebar />
-      <div className="flex flex-1 flex-col bg-background">
-        <PageHeader
-          title="Dashboard"
-          description="An overview of your contacts and their progress."
-        />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-          {renderContent()}
-        </main>
+    <AuthGuard>
+      <div className="flex min-h-screen w-full">
+        <AppSidebar />
+        <div className="flex flex-1 flex-col bg-background">
+          <PageHeader
+            title="Dashboard"
+            description="An overview of your contacts and their progress."
+          />
+          <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+            {renderContent()}
+          </main>
+        </div>
       </div>
-    </div>
+    </AuthGuard>
   );
 }

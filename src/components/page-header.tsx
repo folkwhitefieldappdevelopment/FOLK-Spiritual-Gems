@@ -5,10 +5,13 @@ import type { ReactNode } from "react";
 import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Menu, LayoutDashboard, Users, UserSquare, Settings, Gem, PhoneCall, Headset } from 'lucide-react';
+import { Menu, LayoutDashboard, Users, UserSquare, Settings, Gem, PhoneCall, Headset, LogOut } from 'lucide-react';
 import { Button } from './ui/button';
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from './ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetFooter } from './ui/sheet';
 import { cn } from '@/lib/utils';
+import { UserNav } from './user-nav';
+import { useAuth } from '@/contexts/auth-context';
+import { AdminModeToggle } from './admin-mode-toggle';
 
 type PageHeaderProps = {
   title: string;
@@ -27,6 +30,7 @@ const navItems = [
 export function PageHeader({ title, description, children }: PageHeaderProps) {
   const pathname = usePathname();
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
+  const { user, signOut } = useAuth();
   
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -39,7 +43,7 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
   }, [pathname]);
 
   return (
-    <header className="sticky top-0 z-10 flex h-[60px] items-center gap-4 border-b bg-card px-4 sm:px-6">
+    <header className="sticky top-0 z-30 flex h-[60px] items-center gap-4 border-b bg-card px-4 sm:px-6">
        <div className="sm:hidden">
          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
@@ -48,11 +52,11 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
                 <span className="sr-only">Toggle Menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="sm:max-w-xs">
+            <SheetContent side="left" className="sm:max-w-xs flex flex-col">
               <SheetHeader>
                 <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
               </SheetHeader>
-              <nav className="grid gap-6 text-lg font-medium">
+              <nav className="grid gap-6 text-lg font-medium mt-4">
                 <Link
                   href="/"
                   className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
@@ -84,6 +88,14 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
                   Settings
                 </Link>
               </nav>
+               <SheetFooter className="mt-auto">
+                {user && (
+                    <Button variant="outline" className="w-full" onClick={signOut}>
+                        <LogOut className="mr-2 h-4 w-4"/>
+                        Sign Out
+                    </Button>
+                )}
+               </SheetFooter>
             </SheetContent>
           </Sheet>
        </div>
@@ -92,8 +104,10 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
         <h1 className="font-semibold text-lg truncate">{title}</h1>
         <p className="text-sm text-muted-foreground truncate">{description}</p>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-4">
         {children}
+        <AdminModeToggle />
+        <UserNav />
       </div>
     </header>
   );

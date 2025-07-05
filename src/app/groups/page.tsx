@@ -5,8 +5,7 @@ import { PlusCircle, Loader2 } from "lucide-react";
 import type { Group } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { getGroups, createGroup, updateGroup, deleteGroup } from "@/services/groups-service";
-import { configError } from "@/lib/firebase";
-import { FirebaseConfigError } from "@/components/firebase-config-error";
+import { AuthGuard } from "@/components/auth-guard";
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { PageHeader } from "@/components/page-header";
@@ -22,33 +21,26 @@ export default function GroupsPage() {
   const [editingGroup, setEditingGroup] = React.useState<Group | undefined>(
     undefined
   );
-  const [firebaseError, setFirebaseError] = React.useState<Error | null>(null);
 
   React.useEffect(() => {
-    if (configError) {
-      setFirebaseError(configError);
-      setIsLoading(false);
-      return;
-    }
     const fetchGroups = async () => {
       setIsLoading(true);
       try {
         const groupsData = await getGroups();
         setGroups(groupsData);
-        setFirebaseError(null);
       } catch (error) {
         console.error("Failed to fetch groups", error);
-        if (error instanceof Error) {
-            setFirebaseError(error);
-        } else {
-            setFirebaseError(new Error("An unknown error occurred during data fetching."));
-        }
+        toast({
+            variant: "destructive",
+            title: "Failed to load data",
+            description: "Please check your connection and try again.",
+        });
       } finally {
         setIsLoading(false);
       }
     };
     fetchGroups();
-  }, []);
+  }, [toast]);
 
   const handleCreateGroup = () => {
     setEditingGroup(undefined);
@@ -105,10 +97,6 @@ export default function GroupsPage() {
     }
   };
   
-  if (firebaseError) {
-    return <FirebaseConfigError error={firebaseError} />;
-  }
-  
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -142,30 +130,32 @@ export default function GroupsPage() {
   }
 
   return (
-    <>
-      <div className="flex min-h-screen w-full">
-        <AppSidebar />
-        <div className="flex flex-1 flex-col bg-background">
-          <PageHeader
-            title="Groups"
-            description={`Manage your created groups. You have ${groups.length} groups.`}
-          >
-            <Button size="sm" onClick={handleCreateGroup}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Create Group
-            </Button>
-          </PageHeader>
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-            {renderContent()}
-          </main>
+    <AuthGuard>
+      <>
+        <div className="flex min-h-screen w-full">
+          <AppSidebar />
+          <div className="flex flex-1 flex-col bg-background">
+            <PageHeader
+              title="Groups"
+              description={`Manage your created groups. You have ${groups.length} groups.`}
+            >
+              <Button size="sm" onClick={handleCreateGroup}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Create Group
+              </Button>
+            </PageHeader>
+            <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+              {renderContent()}
+            </main>
+          </div>
         </div>
-      </div>
-      <CreateUpdateGroupDialog
-        isOpen={isDialogOpen}
-        setIsOpen={setIsDialogOpen}
-        onSave={handleSaveGroup}
-        group={editingGroup}
-      />
-    </>
+        <CreateUpdateGroupDialog
+          isOpen={isDialogOpen}
+          setIsOpen={setIsDialogOpen}
+          onSave={handleSaveGroup}
+          group={editingGroup}
+        />
+      </>
+    </AuthGuard>
   );
 }
