@@ -59,6 +59,7 @@ export default function GroupDetailPage() {
         });
         
         setAllPeople(sanitizedPeople);
+        setFirebaseError(null);
         
         if (groupData) {
           setGroup(groupData);
@@ -73,11 +74,11 @@ export default function GroupDetailPage() {
         }
       } catch (error) {
         console.error('Failed to load group data', error);
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Could not load group data.',
-        });
+        if (error instanceof Error) {
+            setFirebaseError(error);
+        } else {
+            setFirebaseError(new Error("An unknown error occurred during data fetching."));
+        }
       } finally {
         setIsLoading(false);
       }

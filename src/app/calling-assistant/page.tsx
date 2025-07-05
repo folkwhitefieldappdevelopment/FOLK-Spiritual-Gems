@@ -66,19 +66,20 @@ export default function CallingAssistantPage() {
         setPeople(peopleData);
         setEnablerOptions(enablersData);
         setContactSourceOptions(sourcesData);
+        setFirebaseError(null);
       } catch (error) {
         console.error("Failed to load data:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Could not load data. Please check your connection or Firebase setup.",
-        });
+        if (error instanceof Error) {
+            setFirebaseError(error);
+        } else {
+            setFirebaseError(new Error("An unknown error occurred during data fetching."));
+        }
       } finally {
         setIsLoading(false);
       }
     };
     fetchData();
-  }, [toast]);
+  }, []);
 
   const filteredPeople = React.useMemo(() => {
     const filtered = people.filter((person) => {

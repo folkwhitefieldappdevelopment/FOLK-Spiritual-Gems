@@ -92,19 +92,20 @@ export default function SettingsPage() {
         setEnablers(enablersData);
         setSources(sourcesData);
         setCustomFields(customFieldsData);
+        setFirebaseError(null);
       } catch (error) {
         console.error('Failed to load settings data', error);
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Could not load settings data.',
-        });
+        if (error instanceof Error) {
+            setFirebaseError(error);
+        } else {
+            setFirebaseError(new Error("An unknown error occurred during data fetching."));
+        }
       } finally {
         setIsLoading(false);
       }
     };
     fetchData();
-  }, [toast]);
+  }, []);
 
   const openDialog = (mode: DialogMode, type: ItemType, data: string | CustomField | null = null) => {
     setDialogMode(mode);

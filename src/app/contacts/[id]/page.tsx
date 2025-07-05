@@ -73,6 +73,7 @@ export default function PersonDetailPage() {
         ]);
         
         setCustomFields(fieldsData);
+        setFirebaseError(null);
 
         if (personData) {
           if (!personData.progress || !Array.isArray(personData.progress) || personData.progress.length === 0 || !personData.progress[0]?.answers || !Array.isArray(personData.progress[0].answers)) {
@@ -89,11 +90,11 @@ export default function PersonDetailPage() {
         }
       } catch (error) {
         console.error('Failed to load person data', error);
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Could not load person data.',
-        });
+        if (error instanceof Error) {
+            setFirebaseError(error);
+        } else {
+            setFirebaseError(new Error("An unknown error occurred during data fetching."));
+        }
       } finally {
         setIsLoading(false);
       }

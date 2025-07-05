@@ -35,19 +35,20 @@ export default function GroupsPage() {
       try {
         const groupsData = await getGroups();
         setGroups(groupsData);
+        setFirebaseError(null);
       } catch (error) {
         console.error("Failed to fetch groups", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Could not load groups.",
-        });
+        if (error instanceof Error) {
+            setFirebaseError(error);
+        } else {
+            setFirebaseError(new Error("An unknown error occurred during data fetching."));
+        }
       } finally {
         setIsLoading(false);
       }
     };
     fetchGroups();
-  }, [toast]);
+  }, []);
 
   const handleCreateGroup = () => {
     setEditingGroup(undefined);

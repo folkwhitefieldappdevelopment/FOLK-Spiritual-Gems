@@ -48,19 +48,20 @@ export default function DashboardPage() {
       try {
         const peopleData = await getPeople();
         setPeople(peopleData);
+        setFirebaseError(null);
       } catch (error) {
         console.error('Failed to load dashboard data:', error);
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Could not load dashboard data.',
-        });
+        if (error instanceof Error) {
+            setFirebaseError(error);
+        } else {
+            setFirebaseError(new Error("An unknown error occurred during data fetching."));
+        }
       } finally {
         setIsLoading(false);
       }
     };
     fetchData();
-  }, [toast]);
+  }, []);
   
   const safeDate = (timestamp: any): Date | null => {
     if (!timestamp) return null;
