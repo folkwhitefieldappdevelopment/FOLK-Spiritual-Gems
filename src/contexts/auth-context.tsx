@@ -33,53 +33,67 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // First, check for the result of a sign-in redirect.
-    // This is a one-time operation that captures the user credential.
-    getRedirectResult(auth)
-      .catch((err) => {
-        // This catches errors that occur during the redirect itself,
-        // such as permission errors or if the user cancels.
+    // This function ensures we wait for the redirect result before setting up the persistent listener.
+    const processAuth = async () => {
+      try {
+        // Explicitly check for a redirect result first. This resolves to null if the page
+        // was loaded without a redirect operation. It's crucial for catching redirect errors.
+        await getRedirectResult(auth);
+      } catch (err) {
         console.error("Firebase Redirect Result Error:", err);
-        setError(err);
-      });
-
-    // onAuthStateChanged is the persistent listener that keeps the app's
-    // state in sync with Firebase's understanding of the user's session.
-    // It will fire after getRedirectResult completes successfully.
-    const unsubscribe = onAuthStateChanged(auth, 
-      (user) => {
-        setUser(user);
-        setLoading(false); // We are no longer loading once we have a definitive user state.
-      },
-      (err) => {
-        console.error("Firebase Auth State Error:", err);
-        setError(err);
-        setLoading(false);
+        if (err instanceof Error) {
+            setError(err);
+        }
       }
-    );
 
-    return () => unsubscribe();
+      // After any potential redirect has been processed, set up the onAuthStateChanged listener.
+      // This will give us the definitive, final authentication state.
+      const unsubscribe = onAuthStateChanged(auth, 
+        (user) => {
+          setUser(user);
+          setLoading(false); // Only stop loading after we have a user or know there isn't one.
+        },
+        (err) => {
+          console.error("Firebase Auth State Error:", err);
+          setError(err);
+          setLoading(false);
+        }
+      );
+
+      return unsubscribe;
+    };
+
+    const unsubscribePromise = processAuth();
+
+    // Standard React cleanup function for useEffect
+    return () => {
+      unsubscribePromise.then(unsubscribe => {
+        if (unsubscribe) {
+          unsubscribe();
+        }
+      });
+    };
   }, []);
 
   const signInWithGoogle = async () => {
-    setLoading(true); // Show loading indicator when sign-in starts
+    setLoading(true);
     const provider = new GoogleAuthProvider();
     try {
       await signInWithRedirect(auth, provider);
-      // The page will redirect away, so no need to set loading to false here.
+      // The page will redirect away. No need to set loading to false.
     } catch (err) {
       console.error("Error initiating sign in with redirect", err);
       if (err instanceof Error) {
         setError(err);
       }
-      setLoading(false); // Only set loading false if the redirect itself fails to start.
+      setLoading(false);
     }
   };
 
   const signOut = async () => {
     try {
       await firebaseSignOut(auth);
-      // onAuthStateChanged will set the user to null and update the UI.
+      // onAuthStateChanged will handle setting the user to null.
     } catch (err) {
       console.error("Error signing out", err);
       if (err instanceof Error) {
