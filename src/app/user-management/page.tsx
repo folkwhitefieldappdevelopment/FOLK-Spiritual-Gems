@@ -143,7 +143,7 @@ export default function UserManagementPage() {
         title: 'Error Saving User',
         description: error instanceof Error ? error.message : 'An unknown error occurred.',
       });
-      throw error;
+      throw error; // Rethrow to keep the dialog open on failure
     }
   };
   
@@ -176,129 +176,131 @@ export default function UserManagementPage() {
 
   return (
     <AuthGuard adminOnly={true}>
-      <div className="flex min-h-screen w-full flex-col bg-background">
-        <AppSidebar />
-        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
-            <PageHeader
-              title="User Management"
-              description="Create and manage application users."
-            >
-              <Button size="sm" onClick={handleOpenCreateDialog}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Create User
-              </Button>
-            </PageHeader>
-            <main className="flex-1 p-4 sm:p-6 sm:pt-0">
-              <div className="mx-auto max-w-4xl space-y-6">
-                <Card>
-                  <CardHeader>
-                      <CardTitle>Existing Users</CardTitle>
-                      <CardDescription>
-                        View and search all users in the system. Found {filteredUsers.length} users.
-                      </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                      <div className="flex flex-col sm:flex-row gap-4 mb-4">
-                          <div className="relative flex-1">
-                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                              <Input
-                                  placeholder="Search by name or email..."
-                                  className="pl-10 w-full"
-                                  value={searchTerm}
-                                  onChange={(e) => setSearchTerm(e.target.value)}
-                              />
-                          </div>
-                          <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value === 'all' ? '' : value)}>
-                              <SelectTrigger className="w-full sm:w-[200px]">
-                                  <SelectValue placeholder="Filter by role" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                  <SelectItem value="all">All Roles</SelectItem>
-                                  {userRoles.map(role => <SelectItem key={role} value={role}>{role}</SelectItem>)}
-                              </SelectContent>
-                          </Select>
-                      </div>
+      <div>
+        <div className="flex min-h-screen w-full flex-col bg-background">
+          <AppSidebar />
+          <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+              <PageHeader
+                title="User Management"
+                description="Create and manage application users."
+              >
+                <Button size="sm" onClick={handleOpenCreateDialog}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Create User
+                </Button>
+              </PageHeader>
+              <main className="flex-1 p-4 sm:p-6 sm:pt-0">
+                <div className="mx-auto max-w-4xl space-y-6">
+                  <Card>
+                    <CardHeader>
+                        <CardTitle>Existing Users</CardTitle>
+                        <CardDescription>
+                          View and search all users in the system. Found {filteredUsers.length} users.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Search by name or email..."
+                                    className="pl-10 w-full"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                            <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value === 'all' ? '' : value)}>
+                                <SelectTrigger className="w-full sm:w-[200px]">
+                                    <SelectValue placeholder="Filter by role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Roles</SelectItem>
+                                    {userRoles.map(role => <SelectItem key={role} value={role}>{role}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
 
-                      <div className="border rounded-md">
-                          {isLoadingUsers ? (
-                              <div className="text-center p-8">
-                                  <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                              </div>
-                          ) : fetchError ? (
-                              <div className="text-center p-8 text-destructive">{fetchError}</div>
-                          ) : filteredUsers.length > 0 ? (
-                              <Table>
-                                  <TableHeader>
-                                      <TableRow>
-                                          <TableHead className="w-[250px]">Name</TableHead>
-                                          <TableHead>Phone</TableHead>
-                                          <TableHead>Roles</TableHead>
-                                          <TableHead>Created</TableHead>
-                                          <TableHead className="text-right w-[80px]">Actions</TableHead>
-                                      </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                      {filteredUsers.map(user => (
-                                        <TableRow key={user.id}>
-                                          <TableCell>
-                                            <div className="flex items-center gap-3">
-                                              <Avatar>
-                                                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                                              </Avatar>
-                                              <div>
-                                                <p className="font-medium">{user.name}</p>
-                                                <p className="text-xs text-muted-foreground">{user.email}</p>
-                                              </div>
-                                            </div>
-                                          </TableCell>
-                                          <TableCell className="text-muted-foreground">{user.phone}</TableCell>
-                                          <TableCell>
-                                            <div className="flex flex-wrap gap-1">
-                                              {user.role?.map(r => <Badge key={r} variant="secondary">{r}</Badge>)}
-                                            </div>
-                                          </TableCell>
-                                          <TableCell className="text-muted-foreground text-sm">
-                                            {safeDate(user.createdAt) ? format(safeDate(user.createdAt)!, 'PP') : 'N/A'}
-                                          </TableCell>
-                                          <TableCell className="text-right">
-                                            <DropdownMenu>
-                                              <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                  <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                              </DropdownMenuTrigger>
-                                              <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onSelect={() => handleEditUser(user)}>
-                                                  <Edit className="mr-2 h-4 w-4" />
-                                                  Edit
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onSelect={() => setUserToDelete(user)} className="text-destructive focus:text-destructive">
-                                                  <Trash2 className="mr-2 h-4 w-4" />
-                                                  Delete
-                                                </DropdownMenuItem>
-                                              </DropdownMenuContent>
-                                            </DropdownMenu>
-                                          </TableCell>
+                        <div className="border rounded-md">
+                            {isLoadingUsers ? (
+                                <div className="text-center p-8">
+                                    <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                                </div>
+                            ) : fetchError ? (
+                                <div className="text-center p-8 text-destructive">{fetchError}</div>
+                            ) : filteredUsers.length > 0 ? (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-[250px]">Name</TableHead>
+                                            <TableHead>Phone</TableHead>
+                                            <TableHead>Roles</TableHead>
+                                            <TableHead>Created</TableHead>
+                                            <TableHead className="text-right w-[80px]">Actions</TableHead>
                                         </TableRow>
-                                      ))}
-                                  </TableBody>
-                              </Table>
-                          ) : (
-                              <div className="text-center p-8 text-muted-foreground">No users found for the current filters.</div>
-                          )}
-                      </div>
-                  </CardContent>
-                </Card>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredUsers.map(user => (
+                                          <TableRow key={user.id}>
+                                            <TableCell>
+                                              <div className="flex items-center gap-3">
+                                                <Avatar>
+                                                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                                                </Avatar>
+                                                <div>
+                                                  <p className="font-medium">{user.name}</p>
+                                                  <p className="text-xs text-muted-foreground">{user.email}</p>
+                                                </div>
+                                              </div>
+                                            </TableCell>
+                                            <TableCell className="text-muted-foreground">{user.phone}</TableCell>
+                                            <TableCell>
+                                              <div className="flex flex-wrap gap-1">
+                                                {user.role?.map(r => <Badge key={r} variant="secondary">{r}</Badge>)}
+                                              </div>
+                                            </TableCell>
+                                            <TableCell className="text-muted-foreground text-sm">
+                                              {safeDate(user.createdAt) ? format(safeDate(user.createdAt)!, 'PP') : 'N/A'}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                              <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                  </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                  <DropdownMenuItem onSelect={() => handleEditUser(user)}>
+                                                    <Edit className="mr-2 h-4 w-4" />
+                                                    Edit
+                                                  </DropdownMenuItem>
+                                                  <DropdownMenuItem onSelect={() => setUserToDelete(user)} className="text-destructive focus:text-destructive">
+                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                    Delete
+                                                  </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                              </DropdownMenu>
+                                            </TableCell>
+                                          </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            ) : (
+                                <div className="text-center p-8 text-muted-foreground">No users found for the current filters.</div>
+                            )}
+                        </div>
+                    </CardContent>
+                  </Card>
 
-                <Alert variant="destructive">
-                  <ShieldAlert className="h-4 w-4" />
-                  <AlertTitle>Important Note on User Authentication</AlertTitle>
-                  <AlertDescription>
-                    This page manages user records in the application database. Deleting a user here now also removes their login credentials from Firebase Authentication.
-                  </AlertDescription>
-                </Alert>
-              </div>
-            </main>
+                  <Alert variant="destructive">
+                    <ShieldAlert className="h-4 w-4" />
+                    <AlertTitle>Important Note on User Authentication</AlertTitle>
+                    <AlertDescription>
+                      This page manages user records in the application database. Deleting a user here now also removes their login credentials from Firebase Authentication.
+                    </AlertDescription>
+                  </Alert>
+                </div>
+              </main>
+          </div>
         </div>
         <CreateUserDialog
           isOpen={isFormDialogOpen}
