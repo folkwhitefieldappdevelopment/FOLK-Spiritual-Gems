@@ -78,7 +78,18 @@ export default function CreateUserPage() {
     setFetchError(null);
     try {
       const usersData = await getUsers();
-      setUsers(usersData);
+      // Sanitize user data to ensure role is always an array for backward compatibility
+      const sanitizedUsers = usersData.map(u => {
+        const userWithArrayRole = { ...u };
+        if (typeof userWithArrayRole.role === 'string') {
+          // @ts-ignore
+          userWithArrayRole.role = [userWithArrayRole.role];
+        } else if (!Array.isArray(userWithArrayRole.role)) {
+          userWithArrayRole.role = [];
+        }
+        return userWithArrayRole;
+      });
+      setUsers(sanitizedUsers);
     } catch (error) {
       console.error('Failed to fetch users:', error);
       setFetchError('Failed to load user list.');
