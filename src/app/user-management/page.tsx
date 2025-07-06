@@ -43,7 +43,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-const UserManagementPage: React.FC = () => {
+export default function UserManagementPage() {
   const { toast } = useToast();
   const [users, setUsers] = React.useState<AppUser[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = React.useState(true);
@@ -299,7 +299,6 @@ const UserManagementPage: React.FC = () => {
                 </Alert>
               </div>
             </main>
-          </div>
         </div>
         <CreateUserDialog
           isOpen={isFormDialogOpen}
@@ -331,6 +330,4 @@ const UserManagementPage: React.FC = () => {
       </div>
     </AuthGuard>
   );
-};
-
-export default UserManagementPage;
+}
