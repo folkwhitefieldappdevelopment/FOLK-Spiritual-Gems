@@ -291,9 +291,9 @@ export default function UserManagementPage() {
                                   <TableHeader>
                                       <TableRow>
                                           <TableHead className="w-[250px]">Name</TableHead>
-                                          <TableHead>Phone</TableHead>
+                                          <TableHead className="hidden sm:table-cell">Phone</TableHead>
                                           <TableHead>Details</TableHead>
-                                          <TableHead>Created</TableHead>
+                                          <TableHead className="hidden md:table-cell">Created</TableHead>
                                           <TableHead className="text-right w-[80px]">Actions</TableHead>
                                       </TableRow>
                                   </TableHeader>
@@ -311,7 +311,7 @@ export default function UserManagementPage() {
                                               </div>
                                             </div>
                                           </TableCell>
-                                          <TableCell className="text-muted-foreground">{user.phone}</TableCell>
+                                          <TableCell className="text-muted-foreground hidden sm:table-cell">{user.phone}</TableCell>
                                           <TableCell>
                                             <div className="flex flex-col gap-1">
                                               <div className="flex flex-wrap gap-1">
@@ -320,7 +320,7 @@ export default function UserManagementPage() {
                                               {user.fgCode && <Badge variant="outline">FG Code: {user.fgCode}</Badge>}
                                             </div>
                                           </TableCell>
-                                          <TableCell className="text-muted-foreground text-sm">
+                                          <TableCell className="text-muted-foreground text-sm hidden md:table-cell">
                                             {safeDate(user.createdAt) ? format(safeDate(user.createdAt)!, 'PP') : 'N/A'}
                                           </TableCell>
                                           <TableCell className="text-right">
