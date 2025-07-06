@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -304,7 +305,7 @@ export default function ContactsPage() {
 
   const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || !appUser) return;
 
     setIsImporting(true);
     const reader = new FileReader();
@@ -336,6 +337,7 @@ export default function ContactsPage() {
             const occupation = occupationStatuses.includes(row.occupation) ? row.occupation : "Working";
             const photoUrlValue = String(row.photoUrl || '').trim();
             const isValidPhotoUrl = photoUrlValue.startsWith('http') || photoUrlValue.startsWith('data:image');
+            const enablerValue = String(row.enablerInTouchWith || '').trim();
 
             return {
               firstName: String(row.firstName),
@@ -351,7 +353,7 @@ export default function ContactsPage() {
               contactSource: String(row.contactSource || ""),
               chantingStatus: String(row.chantingStatus || ""),
               fromOtherCamp: String(row.fromOtherCamp).toLowerCase() === 'yes' || String(row.fromOtherCamp) === 'true',
-              enablerInTouchWith: '',
+              enablerInTouchWith: enablerValue,
               photoUrl: isValidPhotoUrl ? photoUrlValue : `https://placehold.co/100x100.png`,
               progress: createInitialProgress(),
               customData: {},
@@ -381,11 +383,9 @@ export default function ContactsPage() {
           return;
         }
 
-        await importPeople(newPeople);
-        if (appUser) {
-            const updatedPeople = await getPeople(appUser);
-            setPeople(updatedPeople);
-        }
+        await importPeople(newPeople, appUser);
+        const updatedPeople = await getPeople(appUser);
+        setPeople(updatedPeople);
 
         toast({
           title: "Import Successful",
@@ -436,6 +436,7 @@ export default function ContactsPage() {
   };
 
   const handleSavePerson = async (personData: Omit<Person, "id" | "progress" | "createdAt">) => {
+    if (!appUser) return;
     try {
       if (editingPerson) {
         const updatedData = { ...editingPerson, ...personData };
@@ -454,7 +455,7 @@ export default function ContactsPage() {
           ...personData,
           progress: createInitialProgress(),
         };
-        const newPerson = await createPerson(newPersonData as Omit<Person, 'id' | 'createdAt'>);
+        const newPerson = await createPerson(newPersonData as Omit<Person, 'id' | 'createdAt'>, appUser);
         setPeople((prev) => [newPerson, ...prev]);
         toast({
           title: "Person Added",

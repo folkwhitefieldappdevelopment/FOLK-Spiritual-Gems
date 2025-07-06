@@ -68,6 +68,7 @@ export type AppUser = {
     guideName: string;
     guideFgCode: string;
   };
+  lastAssignedEnablerIndex?: number;
 };
 
 export type Group = {

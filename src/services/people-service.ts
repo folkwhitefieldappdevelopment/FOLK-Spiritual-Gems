@@ -1,3 +1,4 @@
+
 import { db } from '@/lib/firebase';
 import {
   collection,
@@ -11,6 +12,7 @@ import {
   serverTimestamp,
   query,
   where,
+  runTransaction,
 } from 'firebase/firestore';
 import type { Person, AppUser } from '@/lib/types';
 
@@ -70,7 +72,10 @@ export const getPerson = async (id: string): Promise<Person | null> => {
   return null;
 };
 
-export const createPerson = async (personData: Omit<Person, 'id' | 'createdAt'>): Promise<Person> => {
+export const createPerson = async (
+  personData: Omit<Person, 'id' | 'createdAt'>,
+  appUser: AppUser
+): Promise<Person> => {
   const peopleCollection = collection(db, 'people');
   const q = query(peopleCollection, where("phone", "==", personData.phone));
   const querySnapshot = await getDocs(q);
@@ -78,14 +83,61 @@ export const createPerson = async (personData: Omit<Person, 'id' | 'createdAt'>)
     throw new Error(`A contact with phone number ${personData.phone} already exists.`);
   }
 
+  let assignedEnabler = personData.enablerInTouchWith;
+
+  // If unassigned, and the creator is a Folk Guide, auto-assign.
+  if (!assignedEnabler && appUser.role.includes('Folk Guide')) {
+    const usersCollection = collection(db, 'users');
+    const enablersQuery = query(usersCollection, where('reportsTo.guideId', '==', appUser.id));
+    const enablersSnapshot = await getDocs(enablersQuery);
+    // Sort enablers by name to ensure consistent order
+    const enablers = enablersSnapshot.docs
+      .map(doc => doc.data() as AppUser)
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    if (enablers.length > 0) {
+        const guideDocRef = doc(db, 'users', appUser.id);
+        try {
+            const newAssignedEnablerName = await runTransaction(db, async (transaction) => {
+                const guideDoc = await transaction.get(guideDocRef);
+                if (!guideDoc.exists()) {
+                    throw "Folk Guide document not found!";
+                }
+
+                const guideData = guideDoc.data();
+                const lastIndex = guideData.lastAssignedEnablerIndex ?? -1;
+                const nextIndex = (lastIndex + 1) % enablers.length;
+                
+                const enablerToAssign = enablers[nextIndex];
+                
+                transaction.update(guideDocRef, { lastAssignedEnablerIndex: nextIndex });
+                
+                return enablerToAssign.name;
+            });
+            assignedEnabler = newAssignedEnablerName;
+        } catch (e) {
+            console.error("Transaction for auto-assignment failed: ", e);
+            // Fallback: assign to the guide themselves if transaction fails
+            assignedEnabler = appUser.name;
+        }
+    } else {
+        // If no enablers, assign to the guide themselves
+        assignedEnabler = appUser.name;
+    }
+  } else if (!assignedEnabler && appUser.role.includes('Folk Enabler')) {
+    // If an enabler creates a contact without specifying, assign it to them by default.
+    assignedEnabler = appUser.name;
+  }
+
   const dataToSave = {
     ...personData,
+    enablerInTouchWith: assignedEnabler || '',
     createdAt: serverTimestamp(),
   };
+
   const docRef = await addDoc(peopleCollection, dataToSave);
-  // For optimistic update, return a client-side date
   const newPerson: Person = {
-    ...personData,
+    ...(dataToSave as Omit<Person, 'id'>),
     id: docRef.id,
     createdAt: new Date(),
   };
@@ -111,11 +163,57 @@ export const deletePerson = async (id: string): Promise<void> => {
   await deleteDoc(docRef);
 };
 
-export const importPeople = async (people: Omit<Person, 'id' | 'createdAt'>[]): Promise<void> => {
+export const importPeople = async (
+    people: Omit<Person, 'id' | 'createdAt'>[],
+    appUser: AppUser
+): Promise<void> => {
     if (people.length === 0) return;
+
+    const assignedPeople = people.filter(p => p.enablerInTouchWith);
+    const unassignedPeople = people.filter(p => !p.enablerInTouchWith);
+    
+    let peopleToImport = [...assignedPeople];
+    let newLastAssignedIndex: number | undefined = undefined;
+
+    if (unassignedPeople.length > 0 && appUser.role.includes('Folk Guide')) {
+        const usersCollection = collection(db, 'users');
+        const enablersQuery = query(usersCollection, where('reportsTo.guideId', '==', appUser.id));
+        const enablersSnapshot = await getDocs(enablersQuery);
+        // Sort enablers by name for consistent ordering
+        const enablers = enablersSnapshot.docs
+            .map(doc => ({id: doc.id, ...doc.data()} as AppUser))
+            .sort((a, b) => a.name.localeCompare(b.name));
+
+        if (enablers.length > 0) {
+            const guideDocRef = doc(db, 'users', appUser.id);
+            const guideDoc = await getDoc(guideDocRef);
+            let currentIndex = guideDoc.exists() ? (guideDoc.data().lastAssignedEnablerIndex ?? -1) : -1;
+
+            const distributedPeople = unassignedPeople.map(person => {
+                currentIndex = (currentIndex + 1) % enablers.length;
+                return {
+                    ...person,
+                    enablerInTouchWith: enablers[currentIndex].name,
+                };
+            });
+            peopleToImport.push(...distributedPeople);
+            newLastAssignedIndex = currentIndex;
+        } else {
+            // No enablers, assign all to the guide
+            const assignedToGuide = unassignedPeople.map(p => ({ ...p, enablerInTouchWith: appUser.name }));
+            peopleToImport.push(...assignedToGuide);
+        }
+    } else if (unassignedPeople.length > 0 && appUser.role.includes('Folk Enabler')) {
+        // Assign all to the enabler who is importing
+        const assignedToEnabler = unassignedPeople.map(p => ({ ...p, enablerInTouchWith: appUser.name }));
+        peopleToImport.push(...assignedToEnabler);
+    } else {
+        // Admins creating unassigned contacts, or no unassigned contacts for a guide.
+        peopleToImport.push(...unassignedPeople);
+    }
     
     const batch = writeBatch(db);
-    people.forEach((person) => {
+    peopleToImport.forEach((person) => {
         const docRef = doc(collection(db, 'people'));
         const dataWithTimestamp = {
             ...person,
@@ -123,5 +221,11 @@ export const importPeople = async (people: Omit<Person, 'id' | 'createdAt'>[]): 
         };
         batch.set(docRef, dataWithTimestamp);
     });
+
+    if (newLastAssignedIndex !== undefined) {
+        const guideDocRef = doc(db, 'users', appUser.id);
+        batch.update(guideDocRef, { lastAssignedEnablerIndex: newLastAssignedIndex });
+    }
+    
     await batch.commit();
 }
