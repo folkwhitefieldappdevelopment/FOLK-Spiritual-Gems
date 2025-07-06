@@ -8,7 +8,6 @@ import {
   getDocs,
   doc,
   updateDoc,
-  deleteDoc,
 } from 'firebase/firestore';
 import { sendSignInLinkToEmail, type AuthError } from 'firebase/auth';
 import type { AppUser } from '@/lib/types';
@@ -18,7 +17,7 @@ type UserData = Omit<AppUser, 'id' | 'createdAt'>;
 /**
  * Creates a user record in the 'users' Firestore collection and sends a sign-in link.
  * @param userData - The user data to save.
- * @throws Will throw an error if a user with the same email already exists.
+ * @throws Will throw an error if a user with the same email or FG code already exists.
  */
 export const createUser = async (userData: UserData): Promise<void> => {
   const usersCollection = collection(db, 'users');
@@ -27,6 +26,14 @@ export const createUser = async (userData: UserData): Promise<void> => {
   const querySnapshot = await getDocs(q);
   if (!querySnapshot.empty) {
     throw new Error(`A user with the email ${userData.email} already exists.`);
+  }
+
+  if (userData.fgCode) {
+    const fgCodeQuery = query(usersCollection, where("fgCode", "==", userData.fgCode));
+    const fgCodeSnapshot = await getDocs(fgCodeQuery);
+    if (!fgCodeSnapshot.empty) {
+      throw new Error(`The FG Code "${userData.fgCode}" is already in use.`);
+    }
   }
 
   const actionCodeSettings = {
@@ -74,6 +81,16 @@ export const updateUser = async (id: string, userData: Partial<UserData>): Promi
       throw new Error(`A user with the email ${userData.email} already exists.`);
     }
   }
+
+  if (userData.fgCode) {
+    const fgCodeQuery = query(collection(db, 'users'), where("fgCode", "==", userData.fgCode));
+    const fgCodeSnapshot = await getDocs(fgCodeQuery);
+    const conflictingUser = fgCodeSnapshot.docs.find(d => d.id !== id);
+    if (conflictingUser) {
+        throw new Error(`The FG Code "${userData.fgCode}" is already in use.`);
+    }
+  }
+
   await updateDoc(userDocRef, userData);
 };
 
@@ -86,6 +103,18 @@ export const getUsers = async (): Promise<AppUser[]> => {
     const snapshot = await getDocs(usersCollection);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppUser));
 }
+
+/**
+ * Retrieves all users with the "Folk Guide" role.
+ * @returns A promise that resolves to an array of Folk Guide user objects.
+ */
+export const getFolkGuides = async (): Promise<AppUser[]> => {
+    const usersCollection = collection(db, 'users');
+    const q = query(usersCollection, where('role', 'array-contains', 'Folk Guide'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppUser));
+}
+
 
 /**
  * Retrieves a user record from the 'users' collection by email.

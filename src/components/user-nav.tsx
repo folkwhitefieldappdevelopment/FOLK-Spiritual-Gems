@@ -40,15 +40,29 @@ export function UserNav() {
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-64" align="end" forceMount>
           <DropdownMenuLabel className="font-normal">
-             <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 items-center">
+             <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1">
                 <p className="text-xs text-muted-foreground">Name:</p>
                 <p className="text-sm font-medium leading-none truncate">{appUser.name}</p>
 
                 <p className="text-xs text-muted-foreground">Role:</p>
-                <p className="text-xs leading-none font-semibold truncate">{appUser.role?.join(', ')}</p>
+                <p className="text-xs font-semibold leading-none truncate">{appUser.role?.join(', ')}</p>
 
                 <p className="text-xs text-muted-foreground">Email:</p>
                 <p className="text-xs leading-none text-muted-foreground truncate">{appUser.email}</p>
+
+                {appUser.fgCode && (
+                  <>
+                    <p className="text-xs text-muted-foreground">FG Code:</p>
+                    <p className="text-sm font-semibold leading-none truncate">{appUser.fgCode}</p>
+                  </>
+                )}
+
+                {appUser.reportsTo && (
+                  <>
+                    <p className="text-xs text-muted-foreground">Reports to:</p>
+                    <p className="text-sm leading-none truncate">{`${appUser.reportsTo.guideName} (${appUser.reportsTo.guideFgCode})`}</p>
+                  </>
+                )}
              </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />

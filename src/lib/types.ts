@@ -62,6 +62,12 @@ export type AppUser = {
   phone: string;
   role: UserRole[];
   createdAt: any; // Firestore Timestamp
+  fgCode?: string; // Unique code for Folk Guides
+  reportsTo?: { // For Folk Enablers, stores info about their guide
+    guideId: string;
+    guideName: string;
+    guideFgCode: string;
+  };
 };
 
 export type Group = {

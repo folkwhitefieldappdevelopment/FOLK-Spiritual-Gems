@@ -30,14 +30,42 @@ import {
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
 } from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
-import { userRoles, type AppUser } from '@/lib/types';
+import { userRoles, type AppUser, type UserRole } from '@/lib/types';
+import { useAuth } from '@/contexts/auth-context';
 
 const userFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   email: z.string().email({ message: 'Please enter a valid email address.' }),
   phone: z.string().regex(/^[6-9]\d{9}$/, { message: 'Please enter a valid 10-digit Indian mobile number.' }),
   role: z.array(z.string()).min(1, { message: 'Please select at least one role.' }),
+  fgCode: z.string().optional(),
+  guideId: z.string().optional(),
+}).refine(data => {
+    // If Folk Guide role is selected, fgCode must be provided.
+    if (data.role.includes('Folk Guide')) {
+        return !!data.fgCode && data.fgCode.trim().length > 0;
+    }
+    return true;
+}, {
+    message: 'FG Code is required for Folk Guides.',
+    path: ['fgCode'],
+}).refine(data => {
+    // If Folk Enabler role is selected, guideId must be provided.
+    if (data.role.includes('Folk Enabler')) {
+        return !!data.guideId;
+    }
+    return true;
+}, {
+    message: 'A Folk Guide must be assigned to an Enabler.',
+    path: ['guideId'],
 });
 
 export type UserFormValues = z.infer<typeof userFormSchema>;
@@ -47,10 +75,13 @@ type CreateUserDialogProps = {
   setIsOpen: (open: boolean) => void;
   onSave: (data: UserFormValues, userId?: string) => Promise<void>;
   user?: AppUser;
+  folkGuides: AppUser[];
 };
 
-export function CreateUserDialog({ isOpen, setIsOpen, onSave, user }: CreateUserDialogProps) {
+export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides }: CreateUserDialogProps) {
+  const { appUser } = useAuth();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [availableRoles, setAvailableRoles] = React.useState<UserRole[]>([]);
   
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
@@ -59,8 +90,24 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user }: CreateUser
       email: '',
       phone: '',
       role: [],
+      fgCode: '',
+      guideId: '',
     },
   });
+
+  const selectedRoles = form.watch('role', user?.role || []);
+  const isGuideSelected = selectedRoles.includes('Folk Guide');
+  const isEnablerSelected = selectedRoles.includes('Folk Enabler');
+  const isCurrentUserGuide = appUser?.role.includes('Folk Guide');
+  const isCurrentUserAdmin = appUser?.role.includes('Admin');
+
+  React.useEffect(() => {
+    if (isCurrentUserAdmin) {
+      setAvailableRoles([...userRoles]);
+    } else if (isCurrentUserGuide) {
+      setAvailableRoles(['Folk Enabler', 'Contact Assigner']);
+    }
+  }, [isCurrentUserAdmin, isCurrentUserGuide]);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -70,6 +117,8 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user }: CreateUser
           email: user.email,
           phone: user.phone,
           role: user.role,
+          fgCode: user.fgCode || '',
+          guideId: user.reportsTo?.guideId || '',
         });
       } else {
         form.reset({
@@ -77,11 +126,13 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user }: CreateUser
           email: '',
           phone: '',
           role: [],
+          fgCode: '',
+          guideId: isCurrentUserGuide ? appUser?.id : '',
         });
       }
       setIsSubmitting(false);
     }
-  }, [isOpen, user, form]);
+  }, [isOpen, user, form, isCurrentUserGuide, appUser?.id]);
 
   async function onSubmit(data: UserFormValues) {
     setIsSubmitting(true);
@@ -163,7 +214,7 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user }: CreateUser
                       </FormControl>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-                      {userRoles.map((roleOption) => (
+                      {availableRoles.map((roleOption) => (
                         <DropdownMenuCheckboxItem
                           key={roleOption}
                           checked={field.value?.includes(roleOption)}
@@ -184,6 +235,56 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user }: CreateUser
                 </FormItem>
               )}
             />
+
+            {isGuideSelected && (
+                 <FormField
+                    control={form.control}
+                    name="fgCode"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>FG Code</FormLabel>
+                        <FormControl>
+                            <Input placeholder="Enter a unique code for the Folk Guide" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            )}
+
+            {isEnablerSelected && (
+                 <FormField
+                    control={form.control}
+                    name="guideId"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Assign to Folk Guide</FormLabel>
+                            {isCurrentUserGuide && appUser ? (
+                                <FormControl>
+                                    <Input value={`${appUser.name} (${appUser.fgCode})`} disabled />
+                                </FormControl>
+                            ) : (
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger>
+                                        <SelectValue placeholder="Select a Folk Guide" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {folkGuides.map(guide => (
+                                            <SelectItem key={guide.id} value={guide.id}>
+                                                {guide.name} ({guide.fgCode})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            )}
+            
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting}>
                 Cancel
