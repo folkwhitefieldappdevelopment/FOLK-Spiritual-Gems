@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -21,12 +20,14 @@ export default function LoginPage() {
   const { toast } = useToast();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  // Local loading state specifically for the magic link verification process
+  const [isVerifyingLink, setIsVerifyingLink] = React.useState(false);
 
   // This effect handles the magic link sign-in
   React.useEffect(() => {
     // Check if the current URL is a sign-in link
     if (isSignInWithEmailLink(auth, window.location.href)) {
+      setIsVerifyingLink(true);
       // Get the email from localStorage
       let emailFromStorage = window.localStorage.getItem('emailForSignIn');
       if (!emailFromStorage) {
@@ -35,14 +36,14 @@ export default function LoginPage() {
       }
       
       if (emailFromStorage) {
-        setIsSubmitting(true);
         // Sign in the user with the email and the link
         signInWithEmailLink(auth, emailFromStorage, window.location.href)
           .then(() => {
             // On success, onAuthStateChanged will handle the redirect.
             // Clean up the stored email
             window.localStorage.removeItem('emailForSignIn');
-            // The loading state will be handled by the AuthContext now
+            // The main `loading` state from AuthContext will take over now.
+            // No need to set isVerifyingLink to false here.
           })
           .catch((err) => {
             console.error("Sign in with email link error:", err);
@@ -52,8 +53,11 @@ export default function LoginPage() {
               description: 'The sign-in link is invalid or has expired. Please create a new user.',
             });
             router.replace('/login'); // Go back to login on failure
-            setIsSubmitting(false);
+            setIsVerifyingLink(false); // Stop loading on failure
           });
+      } else {
+        // No email available to complete the link sign-in.
+        setIsVerifyingLink(false);
       }
     }
   }, [router, toast]);
@@ -69,14 +73,11 @@ export default function LoginPage() {
     e.preventDefault();
     if (!email || !password) return;
 
-    setIsSubmitting(true);
     try {
       await signIn(email, password);
-      // On successful sign-in, the useEffect will trigger the redirect
+      // On successful sign-in, the useEffect hook will trigger the redirect
     } catch (err) {
-      // Errors are caught and displayed via toast in the auth context
-    } finally {
-      setIsSubmitting(false);
+      // Errors are already caught and displayed via toast in the auth context
     }
   };
   
@@ -84,8 +85,8 @@ export default function LoginPage() {
     return <FirebaseConfigError error={error} />;
   }
   
-  // Show a generic loading spinner if we are processing the link OR if the auth context is loading
-  if (loading || isSubmitting) {
+  // Show a generic loading spinner if the auth context is loading OR if we're processing a magic link
+  if (loading || isVerifyingLink) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -123,7 +124,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                disabled={isSubmitting}
+                disabled={loading}
               />
             </div>
             <div className="space-y-2">
@@ -134,13 +135,13 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                disabled={isSubmitting}
+                disabled={loading}
                 minLength={6}
               />
             </div>
-            <Button type="submit" className="w-full" disabled={isSubmitting || !email || !password}>
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {isSubmitting ? 'Signing in...' : 'Sign In'}
+            <Button type="submit" className="w-full" disabled={loading || !email || !password}>
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {loading ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
         </CardContent>
