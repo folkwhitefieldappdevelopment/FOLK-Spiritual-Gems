@@ -1,4 +1,5 @@
 
+
 export const progressCategories = [
   'Association',
   'Book Reading',
@@ -51,12 +52,15 @@ export type Person = {
   callHistory?: { remark: string; calledAt: any; duration?: string; }[];
 };
 
+export const userRoles = ['Admin', 'Folk Guide', 'Folk Enabler', 'Contact Assigner'] as const;
+export type UserRole = (typeof userRoles)[number];
+
 export type AppUser = {
   id: string;
   name: string;
   email: string;
   phone: string;
-  role: 'Admin' | 'User';
+  role: UserRole[];
   createdAt: any; // Firestore Timestamp
 };
 

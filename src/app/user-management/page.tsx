@@ -28,21 +28,21 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+} from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { createUser } from '@/services/user-service';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { userRoles, type UserRole } from '@/lib/types';
 
 const userFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   email: z.string().email({ message: 'Please enter a valid email address.' }),
   phone: z.string().regex(/^[6-9]\d{9}$/, { message: 'Please enter a valid 10-digit Indian mobile number.' }),
-  role: z.enum(['Admin', 'User'], { required_error: 'Please select a role.' }),
+  role: z.array(z.string()).min(1, { message: 'Please select at least one role.' }),
 });
 
 type UserFormValues = z.infer<typeof userFormSchema>;
@@ -57,13 +57,14 @@ export default function CreateUserPage() {
       name: '',
       email: '',
       phone: '',
-      role: 'User',
+      role: [],
     },
   });
 
   async function onSubmit(data: UserFormValues) {
     setIsSubmitting(true);
     try {
+      // @ts-ignore
       await createUser(data);
       toast({
         title: 'User Created & Invite Sent',
@@ -147,18 +148,35 @@ export default function CreateUserPage() {
                         name="role"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Role</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select a role" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="User">User</SelectItem>
-                                <SelectItem value="Admin">Admin</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <FormLabel>Roles</FormLabel>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <FormControl>
+                                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                                    <div className="truncate">
+                                      {field.value?.length ? field.value.join(', ') : 'Select roles'}
+                                    </div>
+                                  </Button>
+                                </FormControl>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                                {userRoles.map((roleOption) => (
+                                  <DropdownMenuCheckboxItem
+                                    key={roleOption}
+                                    checked={field.value?.includes(roleOption)}
+                                    onCheckedChange={(checked) => {
+                                      const currentRoles = field.value || [];
+                                      const newRoles = checked
+                                        ? [...currentRoles, roleOption]
+                                        : currentRoles.filter((r) => r !== roleOption);
+                                      field.onChange(newRoles);
+                                    }}
+                                  >
+                                    {roleOption}
+                                  </DropdownMenuCheckboxItem>
+                                ))}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                             <FormMessage />
                           </FormItem>
                         )}

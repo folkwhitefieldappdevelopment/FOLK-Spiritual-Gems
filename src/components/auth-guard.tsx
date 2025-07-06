@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -20,7 +21,7 @@ export function AuthGuard({ children, adminOnly = false }: { children: React.Rea
       return;
     }
 
-    if (adminOnly && appUser?.role !== 'Admin') {
+    if (adminOnly && !appUser?.role?.includes('Admin')) {
       toast({
         variant: 'destructive',
         title: 'Access Denied',
@@ -35,7 +36,7 @@ export function AuthGuard({ children, adminOnly = false }: { children: React.Rea
   }
 
   // Show a spinner while loading, if user is not logged in, or if an admin page is being accessed by a non-admin
-  if (loading || !user || (adminOnly && appUser?.role !== 'Admin')) {
+  if (loading || !user || (adminOnly && !appUser?.role?.includes('Admin'))) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin" />

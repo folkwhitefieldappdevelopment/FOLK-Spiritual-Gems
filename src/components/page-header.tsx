@@ -65,7 +65,7 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
                   <span className="sr-only">Folk Contact Center</span>
                 </Link>
                 {navItems.map((item) => {
-                  if (item.href === '/user-management' && appUser?.role !== 'Admin') {
+                  if (item.href === '/user-management' && !appUser?.role?.includes('Admin')) {
                     return null;
                   }
                   return (
