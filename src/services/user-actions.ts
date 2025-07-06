@@ -33,7 +33,8 @@ export async function deleteUserAndAuth(userId: string, email: string) {
     }
     console.error('Error deleting user account:', error);
     
-    if (error.code === 'auth/insufficient-permission') {
+    // Check for common permission and credential errors and provide a specific, actionable message.
+    if (error.code === 'auth/insufficient-permission' || error.message?.includes('access token')) {
         throw new Error('Server has insufficient permissions. Please ensure the App Hosting service account has the "Firebase Authentication Admin" IAM role in Google Cloud.');
     }
 
