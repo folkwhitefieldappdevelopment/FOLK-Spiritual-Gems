@@ -51,6 +51,15 @@ export type Person = {
   callHistory?: { remark: string; calledAt: any; duration?: string; }[];
 };
 
+export type AppUser = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: 'Admin' | 'User';
+  createdAt: any; // Firestore Timestamp
+};
+
 export type Group = {
   id: string;
   name: string;

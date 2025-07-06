@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Menu, LayoutDashboard, Users, UserSquare, Settings, Gem, PhoneCall, Headset, LogOut } from 'lucide-react';
+import { Menu, LayoutDashboard, Users, UserSquare, Settings, Gem, PhoneCall, Headset, LogOut, UserCog } from 'lucide-react';
 import { Button } from './ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetFooter } from './ui/sheet';
 import { cn } from '@/lib/utils';
@@ -25,6 +25,7 @@ const navItems = [
     { href: "/groups", label: "Groups", icon: UserSquare },
     { href: "/calling-assistant", label: "Calling Assistant", icon: Headset },
     { href: "/call-analyzer", label: "Call Analyzer", icon: PhoneCall },
+    { href: "/user-management", label: "User Management", icon: UserCog },
 ];
 
 export function PageHeader({ title, description, children }: PageHeaderProps) {
