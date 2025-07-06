@@ -109,7 +109,7 @@ export default function LoginPage() {
       </div>
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <CardTitle>Folk Contact Center</CardTitle>
+          <CardTitle>FOLK Spiritual Gem</CardTitle>
           <CardDescription>
             Sign in to your account
           </CardDescription>

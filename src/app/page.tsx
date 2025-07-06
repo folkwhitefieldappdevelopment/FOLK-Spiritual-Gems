@@ -601,8 +601,8 @@ export default function ContactsPage() {
         <AppSidebar />
         <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
             <PageHeader
-              title="Contacts"
-              description={`Manage data for ${filteredPeople.length} people.`}
+              title="FOLK Spiritual Gem"
+              description="Your central hub for managing contacts and activities."
             >
               <div className="flex items-center gap-2">
                   <DropdownMenu>

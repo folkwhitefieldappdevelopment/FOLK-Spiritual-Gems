@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Folk Contact Center",
+  title: "FOLK Spiritual Gem",
   description: "A contact management center for FOLK.",
 };
 
