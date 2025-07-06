@@ -78,17 +78,6 @@ export const updateUser = async (id: string, userData: Partial<UserData>): Promi
 };
 
 /**
- * Deletes a user record from Firestore.
- * This does NOT delete the user from Firebase Authentication.
- * @param id The ID of the user to delete.
- */
-export const deleteUser = async (id: string): Promise<void> => {
-    const userDocRef = doc(db, 'users', id);
-    await deleteDoc(userDocRef);
-};
-
-
-/**
  * Retrieves all user records from the 'users' collection.
  * @returns A promise that resolves to an array of AppUser objects.
  */

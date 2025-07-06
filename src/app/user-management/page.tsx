@@ -17,7 +17,8 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { createUser, getUsers, updateUser, deleteUser } from '@/services/user-service';
+import { createUser, getUsers, updateUser } from '@/services/user-service';
+import { deleteUserAndAuth } from '@/services/user-actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { userRoles, type UserRole, type AppUser } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -98,12 +99,12 @@ export default function UserManagementPage() {
     setIsFormDialogOpen(true);
   };
   
-  const handleDeleteUser = async (userId: string) => {
+  const handleDeleteUser = async (user: AppUser) => {
     try {
-        await deleteUser(userId);
+        await deleteUserAndAuth(user.id, user.email);
         toast({
             title: 'User Deleted',
-            description: 'The user record has been removed from Firestore.'
+            description: `User ${user.name} has been permanently deleted.`
         });
         fetchUsers();
     } catch (error) {
@@ -281,16 +282,16 @@ export default function UserManagementPage() {
                                                           <AlertDialogHeader>
                                                             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                                             <AlertDialogDescription>
-                                                              This will delete the user record for {user.name} from the database. This action does not delete their authentication account and cannot be undone.
+                                                              This will permanently delete the user {user.name} from both the application database and the authentication system. This action cannot be undone.
                                                             </AlertDialogDescription>
                                                           </AlertDialogHeader>
                                                           <AlertDialogFooter>
                                                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                                                             <AlertDialogAction
-                                                              onClick={() => handleDeleteUser(user.id)}
+                                                              onClick={() => handleDeleteUser(user)}
                                                               className="bg-destructive hover:bg-destructive/90"
                                                             >
-                                                              Delete User Record
+                                                              Delete User
                                                             </AlertDialogAction>
                                                           </AlertDialogFooter>
                                                         </AlertDialogContent>
@@ -313,15 +314,7 @@ export default function UserManagementPage() {
                   <ShieldAlert className="h-4 w-4" />
                   <AlertTitle>Important Note on User Authentication</AlertTitle>
                   <AlertDescription>
-                    This page manages user records in the application database. Deleting a user here does not remove their login credentials from Firebase Authentication. To permanently revoke access, you must delete the user in the{' '}
-                    <a
-                      href="https://console.firebase.google.com/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-semibold underline"
-                    >
-                      Firebase Console
-                    </a> under the 'Authentication' section.
+                    This page manages user records in the application database. Deleting a user here now also removes their login credentials from Firebase Authentication.
                   </AlertDescription>
                 </Alert>
               </div>
