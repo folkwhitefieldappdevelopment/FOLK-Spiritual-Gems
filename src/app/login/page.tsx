@@ -31,11 +31,12 @@ export default function LoginPage() {
 
   React.useEffect(() => {
     // After a redirect, `loading` will be true. Once auth state is resolved,
-    // if the user is signed in, this effect will redirect to the homepage.
-    if (user) {
-      router.push('/');
+    // if there is a user, this effect will redirect to the homepage.
+    // We check !loading to ensure this only happens after auth state is confirmed.
+    if (!loading && user) {
+      router.replace('/');
     }
-  }, [user, router]);
+  }, [user, loading, router]);
   
   if (configError) {
     return <FirebaseConfigError error={configError} />;
@@ -46,8 +47,17 @@ export default function LoginPage() {
   }
 
   // Show a loading spinner while the auth state is being determined after a redirect.
-  if (loading || user) {
+  if (loading) {
     return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  // If there's a user, we're about to redirect, so we can show a spinner too.
+  if (user) {
+     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
@@ -61,7 +71,14 @@ export default function LoginPage() {
       await signInWithGoogle();
       // The page will redirect, so no further action is needed here.
     } catch (error: any) {
-      if (error instanceof Error) {
+      if (error.code === 'auth/popup-closed-by-user') {
+        toast({
+          variant: 'destructive',
+          title: 'Sign-in cancelled',
+          description: 'The sign-in window was closed before completing.',
+        });
+      }
+      else if (error instanceof Error) {
         setSignInError(error);
       } else {
         setSignInError(new Error("An unknown error occurred during sign-in."));
