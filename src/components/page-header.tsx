@@ -37,11 +37,6 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
     return pathname.startsWith(href);
   }
 
-  // Close the sheet when the user navigates to a new page
-  React.useEffect(() => {
-    setIsSheetOpen(false);
-  }, [pathname]);
-
   return (
     <header className="sticky top-0 z-30 flex h-[60px] items-center gap-4 border-b bg-card px-4 sm:px-6">
        <div className="sm:hidden">
@@ -60,6 +55,7 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
                 <Link
                   href="/"
                   className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
+                  onClick={() => setIsSheetOpen(false)}
                 >
                   <Gem className="h-5 w-5 transition-all group-hover:scale-110" />
                   <span className="sr-only">Folk Contact Center</span>
@@ -76,6 +72,7 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
                         "flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground",
                         isActive(item.href) && "text-foreground font-semibold"
                       )}
+                      onClick={() => setIsSheetOpen(false)}
                     >
                       <item.icon className="h-5 w-5" />
                       {item.label}
@@ -88,6 +85,7 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
                     "flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground",
                     pathname.startsWith('/settings') && "text-foreground font-semibold"
                   )}
+                  onClick={() => setIsSheetOpen(false)}
                 >
                   <Settings className="h-5 w-5" />
                   Settings
@@ -95,7 +93,10 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
               </nav>
                <SheetFooter className="mt-auto">
                 {user && (
-                    <Button variant="outline" className="w-full" onClick={signOut}>
+                    <Button variant="outline" className="w-full" onClick={() => {
+                      signOut();
+                      setIsSheetOpen(false);
+                    }}>
                         <LogOut className="mr-2 h-4 w-4"/>
                         Sign Out
                     </Button>
