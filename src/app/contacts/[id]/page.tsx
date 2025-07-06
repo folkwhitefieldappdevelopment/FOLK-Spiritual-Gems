@@ -341,20 +341,21 @@ export default function PersonDetailPage() {
                     <Button
                         variant="outline"
                         size="sm"
+                        className="w-9 sm:w-auto"
                         onClick={() => router.push('/')}
                     >
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back
+                        <ArrowLeft className="h-4 w-4 mr-0 sm:mr-2" />
+                        <span className="hidden sm:inline">Back</span>
                     </Button>
-                    <Button size="sm" onClick={() => setIsEditDialogOpen(true)}>
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit
+                    <Button size="sm" className="w-9 sm:w-auto" onClick={() => setIsEditDialogOpen(true)}>
+                        <Edit className="h-4 w-4 mr-0 sm:mr-2" />
+                        <span className="hidden sm:inline">Edit</span>
                     </Button>
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
+                        <Button variant="destructive" size="sm" className="w-9 sm:w-auto">
+                            <Trash2 className="h-4 w-4 mr-0 sm:mr-2" />
+                            <span className="hidden sm:inline">Delete</span>
                         </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>

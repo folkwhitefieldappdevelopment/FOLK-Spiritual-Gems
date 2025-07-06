@@ -60,7 +60,7 @@ export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView =
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[200px] sm:w-[250px]">Name</TableHead>
+              <TableHead className="min-w-[200px]">Name</TableHead>
               <TableHead className="hidden sm:table-cell">Phone</TableHead>
               <TableHead className="hidden md:table-cell">Last Called</TableHead>
               <TableHead>Last Remark</TableHead>

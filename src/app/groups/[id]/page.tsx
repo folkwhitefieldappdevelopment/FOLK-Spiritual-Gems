@@ -211,14 +211,15 @@ export default function GroupDetailPage() {
                       <Button
                           variant="outline"
                           size="sm"
+                          className="w-9 sm:w-auto"
                           onClick={() => router.push('/groups')}
                       >
-                          <ArrowLeft className="mr-2 h-4 w-4" />
-                          Back to Groups
+                          <ArrowLeft className="h-4 w-4 mr-0 sm:mr-2" />
+                          <span className="hidden sm:inline">Back to Groups</span>
                       </Button>
-                      <Button size="sm" onClick={() => setIsManageMembersDialogOpen(true)}>
-                          <UserPlus className="mr-2 h-4 w-4" />
-                          Manage Members
+                      <Button size="sm" className="w-9 sm:w-auto" onClick={() => setIsManageMembersDialogOpen(true)}>
+                          <UserPlus className="h-4 w-4 mr-0 sm:mr-2" />
+                          <span className="hidden sm:inline">Manage Members</span>
                       </Button>
                       </div>
                   </PageHeader>

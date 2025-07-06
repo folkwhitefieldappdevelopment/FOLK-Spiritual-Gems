@@ -290,7 +290,7 @@ export default function UserManagementPage() {
                               <Table>
                                   <TableHeader>
                                       <TableRow>
-                                          <TableHead className="w-[250px]">Name</TableHead>
+                                          <TableHead className="min-w-[200px]">Name</TableHead>
                                           <TableHead className="hidden sm:table-cell">Phone</TableHead>
                                           <TableHead>Details</TableHead>
                                           <TableHead className="hidden md:table-cell">Created</TableHead>

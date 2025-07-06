@@ -283,7 +283,7 @@ export default function CallAnalyzerPage() {
                                 <Button
                                     variant={"outline"}
                                     className={cn(
-                                    "w-[280px] justify-start text-left font-normal",
+                                    "w-full justify-start text-left font-normal sm:w-[280px]",
                                     !selectedDate && "text-muted-foreground"
                                     )}
                                 >
@@ -311,7 +311,7 @@ export default function CallAnalyzerPage() {
                        <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead rowSpan={2} className="align-bottom sticky left-0 bg-card">Enabler</TableHead>
+                            <TableHead rowSpan={2} className="align-bottom sm:sticky left-0 bg-card">Enabler</TableHead>
                             <TableHead rowSpan={2} className="align-bottom text-right">Contacts</TableHead>
                             <TableHead colSpan={2} className="text-center border-l">Call Status</TableHead>
                             <TableHead colSpan={3} className="text-center border-l">SG</TableHead>
@@ -332,7 +332,7 @@ export default function CallAnalyzerPage() {
                         <TableBody>
                           {results.map((result) => (
                             <TableRow key={result.enabler}>
-                              <TableCell className="font-medium sticky left-0 bg-card">{result.enabler}</TableCell>
+                              <TableCell className="font-medium sm:sticky left-0 bg-card">{result.enabler}</TableCell>
                               <TableCell className="text-right">{result.totalContacts}</TableCell>
                               <TableCell className="text-right font-semibold border-l">{result.callStatus.picked}</TableCell>
                               <TableCell className="text-right">{result.callStatus.notPicked}</TableCell>
@@ -349,7 +349,7 @@ export default function CallAnalyzerPage() {
                          {totals && (
                            <TableFooter>
                               <TableRow className="bg-muted/50 hover:bg-muted/50">
-                                <TableCell className="font-bold text-primary sticky left-0 bg-muted/50">Totals</TableCell>
+                                <TableCell className="font-bold text-primary sm:sticky left-0 bg-muted/50">Totals</TableCell>
                                 <TableCell className="text-right font-bold">{totals.totalContacts}</TableCell>
                                 <TableCell className="text-right font-bold border-l">{totals.callStatus.picked}</TableCell>
                                 <TableCell className="text-right font-bold">{totals.callStatus.notPicked}</TableCell>
