@@ -48,9 +48,11 @@ import {
 } from "@/services/people-service";
 import { getEnablers, getContactSources } from "@/services/settings-service";
 import { AuthGuard } from "@/components/auth-guard";
+import { useAuth } from "@/contexts/auth-context";
 
 export default function ContactsPage() {
   const { toast } = useToast();
+  const { appUser } = useAuth();
 
   const [people, setPeople] = React.useState<Person[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -76,13 +78,17 @@ export default function ContactsPage() {
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
 
   React.useEffect(() => {
+    if (!appUser) {
+        setIsLoading(true);
+        return;
+    }
     const fetchData = async () => {
       setIsLoading(true);
       setFetchError(null);
       try {
         const [peopleData, enablersData, sourcesData] = await Promise.all([
-          getPeople(),
-          getEnablers(),
+          getPeople(appUser),
+          getEnablers(appUser),
           getContactSources(),
         ]);
         setPeople(peopleData);
@@ -100,7 +106,7 @@ export default function ContactsPage() {
       }
     };
     fetchData();
-  }, []);
+  }, [appUser]);
 
   const filteredPeople = React.useMemo(() => {
     const filtered = people.filter((person) => {
@@ -376,8 +382,10 @@ export default function ContactsPage() {
         }
 
         await importPeople(newPeople);
-        const updatedPeople = await getPeople();
-        setPeople(updatedPeople);
+        if (appUser) {
+            const updatedPeople = await getPeople(appUser);
+            setPeople(updatedPeople);
+        }
 
         toast({
           title: "Import Successful",

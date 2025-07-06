@@ -9,6 +9,7 @@ import { subWeeks, startOfWeek, isAfter, format } from 'date-fns';
 import { Users, UserPlus, Briefcase, Loader2 } from 'lucide-react';
 import { AuthGuard } from '@/components/auth-guard';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
+import { useAuth } from '@/contexts/auth-context';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -31,16 +32,21 @@ const CHART_COLORS = [
 ];
 
 export default function DashboardPage() {
+  const { appUser } = useAuth();
   const [people, setPeople] = React.useState<Person[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
 
   React.useEffect(() => {
+    if (!appUser) {
+      setIsLoading(true);
+      return;
+    }
     const fetchData = async () => {
       setIsLoading(true);
       setFetchError(null);
       try {
-        const peopleData = await getPeople();
+        const peopleData = await getPeople(appUser);
         setPeople(peopleData);
       } catch (error) {
         console.error('Failed to load dashboard data:', error);
@@ -54,7 +60,7 @@ export default function DashboardPage() {
       }
     };
     fetchData();
-  }, []);
+  }, [appUser]);
   
   const safeDate = (timestamp: any): Date | null => {
     if (!timestamp) return null;

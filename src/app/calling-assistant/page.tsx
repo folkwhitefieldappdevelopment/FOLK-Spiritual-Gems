@@ -28,9 +28,11 @@ import {
 } from "@/services/people-service";
 import { getEnablers, getContactSources } from "@/services/settings-service";
 import { serverTimestamp, arrayUnion } from "firebase/firestore";
+import { useAuth } from "@/contexts/auth-context";
 
 export default function CallingAssistantPage() {
   const { toast } = useToast();
+  const { appUser } = useAuth();
 
   const [people, setPeople] = React.useState<Person[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -50,13 +52,17 @@ export default function CallingAssistantPage() {
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
 
   React.useEffect(() => {
+    if (!appUser) {
+        setIsLoading(true);
+        return;
+    }
     const fetchData = async () => {
       setIsLoading(true);
       setFetchError(null);
       try {
         const [peopleData, enablersData, sourcesData] = await Promise.all([
-          getPeople(),
-          getEnablers(),
+          getPeople(appUser),
+          getEnablers(appUser),
           getContactSources(),
         ]);
         setPeople(peopleData);
@@ -74,7 +80,7 @@ export default function CallingAssistantPage() {
       }
     };
     fetchData();
-  }, []);
+  }, [appUser]);
 
   const filteredPeople = React.useMemo(() => {
     const filtered = people.filter((person) => {

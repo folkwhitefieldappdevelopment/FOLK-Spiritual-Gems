@@ -11,6 +11,7 @@ import { getPeople, updatePerson } from '@/services/people-service';
 import { createInitialProgress } from '@/lib/data';
 import { AuthGuard } from '@/components/auth-guard';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
+import { useAuth } from '@/contexts/auth-context';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -24,6 +25,7 @@ export default function GroupDetailPage() {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
+  const { appUser } = useAuth();
   const groupId = params.id as string;
 
   const [isLoading, setIsLoading] = React.useState(true);
@@ -36,7 +38,10 @@ export default function GroupDetailPage() {
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(undefined);
 
   React.useEffect(() => {
-    if (!groupId) return;
+    if (!groupId || !appUser) {
+        setIsLoading(true);
+        return;
+    };
     
     const fetchData = async () => {
       setIsLoading(true);
@@ -44,7 +49,7 @@ export default function GroupDetailPage() {
       try {
         const [groupData, peopleData] = await Promise.all([
           getGroup(groupId),
-          getPeople(),
+          getPeople(appUser),
         ]);
         
         const sanitizedPeople = peopleData.map(person => {
@@ -79,7 +84,7 @@ export default function GroupDetailPage() {
       }
     };
     fetchData();
-  }, [groupId, router, toast]);
+  }, [groupId, router, toast, appUser]);
   
   const handleEditPerson = (person: Person) => {
     setEditingPerson(person);

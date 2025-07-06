@@ -12,11 +12,52 @@ import {
   query,
   where,
 } from 'firebase/firestore';
-import type { Person } from '@/lib/types';
+import type { Person, AppUser } from '@/lib/types';
 
-export const getPeople = async (): Promise<Person[]> => {
+export const getPeople = async (appUser: AppUser | null): Promise<Person[]> => {
+  if (!appUser) return [];
+
   const peopleCollection = collection(db, 'people');
-  const snapshot = await getDocs(peopleCollection);
+
+  if (appUser.role.includes('Admin')) {
+    const snapshot = await getDocs(peopleCollection);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Person));
+  }
+
+  if (appUser.role.includes('Folk Guide')) {
+    const usersCollection = collection(db, 'users');
+    const enablersQuery = query(usersCollection, where('reportsTo.guideId', '==', appUser.id));
+    const enablersSnapshot = await getDocs(enablersQuery);
+    const enablerNames = enablersSnapshot.docs.map(doc => doc.data().name as string);
+    const managedNames = [appUser.name, ...enablerNames];
+
+    // Firestore 'in' queries are limited to 30 items. If more are needed, this would require multiple queries.
+    if (managedNames.length === 0) return [];
+    
+    // Chunk the array into parts of 30
+    const chunks: string[][] = [];
+    for (let i = 0; i < managedNames.length; i += 30) {
+      chunks.push(managedNames.slice(i, i + 30));
+    }
+    
+    const promises = chunks.map(chunk => {
+        const q = query(peopleCollection, where('enablerInTouchWith', 'in', chunk));
+        return getDocs(q);
+    });
+
+    const snapshots = await Promise.all(promises);
+    const people: Person[] = [];
+    snapshots.forEach(snapshot => {
+        snapshot.docs.forEach(doc => {
+            people.push({ id: doc.id, ...doc.data() } as Person);
+        });
+    });
+    return people;
+  }
+
+  // Default for Folk Enabler and any other role
+  const q = query(peopleCollection, where('enablerInTouchWith', '==', appUser.name));
+  const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Person));
 };
 
