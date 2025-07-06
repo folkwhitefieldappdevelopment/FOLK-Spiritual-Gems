@@ -5,7 +5,7 @@ import * as React from 'react';
 import { UserNav } from './user-nav';
 import { Button } from "./ui/button";
 import { Menu } from "lucide-react";
-import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 import Link from "next/link";
 import { Users, UserSquare, Settings, Gem, PhoneCall, Headset, UserCog } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
@@ -51,6 +51,10 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="sm:max-w-xs">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Mobile Menu</SheetTitle>
+            <SheetDescription>A list of navigation links for the application.</SheetDescription>
+          </SheetHeader>
           <nav className="grid gap-6 text-lg font-medium">
             <Link
               href="/dashboard"
