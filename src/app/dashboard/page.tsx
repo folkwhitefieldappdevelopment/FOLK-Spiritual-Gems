@@ -279,7 +279,7 @@ export default function DashboardPage() {
         <AppSidebar />
         <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
           <PageHeader
-            title="Dashboard"
+            title="FOLK SPIRITUAL GEM"
             description="An overview of your contacts and their progress."
           />
           <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
