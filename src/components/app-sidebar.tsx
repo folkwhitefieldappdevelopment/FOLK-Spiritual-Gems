@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Users, UserSquare, Settings, LayoutDashboard, Gem, PhoneCall, Headset, UserCog } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { useAuth } from "@/contexts/auth-context";
 
 export function AppSidebar() {
@@ -27,57 +26,45 @@ export function AppSidebar() {
   }
 
   return (
-    <TooltipProvider delayDuration={0}>
-      <aside className="sticky top-0 left-0 hidden h-screen w-16 flex-col border-r bg-card sm:flex">
-        <nav className="flex flex-1 flex-col items-center gap-4 px-2 py-4">
-          <Link
-            href="/"
-            className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base"
-          >
-            <Gem className="h-4 w-4 transition-all group-hover:scale-110" />
-            <span className="sr-only">Folk Contact Center</span>
-          </Link>
-          {navItems.map((item) => {
-            if (item.href === '/user-management' && !appUser?.role?.includes('Admin')) {
-              return null;
-            }
-            return (
-              <Tooltip key={item.href}>
-                <TooltipTrigger asChild>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      "flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8",
-                      isActive(item.href) && "bg-accent text-accent-foreground hover:text-accent-foreground"
-                    )}
-                  >
-                    <item.icon className="h-5 w-5" />
-                    <span className="sr-only">{item.label}</span>
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent side="right">{item.label}</TooltipContent>
-              </Tooltip>
-            );
-          })}
-          <div className="mt-auto">
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <Link
-                    href="/settings"
-                    className={cn(
-                      "flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8",
-                      pathname.startsWith('/settings') && "bg-accent text-accent-foreground hover:text-accent-foreground"
-                    )}
-                    >
-                    <Settings className="h-5 w-5" />
-                    <span className="sr-only">Settings</span>
-                    </Link>
-                </TooltipTrigger>
-                <TooltipContent side="right">Settings</TooltipContent>
-            </Tooltip>
-          </div>
-        </nav>
-      </aside>
-    </TooltipProvider>
+    <aside className="sticky top-0 left-0 hidden h-screen w-64 flex-col border-r bg-card sm:flex">
+      <div className="flex h-[60px] items-center border-b px-6">
+        <Link href="/" className="flex items-center gap-2 font-semibold text-primary">
+          <Gem className="h-6 w-6" />
+          <span>Folk Contact Center</span>
+        </Link>
+      </div>
+      <nav className="flex-1 space-y-2 p-4">
+        {navItems.map((item) => {
+          if (item.href === '/user-management' && !appUser?.role?.includes('Admin')) {
+            return null;
+          }
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+                isActive(item.href) && "bg-accent text-accent-foreground hover:text-accent-foreground"
+              )}
+            >
+              <item.icon className="h-5 w-5" />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+      <div className="mt-auto p-4">
+        <Link
+          href="/settings"
+          className={cn(
+            "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+            pathname.startsWith('/settings') && "bg-accent text-accent-foreground hover:text-accent-foreground"
+          )}
+        >
+          <Settings className="h-5 w-5" />
+          <span>Settings</span>
+        </Link>
+      </div>
+    </aside>
   );
 }
