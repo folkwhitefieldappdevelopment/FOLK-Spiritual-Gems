@@ -33,13 +33,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  getEnablers,
   getContactSources,
-  addEnabler,
   addContactSource,
-  updateEnabler,
   updateContactSource,
-  deleteEnabler,
   deleteContactSource,
   getCustomPersonFields,
   saveCustomPersonFields,
@@ -51,26 +47,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AdminModeToggle } from '@/components/admin-mode-toggle';
 
 type DialogMode = 'add' | 'edit';
-type ItemType = 'enabler' | 'source' | 'customField';
+type ItemType = 'source' | 'customField';
 
 export default function SettingsPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
 
-  const [enablers, setEnablers] = React.useState<string[]>([]);
   const [sources, setSources] = React.useState<string[]>([]);
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [dialogMode, setDialogMode] = React.useState<DialogMode>('add');
-  const [itemType, setItemType] = React.useState<ItemType>('enabler');
+  const [itemType, setItemType] = React.useState<ItemType>('source');
   
-  // State for simple item dialog (enablers, sources)
   const [originalName, setOriginalName] = React.useState('');
   const [itemName, setItemName] = React.useState('');
 
-  // State for custom field dialog
   const [editingField, setEditingField] = React.useState<CustomField | null>(null);
   const [fieldName, setFieldName] = React.useState('');
   const [fieldType, setFieldType] = React.useState<CustomFieldType>('text');
@@ -80,12 +73,10 @@ export default function SettingsPage() {
       setIsLoading(true);
       setFetchError(null);
       try {
-        const [enablersData, sourcesData, customFieldsData] = await Promise.all([
-          getEnablers(),
+        const [sourcesData, customFieldsData] = await Promise.all([
           getContactSources(),
           getCustomPersonFields(),
         ]);
-        setEnablers(enablersData);
         setSources(sourcesData);
         setCustomFields(customFieldsData);
       } catch (error) {
@@ -100,7 +91,7 @@ export default function SettingsPage() {
       }
     };
     fetchData();
-  }, [toast]);
+  }, []);
 
   const openDialog = (mode: DialogMode, type: ItemType, data: string | CustomField | null = null) => {
     setDialogMode(mode);
@@ -130,16 +121,6 @@ export default function SettingsPage() {
     try {
       if (itemType === 'customField') {
         await handleSaveCustomField();
-      } else if (itemType === 'enabler') {
-        if (dialogMode === 'add') {
-          const updated = await addEnabler(itemName);
-          setEnablers(updated);
-          toast({ title: 'Enabler Added' });
-        } else {
-          const updated = await updateEnabler(originalName, itemName);
-          setEnablers(updated);
-          toast({ title: 'Enabler Updated' });
-        }
       } else { // source
         if (dialogMode === 'add') {
           const updated = await addContactSource(itemName);
@@ -178,15 +159,12 @@ export default function SettingsPage() {
     await saveCustomPersonFields(updatedFields);
     setCustomFields(updatedFields);
     toast({ title: editingField ? 'Custom Field Updated' : 'Custom Field Added' });
+    setIsDialogOpen(false);
   };
 
   const handleDelete = async (type: ItemType, identifier: string) => {
     try {
-      if (type === 'enabler') {
-        const updated = await deleteEnabler(identifier);
-        setEnablers(updated);
-        toast({ title: 'Enabler Deleted' });
-      } else if (type === 'source') {
+      if (type === 'source') {
         const updated = await deleteContactSource(identifier);
         setSources(updated);
         toast({ title: 'Contact Source Deleted' });
@@ -201,12 +179,12 @@ export default function SettingsPage() {
     }
   };
   
-  const renderList = (type: 'enabler' | 'source', items: string[]) => (
+  const renderList = (type: 'source', items: string[]) => (
     <Card>
       <CardHeader>
-        <CardTitle>{type === 'enabler' ? 'Manage Enablers' : 'Manage Contact Sources'}</CardTitle>
+        <CardTitle>Manage Contact Sources</CardTitle>
         <CardDescription>
-          Add, edit, or remove the {type === 'enabler' ? 'enablers' : 'sources'} available in dropdowns.
+          Add, edit, or remove the sources available in dropdowns.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -252,7 +230,7 @@ export default function SettingsPage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={2} className="text-center text-muted-foreground h-24">
-                    No {type === 'enabler' ? 'enablers' : 'sources'} found.
+                    No sources found.
                   </TableCell>
                 </TableRow>
               )}
@@ -329,7 +307,7 @@ export default function SettingsPage() {
     if (itemType === 'customField') {
       return `${dialogMode === 'edit' ? 'Edit' : 'Add'} Custom Field`;
     }
-    return `${dialogMode === 'edit' ? 'Edit' : 'Add'} ${itemType === 'enabler' ? 'Enabler' : 'Contact Source'}`;
+    return `${dialogMode === 'edit' ? 'Edit' : 'Add'} Contact Source`;
   }
 
   const renderDialogContent = () => {
@@ -409,14 +387,7 @@ export default function SettingsPage() {
                       <AdminModeToggle />
                     </CardContent>
                   </Card>
-                  <div>
-                      <div className="flex justify-end mb-4">
-                          <Button onClick={() => openDialog('add', 'enabler')}>
-                          <PlusCircle className="mr-2 h-4 w-4" /> Add Enabler
-                          </Button>
-                      </div>
-                      {renderList('enabler', enablers)}
-                  </div>
+                  
                   <div>
                        <div className="flex justify-end mb-4">
                           <Button onClick={() => openDialog('add', 'source')}>

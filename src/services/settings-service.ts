@@ -13,7 +13,6 @@ import {
 import type { AppUser, CustomField } from '@/lib/types';
 
 
-const defaultEnablers = ['Veeranna', 'Sarthak', 'Jayant', 'Rohit', 'Nitin', 'Abhishek', 'Nikhil', 'Ravi', 'Narayan'];
 const defaultContactSources = ['Govinda Temple', 'ITPL', 'HK hill'];
 
 const ensureSettingsDoc = async () => {
@@ -21,7 +20,6 @@ const ensureSettingsDoc = async () => {
     const docSnap = await getDoc(settingsDocRef);
     if (!docSnap.exists()) {
         await setDoc(settingsDocRef, {
-            enablers: defaultEnablers,
             contactSources: defaultContactSources,
             customPersonFields: [],
         });
@@ -32,49 +30,48 @@ const ensureSettingsDoc = async () => {
     }
     
     return {
-        enablers: data.enablers || defaultEnablers,
         contactSources: data.contactSources || defaultContactSources,
         customPersonFields: data.customPersonFields || [],
     };
 }
 
 export const getEnablers = async (appUser: AppUser | null): Promise<string[]> => {
-    const settings = await ensureSettingsDoc();
-    const allEnablers = settings.enablers;
+    if (!appUser) return [];
 
-    if (!appUser || appUser.role.includes('Admin')) {
-        return allEnablers;
-    }
+    const usersCollection = collection(db, 'users');
 
-    if (appUser.role.includes('Folk Guide')) {
-        const usersCollection = collection(db, 'users');
-        const enablersQuery = query(usersCollection, where('reportsTo.guideId', '==', appUser.id));
+    // Admin sees all Folk Enablers and Folk Guides
+    if (appUser.role.includes('Admin')) {
+        const enablersQuery = query(usersCollection, where('role', 'array-contains', 'Folk Enabler'));
         const enablersSnapshot = await getDocs(enablersQuery);
         const enablerNames = enablersSnapshot.docs.map(doc => doc.data().name as string);
+        
+        const guidesQuery = query(usersCollection, where('role', 'array-contains', 'Folk Guide'));
+        const guidesSnapshot = await getDocs(guidesQuery);
+        const guideNames = guidesSnapshot.docs.map(doc => doc.data().name as string);
+
+        return [...new Set([...enablerNames, ...guideNames])].sort();
+    }
+
+    // A Folk Guide sees the enablers that report to them, plus themselves
+    if (appUser.role.includes('Folk Guide')) {
+        const enablersQuery = query(usersCollection, where('reportsTo.guideId', '==', appUser.id));
+        const snapshot = await getDocs(enablersQuery);
+        const enablerNames = snapshot.docs.map(doc => doc.data().name as string);
         return [appUser.name, ...enablerNames].sort();
     }
     
-    // Default for Folk Enabler and other roles
-    if (allEnablers.includes(appUser.name)) {
+    // A Folk Enabler only sees themselves
+    if (appUser.role.includes('Folk Enabler')) {
         return [appUser.name];
     }
+    
     return [];
-}
+};
 
 export const getContactSources = async (): Promise<string[]> => {
     const settings = await ensureSettingsDoc();
     return settings.contactSources;
-}
-
-export const addEnabler = async (newEnabler: string) => {
-    const settingsDocRef = doc(db, 'settings', 'options');
-    const currentEnablers = (await getDoc(settingsDocRef)).data()?.enablers || [];
-    if (!currentEnablers.includes(newEnabler)) {
-        const updatedEnablers = [...currentEnablers, newEnabler];
-        await setDoc(settingsDocRef, { enablers: updatedEnablers }, { merge: true });
-        return updatedEnablers;
-    }
-    return currentEnablers;
 }
 
 export const addContactSource = async (newSource: string) => {
@@ -86,26 +83,6 @@ export const addContactSource = async (newSource: string) => {
         return updatedSources;
     }
     return currentSources;
-}
-
-export const updateEnabler = async (oldName: string, newName: string) => {
-    const batch = writeBatch(db);
-    const settingsDocRef = doc(db, 'settings', 'options');
-
-    // 1. Update settings document
-    const currentEnablers = (await getDoc(settingsDocRef)).data()?.enablers || [];
-    const updatedEnablers = currentEnablers.map(e => e === oldName ? newName : e);
-    batch.set(settingsDocRef, { enablers: updatedEnablers }, { merge: true });
-
-    // 2. Update all people documents
-    const peopleQuery = query(collection(db, 'people'), where('enablerInTouchWith', '==', oldName));
-    const querySnapshot = await getDocs(peopleQuery);
-    querySnapshot.forEach(doc => {
-        batch.update(doc.ref, { enablerInTouchWith: newName });
-    });
-
-    await batch.commit();
-    return updatedEnablers;
 }
 
 export const updateContactSource = async (oldName: string, newName: string) => {
@@ -126,26 +103,6 @@ export const updateContactSource = async (oldName: string, newName: string) => {
 
     await batch.commit();
     return updatedSources;
-}
-
-export const deleteEnabler = async (enablerToDelete: string) => {
-    const batch = writeBatch(db);
-    const settingsDocRef = doc(db, 'settings', 'options');
-
-    // 1. Update settings document
-    const currentEnablers = (await getDoc(settingsDocRef)).data()?.enablers || [];
-    const updatedEnablers = currentEnablers.filter(e => e !== enablerToDelete);
-    batch.set(settingsDocRef, { enablers: updatedEnablers }, { merge: true });
-
-    // 2. Update all people documents
-    const peopleQuery = query(collection(db, 'people'), where('enablerInTouchWith', '==', enablerToDelete));
-    const querySnapshot = await getDocs(peopleQuery);
-    querySnapshot.forEach(doc => {
-        batch.update(doc.ref, { enablerInTouchWith: "" });
-    });
-
-    await batch.commit();
-    return updatedEnablers;
 }
 
 export const deleteContactSource = async (sourceToDelete: string) => {

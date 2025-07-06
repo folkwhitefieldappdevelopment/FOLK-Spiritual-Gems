@@ -9,6 +9,7 @@ import type { Person, CustomField } from "@/lib/types";
 import { occupationStatuses } from "@/lib/types";
 import { Camera, Upload, SwitchCamera } from "lucide-react";
 import { getEnablers, getContactSources, getCustomPersonFields } from "@/services/settings-service";
+import { useAuth } from "@/contexts/auth-context";
 
 import {
   Dialog,
@@ -92,6 +93,7 @@ export function CreateUpdatePersonDialog({
   allPeople,
 }: CreateUpdatePersonDialogProps) {
   const { toast } = useToast();
+  const { appUser } = useAuth();
   const personFormSchema = createPersonFormSchema(allPeople, person?.id);
   
   const form = useForm<PersonFormValues>({
@@ -131,9 +133,10 @@ export function CreateUpdatePersonDialog({
 
   React.useEffect(() => {
     const loadOptions = async () => {
+        if (!appUser) return;
         try {
             const [enablers, sources, fields] = await Promise.all([
-              getEnablers(), 
+              getEnablers(appUser), 
               getContactSources(),
               getCustomPersonFields()
             ]);
@@ -195,7 +198,7 @@ export function CreateUpdatePersonDialog({
       setHasCameraPermission(null);
       setCameraMode('user');
     }
-  }, [person, form, isOpen, toast]);
+  }, [person, form, isOpen, toast, appUser]);
 
   const handleSwitchCamera = () => {
     setCameraMode((prev) => (prev === 'user' ? 'environment' : 'user'));
