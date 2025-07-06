@@ -110,7 +110,7 @@ export default function LoginPage() {
         <CardHeader className="text-center">
           <CardTitle>FOLK SPIRITUAL GEM</CardTitle>
           <CardDescription>
-            Sign in to your account
+            Central Contact Management App
           </CardDescription>
         </CardHeader>
         <CardContent>
