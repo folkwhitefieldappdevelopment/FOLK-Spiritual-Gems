@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -42,7 +41,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 
 export default function UserManagementPage() {
@@ -53,6 +51,7 @@ export default function UserManagementPage() {
   
   const [isFormDialogOpen, setIsFormDialogOpen] = React.useState(false);
   const [editingUser, setEditingUser] = React.useState<AppUser | undefined>(undefined);
+  const [userToDelete, setUserToDelete] = React.useState<AppUser | null>(null);
 
   const [searchTerm, setSearchTerm] = React.useState('');
   const [roleFilter, setRoleFilter] = React.useState('');
@@ -100,12 +99,13 @@ export default function UserManagementPage() {
     setIsFormDialogOpen(true);
   };
   
-  const handleDeleteUser = async (user: AppUser) => {
+  const handleDeleteConfirmed = async () => {
+    if (!userToDelete) return;
     try {
-        await deleteUserAndAuth(user.id, user.email);
+        await deleteUserAndAuth(userToDelete.id, userToDelete.email);
         toast({
             title: 'User Deleted',
-            description: `User ${user.name} has been permanently deleted.`
+            description: `User ${userToDelete.name} has been permanently deleted.`
         });
         fetchUsers();
     } catch (error) {
@@ -115,6 +115,8 @@ export default function UserManagementPage() {
             title: 'Error Deleting User',
             description: error instanceof Error ? error.message : 'An unknown error occurred.',
         });
+    } finally {
+        setUserToDelete(null);
     }
   };
 
@@ -257,47 +259,23 @@ export default function UserManagementPage() {
                                                   {safeDate(user.createdAt) ? format(safeDate(user.createdAt)!, 'PP') : 'N/A'}
                                               </TableCell>
                                               <TableCell className="text-right">
-                                                <AlertDialog>
-                                                  <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                      </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                      <DropdownMenuItem onClick={() => handleEditUser(user)}>
-                                                        <Edit className="mr-2 h-4 w-4" />
-                                                        Edit
-                                                      </DropdownMenuItem>
-                                                      <AlertDialogTrigger asChild>
-                                                        <DropdownMenuItem
-                                                          onSelect={(e) => e.preventDefault()}
-                                                          className="text-destructive hover:!bg-destructive/10 focus:!text-destructive focus:!bg-destructive/10"
-                                                        >
-                                                          <Trash2 className="mr-2 h-4 w-4" />
-                                                          Delete
-                                                        </DropdownMenuItem>
-                                                      </AlertDialogTrigger>
-                                                    </DropdownMenuContent>
-                                                  </DropdownMenu>
-                                                  <AlertDialogContent>
-                                                    <AlertDialogHeader>
-                                                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                      <AlertDialogDescription>
-                                                        This will permanently delete the user {user.name} from both the application database and the authentication system. This action cannot be undone.
-                                                      </AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                      <AlertDialogAction
-                                                        onClick={() => handleDeleteUser(user)}
-                                                        className="bg-destructive hover:bg-destructive/90"
-                                                      >
-                                                        Delete User
-                                                      </AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                  </AlertDialogContent>
-                                                </AlertDialog>
+                                                <DropdownMenu>
+                                                  <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                      <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                  </DropdownMenuTrigger>
+                                                  <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onSelect={() => handleEditUser(user)}>
+                                                      <Edit className="mr-2 h-4 w-4" />
+                                                      Edit
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onSelect={() => setUserToDelete(user)} className="text-destructive focus:text-destructive">
+                                                      <Trash2 className="mr-2 h-4 w-4" />
+                                                      Delete
+                                                    </DropdownMenuItem>
+                                                  </DropdownMenuContent>
+                                                </DropdownMenu>
                                               </TableCell>
                                           </TableRow>
                                       ))}
@@ -327,6 +305,27 @@ export default function UserManagementPage() {
           onSave={handleSaveUser}
           user={editingUser}
         />
+        {userToDelete && (
+          <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This will permanently delete the user {userToDelete.name} from both the application database and the authentication system. This action cannot be undone.
+                </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setUserToDelete(null)}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                    onClick={handleDeleteConfirmed}
+                    className="bg-destructive hover:bg-destructive/90"
+                >
+                    Delete User
+                </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
     </AuthGuard>
   );
