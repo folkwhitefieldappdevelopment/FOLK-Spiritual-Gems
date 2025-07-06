@@ -98,7 +98,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [toast]);
 
   const signIn = async (email: string, password: string) => {
-    setLoading(true); // Set loading to true on sign-in attempt
+    setLoading(true);
+    setError(null);
     try {
       await signInWithEmailAndPassword(auth, email, password);
       // The onAuthStateChanged listener will handle setting the user state after verification
