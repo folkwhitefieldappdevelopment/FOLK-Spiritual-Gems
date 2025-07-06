@@ -23,6 +23,11 @@ export async function deleteUserAndAuth(userId: string, email: string) {
     await deleteDoc(userDocRef);
     
   } catch (error: any) {
+    // Check for common permission and credential errors and provide a specific, actionable message.
+    if (error.code === 'auth/insufficient-permission' || error.message?.includes('access token')) {
+        throw new Error('Server has insufficient permissions. Please ensure the App Hosting service account has the "Firebase Authentication Admin" IAM role in Google Cloud.');
+    }
+
     // Handle case where user is not in Auth but might be in Firestore
     if (error.code === 'auth/user-not-found') {
       console.warn(`User with email ${email} not found in Firebase Auth, but attempting to delete from Firestore.`);
