@@ -123,9 +123,49 @@ personal-data-hub-y5fe0.firebaseapp.com`}
   )
 }
 
+function ApiError({ projectId }: { projectId?: string }) {
+  const GCloudApiLibraryUrl = projectId
+    ? `https://console.cloud.google.com/apis/library?project=${projectId}`
+    : 'https://console.cloud.google.com/apis/library';
+
+  return (
+    <>
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Action Required: Enable Google Cloud APIs</AlertTitle>
+        <AlertDescription>
+          A silent authentication failure often means that critical APIs are disabled in your Google Cloud project.
+        </AlertDescription>
+      </Alert>
+
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="flex-shrink-0 bg-primary/10 text-primary rounded-full h-8 w-8 flex items-center justify-center">
+            <KeyRound className="h-5 w-5" />
+          </div>
+          <h3 className="font-semibold">Enable Required APIs</h3>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Go to the <a href={GCloudApiLibraryUrl} target="_blank" rel="noopener noreferrer" className="underline text-primary">Google Cloud API Library</a> for your project and ensure that the following APIs are <strong className="text-foreground">enabled</strong>. The most common cause of this issue is a disabled <strong>Identity Toolkit API</strong>.
+        </p>
+        <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
+          <li>Identity Toolkit API <span className="text-destructive font-semibold">(Very Important)</span></li>
+          <li>Firebase Management API</li>
+          <li>Firebase Hosting API</li>
+          <li>Cloud Firestore API</li>
+        </ul>
+        <p className="text-xs text-muted-foreground">
+          After enabling the necessary APIs, it may take a minute or two for the changes to apply.
+        </p>
+      </div>
+    </>
+  )
+}
+
 
 export function FirebaseConfigError({ error }: { error?: any }) {
   const errorMessage = error?.message?.toLowerCase() || '';
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
   const isPermissionError = errorMessage.includes('permission-denied') || errorMessage.includes('offline');
   const isInitializationError = errorMessage.includes('configuration is missing');
@@ -146,11 +186,7 @@ export function FirebaseConfigError({ error }: { error?: any }) {
             {isPermissionError && !isReferrerError && <PermissionsError />}
             {isInitializationError && <InitializationError />}
             {!isPermissionError && !isInitializationError && !isReferrerError && (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>An Unexpected Error Occurred</AlertTitle>
-                <AlertDescription>{error?.message || 'Please check the console for more details.'}</AlertDescription>
-              </Alert>
+              <ApiError projectId={projectId} />
             )}
           </CardContent>
           <CardFooter>
