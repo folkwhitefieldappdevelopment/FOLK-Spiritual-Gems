@@ -78,10 +78,10 @@ service cloud.firestore {
              <div className="flex-shrink-0 bg-primary/10 text-primary rounded-full h-8 w-8 flex items-center justify-center">
                 <LogIn className="h-5 w-5" />
             </div>
-            <h3 className="font-semibold">Step 2: Enable the Google Auth Provider</h3>
+            <h3 className="font-semibold">Step 2: Enable the Email Sign-In Provider</h3>
         </div>
         <p className="text-sm text-muted-foreground">
-          In the <a href="https://console.firebase.google.com" target="_blank" rel="noopener noreferrer" className="underline text-primary">Firebase Console</a>, go to <strong>Build &gt; Authentication &gt; Sign-in method</strong>. Find "Google" in the list of providers and make sure it is enabled.
+          For passwordless sign-in, you need to enable the "Email/Password" provider. In the <a href="https://console.firebase.google.com" target="_blank" rel="noopener noreferrer" className="underline text-primary">Firebase Console</a>, go to <strong>Build &gt; Authentication &gt; Sign-in method</strong>. Find "Email/Password" in the list of providers, enable it, and then make sure to also enable the **Email link (passwordless sign-in)** toggle within its settings.
         </p>
       </div>
     </>
