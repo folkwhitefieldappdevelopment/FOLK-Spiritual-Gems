@@ -11,7 +11,6 @@ import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetFooter
 import { cn } from '@/lib/utils';
 import { UserNav } from './user-nav';
 import { useAuth } from '@/contexts/auth-context';
-import { AdminModeToggle } from './admin-mode-toggle';
 
 type PageHeaderProps = {
   title: string;
@@ -107,7 +106,6 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
       </div>
       <div className="flex items-center gap-4">
         {children}
-        <AdminModeToggle />
         <UserNav />
       </div>
     </header>
