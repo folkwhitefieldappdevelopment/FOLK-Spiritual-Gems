@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { ReactNode } from "react";
@@ -59,7 +58,7 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
               onClick={handleLinkClick}
             >
               <Gem className="h-5 w-5 transition-all group-hover:scale-110" />
-              <span className="sr-only">FOLK Spiritual Gem</span>
+              <span className="sr-only">FOLK SPIRITUAL GEM</span>
             </Link>
             {navItems.map((item) => {
                if (item.adminOnly && !appUser?.role?.includes('Admin')) {

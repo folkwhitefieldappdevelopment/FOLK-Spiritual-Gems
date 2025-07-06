@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -109,7 +108,7 @@ export default function LoginPage() {
       </div>
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <CardTitle>FOLK Spiritual Gem</CardTitle>
+          <CardTitle>FOLK SPIRITUAL GEM</CardTitle>
           <CardDescription>
             Sign in to your account
           </CardDescription>

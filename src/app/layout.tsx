@@ -1,4 +1,3 @@
-
 import type { Metadata } from "next";
 import { AdminProvider } from "@/contexts/admin-context";
 import { AuthProvider } from "@/contexts/auth-context";
@@ -6,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FOLK Spiritual Gem",
+  title: "FOLK SPIRITUAL GEM",
   description: "A contact management center for FOLK.",
 };
 
