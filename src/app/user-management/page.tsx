@@ -64,7 +64,7 @@ export default function UserManagementPage() {
       const sanitizedUsers = usersData.map(u => {
         const userWithArrayRole = { ...u };
         if (typeof userWithArrayRole.role === 'string') {
-          // @ts-ignore
+          // @ts-ignore - for backward compatibility
           userWithArrayRole.role = [userWithArrayRole.role];
         } else if (!Array.isArray(userWithArrayRole.role)) {
           userWithArrayRole.role = [];
@@ -120,7 +120,7 @@ export default function UserManagementPage() {
     }
   };
 
-  async function handleSaveUser(data: UserFormValues, userId?: string) {
+  const handleSaveUser = async (data: UserFormValues, userId?: string) => {
     try {
       if (userId) {
         await updateUser(userId, data);
@@ -145,7 +145,7 @@ export default function UserManagementPage() {
       });
       throw error;
     }
-  }
+  };
   
   const filteredUsers = React.useMemo(() => {
     return users
@@ -172,7 +172,7 @@ export default function UserManagementPage() {
     if (timestamp.toDate) return timestamp.toDate();
     if (timestamp instanceof Date) return timestamp;
     return null;
-  }
+  };
 
   return (
     <AuthGuard adminOnly={true}>
@@ -193,7 +193,9 @@ export default function UserManagementPage() {
                 <Card>
                   <CardHeader>
                       <CardTitle>Existing Users</CardTitle>
-                      <CardDescription>View and search all users in the system. Found {filteredUsers.length} users.</CardDescription>
+                      <CardDescription>
+                        View and search all users in the system. Found {filteredUsers.length} users.
+                      </CardDescription>
                   </CardHeader>
                   <CardContent>
                       <div className="flex flex-col sm:flex-row gap-4 mb-4">
@@ -237,47 +239,47 @@ export default function UserManagementPage() {
                                   </TableHeader>
                                   <TableBody>
                                       {filteredUsers.map(user => (
-                                          <TableRow key={user.id}>
-                                              <TableCell>
-                                                  <div className="flex items-center gap-3">
-                                                      <Avatar>
-                                                          <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                                                      </Avatar>
-                                                      <div>
-                                                          <p className="font-medium">{user.name}</p>
-                                                          <p className="text-xs text-muted-foreground">{user.email}</p>
-                                                      </div>
-                                                  </div>
-                                              </TableCell>
-                                              <TableCell className="text-muted-foreground">{user.phone}</TableCell>
-                                              <TableCell>
-                                                  <div className="flex flex-wrap gap-1">
-                                                      {user.role?.map(r => <Badge key={r} variant="secondary">{r}</Badge>)}
-                                                  </div>
-                                              </TableCell>
-                                              <TableCell className="text-muted-foreground text-sm">
-                                                  {safeDate(user.createdAt) ? format(safeDate(user.createdAt)!, 'PP') : 'N/A'}
-                                              </TableCell>
-                                              <TableCell className="text-right">
-                                                <DropdownMenu>
-                                                  <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                      <MoreHorizontal className="h-4 w-4" />
-                                                    </Button>
-                                                  </DropdownMenuTrigger>
-                                                  <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onSelect={() => handleEditUser(user)}>
-                                                      <Edit className="mr-2 h-4 w-4" />
-                                                      Edit
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onSelect={() => setUserToDelete(user)} className="text-destructive focus:text-destructive">
-                                                      <Trash2 className="mr-2 h-4 w-4" />
-                                                      Delete
-                                                    </DropdownMenuItem>
-                                                  </DropdownMenuContent>
-                                                </DropdownMenu>
-                                              </TableCell>
-                                          </TableRow>
+                                        <TableRow key={user.id}>
+                                          <TableCell>
+                                            <div className="flex items-center gap-3">
+                                              <Avatar>
+                                                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                                              </Avatar>
+                                              <div>
+                                                <p className="font-medium">{user.name}</p>
+                                                <p className="text-xs text-muted-foreground">{user.email}</p>
+                                              </div>
+                                            </div>
+                                          </TableCell>
+                                          <TableCell className="text-muted-foreground">{user.phone}</TableCell>
+                                          <TableCell>
+                                            <div className="flex flex-wrap gap-1">
+                                              {user.role?.map(r => <Badge key={r} variant="secondary">{r}</Badge>)}
+                                            </div>
+                                          </TableCell>
+                                          <TableCell className="text-muted-foreground text-sm">
+                                            {safeDate(user.createdAt) ? format(safeDate(user.createdAt)!, 'PP') : 'N/A'}
+                                          </TableCell>
+                                          <TableCell className="text-right">
+                                            <DropdownMenu>
+                                              <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                  <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                              </DropdownMenuTrigger>
+                                              <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onSelect={() => handleEditUser(user)}>
+                                                  <Edit className="mr-2 h-4 w-4" />
+                                                  Edit
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onSelect={() => setUserToDelete(user)} className="text-destructive focus:text-destructive">
+                                                  <Trash2 className="mr-2 h-4 w-4" />
+                                                  Delete
+                                                </DropdownMenuItem>
+                                              </DropdownMenuContent>
+                                            </DropdownMenu>
+                                          </TableCell>
+                                        </TableRow>
                                       ))}
                                   </TableBody>
                               </Table>
