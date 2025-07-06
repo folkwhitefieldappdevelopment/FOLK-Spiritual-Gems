@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -42,13 +41,13 @@ export function UserNav() {
         <DropdownMenuContent className="w-64" align="end" forceMount>
           <DropdownMenuLabel className="font-normal">
              <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 items-center">
-                <p className="text-xs text-muted-foreground">Name:</p>
+                <p className="text-base text-muted-foreground">Name:</p>
                 <p className="text-sm font-medium leading-none truncate">{appUser.name}</p>
 
-                <p className="text-xs text-muted-foreground">Role:</p>
+                <p className="text-base text-muted-foreground">Role:</p>
                 <p className="text-xs leading-none font-semibold truncate">{appUser.role?.join(', ')}</p>
 
-                <p className="text-xs text-muted-foreground">Email:</p>
+                <p className="text-base text-muted-foreground">Email:</p>
                 <p className="text-xs leading-none text-muted-foreground truncate">{appUser.email}</p>
              </div>
           </DropdownMenuLabel>
