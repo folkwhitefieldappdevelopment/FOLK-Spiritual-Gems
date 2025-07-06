@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -46,14 +45,14 @@ export default function LoginPage() {
   
   if (loading) {
     return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-gray-900">
-        <Loader2 className="h-8 w-8 animate-spin text-white" />
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-gray-900 p-4">
+    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4">
        <div className="mb-8">
         <Image
           src="https://i.ibb.co/r2yv1gN/image.png"
