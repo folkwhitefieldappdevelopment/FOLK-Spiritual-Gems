@@ -46,3 +46,21 @@ export const getUsers = async (): Promise<AppUser[]> => {
     const snapshot = await getDocs(usersCollection);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppUser));
 }
+
+/**
+ * Retrieves a user record from the 'users' collection by email.
+ * @param email The user's email address.
+ * @returns A promise that resolves to the AppUser object or null if not found.
+ */
+export const getUserByEmail = async (email: string): Promise<AppUser | null> => {
+    const usersCollection = collection(db, 'users');
+    const q = query(usersCollection, where("email", "==", email));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+        return null;
+    }
+
+    const userDoc = querySnapshot.docs[0];
+    return { id: userDoc.id, ...userDoc.data() } as AppUser;
+};
