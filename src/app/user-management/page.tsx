@@ -43,7 +43,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-export default function UserManagementPage() {
+const UserManagementPage: React.FC = () => {
   const { toast } = useToast();
   const [users, setUsers] = React.useState<AppUser[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = React.useState(true);
@@ -331,4 +331,6 @@ export default function UserManagementPage() {
       </div>
     </AuthGuard>
   );
-}
+};
+
+export default UserManagementPage;

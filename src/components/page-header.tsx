@@ -25,7 +25,6 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
     const [isMobileSheetOpen, setIsMobileSheetOpen] = React.useState(false);
 
     const navItems = [
-      { href: "/dashboard", label: "Dashboard", icon: Gem },
       { href: "/", label: "Contacts", icon: Users },
       { href: "/groups", label: "Groups", icon: UserSquare },
       { href: "/calling-assistant", label: "Calling Assistant", icon: Headset },
