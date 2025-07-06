@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -98,12 +99,12 @@ export default function LoginPage() {
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4">
        <div className="mb-8">
         <Image
-          src="https://i.ibb.co/r2yv1gN/image.png"
-          alt="A collage of Srila Prabhupada"
+          src="https://placehold.co/200x200.png"
+          alt="FOLK Spiritual Gem Logo"
           width={200}
           height={200}
           className="rounded-full object-cover shadow-2xl"
-          data-ai-hint="Srila Prabhupada"
+          data-ai-hint="gem"
         />
       </div>
       <Card className="w-full max-w-sm">
