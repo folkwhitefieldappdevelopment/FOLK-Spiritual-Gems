@@ -49,7 +49,6 @@ import {
 } from "@/services/people-service";
 import { getEnablers, getContactSources } from "@/services/settings-service";
 import { AuthGuard } from "@/components/auth-guard";
-import { SidebarProvider } from "@/components/ui/sidebar";
 
 export default function ContactsPage() {
   const { toast } = useToast();
@@ -598,10 +597,9 @@ export default function ContactsPage() {
 
   return (
     <AuthGuard>
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full">
-          <AppSidebar />
-          <div className="flex flex-1 flex-col bg-background">
+      <div className="flex min-h-screen w-full flex-col bg-background">
+        <AppSidebar />
+        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
             <PageHeader
               title="Contacts"
               description={`Manage data for ${filteredPeople.length} people.`}
@@ -638,10 +636,9 @@ export default function ContactsPage() {
                   </Button>
               </div>
             </PageHeader>
-            <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+            <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
               {renderContent()}
             </main>
-          </div>
         </div>
         <CreateUpdatePersonDialog
           isOpen={isDialogOpen}
@@ -657,7 +654,7 @@ export default function ContactsPage() {
           className="hidden"
           accept=".xlsx, .xls, .csv"
         />
-      </SidebarProvider>
+      </div>
     </AuthGuard>
   );
 }

@@ -41,7 +41,6 @@ import { CreateUpdatePersonDialog } from '@/components/create-update-person-dial
 import { ProgressTracker } from '@/components/progress-tracker';
 import { Separator } from '@/components/ui/separator';
 import { CallHistory } from '@/components/call-history';
-import { SidebarProvider } from '@/components/ui/sidebar';
 
 export default function PersonDetailPage() {
   const router = useRouter();
@@ -205,7 +204,7 @@ export default function PersonDetailPage() {
     const hasCustomData = customFields.some(field => person.customData && person.customData[field.id]);
 
     return (
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
             <div className="mx-auto max-w-4xl">
               <div className={cn("grid grid-cols-1 gap-6", isAdmin && "lg:grid-cols-3")}>
                 <div className={cn(isAdmin ? "lg:col-span-1" : "lg:col-span-3", "space-y-6")}>
@@ -330,59 +329,57 @@ export default function PersonDetailPage() {
 
   return (
     <AuthGuard>
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full">
-            <AppSidebar />
-            <div className="flex flex-1 flex-col bg-background">
-                {person && !fetchError && (
-                    <PageHeader
-                        title="Contact Details"
-                        description={`Viewing profile for ${person.firstName} ${person.lastName}`}
+      <div className="flex min-h-screen w-full flex-col bg-background">
+        <AppSidebar />
+        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+            {person && !fetchError && (
+                <PageHeader
+                    title="Contact Details"
+                    description={`Viewing profile for ${person.firstName} ${person.lastName}`}
+                >
+                    <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push('/')}
                     >
-                        <div className="flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => router.push('/')}
-                        >
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back
+                    </Button>
+                    <Button size="sm" onClick={() => setIsEditDialogOpen(true)}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        Edit
+                    </Button>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm">
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
                         </Button>
-                        <Button size="sm" onClick={() => setIsEditDialogOpen(true)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                        </Button>
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="sm">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                            </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete{' '}
-                                {person.firstName} {person.lastName}.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                onClick={handleDeletePerson}
-                                className="bg-destructive hover:bg-destructive/90"
-                                >
-                                Delete
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                        </div>
-                    </PageHeader>
-                )}
-                {renderContent()}
-            </div>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete{' '}
+                            {person.firstName} {person.lastName}.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                            onClick={handleDeletePerson}
+                            className="bg-destructive hover:bg-destructive/90"
+                            >
+                            Delete
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                    </div>
+                </PageHeader>
+            )}
+            {renderContent()}
         </div>
         <CreateUpdatePersonDialog
           isOpen={isEditDialogOpen}
@@ -391,7 +388,7 @@ export default function PersonDetailPage() {
           person={person}
           allPeople={allPeople}
         />
-      </SidebarProvider>
+      </div>
     </AuthGuard>
   );
 }

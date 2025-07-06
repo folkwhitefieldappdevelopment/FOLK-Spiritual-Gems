@@ -49,7 +49,6 @@ import type { CustomField, CustomFieldType } from '@/lib/types';
 import { customFieldTypes } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AdminModeToggle } from '@/components/admin-mode-toggle';
-import { SidebarProvider } from '@/components/ui/sidebar';
 
 type DialogMode = 'add' | 'edit';
 type ItemType = 'enabler' | 'source' | 'customField';
@@ -383,15 +382,14 @@ export default function SettingsPage() {
 
   return (
     <AuthGuard>
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full">
-          <AppSidebar />
-          <div className="flex flex-1 flex-col bg-background">
+      <div className="flex min-h-screen w-full flex-col bg-background">
+        <AppSidebar />
+        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
             <PageHeader
               title="Settings"
               description="Manage options for dropdown menus and custom fields across the application."
             />
-            <main className="flex-1 p-4 sm:p-6">
+            <main className="flex-1 p-4 sm:p-6 sm:pt-0">
               {isLoading ? (
                 <div className="flex min-h-[50vh] w-full items-center justify-center bg-background">
                   <Loader2 className="h-8 w-8 animate-spin" />
@@ -459,7 +457,7 @@ export default function SettingsPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </SidebarProvider>
+      </div>
     </AuthGuard>
   );
 }

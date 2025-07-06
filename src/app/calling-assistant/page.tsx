@@ -28,7 +28,6 @@ import {
 } from "@/services/people-service";
 import { getEnablers, getContactSources } from "@/services/settings-service";
 import { serverTimestamp, arrayUnion } from "firebase/firestore";
-import { SidebarProvider } from "@/components/ui/sidebar";
 
 export default function CallingAssistantPage() {
   const { toast } = useToast();
@@ -259,18 +258,16 @@ export default function CallingAssistantPage() {
 
   return (
     <AuthGuard>
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full">
-          <AppSidebar />
-          <div className="flex flex-1 flex-col bg-background">
+      <div className="flex min-h-screen w-full flex-col bg-background">
+        <AppSidebar />
+        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
             <PageHeader
               title="Calling Assistant"
               description="A focused view to call contacts and log remarks."
             />
-            <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+            <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
               {renderContent()}
             </main>
-          </div>
         </div>
         
         <CallingSessionDialog
@@ -289,7 +286,7 @@ export default function CallingAssistantPage() {
               allPeople={people}
           />
         )}
-      </SidebarProvider>
+      </div>
     </AuthGuard>
   );
 }

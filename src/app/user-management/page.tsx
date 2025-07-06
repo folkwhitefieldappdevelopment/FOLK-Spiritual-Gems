@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -43,7 +44,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { SidebarProvider } from '@/components/ui/sidebar';
 
 export default function UserManagementPage() {
   const { toast } = useToast();
@@ -174,10 +174,9 @@ export default function UserManagementPage() {
 
   return (
     <AuthGuard adminOnly={true}>
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full">
-          <AppSidebar />
-          <div className="flex flex-1 flex-col bg-background">
+      <div className="flex min-h-screen w-full flex-col bg-background">
+        <AppSidebar />
+        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
             <PageHeader
               title="User Management"
               description="Create and manage application users."
@@ -187,7 +186,7 @@ export default function UserManagementPage() {
                 Create User
               </Button>
             </PageHeader>
-            <main className="flex-1 p-4 sm:p-6">
+            <main className="flex-1 p-4 sm:p-6 sm:pt-0">
               <div className="mx-auto max-w-4xl space-y-6">
                 <Card>
                   <CardHeader>
@@ -258,6 +257,7 @@ export default function UserManagementPage() {
                                                   {safeDate(user.createdAt) ? format(safeDate(user.createdAt)!, 'PP') : 'N/A'}
                                               </TableCell>
                                               <TableCell className="text-right">
+                                                <AlertDialog>
                                                   <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
                                                       <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -269,36 +269,35 @@ export default function UserManagementPage() {
                                                         <Edit className="mr-2 h-4 w-4" />
                                                         Edit
                                                       </DropdownMenuItem>
-                                                      <AlertDialog>
-                                                        <AlertDialogTrigger asChild>
-                                                          <Button
-                                                            variant="ghost"
-                                                            className="w-full justify-start px-2 py-1.5 text-sm font-normal text-destructive hover:bg-destructive/10 hover:text-destructive relative"
-                                                          >
-                                                            <Trash2 className="mr-2 h-4 w-4" />
-                                                            Delete
-                                                          </Button>
-                                                        </AlertDialogTrigger>
-                                                        <AlertDialogContent>
-                                                          <AlertDialogHeader>
-                                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                            <AlertDialogDescription>
-                                                              This will permanently delete the user {user.name} from both the application database and the authentication system. This action cannot be undone.
-                                                            </AlertDialogDescription>
-                                                          </AlertDialogHeader>
-                                                          <AlertDialogFooter>
-                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                            <AlertDialogAction
-                                                              onClick={() => handleDeleteUser(user)}
-                                                              className="bg-destructive hover:bg-destructive/90"
-                                                            >
-                                                              Delete User
-                                                            </AlertDialogAction>
-                                                          </AlertDialogFooter>
-                                                        </AlertDialogContent>
-                                                      </AlertDialog>
+                                                      <AlertDialogTrigger asChild>
+                                                        <DropdownMenuItem
+                                                          onSelect={(e) => e.preventDefault()}
+                                                          className="text-destructive hover:!bg-destructive/10 focus:!text-destructive focus:!bg-destructive/10"
+                                                        >
+                                                          <Trash2 className="mr-2 h-4 w-4" />
+                                                          Delete
+                                                        </DropdownMenuItem>
+                                                      </AlertDialogTrigger>
                                                     </DropdownMenuContent>
                                                   </DropdownMenu>
+                                                  <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                      <AlertDialogDescription>
+                                                        This will permanently delete the user {user.name} from both the application database and the authentication system. This action cannot be undone.
+                                                      </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                      <AlertDialogAction
+                                                        onClick={() => handleDeleteUser(user)}
+                                                        className="bg-destructive hover:bg-destructive/90"
+                                                      >
+                                                        Delete User
+                                                      </AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                  </AlertDialogContent>
+                                                </AlertDialog>
                                               </TableCell>
                                           </TableRow>
                                       ))}
@@ -328,7 +327,7 @@ export default function UserManagementPage() {
           onSave={handleSaveUser}
           user={editingUser}
         />
-      </SidebarProvider>
+      </div>
     </AuthGuard>
   );
 }

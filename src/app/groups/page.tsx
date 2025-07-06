@@ -13,7 +13,6 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { GroupCard } from "@/components/group-card";
 import { CreateUpdateGroupDialog } from "@/components/create-update-group-dialog";
-import { SidebarProvider } from "@/components/ui/sidebar";
 
 export default function GroupsPage() {
   const { toast } = useToast();
@@ -139,23 +138,21 @@ export default function GroupsPage() {
 
   return (
     <AuthGuard>
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full">
-          <AppSidebar />
-          <div className="flex flex-1 flex-col bg-background">
-            <PageHeader
-              title="Groups"
-              description={`Manage your created groups. You have ${groups.length} groups.`}
-            >
-              <Button size="sm" onClick={handleCreateGroup}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Create Group
-              </Button>
-            </PageHeader>
-            <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-              {renderContent()}
-            </main>
-          </div>
+      <div className="flex min-h-screen w-full flex-col bg-background">
+        <AppSidebar />
+        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+          <PageHeader
+            title="Groups"
+            description={`Manage your created groups. You have ${groups.length} groups.`}
+          >
+            <Button size="sm" onClick={handleCreateGroup}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Create Group
+            </Button>
+          </PageHeader>
+          <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
+            {renderContent()}
+          </main>
         </div>
         <CreateUpdateGroupDialog
           isOpen={isDialogOpen}
@@ -163,7 +160,7 @@ export default function GroupsPage() {
           onSave={handleSaveGroup}
           group={editingGroup}
         />
-      </SidebarProvider>
+      </div>
     </AuthGuard>
   );
 }
