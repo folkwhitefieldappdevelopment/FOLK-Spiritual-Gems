@@ -39,13 +39,18 @@ export function UserNav() {
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56" align="end" forceMount>
+        <DropdownMenuContent className="w-64" align="end" forceMount>
           <DropdownMenuLabel className="font-normal">
-            <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">{appUser.name}</p>
-              <p className="text-xs leading-none text-muted-foreground">{appUser.email}</p>
-              <p className="text-xs leading-none text-muted-foreground pt-1 font-semibold">{appUser.role}</p>
-            </div>
+             <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 items-center">
+                <p className="text-xs text-muted-foreground justify-self-end">Name:</p>
+                <p className="text-sm font-medium leading-none truncate">{appUser.name}</p>
+
+                <p className="text-xs text-muted-foreground justify-self-end">Email:</p>
+                <p className="text-xs leading-none text-muted-foreground truncate">{appUser.email}</p>
+
+                <p className="text-xs text-muted-foreground justify-self-end">Role:</p>
+                <p className="text-xs leading-none font-semibold">{appUser.role}</p>
+             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setIsChangePasswordOpen(true)}>
