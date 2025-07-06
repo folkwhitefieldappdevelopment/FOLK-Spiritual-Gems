@@ -142,7 +142,7 @@ export default function SettingsPage() {
     let updatedFields: CustomField[];
     if (editingField) { // Edit mode
         updatedFields = customFields.map(f => 
-            f.id === editingField.id ? { ...f, label: fieldName.trim() } : f
+            f.id === editingField.id ? { ...f, label: fieldName.trim(), type: fieldType } : f
         );
     } else { // Add mode
         const newField: CustomField = {
@@ -373,7 +373,7 @@ export default function SettingsPage() {
                   <Loader2 className="h-8 w-8 animate-spin" />
                 </div>
               ) : fetchError ? (
-                 <FirebaseConfigError error={fetchError} />
+                  <FirebaseConfigError error={fetchError} />
               ) : (
                 <div className="mx-auto max-w-4xl space-y-8">
                   <Card>
@@ -389,7 +389,7 @@ export default function SettingsPage() {
                   </Card>
                   
                   <div>
-                       <div className="flex justify-end mb-4">
+                        <div className="flex justify-end mb-4">
                           <Button onClick={() => openDialog('add', 'source')}>
                           <PlusCircle className="mr-2 h-4 w-4" /> Add Contact Source
                           </Button>
@@ -409,26 +409,24 @@ export default function SettingsPage() {
             </main>
           </div>
         </div>
-
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{getDialogTitle()}</DialogTitle>
-               <DialogDescription>
-                {itemType === 'customField' 
-                  ? 'Define a new custom field for your contacts.'
-                  : 'Enter the name for the item below.'
-                }
-              </DialogDescription>
-            </DialogHeader>
-            {renderDialogContent()}
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleSave}>Save</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{getDialogTitle()}</DialogTitle>
+            <DialogDescription>
+            {itemType === 'customField' 
+              ? 'Define a new custom field for your contacts.'
+              : 'Enter the name for the item below.'
+            }
+          </DialogDescription>
+        </DialogHeader>
+        {renderDialogContent()}
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleSave}>Save</Button>
+        </DialogFooter>
+      </DialogContent>
+      </Dialog>
     </AuthGuard>
   );
 }
