@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Gem, Loader2 } from 'lucide-react';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
+import { useToast } from '@/hooks/use-toast';
 
 function GoogleIcon() {
   return (
@@ -33,9 +34,7 @@ export default function LoginPage() {
   if (error) {
     return <FirebaseConfigError error={error} />;
   }
-
-  // Always show a loader while the auth state is being determined.
-  // The refactored AuthProvider ensures `loading` remains true until the redirect is fully processed.
+  
   if (loading) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
