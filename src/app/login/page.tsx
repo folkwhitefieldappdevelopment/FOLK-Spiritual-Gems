@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -10,15 +11,55 @@ import { Loader2 } from 'lucide-react';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { auth } from '@/lib/firebase';
+import { isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';
+import { useToast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
   const { user, signIn, loading, error } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
+  // This effect handles the magic link sign-in
   React.useEffect(() => {
+    // Check if the current URL is a sign-in link
+    if (isSignInWithEmailLink(auth, window.location.href)) {
+      // Get the email from localStorage
+      let emailFromStorage = window.localStorage.getItem('emailForSignIn');
+      if (!emailFromStorage) {
+        // If the email is not in storage, prompt the user for it
+        emailFromStorage = window.prompt('Please provide your email for confirmation');
+      }
+      
+      if (emailFromStorage) {
+        setIsSubmitting(true);
+        // Sign in the user with the email and the link
+        signInWithEmailLink(auth, emailFromStorage, window.location.href)
+          .then(() => {
+            // On success, onAuthStateChanged will handle the redirect.
+            // Clean up the stored email
+            window.localStorage.removeItem('emailForSignIn');
+            // The loading state will be handled by the AuthContext now
+          })
+          .catch((err) => {
+            console.error("Sign in with email link error:", err);
+            toast({
+              variant: 'destructive',
+              title: 'Sign-in Failed',
+              description: 'The sign-in link is invalid or has expired. Please create a new user.',
+            });
+            router.replace('/login'); // Go back to login on failure
+            setIsSubmitting(false);
+          });
+      }
+    }
+  }, [router, toast]);
+
+  React.useEffect(() => {
+    // Redirect if user is logged in and auth is not loading
     if (!loading && user) {
       router.replace('/dashboard');
     }
@@ -43,7 +84,8 @@ export default function LoginPage() {
     return <FirebaseConfigError error={error} />;
   }
   
-  if (loading) {
+  // Show a generic loading spinner if we are processing the link OR if the auth context is loading
+  if (loading || isSubmitting) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -98,7 +140,7 @@ export default function LoginPage() {
             </div>
             <Button type="submit" className="w-full" disabled={isSubmitting || !email || !password}>
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {isSubmitting ? 'Submitting...' : 'Sign In'}
+              {isSubmitting ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
         </CardContent>

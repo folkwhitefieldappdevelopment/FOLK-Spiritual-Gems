@@ -1,4 +1,4 @@
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import {
   collection,
   addDoc,
@@ -7,6 +7,7 @@ import {
   where,
   getDocs,
 } from 'firebase/firestore';
+import { sendSignInLinkToEmail } from 'firebase/auth';
 import type { AppUser } from '@/lib/types';
 
 type UserData = Omit<AppUser, 'id' | 'createdAt'>;
@@ -15,7 +16,7 @@ type UserData = Omit<AppUser, 'id' | 'createdAt'>;
 // Creating auth users requires the Admin SDK, which cannot be run from the client.
 
 /**
- * Creates a user record in the 'users' Firestore collection.
+ * Creates a user record in the 'users' Firestore collection and sends a sign-in link.
  * @param userData - The user data to save.
  * @throws Will throw an error if a user with the same email already exists.
  */
@@ -35,6 +36,19 @@ export const createUser = async (userData: UserData): Promise<void> => {
   };
 
   await addDoc(usersCollection, dataToSave);
+  
+  // Now, send the sign-in link.
+  const actionCodeSettings = {
+    // The URL to redirect to after sign-in.
+    // The user will be redirected to the login page to complete the sign-in.
+    url: window.location.origin + '/login', 
+    handleCodeInApp: true,
+  };
+
+  await sendSignInLinkToEmail(auth, userData.email, actionCodeSettings);
+
+  // Store the email locally so the login page can retrieve it to complete sign-in.
+  window.localStorage.setItem('emailForSignIn', userData.email);
 };
 
 /**

@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -65,8 +66,8 @@ export default function CreateUserPage() {
     try {
       await createUser(data);
       toast({
-        title: 'User Created Successfully',
-        description: `${data.name} has been added to the user list.`,
+        title: 'User Created & Invite Sent',
+        description: `${data.name} has been added and a sign-up link has been sent to their email.`,
       });
       form.reset();
     } catch (error) {
@@ -174,7 +175,7 @@ export default function CreateUserPage() {
                 <ShieldAlert className="h-4 w-4" />
                 <AlertTitle>Important Note on User Authentication</AlertTitle>
                 <AlertDescription>
-                  This form adds a user record to the application's database but **does not** create a login for them in Firebase Authentication. To allow this user to log in, you must manually add them in the{' '}
+                  This form adds a user record and sends a sign-up link. The link allows them to sign in once. For subsequent logins, they will need to use the same email and a password. If they haven't set a password, they may need to use a 'Forgot Password' flow if one is implemented. To create a user with a password directly, you must manually add them in the{' '}
                   <a
                     href="https://console.firebase.google.com/"
                     target="_blank"
@@ -182,7 +183,7 @@ export default function CreateUserPage() {
                     className="font-semibold underline"
                   >
                     Firebase Console
-                  </a> under the 'Authentication' section, ensuring the email matches.
+                  </a> under the 'Authentication' section.
                 </AlertDescription>
               </Alert>
             </div>
