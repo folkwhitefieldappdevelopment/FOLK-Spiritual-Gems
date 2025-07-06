@@ -8,6 +8,7 @@ import {
   getDocs,
   doc,
   updateDoc,
+  deleteField,
 } from 'firebase/firestore';
 import { sendSignInLinkToEmail, type AuthError } from 'firebase/auth';
 import type { AppUser } from '@/lib/types';
@@ -71,7 +72,7 @@ export const createUser = async (userData: UserData): Promise<void> => {
  * @param id The ID of the user to update.
  * @param userData The data to update.
  */
-export const updateUser = async (id: string, userData: Partial<UserData>): Promise<void> => {
+export const updateUser = async (id: string, userData: { [key: string]: any }): Promise<void> => {
   const userDocRef = doc(db, 'users', id);
   if (userData.email) {
     const q = query(collection(db, 'users'), where("email", "==", userData.email));
@@ -82,7 +83,7 @@ export const updateUser = async (id: string, userData: Partial<UserData>): Promi
     }
   }
 
-  if (userData.fgCode) {
+  if (userData.fgCode && typeof userData.fgCode === 'string') {
     const fgCodeQuery = query(collection(db, 'users'), where("fgCode", "==", userData.fgCode));
     const fgCodeSnapshot = await getDocs(fgCodeQuery);
     const conflictingUser = fgCodeSnapshot.docs.find(d => d.id !== id);

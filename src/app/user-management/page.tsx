@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { Loader2, ShieldAlert, Search, PlusCircle, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { deleteField } from 'firebase/firestore';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -131,19 +132,17 @@ export default function UserManagementPage() {
 
   const handleSaveUser = async (data: UserFormValues, userId?: string) => {
     try {
-      let userData: Partial<AppUser> = {
+      const userData: { [key: string]: any } = {
         name: data.name,
         email: data.email,
         phone: data.phone,
         role: data.role as UserRole[],
       };
 
-      // Clear fields that may not apply to the new role set
-      userData.fgCode = undefined;
-      userData.reportsTo = undefined;
-
       if (data.role.includes('Folk Guide')) {
         userData.fgCode = data.fgCode;
+      } else if (userId) {
+        userData.fgCode = deleteField();
       }
 
       if (data.role.includes('Folk Enabler') && data.guideId) {
@@ -155,6 +154,8 @@ export default function UserManagementPage() {
             guideFgCode: guide.fgCode || '',
           };
         }
+      } else if (userId) {
+        userData.reportsTo = deleteField();
       }
       
       if (userId) {
