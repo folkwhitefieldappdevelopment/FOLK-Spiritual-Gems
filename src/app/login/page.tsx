@@ -2,11 +2,12 @@
 'use client';
 
 import * as React from 'react';
+import Image from 'next/image';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Gem, Loader2 } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2 } from 'lucide-react';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,19 +46,26 @@ export default function LoginPage() {
   
   if (loading) {
     return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="flex min-h-screen w-full items-center justify-center bg-gray-900">
+        <Loader2 className="h-8 w-8 animate-spin text-white" />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4">
+    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-gray-900 p-4">
+       <div className="mb-8">
+        <Image
+          src="https://placehold.co/150x150.png"
+          alt="Srila Prabhupada"
+          width={150}
+          height={150}
+          className="rounded-full object-cover shadow-2xl"
+          data-ai-hint="Srila Prabhupada"
+        />
+      </div>
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary">
-            <Gem className="h-6 w-6 text-primary-foreground" />
-          </div>
           <CardTitle>Folk Contact Center</CardTitle>
           <CardDescription>
             Sign in to your account
