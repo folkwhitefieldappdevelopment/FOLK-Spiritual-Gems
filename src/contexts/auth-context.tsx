@@ -2,14 +2,20 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { onAuthStateChanged, GoogleAuthProvider, signInWithRedirect, signOut as firebaseSignOut, type User } from 'firebase/auth';
-import { auth, configError } from '@/lib/firebase';
-import { FirebaseConfigError } from '@/components/firebase-config-error';
+import { 
+    onAuthStateChanged, 
+    GoogleAuthProvider, 
+    signInWithRedirect, 
+    signOut as firebaseSignOut, 
+    getRedirectResult,
+    type User 
+} from 'firebase/auth';
+import { auth, configError as initialConfigError } from '@/lib/firebase';
 
 type AuthContextType = {
   user: User | null;
   loading: boolean;
-  error: Error | null; // Keep error for config issues
+  error: Error | null;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -19,12 +25,10 @@ const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
   const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<Error | null>(configError); // Initialize with configError
-  const router = useRouter();
+  const [error, setError] = React.useState<Error | null>(initialConfigError);
 
   React.useEffect(() => {
-    // If there was a config error on initialization, don't proceed.
-    if (configError) {
+    if (initialConfigError) {
       setLoading(false);
       return;
     }
@@ -34,35 +38,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(user);
         setLoading(false);
       },
-      (error) => {
-        // This is where auth errors will be caught
-        console.error("Firebase Auth State Error:", error);
-        setError(error);
+      (err) => {
+        console.error("Firebase Auth State Error:", err);
+        setError(err);
         setLoading(false);
       }
     );
+    
+    getRedirectResult(auth)
+      .catch((err) => {
+        console.error("Firebase Redirect Result Error:", err);
+        setError(err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
 
     return () => unsubscribe();
   }, []);
 
   const signInWithGoogle = async () => {
+    setLoading(true);
     const provider = new GoogleAuthProvider();
     try {
       await signInWithRedirect(auth, provider);
-    } catch (error) {
-      console.error("Error initiating sign in with redirect", error);
-      if (error instanceof Error) {
-        setError(error);
+    } catch (err) {
+      console.error("Error initiating sign in with redirect", err);
+      if (err instanceof Error) {
+        setError(err);
       }
+      setLoading(false);
     }
   };
 
   const signOut = async () => {
     try {
       await firebaseSignOut(auth);
-      router.push('/login');
-    } catch (error) {
-      console.error("Error signing out", error);
+    } catch (err) {
+      console.error("Error signing out", err);
+      if (err instanceof Error) {
+        setError(err);
+      }
     }
   };
 

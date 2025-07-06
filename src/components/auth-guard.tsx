@@ -4,9 +4,10 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { Loader2 } from 'lucide-react';
+import { FirebaseConfigError } from './firebase-config-error';
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, error } = useAuth();
   const router = useRouter();
 
   React.useEffect(() => {
@@ -14,6 +15,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       router.replace('/login');
     }
   }, [user, loading, router]);
+
+  if (error) {
+    return <FirebaseConfigError error={error} />;
+  }
 
   if (loading || !user) {
     return (

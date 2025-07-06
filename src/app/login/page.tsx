@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Gem, Loader2 } from 'lucide-react';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
-import { useToast } from '@/hooks/use-toast';
 
 function GoogleIcon() {
   return (
@@ -21,22 +20,19 @@ function GoogleIcon() {
 }
 
 export default function LoginPage() {
-  const { user, signInWithGoogle, loading, error: authError } = useAuth();
+  const { user, signInWithGoogle, loading, error } = useAuth();
   const router = useRouter();
-  const { toast } = useToast();
-  const [isSigningIn, setIsSigningIn] = React.useState(false);
-
+  
   React.useEffect(() => {
     if (!loading && user) {
       router.replace('/');
     }
   }, [user, loading, router]);
   
-  if (authError) {
-    return <FirebaseConfigError error={authError} />;
+  if (error) {
+    return <FirebaseConfigError error={error} />;
   }
 
-  // This covers the initial page load and the period after redirecting back from Google.
   if (loading) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
@@ -46,8 +42,6 @@ export default function LoginPage() {
     );
   }
   
-  // If the user object is available, we are just waiting for the redirect.
-  // This prevents the login page from flashing briefly before redirecting.
   if (user) {
      return (
        <div className="flex min-h-screen w-full items-center justify-center bg-background">
@@ -56,12 +50,6 @@ export default function LoginPage() {
       </div>
     );
   }
-
-  const handleSignIn = async () => {
-    setIsSigningIn(true);
-    await signInWithGoogle();
-    // No need to set isSigningIn back to false, page will redirect.
-  };
 
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4">
@@ -74,13 +62,9 @@ export default function LoginPage() {
           <CardDescription>Sign in to continue to your dashboard.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button onClick={handleSignIn} className="w-full" disabled={isSigningIn}>
-            {isSigningIn ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <GoogleIcon />
-            )}
-            {isSigningIn ? 'Redirecting to Google...' : 'Sign In with Google'}
+          <Button onClick={signInWithGoogle} className="w-full">
+            <GoogleIcon />
+            Sign In with Google
           </Button>
         </CardContent>
       </Card>
