@@ -134,7 +134,7 @@ function ApiError({ projectId }: { projectId?: string }) {
         <AlertCircle className="h-4 w-4" />
         <AlertTitle>Action Required: Enable Google Cloud APIs</AlertTitle>
         <AlertDescription>
-          A silent authentication failure often means that critical APIs are disabled in your Google Cloud project.
+          A silent authentication failure, where you are stuck on the login page, often means that critical APIs are disabled in your Google Cloud project. The most common cause is a disabled <strong>Identity Toolkit API</strong>.
         </AlertDescription>
       </Alert>
 
@@ -143,20 +143,26 @@ function ApiError({ projectId }: { projectId?: string }) {
           <div className="flex-shrink-0 bg-primary/10 text-primary rounded-full h-8 w-8 flex items-center justify-center">
             <KeyRound className="h-5 w-5" />
           </div>
-          <h3 className="font-semibold">Enable Required APIs</h3>
+          <h3 className="font-semibold">How to Enable the APIs</h3>
         </div>
-        <p className="text-sm text-muted-foreground">
-          Go to the <a href={GCloudApiLibraryUrl} target="_blank" rel="noopener noreferrer" className="underline text-primary">Google Cloud API Library</a> for your project and ensure that the following APIs are <strong className="text-foreground">enabled</strong>. The most common cause of this issue is a disabled <strong>Identity Toolkit API</strong>.
-        </p>
-        <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
-          <li>Identity Toolkit API <span className="text-destructive font-semibold">(Very Important)</span></li>
-          <li>Firebase Management API</li>
-          <li>Firebase Hosting API</li>
-          <li>Cloud Firestore API</li>
-        </ul>
-        <p className="text-xs text-muted-foreground">
-          After enabling the necessary APIs, it may take a minute or two for the changes to apply.
-        </p>
+        <ol className="list-decimal pl-5 space-y-2 text-sm text-muted-foreground">
+            <li>
+                Go to the <a href={GCloudApiLibraryUrl} target="_blank" rel="noopener noreferrer" className="underline text-primary">Google Cloud API Library</a> for your project.
+            </li>
+            <li>
+                Search for and enable each of the following APIs, one by one. The most critical one is <strong>Identity Toolkit API</strong>.
+                <ul className="list-disc pl-6 mt-2 space-y-1">
+                    <li>Identity Toolkit API <span className="text-destructive font-semibold">(Essential for login)</span></li>
+                    <li>Firebase Management API</li>
+                    <li>Firebase Hosting API</li>
+                    <li>Cloud Firestore API</li>
+                    <li>Cloud Datastore API</li>
+                </ul>
+            </li>
+            <li>
+                After enabling the necessary APIs, it may take a minute or two for the changes to apply. Then, refresh this page.
+            </li>
+        </ol>
       </div>
     </>
   )
