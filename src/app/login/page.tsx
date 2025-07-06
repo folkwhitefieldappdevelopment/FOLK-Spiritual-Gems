@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Gem, Loader2 } from 'lucide-react';
 import { configError } from '@/lib/firebase';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
+import { useToast } from '@/hooks/use-toast';
 
 function GoogleIcon() {
   return (
@@ -24,6 +25,7 @@ function GoogleIcon() {
 export default function LoginPage() {
   const { user, signInWithGoogle, loading } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
   const [isSigningIn, setIsSigningIn] = React.useState(false);
   const [signInError, setSignInError] = React.useState<Error | null>(null);
 
@@ -55,8 +57,14 @@ export default function LoginPage() {
     try {
       await signInWithGoogle();
       // On success, useEffect will redirect to '/'
-    } catch (error) {
-      if (error instanceof Error) {
+    } catch (error: any) {
+       if (error?.code === 'auth/popup-closed-by-user') {
+        toast({
+          title: 'Sign-In Cancelled',
+          description: 'The sign-in popup was closed. Please try again.',
+          variant: 'destructive'
+        });
+      } else if (error instanceof Error) {
         setSignInError(error);
       } else {
         setSignInError(new Error("An unknown error occurred during sign-in."));
