@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Gem, Loader2 } from 'lucide-react';
-import { configError } from '@/lib/firebase';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 import { useToast } from '@/hooks/use-toast';
 
@@ -23,31 +22,24 @@ function GoogleIcon() {
 }
 
 export default function LoginPage() {
-  const { user, signInWithGoogle, loading } = useAuth();
+  const { user, signInWithGoogle, loading, error: authError } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [isSigningIn, setIsSigningIn] = React.useState(false);
-  const [signInError, setSignInError] = React.useState<Error | null>(null);
 
   React.useEffect(() => {
-    // After a redirect, `loading` will be true. Once auth state is resolved,
-    // if there is a user, this effect will redirect to the homepage.
-    // We check !loading to ensure this only happens after auth state is confirmed.
     if (!loading && user) {
       router.replace('/');
     }
   }, [user, loading, router]);
   
-  if (configError) {
-    return <FirebaseConfigError error={configError} />;
-  }
-  
-  if (signInError) {
-    return <FirebaseConfigError error={signInError} />;
+  // The new AuthProvider catches redirect errors, so we can display them here.
+  if (authError) {
+    return <FirebaseConfigError error={authError} />;
   }
 
-  // Show a loading spinner while the auth state is being determined after a redirect.
-  if (loading) {
+  // Show a loading spinner while auth state is being determined after a redirect.
+  if (loading || isSigningIn) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -66,26 +58,10 @@ export default function LoginPage() {
 
   const handleSignIn = async () => {
     setIsSigningIn(true);
-    setSignInError(null);
-    try {
-      await signInWithGoogle();
-      // The page will redirect, so no further action is needed here.
-    } catch (error: any) {
-      if (error.code === 'auth/popup-closed-by-user') {
-        toast({
-          variant: 'destructive',
-          title: 'Sign-in cancelled',
-          description: 'The sign-in window was closed before completing.',
-        });
-      }
-      else if (error instanceof Error) {
-        setSignInError(error);
-      } else {
-        setSignInError(new Error("An unknown error occurred during sign-in."));
-      }
-      setIsSigningIn(false);
-    }
-  }
+    // The context now handles the redirect result and any errors.
+    await signInWithGoogle();
+    // The page will redirect, so no need to set isSigningIn back to false.
+  };
 
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4">

@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { onAuthStateChanged, GoogleAuthProvider, signInWithRedirect, signOut as firebaseSignOut, type User } from 'firebase/auth';
+import { onAuthStateChanged, GoogleAuthProvider, signInWithRedirect, signOut as firebaseSignOut, type User, getRedirectResult } from 'firebase/auth';
 import { auth, configError } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 type AuthContextType = {
   user: User | null;
   loading: boolean;
+  error: Error | null;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -21,14 +22,29 @@ const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<Error | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
   React.useEffect(() => {
     if (configError) {
       setLoading(false);
+      setError(configError);
       return;
     }
+
+    // Check for redirect result to catch any errors after returning from Google sign-in.
+    getRedirectResult(auth)
+      .then((result) => {
+        // If result is not null, onAuthStateChanged will handle the user state update.
+        // We don't need to do anything here with a successful result.
+      })
+      .catch((error) => {
+        // Handle Errors here. This is crucial for debugging.
+        console.error("Firebase redirect result error:", error);
+        setError(error);
+      });
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setLoading(false);
@@ -39,14 +55,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      // Using signInWithRedirect instead of signInWithPopup
       await signInWithRedirect(auth, provider);
-      // The user will be redirected to the Google sign-in page.
-      // After signing in, they will be redirected back here, and onAuthStateChanged will handle the result.
     } catch (error) {
       console.error("Error initiating sign in with redirect", error);
-      // Re-throw the error to be caught by the calling component (LoginPage)
-      throw error;
+      if (error instanceof Error) {
+        setError(error);
+      }
     }
   };
 
@@ -58,12 +72,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Error signing out", error);
     }
   };
-  
-  if (configError) {
-    return <FirebaseConfigError error={configError} />;
-  }
 
-  const value = { user, loading, signInWithGoogle, signOut };
+  const value = { user, loading, error, signInWithGoogle, signOut };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
