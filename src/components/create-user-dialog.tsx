@@ -21,6 +21,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import {
@@ -30,7 +31,7 @@ import {
   DropdownMenuCheckboxItem,
 } from '@/components/ui/dropdown-menu';
 import { Loader2 } from 'lucide-react';
-import { userRoles } from '@/lib/types';
+import { userRoles, type AppUser } from '@/lib/types';
 
 const userFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -44,10 +45,11 @@ export type UserFormValues = z.infer<typeof userFormSchema>;
 type CreateUserDialogProps = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  onSave: (data: UserFormValues) => Promise<void>;
+  onSave: (data: UserFormValues, userId?: string) => Promise<void>;
+  user?: AppUser;
 };
 
-export function CreateUserDialog({ isOpen, setIsOpen, onSave }: CreateUserDialogProps) {
+export function CreateUserDialog({ isOpen, setIsOpen, onSave, user }: CreateUserDialogProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   
   const form = useForm<UserFormValues>({
@@ -61,20 +63,33 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave }: CreateUserDialog
   });
 
   React.useEffect(() => {
-    if (!isOpen) {
-      form.reset();
+    if (isOpen) {
+      if (user) {
+        form.reset({
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+        });
+      } else {
+        form.reset({
+          name: '',
+          email: '',
+          phone: '',
+          role: [],
+        });
+      }
       setIsSubmitting(false);
     }
-  }, [isOpen, form]);
+  }, [isOpen, user, form]);
 
   async function onSubmit(data: UserFormValues) {
     setIsSubmitting(true);
     try {
-      await onSave(data);
+      await onSave(data, user?.id);
       setIsOpen(false);
     } catch (error) {
-      // Error is handled by the parent component's toast, so we don't need to do anything here.
-      // The dialog will remain open for the user to try again.
+      // Error is handled by the parent component's toast.
     } finally {
       setIsSubmitting(false);
     }
@@ -84,9 +99,9 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave }: CreateUserDialog
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create New User</DialogTitle>
+          <DialogTitle>{user ? 'Edit User' : 'Create New User'}</DialogTitle>
           <DialogDescription>
-            Fill out the form below to add a new user to the system.
+            {user ? "Update the user's details below." : 'Fill out the form below to add a new user to the system.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -111,8 +126,9 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave }: CreateUserDialog
                 <FormItem>
                   <FormLabel>Email Address</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="e.g., user@example.com" {...field} />
+                    <Input type="email" placeholder="e.g., user@example.com" {...field} disabled={!!user} />
                   </FormControl>
+                  {!!user && <FormDescription className="text-xs">Email cannot be changed after creation.</FormDescription>}
                   <FormMessage />
                 </FormItem>
               )}
@@ -174,7 +190,7 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave }: CreateUserDialog
               </Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save User
+                {user ? 'Save Changes' : 'Save User'}
               </Button>
             </DialogFooter>
           </form>

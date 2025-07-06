@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Loader2, ShieldAlert, Search, PlusCircle } from 'lucide-react';
+import { Loader2, ShieldAlert, Search, PlusCircle, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 import { AppSidebar } from '@/components/app-sidebar';
@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { createUser, getUsers } from '@/services/user-service';
+import { createUser, getUsers, updateUser, deleteUser } from '@/services/user-service';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { userRoles, type UserRole, type AppUser } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -25,13 +25,32 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { CreateUserDialog, type UserFormValues } from '@/components/create-user-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 export default function UserManagementPage() {
   const { toast } = useToast();
   const [users, setUsers] = React.useState<AppUser[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<string | null>(null);
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
+  
+  const [isFormDialogOpen, setIsFormDialogOpen] = React.useState(false);
+  const [editingUser, setEditingUser] = React.useState<AppUser | undefined>(undefined);
 
   const [searchTerm, setSearchTerm] = React.useState('');
   const [roleFilter, setRoleFilter] = React.useState('');
@@ -41,7 +60,6 @@ export default function UserManagementPage() {
     setFetchError(null);
     try {
       const usersData = await getUsers();
-      // Sanitize user data to ensure role is always an array for backward compatibility
       const sanitizedUsers = usersData.map(u => {
         const userWithArrayRole = { ...u };
         if (typeof userWithArrayRole.role === 'string') {
@@ -70,22 +88,58 @@ export default function UserManagementPage() {
     fetchUsers();
   }, [fetchUsers]);
 
-  async function handleCreateUser(data: UserFormValues) {
+  const handleOpenCreateDialog = () => {
+    setEditingUser(undefined);
+    setIsFormDialogOpen(true);
+  };
+
+  const handleEditUser = (user: AppUser) => {
+    setEditingUser(user);
+    setIsFormDialogOpen(true);
+  };
+  
+  const handleDeleteUser = async (userId: string) => {
     try {
-      await createUser(data as Omit<AppUser, 'id' | 'createdAt'>);
-      toast({
-        title: 'User Created & Invite Sent',
-        description: `${data.name} has been added and a sign-up link has been sent to their email.`,
-      });
+        await deleteUser(userId);
+        toast({
+            title: 'User Deleted',
+            description: 'The user record has been removed from Firestore.'
+        });
+        fetchUsers();
+    } catch (error) {
+        console.error('Failed to delete user:', error);
+        toast({
+            variant: 'destructive',
+            title: 'Error Deleting User',
+            description: error instanceof Error ? error.message : 'An unknown error occurred.',
+        });
+    }
+  };
+
+  async function handleSaveUser(data: UserFormValues, userId?: string) {
+    try {
+      if (userId) {
+        await updateUser(userId, data);
+        toast({
+          title: 'User Updated',
+          description: `${data.name}'s details have been updated.`,
+        });
+      } else {
+        await createUser(data as Omit<AppUser, 'id' | 'createdAt'>);
+        toast({
+          title: 'User Created & Invite Sent',
+          description: `${data.name} has been added and a sign-up link has been sent to their email.`,
+        });
+      }
       fetchUsers();
     } catch (error) {
-      console.error('Failed to create user:', error);
+      console.error('Failed to save user:', error);
       toast({
         variant: 'destructive',
-        title: 'Error Creating User',
+        title: 'Error Saving User',
         description: error instanceof Error ? error.message : 'An unknown error occurred.',
       });
-      throw error; // Re-throw to prevent dialog from closing on error
+      throw error;
     }
   }
   
@@ -126,7 +180,7 @@ export default function UserManagementPage() {
               title="User Management"
               description="Create and manage application users."
             >
-              <Button size="sm" onClick={() => setIsCreateDialogOpen(true)}>
+              <Button size="sm" onClick={handleOpenCreateDialog}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Create User
               </Button>
@@ -175,6 +229,7 @@ export default function UserManagementPage() {
                                           <TableHead>Phone</TableHead>
                                           <TableHead>Roles</TableHead>
                                           <TableHead>Created</TableHead>
+                                          <TableHead className="text-right w-[80px]">Actions</TableHead>
                                       </TableRow>
                                   </TableHeader>
                                   <TableBody>
@@ -200,6 +255,49 @@ export default function UserManagementPage() {
                                               <TableCell className="text-muted-foreground text-sm">
                                                   {safeDate(user.createdAt) ? format(safeDate(user.createdAt)!, 'PP') : 'N/A'}
                                               </TableCell>
+                                              <TableCell className="text-right">
+                                                  <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                      </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                      <DropdownMenuItem onClick={() => handleEditUser(user)}>
+                                                        <Edit className="mr-2 h-4 w-4" />
+                                                        Edit
+                                                      </DropdownMenuItem>
+                                                      <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                          <Button
+                                                            variant="ghost"
+                                                            className="w-full justify-start px-2 py-1.5 text-sm font-normal text-destructive hover:bg-destructive/10 hover:text-destructive relative"
+                                                          >
+                                                            <Trash2 className="mr-2 h-4 w-4" />
+                                                            Delete
+                                                          </Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                          <AlertDialogHeader>
+                                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                              This will delete the user record for {user.name} from the database. This action does not delete their authentication account and cannot be undone.
+                                                            </AlertDialogDescription>
+                                                          </AlertDialogHeader>
+                                                          <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                            <AlertDialogAction
+                                                              onClick={() => handleDeleteUser(user.id)}
+                                                              className="bg-destructive hover:bg-destructive/90"
+                                                            >
+                                                              Delete User Record
+                                                            </AlertDialogAction>
+                                                          </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                      </AlertDialog>
+                                                    </DropdownMenuContent>
+                                                  </DropdownMenu>
+                                              </TableCell>
                                           </TableRow>
                                       ))}
                                   </TableBody>
@@ -215,7 +313,7 @@ export default function UserManagementPage() {
                   <ShieldAlert className="h-4 w-4" />
                   <AlertTitle>Important Note on User Authentication</AlertTitle>
                   <AlertDescription>
-                    This form adds a user record and sends a sign-up link. The link allows them to sign in once. For subsequent logins, they will need to use the same email and a password. If they haven't set a password, they may need to use a 'Forgot Password' flow if one is implemented. To create a user with a password directly, you must manually add them in the{' '}
+                    This page manages user records in the application database. Deleting a user here does not remove their login credentials from Firebase Authentication. To permanently revoke access, you must delete the user in the{' '}
                     <a
                       href="https://console.firebase.google.com/"
                       target="_blank"
@@ -231,9 +329,10 @@ export default function UserManagementPage() {
           </div>
         </div>
         <CreateUserDialog
-          isOpen={isCreateDialogOpen}
-          setIsOpen={setIsCreateDialogOpen}
-          onSave={handleCreateUser}
+          isOpen={isFormDialogOpen}
+          setIsOpen={setIsFormDialogOpen}
+          onSave={handleSaveUser}
+          user={editingUser}
         />
       </>
     </AuthGuard>
