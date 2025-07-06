@@ -140,7 +140,7 @@ export default function UserManagementPage() {
         role: data.role as UserRole[],
       };
 
-      if (data.role.includes('Folk Guide')) {
+      if (data.role.includes('Folk Guide') && data.fgCode) {
         userData.fgCode = data.fgCode;
       } else if (userId) {
         userData.fgCode = deleteField();

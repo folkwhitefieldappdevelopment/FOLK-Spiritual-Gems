@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -105,7 +106,7 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides }
     if (isCurrentUserAdmin) {
       setAvailableRoles([...userRoles]);
     } else if (isCurrentUserGuide) {
-      setAvailableRoles(['Folk Enabler', 'Contact Assigner']);
+      setAvailableRoles(['Folk Enabler']);
     }
   }, [isCurrentUserAdmin, isCurrentUserGuide]);
 
@@ -125,7 +126,7 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides }
           name: '',
           email: '',
           phone: '',
-          role: [],
+          role: isCurrentUserGuide ? ['Folk Enabler'] : [],
           fgCode: '',
           guideId: isCurrentUserGuide ? appUser?.id : '',
         });
@@ -206,7 +207,7 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides }
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <FormControl>
-                        <Button variant="outline" className="w-full justify-start text-left font-normal">
+                        <Button variant="outline" className="w-full justify-start text-left font-normal" disabled={isCurrentUserGuide && !user}>
                           <div className="truncate">
                             {field.value?.length ? field.value.join(', ') : 'Select roles'}
                           </div>
@@ -231,6 +232,11 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides }
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  {isCurrentUserGuide && !user && (
+                    <FormDescription className="text-xs">
+                        Folk Guides can only create Folk Enablers.
+                    </FormDescription>
+                   )}
                   <FormMessage />
                 </FormItem>
               )}
@@ -261,7 +267,7 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides }
                             <FormLabel>Assign to Folk Guide</FormLabel>
                             {isCurrentUserGuide && appUser ? (
                                 <FormControl>
-                                    <Input value={`${appUser.name} (${appUser.fgCode})`} disabled />
+                                    <Input value={`${appUser.name} (${appUser.fgCode || 'N/A'})`} disabled />
                                 </FormControl>
                             ) : (
                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
@@ -273,7 +279,7 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides }
                                     <SelectContent>
                                         {folkGuides.map(guide => (
                                             <SelectItem key={guide.id} value={guide.id}>
-                                                {guide.name} ({guide.fgCode})
+                                                {guide.name} ({guide.fgCode || 'N/A'})
                                             </SelectItem>
                                         ))}
                                     </SelectContent>

@@ -52,7 +52,7 @@ export type Person = {
   callHistory?: { remark: string; calledAt: any; duration?: string; }[];
 };
 
-export const userRoles = ['Admin', 'Folk Guide', 'Folk Enabler', 'Contact Assigner'] as const;
+export const userRoles = ['Admin', 'Folk Guide', 'Folk Enabler'] as const;
 export type UserRole = (typeof userRoles)[number];
 
 export type AppUser = {
