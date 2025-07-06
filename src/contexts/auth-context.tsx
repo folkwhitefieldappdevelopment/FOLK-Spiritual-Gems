@@ -1,7 +1,7 @@
+
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
 import { 
     onAuthStateChanged, 
     GoogleAuthProvider, 
@@ -33,10 +33,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // This function will process the redirect result from Google Sign-In.
+    // If successful, it triggers onAuthStateChanged below, which then updates the state.
+    getRedirectResult(auth)
+      .catch((err) => {
+        console.error("Firebase Redirect Result Error:", err);
+        setError(err);
+      });
+
+    // onAuthStateChanged is the single source of truth for the user's login state.
+    // It runs on initial load and whenever the user signs in or out.
     const unsubscribe = onAuthStateChanged(auth, 
       (user) => {
         setUser(user);
-        setLoading(false);
+        setLoading(false); // This is the only place we should stop loading.
       },
       (err) => {
         console.error("Firebase Auth State Error:", err);
@@ -44,36 +54,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       }
     );
-    
-    getRedirectResult(auth)
-      .catch((err) => {
-        console.error("Firebase Redirect Result Error:", err);
-        setError(err);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
 
     return () => unsubscribe();
   }, []);
 
   const signInWithGoogle = async () => {
-    setLoading(true);
+    setLoading(true); // Show loading indicator when sign-in starts
     const provider = new GoogleAuthProvider();
     try {
       await signInWithRedirect(auth, provider);
+      // The page will redirect away, so no need to set loading to false here.
     } catch (err) {
       console.error("Error initiating sign in with redirect", err);
       if (err instanceof Error) {
         setError(err);
       }
-      setLoading(false);
+      setLoading(false); // Only set loading false if the redirect itself fails
     }
   };
 
   const signOut = async () => {
     try {
       await firebaseSignOut(auth);
+      // onAuthStateChanged will set the user to null and update the UI.
     } catch (err) {
       console.error("Error signing out", err);
       if (err instanceof Error) {
