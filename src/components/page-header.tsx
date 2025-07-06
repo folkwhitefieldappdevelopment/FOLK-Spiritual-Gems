@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Menu, LayoutDashboard, Users, UserSquare, Settings, Gem, PhoneCall, Headset, LogOut, UserCog } from 'lucide-react';
+import { Menu, Users, UserSquare, Settings, Gem, PhoneCall, Headset, LogOut, UserCog } from 'lucide-react';
 import { Button } from './ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetFooter } from './ui/sheet';
 import { cn } from '@/lib/utils';
@@ -19,7 +19,6 @@ type PageHeaderProps = {
 };
 
 const navItems = [
-    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/", label: "Contacts", icon: Users },
     { href: "/groups", label: "Groups", icon: UserSquare },
     { href: "/calling-assistant", label: "Calling Assistant", icon: Headset },
@@ -53,7 +52,7 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
               </SheetHeader>
               <nav className="grid gap-6 text-lg font-medium mt-4">
                 <Link
-                  href="/"
+                  href="/dashboard"
                   className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
                   onClick={() => setIsSheetOpen(false)}
                 >

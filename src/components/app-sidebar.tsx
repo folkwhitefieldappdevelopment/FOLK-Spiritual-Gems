@@ -1,9 +1,8 @@
-
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, UserSquare, Settings, LayoutDashboard, Gem, PhoneCall, Headset, UserCog } from "lucide-react";
+import { Users, UserSquare, Settings, Gem, PhoneCall, Headset, UserCog } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth-context";
 
@@ -12,7 +11,6 @@ export function AppSidebar() {
   const { appUser } = useAuth();
 
   const navItems = [
-    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/", label: "Contacts", icon: Users },
     { href: "/groups", label: "Groups", icon: UserSquare },
     { href: "/calling-assistant", label: "Calling Assistant", icon: Headset },
@@ -28,7 +26,7 @@ export function AppSidebar() {
   return (
     <aside className="sticky top-0 left-0 hidden h-screen w-64 flex-col border-r bg-card sm:flex">
       <div className="flex h-[60px] items-center border-b px-6">
-        <Link href="/" className="flex items-center gap-2 font-semibold text-primary">
+        <Link href="/dashboard" className="flex items-center gap-2 font-semibold text-primary">
           <Gem className="h-6 w-6" />
           <span>Folk Contact Center</span>
         </Link>
