@@ -7,7 +7,7 @@ import {
   where,
   getDocs,
 } from 'firebase/firestore';
-import { sendSignInLinkToEmail } from 'firebase/auth';
+import { sendSignInLinkToEmail, type AuthError } from 'firebase/auth';
 import type { AppUser } from '@/lib/types';
 
 type UserData = Omit<AppUser, 'id' | 'createdAt'>;
@@ -45,7 +45,15 @@ export const createUser = async (userData: UserData): Promise<void> => {
     handleCodeInApp: true,
   };
 
-  await sendSignInLinkToEmail(auth, userData.email, actionCodeSettings);
+  try {
+    await sendSignInLinkToEmail(auth, userData.email, actionCodeSettings);
+  } catch (error) {
+    const authError = error as AuthError;
+    if (authError.code === 'auth/operation-not-allowed') {
+      throw new Error('Email link sign-in is disabled. Please enable it in the Firebase Console: Authentication > Sign-in method.');
+    }
+    throw error;
+  }
 
   // Store the email locally so the login page can retrieve it to complete sign-in.
   window.localStorage.setItem('emailForSignIn', userData.email);

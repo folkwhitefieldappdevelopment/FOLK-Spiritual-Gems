@@ -78,11 +78,15 @@ service cloud.firestore {
              <div className="flex-shrink-0 bg-primary/10 text-primary rounded-full h-8 w-8 flex items-center justify-center">
                 <LogIn className="h-5 w-5" />
             </div>
-            <h3 className="font-semibold">Step 2: Enable the Email/Password Provider</h3>
+            <h3 className="font-semibold">Step 2: Enable Authentication Providers</h3>
         </div>
         <p className="text-sm text-muted-foreground">
-          You need to enable the "Email/Password" provider. In the <a href="https://console.firebase.google.com" target="_blank" rel="noopener noreferrer" className="underline text-primary">Firebase Console</a>, go to <strong>Build &gt; Authentication &gt; Sign-in method</strong>. Find "Email/Password" in the list of providers and enable it.
+          You need to enable the authentication providers your app uses. In the <a href="https://console.firebase.google.com" target="_blank" rel="noopener noreferrer" className="underline text-primary">Firebase Console</a>, go to <strong>Build &gt; Authentication &gt; Sign-in method</strong>. Find and enable both of the following providers:
         </p>
+        <ul className="list-disc pl-5 mt-2 space-y-1 text-sm text-muted-foreground">
+          <li><strong>Email/Password</strong>: Allows users to sign in with a traditional password.</li>
+          <li><strong>Email link (passwordless sign-in)</strong>: Allows new users to sign up via a link sent from the User Management page.</li>
+        </ul>
       </div>
     </>
   )
@@ -173,7 +177,7 @@ export function FirebaseConfigError({ error }: { error?: any }) {
   const errorMessage = error?.message?.toLowerCase() || '';
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
-  const isPermissionError = errorMessage.includes('permission-denied') || errorMessage.includes('offline');
+  const isPermissionError = errorMessage.includes('permission-denied') || errorMessage.includes('offline') || errorMessage.includes('operation-not-allowed');
   const isInitializationError = errorMessage.includes('configuration is missing');
   const isReferrerError = errorMessage.includes('api_key_http_referrer_blocked') || errorMessage.includes('auth/requests-from-referer');
 
