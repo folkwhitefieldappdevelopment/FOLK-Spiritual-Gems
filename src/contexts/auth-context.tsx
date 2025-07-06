@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut, type User } from 'firebase/auth';
+import { onAuthStateChanged, GoogleAuthProvider, signInWithRedirect, signOut as firebaseSignOut, type User } from 'firebase/auth';
 import { auth, configError } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
@@ -39,10 +39,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
-      router.push('/');
+      // Using signInWithRedirect instead of signInWithPopup
+      await signInWithRedirect(auth, provider);
+      // The user will be redirected to the Google sign-in page.
+      // After signing in, they will be redirected back here, and onAuthStateChanged will handle the result.
     } catch (error) {
-      console.error("Error signing in with Google", error);
+      console.error("Error initiating sign in with redirect", error);
       // Re-throw the error to be caught by the calling component (LoginPage)
       throw error;
     }

@@ -30,6 +30,8 @@ export default function LoginPage() {
   const [signInError, setSignInError] = React.useState<Error | null>(null);
 
   React.useEffect(() => {
+    // After a redirect, `loading` will be true. Once auth state is resolved,
+    // if the user is signed in, this effect will redirect to the homepage.
     if (user) {
       router.push('/');
     }
@@ -43,6 +45,7 @@ export default function LoginPage() {
     return <FirebaseConfigError error={signInError} />;
   }
 
+  // Show a loading spinner while the auth state is being determined after a redirect.
   if (loading || user) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
@@ -56,15 +59,9 @@ export default function LoginPage() {
     setSignInError(null);
     try {
       await signInWithGoogle();
-      // On success, useEffect will redirect to '/'
+      // The page will redirect, so no further action is needed here.
     } catch (error: any) {
-       if (error?.code === 'auth/popup-closed-by-user') {
-        toast({
-          title: 'Sign-In Cancelled',
-          description: 'The sign-in popup was closed. Please try again.',
-          variant: 'destructive'
-        });
-      } else if (error instanceof Error) {
+      if (error instanceof Error) {
         setSignInError(error);
       } else {
         setSignInError(new Error("An unknown error occurred during sign-in."));
@@ -84,13 +81,13 @@ export default function LoginPage() {
           <CardDescription>Sign in to continue to your dashboard.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button onClick={handleSignIn} className="w-full" disabled={isSigningIn}>
-            {isSigningIn ? (
+          <Button onClick={handleSignIn} className="w-full" disabled={isSigningIn || loading}>
+            {isSigningIn || loading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <GoogleIcon />
             )}
-            {isSigningIn ? 'Signing In...' : 'Sign In with Google'}
+            {isSigningIn || loading ? 'Signing In...' : 'Sign In with Google'}
           </Button>
         </CardContent>
       </Card>
