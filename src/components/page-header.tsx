@@ -62,7 +62,11 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
             </Link>
             {navItems.map((item) => {
                if (item.adminOnly && !appUser?.role?.includes('Admin')) {
-                  return null;
+                  if (item.href === '/user-management' && appUser?.role?.includes('Folk Guide')) {
+                      // allow
+                  } else {
+                      return null;
+                  }
                }
                return (
                 <Link

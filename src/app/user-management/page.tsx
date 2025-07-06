@@ -45,10 +45,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/auth-context';
+import { useRouter } from 'next/navigation';
 
 export default function UserManagementPage() {
   const { toast } = useToast();
   const { appUser } = useAuth();
+  const router = useRouter();
   const [users, setUsers] = React.useState<AppUser[]>([]);
   const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = React.useState(true);
@@ -60,6 +62,18 @@ export default function UserManagementPage() {
 
   const [searchTerm, setSearchTerm] = React.useState('');
   const [roleFilter, setRoleFilter] = React.useState('');
+
+  React.useEffect(() => {
+    // Redirect if the user is not an Admin or a Folk Guide
+    if (appUser && !appUser.role.includes('Admin') && !appUser.role.includes('Folk Guide')) {
+      toast({
+        variant: 'destructive',
+        title: 'Access Denied',
+        description: 'You do not have permission to view this page.'
+      });
+      router.replace('/dashboard');
+    }
+  }, [appUser, router, toast]);
   
   const fetchUsersAndGuides = React.useCallback(async () => {
     setIsLoadingUsers(true);
@@ -214,7 +228,7 @@ export default function UserManagementPage() {
   const canCreateUsers = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
 
   return (
-    <AuthGuard adminOnly={true}>
+    <AuthGuard>
       <div className="flex min-h-screen w-full flex-col bg-background">
         <AppSidebar />
         <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">

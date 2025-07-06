@@ -41,7 +41,12 @@ export function AppSidebar() {
           </Link>
           {navItems.map((item) => {
             if (item.adminOnly && !appUser?.role?.includes('Admin')) {
-              return null;
+              // Exception for User Management page for Folk Guides
+              if (item.href === '/user-management' && appUser?.role?.includes('Folk Guide')) {
+                 // Render the item
+              } else {
+                  return null;
+              }
             }
             return (
               <Tooltip key={item.href} delayDuration={0}>
