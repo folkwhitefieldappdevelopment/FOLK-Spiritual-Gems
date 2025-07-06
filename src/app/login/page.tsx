@@ -22,9 +22,8 @@ function GoogleIcon() {
 }
 
 export default function LoginPage() {
-  const { user, signInWithGoogle, loading, error, authProcessError } = useAuth();
+  const { user, signInWithGoogle, loading, error } = useAuth();
   const router = useRouter();
-  const { toast } = useToast();
   
   React.useEffect(() => {
     if (!loading && user) {
@@ -32,38 +31,22 @@ export default function LoginPage() {
     }
   }, [user, loading, router]);
   
-  React.useEffect(() => {
-    if (authProcessError) {
-       toast({
-        variant: 'destructive',
-        title: 'Sign In Cancelled',
-        description: 'The sign-in process was cancelled or failed. Please try again.',
-      });
-    }
-  }, [authProcessError, toast]);
-  
   if (error) {
     return <FirebaseConfigError error={error} />;
   }
 
-  if (loading || (!user && loading)) { // Show loader while verifying or if user is still null but we are loading
+  // While loading, or if the user object is already available (meaning a redirect is imminent),
+  // show a loading/verifying screen. This prevents the login button from flashing.
+  if (loading || user) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin" />
-        <span className="ml-2">Verifying...</span>
-      </div>
-    );
-  }
-  
-  if (user) {
-     return (
-       <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <span className="ml-2">Redirecting...</span>
+        <span className="ml-2">{user ? 'Redirecting...' : 'Verifying...'}</span>
       </div>
     );
   }
 
+  // If not loading and there's no user, show the sign-in UI.
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm">

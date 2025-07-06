@@ -33,20 +33,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // This function will process the redirect result from Google Sign-In.
-    // If successful, it triggers onAuthStateChanged below, which then updates the state.
+    // First, check for the result of a sign-in redirect.
+    // This is a one-time operation that captures the user credential.
     getRedirectResult(auth)
       .catch((err) => {
+        // This catches errors that occur during the redirect itself,
+        // such as permission errors or if the user cancels.
         console.error("Firebase Redirect Result Error:", err);
         setError(err);
       });
 
-    // onAuthStateChanged is the single source of truth for the user's login state.
-    // It runs on initial load and whenever the user signs in or out.
+    // onAuthStateChanged is the persistent listener that keeps the app's
+    // state in sync with Firebase's understanding of the user's session.
+    // It will fire after getRedirectResult completes successfully.
     const unsubscribe = onAuthStateChanged(auth, 
       (user) => {
         setUser(user);
-        setLoading(false); // This is the only place we should stop loading.
+        setLoading(false); // We are no longer loading once we have a definitive user state.
       },
       (err) => {
         console.error("Firebase Auth State Error:", err);
@@ -69,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (err instanceof Error) {
         setError(err);
       }
-      setLoading(false); // Only set loading false if the redirect itself fails
+      setLoading(false); // Only set loading false if the redirect itself fails to start.
     }
   };
 
