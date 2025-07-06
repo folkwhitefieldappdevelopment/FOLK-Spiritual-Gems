@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -112,10 +113,10 @@ export default function UserManagementPage() {
   const handleDeleteConfirmed = async () => {
     if (!userToDelete) return;
     try {
-        await deleteUserAndAuth(userToDelete.id, userToDelete.email);
+        await deleteUserAndAuth(userToDelete.id);
         toast({
-            title: 'User Deleted',
-            description: `User ${userToDelete.name} has been permanently deleted.`
+            title: 'User Record Deleted',
+            description: `User ${userToDelete.name}'s record has been deleted. They can still log in.`
         });
         fetchUsersAndGuides();
     } catch (error) {
@@ -335,9 +336,9 @@ export default function UserManagementPage() {
 
                 <Alert variant="destructive">
                   <ShieldAlert className="h-4 w-4" />
-                  <AlertTitle>Important Note on User Authentication</AlertTitle>
+                  <AlertTitle>Important Note on User Deletion</AlertTitle>
                   <AlertDescription>
-                    This page manages user records in the application database. Deleting a user here now also removes their login credentials from Firebase Authentication.
+                    This page manages user records in the application database. Deleting a user here only removes their record from this app, not their login credentials from Firebase Authentication.
                   </AlertDescription>
                 </Alert>
               </div>
@@ -357,7 +358,7 @@ export default function UserManagementPage() {
               <AlertDialogHeader>
               <AlertDialogTitle>Are you sure?</AlertDialogTitle>
               <AlertDialogDescription>
-                  This will permanently delete the user {userToDelete.name} from both the application database and the authentication system. This action cannot be undone.
+                  This will remove the user record for {userToDelete.name} from the application database. It will NOT remove their login credentials, so they will still be able to sign in. This action cannot be undone.
               </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -366,7 +367,7 @@ export default function UserManagementPage() {
                   onClick={handleDeleteConfirmed}
                   className="bg-destructive hover:bg-destructive/90"
               >
-                  Delete User
+                  Delete User Record
               </AlertDialogAction>
               </AlertDialogFooter>
           </AlertDialogContent>
