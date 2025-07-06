@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -7,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Gem, Loader2 } from 'lucide-react';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
+import { useToast } from '@/hooks/use-toast';
 
 function GoogleIcon() {
   return (
@@ -20,20 +22,31 @@ function GoogleIcon() {
 }
 
 export default function LoginPage() {
-  const { user, signInWithGoogle, loading, error } = useAuth();
+  const { user, signInWithGoogle, loading, error, authProcessError } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
   
   React.useEffect(() => {
     if (!loading && user) {
-      router.replace('/');
+      router.replace('/dashboard');
     }
   }, [user, loading, router]);
+  
+  React.useEffect(() => {
+    if (authProcessError) {
+       toast({
+        variant: 'destructive',
+        title: 'Sign In Cancelled',
+        description: 'The sign-in process was cancelled or failed. Please try again.',
+      });
+    }
+  }, [authProcessError, toast]);
   
   if (error) {
     return <FirebaseConfigError error={error} />;
   }
 
-  if (loading) {
+  if (loading || (!user && loading)) { // Show loader while verifying or if user is still null but we are loading
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin" />
