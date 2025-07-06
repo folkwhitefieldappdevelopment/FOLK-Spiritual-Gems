@@ -5,7 +5,6 @@ import * as React from 'react';
 import { 
     onAuthStateChanged,
     signInWithEmailAndPassword,
-    createUserWithEmailAndPassword,
     signOut as firebaseSignOut, 
     type User,
     type AuthError
@@ -18,7 +17,6 @@ type AuthContextType = {
   loading: boolean;
   error: Error | null;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -65,24 +63,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string) => {
-    try {
-      await createUserWithEmailAndPassword(auth, email, password);
-    } catch (err) {
-      const authError = err as AuthError;
-      toast({
-        variant: 'destructive',
-        title: 'Sign-up Failed',
-        description: authError.message || 'Could not create account. Please try again.'
-      });
-      console.error("Error signing up", err);
-      if (err instanceof Error) {
-        setError(err);
-      }
-      throw err;
-    }
-  };
-
   const signOut = async () => {
     try {
       await firebaseSignOut(auth);
@@ -94,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const value = { user, loading, error, signIn, signUp, signOut };
+  const value = { user, loading, error, signIn, signOut };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

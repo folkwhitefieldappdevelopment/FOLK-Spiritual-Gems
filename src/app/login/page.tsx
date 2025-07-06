@@ -12,12 +12,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 export default function LoginPage() {
-  const { user, signIn, signUp, loading, error } = useAuth();
+  const { user, signIn, loading, error } = useAuth();
   const router = useRouter();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [isSignUp, setIsSignUp] = React.useState(false);
 
   React.useEffect(() => {
     if (!loading && user) {
@@ -31,12 +30,8 @@ export default function LoginPage() {
 
     setIsSubmitting(true);
     try {
-      if (isSignUp) {
-        await signUp(email, password);
-      } else {
-        await signIn(email, password);
-      }
-      // On successful sign-in/up, the useEffect will trigger the redirect
+      await signIn(email, password);
+      // On successful sign-in, the useEffect will trigger the redirect
     } catch (err) {
       // Errors are caught and displayed via toast in the auth context
     } finally {
@@ -65,7 +60,7 @@ export default function LoginPage() {
           </div>
           <CardTitle>Folk Contact Center</CardTitle>
           <CardDescription>
-            {isSignUp ? 'Create a new account' : 'Sign in to your account'}
+            Sign in to your account
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -96,15 +91,10 @@ export default function LoginPage() {
             </div>
             <Button type="submit" className="w-full" disabled={isSubmitting || !email || !password}>
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {isSubmitting ? 'Submitting...' : (isSignUp ? 'Sign Up' : 'Sign In')}
+              {isSubmitting ? 'Submitting...' : 'Sign In'}
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="flex justify-center">
-            <Button variant="link" onClick={() => setIsSignUp(!isSignUp)}>
-                {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
-            </Button>
-        </CardFooter>
       </Card>
     </div>
   );
