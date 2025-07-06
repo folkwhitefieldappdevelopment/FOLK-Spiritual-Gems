@@ -197,7 +197,7 @@ export default function UserManagementPage() {
                                                       {user.role?.map(r => <Badge key={r} variant="secondary">{r}</Badge>)}
                                                   </div>
                                               </TableCell>
-                                              <TableCell className="text-muted-foreground text-xs">
+                                              <TableCell className="text-muted-foreground text-sm">
                                                   {safeDate(user.createdAt) ? format(safeDate(user.createdAt)!, 'PP') : 'N/A'}
                                               </TableCell>
                                           </TableRow>
