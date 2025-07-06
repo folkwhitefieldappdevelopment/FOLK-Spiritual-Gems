@@ -56,10 +56,10 @@ export default function LoginPage() {
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-gray-900 p-4">
        <div className="mb-8">
         <Image
-          src="https://placehold.co/150x150.png"
-          alt="Srila Prabhupada"
-          width={150}
-          height={150}
+          src="https://i.ibb.co/r2yv1gN/image.png"
+          alt="A collage of Srila Prabhupada"
+          width={200}
+          height={200}
           className="rounded-full object-cover shadow-2xl"
           data-ai-hint="Srila Prabhupada"
         />
