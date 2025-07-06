@@ -101,7 +101,7 @@ export default function LoginPage() {
       </div>
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <CardTitle className="text-xl sm:text-2xl">FOLK SPIRITUAL GEM</CardTitle>
+          <CardTitle className="text-lg sm:text-xl md:text-2xl">FOLK SPIRITUAL GEM</CardTitle>
           <CardDescription>
             Central Contact Management App
           </CardDescription>
