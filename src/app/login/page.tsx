@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Gem, Loader2 } from 'lucide-react';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
-import { useToast } from '@/hooks/use-toast';
 
 function GoogleIcon() {
   return (
@@ -26,15 +25,22 @@ export default function LoginPage() {
   const router = useRouter();
   
   React.useEffect(() => {
-    if (!loading && user) {
-      router.replace('/dashboard');
+    // Only perform actions once the loading state is resolved.
+    if (!loading) {
+      if (user) {
+        // If there is a user, redirect to the dashboard.
+        router.replace('/dashboard');
+      }
+      // If there is no user, do nothing and stay on the login page.
     }
   }, [user, loading, router]);
   
+  // If there's a configuration or redirect error, show the error component.
   if (error) {
     return <FirebaseConfigError error={error} />;
   }
   
+  // While checking auth state, show a loading indicator. This is crucial for the redirect flow.
   if (loading) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
@@ -45,34 +51,24 @@ export default function LoginPage() {
   }
 
   // If loading is complete AND there is no user, it is safe to show the sign-in page.
-  if (!user) {
-    return (
-      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-sm">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary">
-              <Gem className="h-6 w-6 text-primary-foreground" />
-            </div>
-            <CardTitle>Folk Contact Center</CardTitle>
-            <CardDescription>Sign in to continue to your dashboard.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={signInWithGoogle} className="w-full">
-              <GoogleIcon />
-              Sign In with Google
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // This is a fallback for the brief moment after loading is false and user is set,
-  // but before the redirect effect runs. This ensures a smooth transition.
+  // The useEffect hook has already confirmed we should be on this page.
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-background">
-      <Loader2 className="h-8 w-8 animate-spin" />
-      <span className="ml-2">Redirecting...</span>
+    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary">
+            <Gem className="h-6 w-6 text-primary-foreground" />
+          </div>
+          <CardTitle>Folk Contact Center</CardTitle>
+          <CardDescription>Sign in to continue to your dashboard.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={signInWithGoogle} className="w-full">
+            <GoogleIcon />
+            Sign In with Google
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }
