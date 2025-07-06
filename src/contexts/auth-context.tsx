@@ -26,63 +26,69 @@ const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
   const [user, setUser] = React.useState<User | null>(null);
-  const [loading, setLoading] = React.useState(true); // Start as true
+  const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<Error | null>(initialConfigError);
 
   React.useEffect(() => {
-    // This effect runs once on mount to handle two things:
-    // 1. Check if the user is returning from an email link sign-in.
-    // 2. Set up the primary auth state listener.
-
-    if (isSignInWithEmailLink(auth, window.location.href)) {
-      let email = window.localStorage.getItem('emailForSignIn');
-      if (!email) {
-        // This can happen if the user opens the link on a different browser.
-        // We can't complete the sign-in without the email.
-        // The user will see the login page and can re-enter their email.
-        console.warn("Sign-in link clicked, but no email found in storage.");
-      } else {
-        // The email was found, so we can complete the sign-in.
-        signInWithEmailLink(auth, email, window.location.href)
-          .then((result) => {
-            // `onAuthStateChanged` will fire and handle the user state update.
+    // This function ensures we process the email link before setting up the final auth state listener.
+    // This prevents a race condition where the app might think the user is logged out before the
+    // sign-in link has been processed.
+    const processAuth = async () => {
+      // If the current URL is a sign-in link, process it.
+      if (isSignInWithEmailLink(auth, window.location.href)) {
+        let email = window.localStorage.getItem('emailForSignIn');
+        if (email) {
+          try {
+            // Attempt to sign in the user with the link.
+            await signInWithEmailLink(auth, email, window.location.href);
+            // Clean up the stored email and the URL parameters.
             window.localStorage.removeItem('emailForSignIn');
-            // Clear the URL parameters to prevent re-triggering.
             window.history.replaceState(null, '', window.location.pathname);
-          })
-          .catch((err) => {
+          } catch (err) {
             console.error("Error signing in with email link:", err);
-            setError(err);
-          });
+            setError(err as Error);
+          }
+        }
       }
-    }
 
-    // `onAuthStateChanged` is the single source of truth for the user's auth state.
-    const unsubscribe = onAuthStateChanged(auth, 
-      (user) => {
-        setUser(user);
-        setLoading(false); // We have a definitive state now, so stop loading.
-      },
-      (err) => {
-        console.error("Firebase Auth State Error:", err);
-        setError(err);
-        setLoading(false);
-      }
-    );
+      // AFTER the link processing attempt, set up the listener.
+      // onAuthStateChanged will now have the correct user state.
+      const unsubscribe = onAuthStateChanged(auth, 
+        (user) => {
+          setUser(user);
+          setLoading(false); // It's now safe to stop loading.
+        },
+        (err) => {
+          console.error("Firebase Auth State Error:", err);
+          setError(err);
+          setLoading(false);
+        }
+      );
+
+      return unsubscribe;
+    };
+
+    let unsubscribe: (() => void) | undefined;
+    processAuth().then(unsub => {
+      unsubscribe = unsub;
+    });
 
     // Cleanup subscription on unmount
-    return () => unsubscribe();
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
   const signInWithEmail = async (email: string) => {
     const actionCodeSettings = {
-      url: window.location.href, // Redirect back to the current page (login page)
+      url: window.location.href, // Redirect back to the current page
       handleCodeInApp: true,
     };
 
     try {
       await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-      // Save the email locally to be used when the user clicks the link
       window.localStorage.setItem('emailForSignIn', email);
     } catch (err) {
       console.error("Error sending sign in link", err);
@@ -94,14 +100,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (err instanceof Error) {
         setError(err);
       }
-      throw err; // Re-throw to be caught in the component
+      throw err;
     }
   };
 
   const signOut = async () => {
     try {
       await firebaseSignOut(auth);
-      // onAuthStateChanged will handle setting the user to null.
     } catch (err) {
       console.error("Error signing out", err);
       if (err instanceof Error) {
