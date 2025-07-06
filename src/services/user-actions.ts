@@ -32,7 +32,13 @@ export async function deleteUserAndAuth(userId: string, email: string) {
       return;
     }
     console.error('Error deleting user account:', error);
-    // Rethrow a more generic error to the client
-    throw new Error('An unexpected error occurred while deleting the user.');
+    
+    if (error.code === 'auth/insufficient-permission') {
+        throw new Error('Server has insufficient permissions. Please ensure the App Hosting service account has the "Firebase Authentication Admin" IAM role in Google Cloud.');
+    }
+
+    // Rethrow a more informative error to the client
+    const message = error.message || 'An unexpected error occurred while deleting the user.';
+    throw new Error(message);
   }
 }
