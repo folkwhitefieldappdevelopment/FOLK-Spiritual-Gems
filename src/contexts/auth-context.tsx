@@ -44,6 +44,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           try {
             const appUserData = await getUserByEmail(user.email);
             if (appUserData) {
+              // This ensures backward compatibility for users created when 'role' was a string.
+              if (typeof appUserData.role === 'string') {
+                // @ts-ignore - Allow temporary mismatch for migration
+                appUserData.role = [appUserData.role];
+              } else if (!Array.isArray(appUserData.role)) {
+                // If role is missing or not an array, default to an empty array.
+                appUserData.role = [];
+              }
+
               // User is in our DB, allow access.
               setUser(user);
               setAppUser(appUserData);
