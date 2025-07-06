@@ -30,6 +30,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { SidebarProvider } from '@/components/ui/sidebar';
 
 
 type CallStatusCounts = { picked: number; notPicked: number };
@@ -219,7 +220,7 @@ export default function CallAnalyzerPage() {
 
   return (
     <AuthGuard>
-      <>
+      <SidebarProvider>
         <div className="flex min-h-screen w-full">
           <AppSidebar />
           <div className="flex flex-1 flex-col bg-background">
@@ -384,7 +385,7 @@ export default function CallAnalyzerPage() {
           className="hidden"
           accept=".xlsx, .xls"
         />
-      </>
+      </SidebarProvider>
     </AuthGuard>
   );
 }

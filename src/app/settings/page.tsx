@@ -49,6 +49,7 @@ import type { CustomField, CustomFieldType } from '@/lib/types';
 import { customFieldTypes } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AdminModeToggle } from '@/components/admin-mode-toggle';
+import { SidebarProvider } from '@/components/ui/sidebar';
 
 type DialogMode = 'add' | 'edit';
 type ItemType = 'enabler' | 'source' | 'customField';
@@ -382,7 +383,7 @@ export default function SettingsPage() {
 
   return (
     <AuthGuard>
-      <>
+      <SidebarProvider>
         <div className="flex min-h-screen w-full">
           <AppSidebar />
           <div className="flex flex-1 flex-col bg-background">
@@ -458,7 +459,7 @@ export default function SettingsPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </>
+      </SidebarProvider>
     </AuthGuard>
   );
 }

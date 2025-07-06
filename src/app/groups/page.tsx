@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { GroupCard } from "@/components/group-card";
 import { CreateUpdateGroupDialog } from "@/components/create-update-group-dialog";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 export default function GroupsPage() {
   const { toast } = useToast();
@@ -138,7 +139,7 @@ export default function GroupsPage() {
 
   return (
     <AuthGuard>
-      <>
+      <SidebarProvider>
         <div className="flex min-h-screen w-full">
           <AppSidebar />
           <div className="flex flex-1 flex-col bg-background">
@@ -162,7 +163,7 @@ export default function GroupsPage() {
           onSave={handleSaveGroup}
           group={editingGroup}
         />
-      </>
+      </SidebarProvider>
     </AuthGuard>
   );
 }

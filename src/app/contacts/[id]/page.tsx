@@ -41,6 +41,7 @@ import { CreateUpdatePersonDialog } from '@/components/create-update-person-dial
 import { ProgressTracker } from '@/components/progress-tracker';
 import { Separator } from '@/components/ui/separator';
 import { CallHistory } from '@/components/call-history';
+import { SidebarProvider } from '@/components/ui/sidebar';
 
 export default function PersonDetailPage() {
   const router = useRouter();
@@ -329,7 +330,7 @@ export default function PersonDetailPage() {
 
   return (
     <AuthGuard>
-      <>
+      <SidebarProvider>
         <div className="flex min-h-screen w-full">
             <AppSidebar />
             <div className="flex flex-1 flex-col bg-background">
@@ -390,7 +391,7 @@ export default function PersonDetailPage() {
           person={person}
           allPeople={allPeople}
         />
-      </>
+      </SidebarProvider>
     </AuthGuard>
   );
 }

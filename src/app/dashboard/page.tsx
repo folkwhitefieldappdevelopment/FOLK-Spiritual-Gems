@@ -21,6 +21,7 @@ import {
   ChartLegendContent,
 } from '@/components/ui/chart';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart, Cell, Line, LineChart, Tooltip, Legend } from 'recharts';
+import { SidebarProvider } from '@/components/ui/sidebar';
 
 const CHART_COLORS = [
   'hsl(var(--chart-1))',
@@ -275,18 +276,20 @@ export default function DashboardPage() {
 
   return (
     <AuthGuard>
-      <div className="flex min-h-screen w-full">
-        <AppSidebar />
-        <div className="flex flex-1 flex-col bg-background">
-          <PageHeader
-            title="Dashboard"
-            description="An overview of your contacts and their progress."
-          />
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-            {renderContent()}
-          </main>
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full">
+          <AppSidebar />
+          <div className="flex flex-1 flex-col bg-background">
+            <PageHeader
+              title="Dashboard"
+              description="An overview of your contacts and their progress."
+            />
+            <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+              {renderContent()}
+            </main>
+          </div>
         </div>
-      </div>
+      </SidebarProvider>
     </AuthGuard>
   );
 }

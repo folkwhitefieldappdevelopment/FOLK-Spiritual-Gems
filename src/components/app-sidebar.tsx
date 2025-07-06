@@ -3,8 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Users, UserSquare, Settings, Gem, PhoneCall, Headset, UserCog } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth-context";
+import {
+    Sidebar,
+    SidebarContent,
+    SidebarHeader,
+    SidebarMenu,
+    SidebarMenuItem,
+    SidebarMenuButton,
+    SidebarFooter,
+} from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -15,7 +24,7 @@ export function AppSidebar() {
     { href: "/groups", label: "Groups", icon: UserSquare },
     { href: "/calling-assistant", label: "Calling Assistant", icon: Headset },
     { href: "/call-analyzer", label: "Call Analyzer", icon: PhoneCall },
-    { href: "/user-management", label: "User Management", icon: UserCog },
+    { href: "/user-management", label: "User Management", icon: UserCog, adminOnly: true },
   ];
   
   const isActive = (href: string) => {
@@ -24,45 +33,46 @@ export function AppSidebar() {
   }
 
   return (
-    <aside className="sticky top-0 left-0 hidden h-screen w-64 flex-col border-r bg-card sm:flex">
-      <div className="flex h-[60px] items-center border-b px-6">
-        <Link href="/dashboard" className="flex items-center gap-2 font-semibold text-primary">
-          <Gem className="h-6 w-6" />
-          <span>Folk Contact Center</span>
-        </Link>
-      </div>
-      <nav className="flex-1 space-y-2 p-4">
-        {navItems.map((item) => {
-          if (item.href === '/user-management' && !appUser?.role?.includes('Admin')) {
-            return null;
-          }
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
-                isActive(item.href) && "bg-accent text-accent-foreground hover:text-accent-foreground"
-              )}
-            >
-              <item.icon className="h-5 w-5" />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
-      <div className="mt-auto p-4">
-        <Link
-          href="/settings"
-          className={cn(
-            "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
-            pathname.startsWith('/settings') && "bg-accent text-accent-foreground hover:text-accent-foreground"
-          )}
-        >
-          <Settings className="h-5 w-5" />
-          <span>Settings</span>
-        </Link>
-      </div>
-    </aside>
+    <Sidebar collapsible="icon">
+        <SidebarHeader>
+            <Button variant="ghost" size="icon" className="h-10 w-10" asChild>
+                <Link href="/dashboard">
+                    <Gem />
+                    <span className="sr-only">Folk Contact Center</span>
+                </Link>
+            </Button>
+        </SidebarHeader>
+        <SidebarContent>
+            <SidebarMenu>
+                {navItems.map((item) => {
+                    if (item.adminOnly && !appUser?.role?.includes('Admin')) {
+                        return null;
+                    }
+                    return (
+                        <SidebarMenuItem key={item.href}>
+                            <SidebarMenuButton asChild isActive={isActive(item.href)} tooltip={item.label}>
+                                <Link href={item.href}>
+                                    <item.icon />
+                                    <span>{item.label}</span>
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    );
+                })}
+            </SidebarMenu>
+        </SidebarContent>
+        <SidebarFooter>
+            <SidebarMenu>
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={isActive('/settings')} tooltip="Settings">
+                        <Link href="/settings">
+                            <Settings />
+                            <span>Settings</span>
+                        </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+            </SidebarMenu>
+        </SidebarFooter>
+    </Sidebar>
   );
 }

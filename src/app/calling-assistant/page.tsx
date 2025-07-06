@@ -28,6 +28,7 @@ import {
 } from "@/services/people-service";
 import { getEnablers, getContactSources } from "@/services/settings-service";
 import { serverTimestamp, arrayUnion } from "firebase/firestore";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 export default function CallingAssistantPage() {
   const { toast } = useToast();
@@ -258,7 +259,7 @@ export default function CallingAssistantPage() {
 
   return (
     <AuthGuard>
-      <>
+      <SidebarProvider>
         <div className="flex min-h-screen w-full">
           <AppSidebar />
           <div className="flex flex-1 flex-col bg-background">
@@ -288,7 +289,7 @@ export default function CallingAssistantPage() {
               allPeople={people}
           />
         )}
-      </>
+      </SidebarProvider>
     </AuthGuard>
   );
 }

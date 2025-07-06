@@ -49,6 +49,7 @@ import {
 } from "@/services/people-service";
 import { getEnablers, getContactSources } from "@/services/settings-service";
 import { AuthGuard } from "@/components/auth-guard";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 export default function ContactsPage() {
   const { toast } = useToast();
@@ -597,7 +598,7 @@ export default function ContactsPage() {
 
   return (
     <AuthGuard>
-      <>
+      <SidebarProvider>
         <div className="flex min-h-screen w-full">
           <AppSidebar />
           <div className="flex flex-1 flex-col bg-background">
@@ -656,7 +657,7 @@ export default function ContactsPage() {
           className="hidden"
           accept=".xlsx, .xls, .csv"
         />
-      </>
+      </SidebarProvider>
     </AuthGuard>
   );
 }

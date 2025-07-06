@@ -43,6 +43,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { SidebarProvider } from '@/components/ui/sidebar';
 
 export default function UserManagementPage() {
   const { toast } = useToast();
@@ -173,7 +174,7 @@ export default function UserManagementPage() {
 
   return (
     <AuthGuard adminOnly={true}>
-      <>
+      <SidebarProvider>
         <div className="flex min-h-screen w-full">
           <AppSidebar />
           <div className="flex flex-1 flex-col bg-background">
@@ -327,7 +328,7 @@ export default function UserManagementPage() {
           onSave={handleSaveUser}
           user={editingUser}
         />
-      </>
+      </SidebarProvider>
     </AuthGuard>
   );
 }

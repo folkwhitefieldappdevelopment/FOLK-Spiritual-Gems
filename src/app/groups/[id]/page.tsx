@@ -19,6 +19,7 @@ import { PersonTable } from '@/components/person-table';
 import { CreateUpdatePersonDialog } from '@/components/create-update-person-dialog';
 import { ManageGroupMembersDialog } from '@/components/manage-group-members-dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { SidebarProvider } from '@/components/ui/sidebar';
 
 export default function GroupDetailPage() {
   const router = useRouter();
@@ -194,7 +195,7 @@ export default function GroupDetailPage() {
   
   return (
     <AuthGuard>
-      <>
+      <SidebarProvider>
         <div className="flex min-h-screen w-full">
             <AppSidebar />
             <div className="flex flex-1 flex-col bg-background">
@@ -241,7 +242,7 @@ export default function GroupDetailPage() {
             allPeople={allPeople}
           />
         )}
-      </>
+      </SidebarProvider>
     </AuthGuard>
   );
 }
