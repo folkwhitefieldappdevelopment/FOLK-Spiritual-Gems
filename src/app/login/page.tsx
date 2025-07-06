@@ -1,13 +1,11 @@
-
 'use client';
 
 import * as React from 'react';
-import Image from 'next/image';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Gem } from 'lucide-react';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -97,15 +95,8 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4">
-       <div className="mb-8">
-        <Image
-          src="https://placehold.co/200x200.png"
-          alt="FOLK Spiritual Gem Logo"
-          width={200}
-          height={200}
-          className="rounded-full object-cover shadow-2xl"
-          data-ai-hint="gem"
-        />
+       <div className="mb-8 flex h-40 w-40 items-center justify-center rounded-full bg-primary/10 shadow-2xl">
+        <Gem className="h-24 w-24 text-primary drop-shadow-lg" />
       </div>
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
