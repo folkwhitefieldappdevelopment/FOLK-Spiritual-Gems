@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { Loader2, ShieldAlert, Search, PlusCircle, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
+import { Loader2, ShieldAlert, Search, PlusCircle, MoreHorizontal, Edit, Trash2, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { deleteField } from 'firebase/firestore';
 
@@ -249,15 +249,20 @@ export default function UserManagementPage() {
                                   onChange={(e) => setSearchTerm(e.target.value)}
                               />
                           </div>
-                          <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value === 'all' ? '' : value)}>
-                              <SelectTrigger className="w-full sm:w-[200px]">
-                                  <SelectValue placeholder="Filter by role" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                  <SelectItem value="all">All Roles</SelectItem>
-                                  {userRoles.map(role => <SelectItem key={role} value={role}>{role}</SelectItem>)}
-                              </SelectContent>
-                          </Select>
+                          <div className="flex items-center gap-2">
+                            <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value === 'all' ? '' : value)}>
+                                <SelectTrigger className="w-full sm:w-[200px]">
+                                    <SelectValue placeholder="Filter by role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Roles</SelectItem>
+                                    {userRoles.map(role => <SelectItem key={role} value={role}>{role}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <Button variant="outline" size="icon" onClick={fetchUsersAndGuides} disabled={isLoadingUsers}>
+                                <RefreshCw className={isLoadingUsers ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
+                            </Button>
+                          </div>
                       </div>
 
                       <div className="border rounded-md">
