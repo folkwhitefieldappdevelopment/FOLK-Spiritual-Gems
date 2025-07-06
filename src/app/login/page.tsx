@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -33,34 +32,35 @@ export default function LoginPage() {
     }
   }, [user, loading, router]);
   
-  // The new AuthProvider catches redirect errors, so we can display them here.
   if (authError) {
     return <FirebaseConfigError error={authError} />;
   }
 
-  // Show a loading spinner while auth state is being determined after a redirect.
-  if (loading || isSigningIn) {
+  // This covers the initial page load and the period after redirecting back from Google.
+  if (loading) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Verifying...</span>
       </div>
     );
   }
-
-  // If there's a user, we're about to redirect, so we can show a spinner too.
+  
+  // If the user object is available, we are just waiting for the redirect.
+  // This prevents the login page from flashing briefly before redirecting.
   if (user) {
      return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+       <div className="flex min-h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Redirecting...</span>
       </div>
     );
   }
 
   const handleSignIn = async () => {
     setIsSigningIn(true);
-    // The context now handles the redirect result and any errors.
     await signInWithGoogle();
-    // The page will redirect, so no need to set isSigningIn back to false.
+    // No need to set isSigningIn back to false, page will redirect.
   };
 
   return (
@@ -74,13 +74,13 @@ export default function LoginPage() {
           <CardDescription>Sign in to continue to your dashboard.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button onClick={handleSignIn} className="w-full" disabled={isSigningIn || loading}>
-            {isSigningIn || loading ? (
+          <Button onClick={handleSignIn} className="w-full" disabled={isSigningIn}>
+            {isSigningIn ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <GoogleIcon />
             )}
-            {isSigningIn || loading ? 'Signing In...' : 'Sign In with Google'}
+            {isSigningIn ? 'Redirecting to Google...' : 'Sign In with Google'}
           </Button>
         </CardContent>
       </Card>
