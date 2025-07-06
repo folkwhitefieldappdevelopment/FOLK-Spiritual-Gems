@@ -12,9 +12,11 @@ import {
 import { auth, configError as initialConfigError } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { getUserByEmail } from '@/services/user-service';
+import type { AppUser } from '@/lib/types';
 
 type AuthContextType = {
   user: User | null;
+  appUser: AppUser | null;
   loading: boolean;
   error: Error | null;
   signIn: (email: string, password: string) => Promise<void>;
@@ -26,6 +28,7 @@ const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
   const [user, setUser] = React.useState<User | null>(null);
+  const [appUser, setAppUser] = React.useState<AppUser | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<Error | null>(initialConfigError);
 
@@ -35,10 +38,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (user && user.email) {
           // User is signed in with Firebase Auth, now verify against our database
           try {
-            const appUser = await getUserByEmail(user.email);
-            if (appUser) {
+            const appUserData = await getUserByEmail(user.email);
+            if (appUserData) {
               // User is in our DB, allow access.
               setUser(user);
+              setAppUser(appUserData);
             } else {
               // User not in our DB, deny access.
               toast({
@@ -49,6 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               });
               await firebaseSignOut(auth);
               setUser(null);
+              setAppUser(null);
             }
           } catch (e) {
             console.error("Error verifying user against database", e);
@@ -59,10 +64,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
             await firebaseSignOut(auth);
             setUser(null);
+            setAppUser(null);
           }
         } else {
           // No user is signed in, or user has no email.
           setUser(null);
+          setAppUser(null);
         }
         setLoading(false);
       },
@@ -110,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const value = { user, loading, error, signIn, signOut };
+  const value = { user, appUser, loading, error, signIn, signOut };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

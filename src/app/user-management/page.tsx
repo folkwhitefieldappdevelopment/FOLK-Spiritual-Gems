@@ -83,7 +83,7 @@ export default function CreateUserPage() {
   }
 
   return (
-    <AuthGuard>
+    <AuthGuard adminOnly={true}>
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <div className="flex flex-1 flex-col bg-background">

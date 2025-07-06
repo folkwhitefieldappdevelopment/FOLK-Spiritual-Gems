@@ -6,9 +6,11 @@ import { usePathname } from "next/navigation";
 import { Users, UserSquare, Settings, LayoutDashboard, Gem, PhoneCall, Headset, UserCog } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
+import { useAuth } from "@/contexts/auth-context";
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { appUser } = useAuth();
 
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -35,23 +37,28 @@ export function AppSidebar() {
             <Gem className="h-4 w-4 transition-all group-hover:scale-110" />
             <span className="sr-only">Folk Contact Center</span>
           </Link>
-          {navItems.map((item) => (
-            <Tooltip key={item.href}>
-              <TooltipTrigger asChild>
-                <Link
-                  href={item.href}
-                  className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8",
-                    isActive(item.href) && "bg-accent text-accent-foreground hover:text-accent-foreground"
-                  )}
-                >
-                  <item.icon className="h-5 w-5" />
-                  <span className="sr-only">{item.label}</span>
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent side="right">{item.label}</TooltipContent>
-            </Tooltip>
-          ))}
+          {navItems.map((item) => {
+            if (item.href === '/user-management' && appUser?.role !== 'Admin') {
+              return null;
+            }
+            return (
+              <Tooltip key={item.href}>
+                <TooltipTrigger asChild>
+                  <Link
+                    href={item.href}
+                    className={cn(
+                      "flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8",
+                      isActive(item.href) && "bg-accent text-accent-foreground hover:text-accent-foreground"
+                    )}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    <span className="sr-only">{item.label}</span>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="right">{item.label}</TooltipContent>
+              </Tooltip>
+            );
+          })}
           <div className="mt-auto">
             <Tooltip>
                 <TooltipTrigger asChild>

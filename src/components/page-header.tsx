@@ -30,7 +30,7 @@ const navItems = [
 export function PageHeader({ title, description, children }: PageHeaderProps) {
   const pathname = usePathname();
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
-  const { user, signOut } = useAuth();
+  const { user, appUser, signOut } = useAuth();
   
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -64,7 +64,11 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
                   <Gem className="h-5 w-5 transition-all group-hover:scale-110" />
                   <span className="sr-only">Folk Contact Center</span>
                 </Link>
-                {navItems.map((item) => (
+                {navItems.map((item) => {
+                  if (item.href === '/user-management' && appUser?.role !== 'Admin') {
+                    return null;
+                  }
+                  return (
                     <Link
                       key={item.href}
                       href={item.href}
@@ -76,7 +80,8 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
                       <item.icon className="h-5 w-5" />
                       {item.label}
                     </Link>
-                ))}
+                  );
+                })}
                 <Link
                   href="/settings"
                   className={cn(
