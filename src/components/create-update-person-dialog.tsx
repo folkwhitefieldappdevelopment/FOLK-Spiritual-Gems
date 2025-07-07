@@ -8,7 +8,7 @@ import * as z from "zod";
 import type { Person, CustomField, AppUser } from "@/lib/types";
 import { occupationStatuses } from "@/lib/types";
 import { Camera, Upload, SwitchCamera } from "lucide-react";
-import { getEnablers, getContactSources, getCustomPersonFields } from "@/services/settings-service";
+import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
 import { getFolkGuides } from "@/services/user-service";
 import { useAuth } from "@/contexts/auth-context";
 import { useAdmin } from "@/contexts/admin-context";
@@ -131,7 +131,7 @@ export function CreateUpdatePersonDialog({
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   
-  const [enablerOptions, setEnablerOptions] = React.useState<string[]>([]);
+  const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   const [customData, setCustomData] = React.useState<{ [key: string]: any }>({});
@@ -695,7 +695,7 @@ export function CreateUpdatePersonDialog({
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="__NONE__">None</SelectItem>
-                            {enablerOptions.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+                            {enablerOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                           </SelectContent>
                         </Select>
                         <FormMessage />

@@ -16,6 +16,11 @@ import type { AppUser, CustomField } from '@/lib/types';
 const defaultContactSources = ['Govinda Temple', 'ITPL', 'HK hill'];
 const defaultCallingEvent = "Spiritual Camp - July 2024";
 
+export type EnablerOption = {
+  value: string;
+  label: string;
+};
+
 const ensureSettingsDoc = async () => {
     const settingsDocRef = doc(db, 'settings', 'options');
     const docSnap = await getDoc(settingsDocRef);
@@ -53,35 +58,61 @@ const ensureSettingsDoc = async () => {
     };
 }
 
-export const getEnablers = async (appUser: AppUser | null): Promise<string[]> => {
+export const getEnablers = async (appUser: AppUser | null): Promise<EnablerOption[]> => {
     if (!appUser) return [];
 
     const usersCollection = collection(db, 'users');
 
-    // Admin sees all Folk Enablers and Folk Guides
+    // Admin sees all Folk Enablers and Folk Guides with their FG Code
     if (appUser.role.includes('Admin')) {
-        const enablersQuery = query(usersCollection, where('role', 'array-contains', 'Folk Enabler'));
-        const enablersSnapshot = await getDocs(enablersQuery);
-        const enablerNames = enablersSnapshot.docs.map(doc => doc.data().name as string);
+        const allUsersSnapshot = await getDocs(usersCollection);
+        const allUsers = allUsersSnapshot.docs.map(d => ({id: d.id, ...d.data()} as AppUser));
         
-        const guidesQuery = query(usersCollection, where('role', 'array-contains', 'Folk Guide'));
-        const guidesSnapshot = await getDocs(guidesQuery);
-        const guideNames = guidesSnapshot.docs.map(doc => doc.data().name as string);
-
-        return [...new Set([...enablerNames, ...guideNames])].sort();
+        const guides = allUsers.filter(u => u.role.includes('Folk Guide'));
+        const assignees = allUsers.filter(u => u.role.includes('Folk Enabler') || u.role.includes('Folk Guide'));
+        
+        const options: EnablerOption[] = assignees.map(assignee => {
+          let fgCode = 'N/A';
+          if (assignee.role.includes('Folk Guide')) {
+            fgCode = assignee.fgCode || 'N/A';
+          } else if (assignee.reportsTo?.guideId) {
+            const guide = guides.find(g => g.id === assignee.reportsTo?.guideId);
+            fgCode = guide?.fgCode || 'N/A';
+          }
+          return {
+            value: assignee.name,
+            label: `${assignee.name} (${fgCode})`
+          }
+        });
+        
+        // Remove duplicates that might occur if a user is both guide and enabler
+        const uniqueOptions = Array.from(new Map(options.map(item => [item.value, item])).values());
+        
+        return uniqueOptions.sort((a, b) => a.label.localeCompare(b.label));
     }
 
-    // A Folk Guide sees the enablers that report to them, plus themselves
+    // A Folk Guide sees the enablers that report to them, plus themselves (labeled as unassigned)
     if (appUser.role.includes('Folk Guide')) {
         const enablersQuery = query(usersCollection, where('reportsTo.guideId', '==', appUser.id));
         const snapshot = await getDocs(enablersQuery);
-        const enablerNames = snapshot.docs.map(doc => doc.data().name as string);
-        return [appUser.name, ...enablerNames].sort();
+        const enablerUsers = snapshot.docs.map(doc => doc.data() as AppUser);
+        
+        const options: EnablerOption[] = [];
+
+        // Add the guide themselves, with a special label for contacts assigned directly to them
+        options.push({ value: appUser.name, label: `${appUser.fgCode || 'Guide'} (Unassigned)` });
+        
+        // Add their enablers
+        enablerUsers.forEach(enabler => {
+            options.push({ value: enabler.name, label: enabler.name });
+        });
+
+        return options.sort((a,b) => a.label.localeCompare(b.label));
     }
     
     // A Folk Enabler only sees themselves
     if (appUser.role.includes('Folk Enabler')) {
-        return [appUser.name];
+        return [{ value: appUser.name, label: appUser.name }];
     }
     
     return [];

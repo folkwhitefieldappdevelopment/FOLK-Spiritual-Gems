@@ -27,7 +27,7 @@ import {
   getPeople,
   updatePerson,
 } from "@/services/people-service";
-import { getEnablers, getContactSources, getCurrentCallingEvent } from "@/services/settings-service";
+import { getEnablers, getContactSources, getCurrentCallingEvent, type EnablerOption } from "@/services/settings-service";
 import { serverTimestamp, arrayUnion } from "firebase/firestore";
 import { useAuth } from "@/contexts/auth-context";
 
@@ -53,7 +53,7 @@ export default function CallingAssistantPage() {
   const [isSessionDialogOpen, setIsSessionDialogOpen] = React.useState(false);
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(undefined);
 
-  const [enablerOptions, setEnablerOptions] = React.useState<string[]>([]);
+  const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
   const [currentCallingEvent, setCurrentCallingEvent] = React.useState("Loading event...");
 
@@ -242,11 +242,11 @@ export default function CallingAssistantPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
                 <Select value={enablerFilter} onValueChange={(value) => setEnablerFilter(value === '__all__' ? '' : value)}>
                     <SelectTrigger>
-                        <SelectValue placeholder="Filter by Assignee" />
+                        <SelectValue placeholder="Filter by Enabler" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="__all__">All Assignees</SelectItem>
-                        {enablerOptions.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+                        <SelectItem value="__all__">All Enablers</SelectItem>
+                        {enablerOptions.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
                     </SelectContent>
                 </Select>
                  <Select value={callStatusFilter} onValueChange={(value) => setCallStatusFilter(value === '__all__' ? '' : value)}>
