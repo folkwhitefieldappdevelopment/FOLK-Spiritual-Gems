@@ -17,19 +17,38 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 
 // Define report data structures
-type StatusCounts = { [key in CallStatus]?: number } & { total: number };
-type EnablerReport = { name: string; counts: StatusCounts };
-type GuideReport = { name: string; fgCode: string; counts: StatusCounts; enablers: EnablerReport[] };
+type ReportCounts = {
+  callPicked: number;
+  callNotPicked: number;
+  contactEliminated: number;
+  confirmations: number;
+  sg: number;
+  ma: number;
+  frp: number;
+  total: number;
+};
+type EnablerReport = { name: string; counts: ReportCounts };
+type GuideReport = { name: string; fgCode: string; counts: ReportCounts; enablers: EnablerReport[] };
 
 type CallReportProps = {
   people: Person[];
   relatedUsers: AppUser[];
 };
 
-const initialCounts = (): StatusCounts => ({
-    ...Object.fromEntries(callStatuses.map(s => [s, 0])) as { [key in CallStatus]: number },
-    total: 0
+const initialCounts = (): ReportCounts => ({
+  callPicked: 0,
+  callNotPicked: 0,
+  contactEliminated: 0,
+  confirmations: 0,
+  sg: 0,
+  ma: 0,
+  frp: 0,
+  total: 0,
 });
+
+const callPickedStatuses: CallStatus[] = ['A1 - Coming', 'A2 - Not Interested', 'A3 - Next Week/Upcoming week', 'A4 - Tentative', 'Y2 - Call me later', 'Y3 - Next Month', 'Z - Already Attended'];
+const callNotPickedStatuses: CallStatus[] = ['B - Not Answering', 'C - Busy', 'E - Switched Off', 'F - Not Reachable'];
+const contactEliminatedStatuses: CallStatus[] = ['D - Wrong Number', 'G - Completely Shifted to Another city'];
 
 export function CallReport({ people, relatedUsers }: CallReportProps) {
   const { appUser } = useAuth();
@@ -47,7 +66,6 @@ export function CallReport({ people, relatedUsers }: CallReportProps) {
     const from = startOfDay(date.from);
     const to = endOfDay(date.to);
     
-    // Filter call history for all people within the date range
     const callsInRange = people.flatMap(person => 
         (person.callHistory || [])
             .filter(call => {
@@ -58,39 +76,38 @@ export function CallReport({ people, relatedUsers }: CallReportProps) {
             .map(call => ({ ...call, enabler: person.enablerInTouchWith || 'Unassigned' }))
     );
     
-    // Enabler Report
+    const updateCounts = (summary: ReportCounts, call: typeof callsInRange[0]) => {
+        if (!call.status) return;
+        summary.total++;
+        if (callPickedStatuses.includes(call.status)) summary.callPicked++;
+        if (callNotPickedStatuses.includes(call.status)) summary.callNotPicked++;
+        if (contactEliminatedStatuses.includes(call.status)) summary.contactEliminated++;
+        if (call.status === 'A1 - Coming') summary.confirmations++;
+        if (call.sg) summary.sg++;
+        if (call.ma) summary.ma++;
+        if (call.frp) summary.frp++;
+    };
+
     if (appUser.role.includes('Folk Enabler') && !appUser.role.includes('Folk Guide') && !appUser.role.includes('Admin')) {
         const enablerCalls = callsInRange.filter(c => c.enabler === appUser.name);
         const counts = initialCounts();
-        enablerCalls.forEach(call => {
-            if(call.status) {
-                counts[call.status] = (counts[call.status] || 0) + 1;
-                counts.total++;
-            }
-        });
+        enablerCalls.forEach(call => updateCounts(counts, call));
         setReportData({ type: 'enabler', summary: counts });
     }
-
-    // Guide Report
     else if (appUser.role.includes('Folk Guide') && !appUser.role.includes('Admin')) {
         const guideEnablers = relatedUsers.map(u => u.name);
         const managedNames = new Set([appUser.name, ...guideEnablers]);
         const teamCalls = callsInRange.filter(c => managedNames.has(c.enabler));
         
         const teamSummary = initialCounts();
-        const enablerReportsMap: Record<string, StatusCounts> = {};
+        const enablerReportsMap: Record<string, ReportCounts> = {};
 
         teamCalls.forEach(call => {
-            if (!call.status) return;
-
-            teamSummary[call.status] = (teamSummary[call.status] || 0) + 1;
-            teamSummary.total++;
-
+            updateCounts(teamSummary, call);
             if (!enablerReportsMap[call.enabler]) {
                 enablerReportsMap[call.enabler] = initialCounts();
             }
-            enablerReportsMap[call.enabler][call.status]!++;
-            enablerReportsMap[call.enabler].total++;
+            updateCounts(enablerReportsMap[call.enabler], call);
         });
 
         const enablerReports: EnablerReport[] = Object.entries(enablerReportsMap)
@@ -99,8 +116,6 @@ export function CallReport({ people, relatedUsers }: CallReportProps) {
             
         setReportData({ type: 'guide', teamSummary, enablerReports });
     }
-
-    // Admin Report
     else if (appUser.role.includes('Admin')) {
         const guides = relatedUsers.filter(u => u.role.includes('Folk Guide'));
         const enablers = relatedUsers.filter(u => u.role.includes('Folk Enabler'));
@@ -115,16 +130,13 @@ export function CallReport({ people, relatedUsers }: CallReportProps) {
                 if (guideName) enablerToGuideMap.set(e.name, guideName);
             }
         });
-        guides.forEach(g => enablerToGuideMap.set(g.name, g.name));
+        guides.forEach(g => enablerToGuideMap.set(g.name, g.name)); // Guides report to themselves
 
         const totalSummary = initialCounts();
-        const guideReportsMap: Record<string, { counts: StatusCounts, enablers: Record<string, StatusCounts> }> = {};
+        const guideReportsMap: Record<string, { counts: ReportCounts, enablers: Record<string, ReportCounts> }> = {};
 
         callsInRange.forEach(call => {
-            if(!call.status) return;
-            totalSummary[call.status]!++;
-            totalSummary.total++;
-            
+            updateCounts(totalSummary, call);
             const guideName = enablerToGuideMap.get(call.enabler);
             if (guideName) {
                 if (!guideReportsMap[guideName]) {
@@ -133,11 +145,8 @@ export function CallReport({ people, relatedUsers }: CallReportProps) {
                 if (!guideReportsMap[guideName].enablers[call.enabler]) {
                     guideReportsMap[guideName].enablers[call.enabler] = initialCounts();
                 }
-
-                guideReportsMap[guideName].counts[call.status]!++;
-                guideReportsMap[guideName].counts.total++;
-                guideReportsMap[guideName].enablers[call.enabler][call.status]!++;
-                guideReportsMap[guideName].enablers[call.enabler].total++;
+                updateCounts(guideReportsMap[guideName].counts, call);
+                updateCounts(guideReportsMap[guideName].enablers[call.enabler], call);
             }
         });
         
@@ -156,10 +165,42 @@ export function CallReport({ people, relatedUsers }: CallReportProps) {
     setIsGenerating(false);
   }, [appUser, date, people, relatedUsers]);
 
-  // Auto-generate report on first load
   React.useEffect(() => {
     generateReport();
   }, [generateReport]);
+
+  const renderSummaryCard = (title: string, counts: ReportCounts) => (
+      <Card>
+          <CardHeader><CardTitle>{title}</CardTitle></CardHeader>
+          <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                  <div><p className="text-2xl font-bold">{counts.total}</p><p className="text-xs text-muted-foreground">Total Calls</p></div>
+                  <div><p className="text-2xl font-bold">{counts.callPicked}</p><p className="text-xs text-muted-foreground">Calls Picked</p></div>
+                  <div><p className="text-2xl font-bold">{counts.callNotPicked}</p><p className="text-xs text-muted-foreground">Not Picked</p></div>
+                  <div><p className="text-2xl font-bold">{counts.contactEliminated}</p><p className="text-xs text-muted-foreground">Eliminated</p></div>
+                  <div className="text-green-600 dark:text-green-400"><p className="text-2xl font-bold">{counts.confirmations}</p><p className="text-xs">Confirmations (A1)</p></div>
+                  <div><p className="text-2xl font-bold">{counts.sg}</p><p className="text-xs text-muted-foreground">SG</p></div>
+                  <div><p className="text-2xl font-bold">{counts.ma}</p><p className="text-xs text-muted-foreground">MA</p></div>
+                  <div><p className="text-2xl font-bold">{counts.frp}</p><p className="text-xs text-muted-foreground">FRP</p></div>
+              </div>
+          </CardContent>
+      </Card>
+  );
+  
+  const renderCountsTable = (counts: ReportCounts) => (
+      <Table>
+          <TableBody>
+              <TableRow><TableCell>Total Calls</TableCell><TableCell className="text-right">{counts.total}</TableCell></TableRow>
+              <TableRow><TableCell>Calls Picked</TableCell><TableCell className="text-right">{counts.callPicked}</TableCell></TableRow>
+              <TableRow><TableCell>Calls Not Picked</TableCell><TableCell className="text-right">{counts.callNotPicked}</TableCell></TableRow>
+              <TableRow><TableCell>Contacts Eliminated</TableCell><TableCell className="text-right">{counts.contactEliminated}</TableCell></TableRow>
+              <TableRow className="font-bold text-green-600 dark:text-green-400"><TableCell>Confirmations (A1)</TableCell><TableCell className="text-right">{counts.confirmations}</TableCell></TableRow>
+              <TableRow><TableCell>SG Attended</TableCell><TableCell className="text-right">{counts.sg}</TableCell></TableRow>
+              <TableRow><TableCell>MA Attended</TableCell><TableCell className="text-right">{counts.ma}</TableCell></TableRow>
+              <TableRow><TableCell>FRP Attended</TableCell><TableCell className="text-right">{counts.frp}</TableCell></TableRow>
+          </TableBody>
+      </Table>
+  );
 
   const renderReport = () => {
     if (isGenerating) {
@@ -174,20 +215,7 @@ export function CallReport({ people, relatedUsers }: CallReportProps) {
     if (type === 'enabler') {
       const { summary } = reportData;
       if (summary.total === 0) return <p className="text-muted-foreground text-center py-8">No calls found in this date range.</p>;
-      return (
-        <Table>
-          <TableHeader><TableRow><TableHead>Status</TableHead><TableHead className="text-right">Count</TableHead></TableRow></TableHeader>
-          <TableBody>
-            {callStatuses.map(status => (
-              <TableRow key={status}>
-                <TableCell>{status}</TableCell>
-                <TableCell className="text-right">{summary[status] || 0}</TableCell>
-              </TableRow>
-            ))}
-            <TableRow className="font-bold bg-muted/50"><TableCell>Total Calls</TableCell><TableCell className="text-right">{summary.total}</TableCell></TableRow>
-          </TableBody>
-        </Table>
-      );
+      return renderCountsTable(summary);
     }
     
     if (type === 'guide') {
@@ -195,29 +223,13 @@ export function CallReport({ people, relatedUsers }: CallReportProps) {
       if (teamSummary.total === 0) return <p className="text-muted-foreground text-center py-8">No calls found for your team in this date range.</p>;
       return (
         <div className="space-y-4">
-            <Card>
-                <CardHeader><CardTitle>Team Summary</CardTitle></CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                        {callStatuses.slice(0, 7).map(status => <div key={status}><p className="text-2xl font-bold">{teamSummary[status] || 0}</p><p className="text-xs text-muted-foreground">{status}</p></div>)}
-                        <div><p className="text-2xl font-bold">{teamSummary.total}</p><p className="text-xs text-muted-foreground">Total Calls</p></div>
-                    </div>
-                </CardContent>
-            </Card>
+            {renderSummaryCard('Team Summary', teamSummary)}
             <Accordion type="single" collapsible className="w-full">
                 {enablerReports.map((report: EnablerReport) => (
                     <AccordionItem value={report.name} key={report.name}>
                         <AccordionTrigger>{report.name} <span className="text-muted-foreground ml-auto pr-2">Total Calls: {report.counts.total}</span></AccordionTrigger>
                         <AccordionContent>
-                           <Table>
-                              <TableHeader><TableRow><TableHead>Status</TableHead><TableHead className="text-right">Count</TableHead></TableRow></TableHeader>
-                              <TableBody>
-                                {callStatuses.map(status => (
-                                  <TableRow key={status}><TableCell>{status}</TableCell><TableCell className="text-right">{report.counts[status] || 0}</TableCell></TableRow>
-                                ))}
-                                <TableRow className="font-bold bg-muted/50"><TableCell>Total</TableCell><TableCell className="text-right">{report.counts.total}</TableCell></TableRow>
-                              </TableBody>
-                           </Table>
+                           {renderCountsTable(report.counts)}
                         </AccordionContent>
                     </AccordionItem>
                 ))}
@@ -231,32 +243,23 @@ export function CallReport({ people, relatedUsers }: CallReportProps) {
       if (totalSummary.total === 0) return <p className="text-muted-foreground text-center py-8">No calls found in this date range.</p>;
       return (
         <div className="space-y-4">
-          <Card>
-            <CardHeader><CardTitle>Overall Summary</CardTitle></CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                {callStatuses.slice(0, 7).map(status => <div key={status}><p className="text-2xl font-bold">{totalSummary[status] || 0}</p><p className="text-xs text-muted-foreground">{status}</p></div>)}
-                <div><p className="text-2xl font-bold">{totalSummary.total}</p><p className="text-xs text-muted-foreground">Total Calls</p></div>
-              </div>
-            </CardContent>
-          </Card>
+          {renderSummaryCard('Overall Summary', totalSummary)}
           <Accordion type="single" collapsible className="w-full">
             {guideReports.map((report: GuideReport) => (
               <AccordionItem value={report.name} key={report.name}>
                 <AccordionTrigger>{report.name} ({report.fgCode})<span className="text-muted-foreground ml-auto pr-2">Total Calls: {report.counts.total}</span></AccordionTrigger>
-                <AccordionContent>
-                  <Table>
-                    <TableHeader><TableRow><TableHead>Enabler</TableHead><TableHead className="text-right">Total Calls</TableHead></TableRow></TableHeader>
-                    <TableBody>
-                      {report.enablers.map(enabler => (
-                        <TableRow key={enabler.name}>
-                          <TableCell>{enabler.name}</TableCell>
-                          <TableCell className="text-right">{enabler.counts.total}</TableCell>
-                        </TableRow>
-                      ))}
-                      <TableRow className="font-bold bg-muted/50"><TableCell>Guide Total</TableCell><TableCell className="text-right">{report.counts.total}</TableCell></TableRow>
-                    </TableBody>
-                  </Table>
+                <AccordionContent className="space-y-4">
+                    {renderSummaryCard('Guide Summary', report.counts)}
+                    <Accordion type="single" collapsible className="w-full pl-4">
+                        {report.enablers.map((enablerReport: EnablerReport) => (
+                             <AccordionItem value={enablerReport.name} key={enablerReport.name}>
+                                <AccordionTrigger>{enablerReport.name}<span className="text-muted-foreground ml-auto pr-2">Total Calls: {enablerReport.counts.total}</span></AccordionTrigger>
+                                <AccordionContent>
+                                    {renderCountsTable(enablerReport.counts)}
+                                </AccordionContent>
+                            </AccordionItem>
+                        ))}
+                    </Accordion>
                 </AccordionContent>
               </AccordionItem>
             ))}
