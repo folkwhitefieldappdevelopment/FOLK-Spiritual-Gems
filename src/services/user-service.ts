@@ -134,3 +134,19 @@ export const getUserByEmail = async (email: string): Promise<AppUser | null> => 
     const userDoc = querySnapshot.docs[0];
     return { id: userDoc.id, ...userDoc.data() } as AppUser;
 };
+
+/**
+ * Retrieves all enablers assigned to a specific Folk Guide.
+ * @param guideId The ID of the Folk Guide.
+ * @returns A promise that resolves to an array of enabler user objects.
+ */
+export const getEnablersForGuide = async (guideId: string): Promise<AppUser[]> => {
+    const usersCollection = collection(db, 'users');
+    const q = query(
+        usersCollection,
+        where('role', 'array-contains', 'Folk Enabler'),
+        where('reportsTo.guideId', '==', guideId)
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppUser));
+};

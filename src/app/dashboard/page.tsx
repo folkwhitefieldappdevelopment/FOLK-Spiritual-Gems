@@ -2,8 +2,9 @@
 'use client';
 
 import * as React from 'react';
-import type { Person } from '@/lib/types';
+import type { Person, AppUser } from '@/lib/types';
 import { getPeople } from '@/services/people-service';
+import { getUsers, getEnablersForGuide } from '@/services/user-service';
 import { useToast } from '@/hooks/use-toast';
 import { subWeeks, startOfWeek, isAfter, format } from 'date-fns';
 import { Users, UserPlus, Briefcase, Loader2 } from 'lucide-react';
@@ -34,6 +35,7 @@ const CHART_COLORS = [
 export default function DashboardPage() {
   const { appUser } = useAuth();
   const [people, setPeople] = React.useState<Person[]>([]);
+  const [relatedUsers, setRelatedUsers] = React.useState<AppUser[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
 
@@ -46,8 +48,20 @@ export default function DashboardPage() {
       setIsLoading(true);
       setFetchError(null);
       try {
-        const peopleData = await getPeople(appUser);
-        setPeople(peopleData);
+        const promises: (Promise<Person[]> | Promise<AppUser[]>)[] = [getPeople(appUser)];
+
+        if (appUser.role.includes('Admin')) {
+            promises.push(getUsers());
+        } else if (appUser.role.includes('Folk Guide')) {
+            promises.push(getEnablersForGuide(appUser.id));
+        }
+
+        const [peopleData, usersData] = await Promise.all(promises);
+        
+        setPeople(peopleData as Person[]);
+        if (usersData) {
+            setRelatedUsers(usersData as AppUser[]);
+        }
       } catch (error) {
         console.error('Failed to load dashboard data:', error);
         if (error instanceof Error) {
@@ -75,12 +89,12 @@ export default function DashboardPage() {
     return null;
   }
 
-  const { totalContacts, newThisWeek, contactsByEnabler, newContactsByWeek, contactsByChantingStatus, contactsByOccupation } = React.useMemo(() => {
-    if (!people.length) {
-      return { totalContacts: 0, newThisWeek: 0, contactsByEnabler: [], newContactsByWeek: [], contactsByChantingStatus: [], contactsByOccupation: [] };
+  const { totalContacts, newThisWeek, enablerCount, enablerCountDescription, contactsByEnabler, newContactsByWeek, contactsByChantingStatus, contactsByOccupation, enablersByGuideData } = React.useMemo(() => {
+    if (!people.length && !relatedUsers.length) {
+      return { totalContacts: 0, newThisWeek: 0, enablerCount: 0, enablerCountDescription: '', contactsByEnabler: [], newContactsByWeek: [], contactsByChantingStatus: [], contactsByOccupation: [], enablersByGuideData: [] };
     }
     
-    // Total & New This Week
+    // People-based calculations
     const now = new Date();
     const startOfThisWeek = startOfWeek(now, { weekStartsOn: 1 });
     const newThisWeekCount = people.filter(p => {
@@ -88,7 +102,6 @@ export default function DashboardPage() {
         return createdAt && isAfter(createdAt, startOfThisWeek);
     }).length;
 
-    // Contacts by Enabler
     const enablerMap = new Map<string, number>();
     people.forEach(p => {
         const enabler = p.enablerInTouchWith || 'Unassigned';
@@ -96,13 +109,11 @@ export default function DashboardPage() {
     });
     const enablerData = Array.from(enablerMap.entries()).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value);
 
-    // New Contacts per Week (last 12 weeks)
     const weekLabels = Array.from({ length: 12 }).map((_, i) => {
         const d = subWeeks(now, 11 - i);
         return `W${i+1}: ${format(startOfWeek(d, { weekStartsOn: 1 }), 'MMM d')}`;
     });
     const weeklyData = Array(12).fill(0);
-
     people.forEach(p => {
         const createdAt = safeDate(p.createdAt);
         if (createdAt && isAfter(createdAt, subWeeks(now, 12))) {
@@ -116,10 +127,8 @@ export default function DashboardPage() {
             }
         }
     });
-
     const newContactsByWeekData = weekLabels.map((label, i) => ({ name: label, newContacts: weeklyData[i] }));
     
-    // Contacts by Chanting Status
     const chantingMap = new Map<string, number>();
     people.forEach(p => {
       const status = p.chantingStatus || 'Not specified';
@@ -127,7 +136,6 @@ export default function DashboardPage() {
     });
     const chantingData = Array.from(chantingMap.entries()).map(([name, value]) => ({ name, value }));
 
-    // Contacts by Occupation Status
     const occupationMap = new Map<string, number>();
     people.forEach(p => {
       const status = p.occupation || 'Not specified';
@@ -135,15 +143,52 @@ export default function DashboardPage() {
     });
     const occupationData = Array.from(occupationMap.entries()).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value);
 
+    // User-based calculations
+    let enablerCountResult = 0;
+    let enablerCountDescResult = '';
+    let enablersByGuideChartData: { name: string; value: number }[] = [];
+    
+    if (appUser) {
+        if (appUser.role.includes('Admin')) {
+            const enablers = relatedUsers.filter(u => u.role.includes('Folk Enabler'));
+            enablerCountResult = enablers.length;
+            enablerCountDescResult = 'Total enablers in the system';
+
+            const guides = relatedUsers.filter(u => u.role.includes('Folk Guide'));
+            const guideMap = new Map<string, { name: string, count: number }>();
+            guides.forEach(g => {
+                guideMap.set(g.id, { name: `${g.name} (${g.fgCode || 'N/A'})`, count: 0 });
+            });
+            enablers.forEach(e => {
+                if (e.reportsTo?.guideId) {
+                    const guideData = guideMap.get(e.reportsTo.guideId);
+                    if (guideData) {
+                        guideData.count++;
+                    }
+                }
+            });
+            enablersByGuideChartData = Array.from(guideMap.values())
+                .map(g => ({ name: g.name, value: g.count }))
+                .sort((a,b) => b.value - a.value);
+
+        } else if (appUser.role.includes('Folk Guide')) {
+            enablerCountResult = relatedUsers.length;
+            enablerCountDescResult = 'Total enablers assigned to you';
+        }
+    }
+
     return { 
       totalContacts: people.length,
       newThisWeek: newThisWeekCount,
+      enablerCount: enablerCountResult,
+      enablerCountDescription: enablerCountDescResult,
       contactsByEnabler: enablerData,
       newContactsByWeek: newContactsByWeekData,
       contactsByChantingStatus: chantingData,
-      contactsByOccupation: occupationData
+      contactsByOccupation: occupationData,
+      enablersByGuideData: enablersByGuideChartData,
     };
-  }, [people]);
+  }, [people, relatedUsers, appUser]);
   
   const renderContent = () => {
      if (isLoading) {
@@ -186,8 +231,8 @@ export default function DashboardPage() {
                 <Briefcase className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-                <div className="text-2xl font-bold">{contactsByEnabler.length}</div>
-                <p className="text-xs text-muted-foreground">Total enablers with assigned contacts</p>
+                <div className="text-2xl font-bold">{enablerCount}</div>
+                <p className="text-xs text-muted-foreground">{enablerCountDescription}</p>
             </CardContent>
         </Card>
         
@@ -230,6 +275,30 @@ export default function DashboardPage() {
               </ChartContainer>
             </CardContent>
         </Card>
+        
+        {appUser?.role.includes('Admin') && enablersByGuideData.length > 0 && (
+          <Card className="lg:col-span-3">
+            <CardHeader>
+                <CardTitle>Enablers per Folk Guide</CardTitle>
+                <CardDescription>Distribution of enablers among folk guides.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={{}} className="h-[300px] w-full">
+                <BarChart data={enablersByGuideData} layout="vertical" margin={{ left: 20, right: 10 }}>
+                  <CartesianGrid horizontal={false} />
+                  <XAxis type="number" dataKey="value" allowDecimals={false} />
+                  <YAxis type="category" dataKey="name" width={150} tick={{ fontSize: 12 }} />
+                  <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} content={<ChartTooltipContent />} />
+                  <Bar dataKey="value" radius={4}>
+                    {enablersByGuideData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
             <CardHeader>
