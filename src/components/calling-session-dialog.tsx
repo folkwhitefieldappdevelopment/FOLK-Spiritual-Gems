@@ -80,7 +80,8 @@ export function CallingSessionDialog({
 
   React.useEffect(() => {
     if (currentPerson) {
-        form.reset({ remark: currentPerson.lastCallRemark || "", status: currentPerson.lastCallStatus || "" });
+        // Reset with last status, but clear the remark field for a new entry.
+        form.reset({ remark: "", status: currentPerson.lastCallStatus || "" });
         setCallStartTime(new Date());
     }
   }, [currentPerson, form]);
@@ -149,6 +150,13 @@ export function CallingSessionDialog({
                 </Button>
             </div>
             
+            {currentPerson.lastCallRemark && (
+              <div className="text-sm p-3 bg-muted/50 rounded-lg max-h-24 overflow-y-auto">
+                <p className="font-semibold text-muted-foreground mb-1">Previous Remark:</p>
+                <p className="text-foreground whitespace-pre-wrap">{currentPerson.lastCallRemark}</p>
+              </div>
+            )}
+
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} id="call-form" className="space-y-4">
                     <FormField
@@ -178,7 +186,7 @@ export function CallingSessionDialog({
                     name="remark"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Call Remarks (Optional)</FormLabel>
+                        <FormLabel>New Remark (Optional)</FormLabel>
                         <FormControl>
                             <Textarea
                                 placeholder="e.g., Discussed about the upcoming event, interested to join."
