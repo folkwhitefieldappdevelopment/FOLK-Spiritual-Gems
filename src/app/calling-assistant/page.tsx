@@ -242,10 +242,10 @@ export default function CallingAssistantPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
                 <Select value={enablerFilter} onValueChange={(value) => setEnablerFilter(value === '__all__' ? '' : value)}>
                     <SelectTrigger>
-                        <SelectValue placeholder="Filter by Enabler" />
+                        <SelectValue placeholder="Filter by Assignee" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="__all__">All Enablers</SelectItem>
+                        <SelectItem value="__all__">All Assignees</SelectItem>
                         {enablerOptions.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}
                     </SelectContent>
                 </Select>
