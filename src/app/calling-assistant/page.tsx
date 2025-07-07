@@ -5,7 +5,7 @@ import * as React from "react";
 import { Headset, Search, Sunrise, Loader2 } from "lucide-react";
 import type { Person, CallStatus } from "@/lib/types";
 import { occupationStatuses } from "@/lib/types";
-import { callStatuses, CURRENT_CALLING_EVENT } from "@/lib/data";
+import { callStatuses } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -27,7 +27,7 @@ import {
   getPeople,
   updatePerson,
 } from "@/services/people-service";
-import { getEnablers, getContactSources } from "@/services/settings-service";
+import { getEnablers, getContactSources, getCurrentCallingEvent } from "@/services/settings-service";
 import { serverTimestamp, arrayUnion } from "firebase/firestore";
 import { useAuth } from "@/contexts/auth-context";
 
@@ -52,6 +52,7 @@ export default function CallingAssistantPage() {
 
   const [enablerOptions, setEnablerOptions] = React.useState<string[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
+  const [currentCallingEvent, setCurrentCallingEvent] = React.useState("Loading event...");
 
   React.useEffect(() => {
     if (!appUser) {
@@ -62,14 +63,16 @@ export default function CallingAssistantPage() {
       setIsLoading(true);
       setFetchError(null);
       try {
-        const [peopleData, enablersData, sourcesData] = await Promise.all([
+        const [peopleData, enablersData, sourcesData, eventData] = await Promise.all([
           getPeople(appUser),
           getEnablers(appUser),
           getContactSources(),
+          getCurrentCallingEvent(),
         ]);
         setPeople(peopleData);
         setEnablerOptions(enablersData);
         setContactSourceOptions(sourcesData);
+        setCurrentCallingEvent(eventData);
       } catch (error) {
         console.error("Failed to load data:", error);
         if (error instanceof Error) {
@@ -142,7 +145,7 @@ export default function CallingAssistantPage() {
   
   const handleSessionSave = (personId: string, remark: string, duration: string, status: CallStatus) => {
     const callTime = new Date(); // Use a client-side timestamp for the history entry
-    const currentEvent = CURRENT_CALLING_EVENT;
+    const currentEvent = currentCallingEvent;
 
     updatePerson(personId, {
         lastCallRemark: remark,
@@ -272,7 +275,7 @@ export default function CallingAssistantPage() {
         <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
             <PageHeader
               title="Calling Assistant"
-              description={`A focused view to call contacts for: ${CURRENT_CALLING_EVENT}`}
+              description={`A focused view to call contacts for: ${currentCallingEvent}`}
             />
             <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
               {renderContent()}
@@ -284,7 +287,7 @@ export default function CallingAssistantPage() {
           onClose={() => setIsSessionDialogOpen(false)}
           people={filteredPeople}
           onSaveRemark={handleSessionSave}
-          currentEvent={CURRENT_CALLING_EVENT}
+          currentEvent={currentCallingEvent}
         />
 
         {editingPerson && (

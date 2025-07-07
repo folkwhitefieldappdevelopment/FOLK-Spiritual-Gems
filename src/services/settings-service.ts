@@ -14,24 +14,42 @@ import type { AppUser, CustomField } from '@/lib/types';
 
 
 const defaultContactSources = ['Govinda Temple', 'ITPL', 'HK hill'];
+const defaultCallingEvent = "Spiritual Camp - July 2024";
 
 const ensureSettingsDoc = async () => {
     const settingsDocRef = doc(db, 'settings', 'options');
     const docSnap = await getDoc(settingsDocRef);
-    if (!docSnap.exists()) {
-        await setDoc(settingsDocRef, {
-            contactSources: defaultContactSources,
-            customPersonFields: [],
-        });
-    }
     const data = docSnap.data() || {};
-    if (!data.customPersonFields) {
-        await setDoc(settingsDocRef, { customPersonFields: [] }, { merge: true });
+    
+    let needsUpdate = false;
+    const updates: {[key: string]: any} = {};
+
+    if (!docSnap.exists()) {
+        needsUpdate = true;
+        updates.contactSources = defaultContactSources;
+        updates.customPersonFields = [];
+        updates.currentCallingEvent = defaultCallingEvent;
+    } else {
+        if (!data.customPersonFields) {
+            needsUpdate = true;
+            updates.customPersonFields = [];
+        }
+        if (!data.currentCallingEvent) {
+            needsUpdate = true;
+            updates.currentCallingEvent = defaultCallingEvent;
+        }
     }
     
+    if (needsUpdate) {
+        await setDoc(settingsDocRef, updates, { merge: true });
+    }
+    
+    const finalData = { ...data, ...updates };
+
     return {
-        contactSources: data.contactSources || defaultContactSources,
-        customPersonFields: data.customPersonFields || [],
+        contactSources: finalData.contactSources || defaultContactSources,
+        customPersonFields: finalData.customPersonFields || [],
+        currentCallingEvent: finalData.currentCallingEvent || defaultCallingEvent,
     };
 }
 
@@ -135,4 +153,15 @@ export const getCustomPersonFields = async (): Promise<CustomField[]> => {
 export const saveCustomPersonFields = async (fields: CustomField[]): Promise<void> => {
     const settingsDocRef = doc(db, 'settings', 'options');
     await setDoc(settingsDocRef, { customPersonFields: fields }, { merge: true });
+};
+
+// Calling Event
+export const getCurrentCallingEvent = async (): Promise<string> => {
+    const settings = await ensureSettingsDoc();
+    return settings.currentCallingEvent;
+};
+
+export const updateCurrentCallingEvent = async (eventName: string): Promise<void> => {
+    const settingsDocRef = doc(db, 'settings', 'options');
+    await setDoc(settingsDocRef, { currentCallingEvent: eventName }, { merge: true });
 };

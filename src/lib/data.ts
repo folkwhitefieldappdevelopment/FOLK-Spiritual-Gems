@@ -89,10 +89,6 @@ export const createInitialProgress = (): ProgressCategoryAnswers[] => {
   }));
 };
 
-// The event name for the current calling campaign.
-// You can ask me to change this value when you start a new campaign.
-export const CURRENT_CALLING_EVENT = "Spiritual Camp - July 2024";
-
 export const callStatuses = [
     'A1 - Coming',
     'A2 - Not Interested',

@@ -39,6 +39,8 @@ import {
   deleteContactSource,
   getCustomPersonFields,
   saveCustomPersonFields,
+  getCurrentCallingEvent,
+  updateCurrentCallingEvent,
 } from '@/services/settings-service';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { CustomField, CustomFieldType } from '@/lib/types';
@@ -56,6 +58,8 @@ export default function SettingsPage() {
 
   const [sources, setSources] = React.useState<string[]>([]);
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
+  const [currentEvent, setCurrentEvent] = React.useState('');
+  const [isSavingEvent, setIsSavingEvent] = React.useState(false);
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [dialogMode, setDialogMode] = React.useState<DialogMode>('add');
@@ -73,12 +77,14 @@ export default function SettingsPage() {
       setIsLoading(true);
       setFetchError(null);
       try {
-        const [sourcesData, customFieldsData] = await Promise.all([
+        const [sourcesData, customFieldsData, eventData] = await Promise.all([
           getContactSources(),
           getCustomPersonFields(),
+          getCurrentCallingEvent(),
         ]);
         setSources(sourcesData);
         setCustomFields(customFieldsData);
+        setCurrentEvent(eventData);
       } catch (error) {
         console.error('Failed to load settings data', error);
         if (error instanceof Error) {
@@ -176,6 +182,22 @@ export default function SettingsPage() {
       }
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not delete the item.' });
+    }
+  };
+  
+  const handleSaveEvent = async () => {
+    if (!currentEvent.trim()) {
+        toast({ variant: 'destructive', title: 'Event name cannot be empty.' });
+        return;
+    }
+    setIsSavingEvent(true);
+    try {
+        await updateCurrentCallingEvent(currentEvent);
+        toast({ title: 'Calling Event Updated', description: `The current event is now "${currentEvent}".` });
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not save the event name.' });
+    } finally {
+        setIsSavingEvent(false);
     }
   };
   
@@ -388,6 +410,28 @@ export default function SettingsPage() {
                     </CardContent>
                   </Card>
                   
+                  <Card>
+                    <CardHeader>
+                        <CardTitle>Current Calling Event</CardTitle>
+                        <CardDescription>
+                            Set the name of the event that appears in the Calling Assistant.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                           <Input 
+                             value={currentEvent}
+                             onChange={(e) => setCurrentEvent(e.target.value)}
+                             placeholder="e.g. Spiritual Camp - July 2024"
+                           />
+                           <Button onClick={handleSaveEvent} disabled={isSavingEvent}>
+                               {isSavingEvent && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                               Save Event
+                           </Button>
+                        </div>
+                    </CardContent>
+                  </Card>
+
                   <div>
                         <div className="flex justify-end mb-4">
                           <Button onClick={() => openDialog('add', 'source')}>
