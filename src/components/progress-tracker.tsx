@@ -176,7 +176,7 @@ export function ProgressTracker({
   };
 
   return (
-    <Card className="h-[calc(100vh-8rem)] flex flex-col">
+    <Card className="h-full flex flex-col">
       <CardHeader>
         <CardTitle>Progress Checklist</CardTitle>
       </CardHeader>
