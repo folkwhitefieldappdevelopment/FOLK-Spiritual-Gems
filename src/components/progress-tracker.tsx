@@ -162,11 +162,11 @@ export function ProgressTracker({
       <CardHeader>
         <CardTitle>Progress Checklist</CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 overflow-y-auto rounded-lg border p-0">
+      <CardContent className="flex-1 overflow-auto rounded-lg border p-0">
         <table className="relative w-full caption-bottom text-sm border-collapse">
           <TableHeader className="sticky top-0 z-10 bg-card">
-            <TableRow className="bg-muted/50 hover:bg-muted/50">
-              <TableHead rowSpan={2} className="w-[300px] font-bold text-foreground align-bottom">
+            <TableRow className="bg-muted/50 hover:bg-muted/50 border-b-0">
+              <TableHead rowSpan={2} className="w-[300px] font-bold text-foreground align-bottom sticky left-0 z-20 bg-muted/50">
                 Category
               </TableHead>
               <TableHead colSpan={2} className="text-center font-bold text-foreground border-l">
@@ -201,13 +201,13 @@ export function ProgressTracker({
             {checklistData.map((category, catIndex) => (
               <React.Fragment key={category.category}>
                 <TableRow className="bg-secondary/50">
-                  <TableCell colSpan={7} className="font-bold text-primary">
+                  <TableCell colSpan={7} className="font-bold text-primary sticky left-0 bg-secondary/50">
                     {category.category}
                   </TableCell>
                 </TableRow>
                 {category.items.map((item, itemIndex) => (
                   <TableRow key={item.question}>
-                    <TableCell className="font-medium text-sm text-muted-foreground align-top">
+                    <TableCell className="font-medium text-sm text-muted-foreground align-top sticky left-0 bg-card">
                       {item.link ? (
                         <Link
                           href={item.link}
