@@ -92,26 +92,32 @@ export const getEnablers = async (
       };
     });
 
+    if (context === 'filter') {
+        options.unshift({ value: '__UNASSIGNED__', label: 'Unassigned' });
+    }
+
     const uniqueOptions = Array.from(new Map(options.map(item => [item.value, item])).values());
     return uniqueOptions.sort((a, b) => a.label.localeCompare(b.label));
   }
 
-  // Folk Guide sees their enablers + themselves
+  // Folk Guide sees their enablers
   if (appUser.role.includes('Folk Guide')) {
     const enablersQuery = query(usersCollection, where('reportsTo.guideId', '==', appUser.id));
     const snapshot = await getDocs(enablersQuery);
     const enablerUsers = snapshot.docs.map(doc => doc.data() as AppUser);
 
-    const options: EnablerOption[] = [];
+    const options: EnablerOption[] = enablerUsers.map(enabler => ({
+      value: enabler.name,
+      label: enabler.name,
+    }));
 
-    // Add the guide themselves. Label depends on context.
-    const guideLabel = context === 'filter' ? `${appUser.fgCode || 'Guide'} (Unassigned)` : appUser.name;
-    options.push({ value: appUser.name, label: guideLabel });
-
-    // Add their enablers
-    enablerUsers.forEach(enabler => {
-      options.push({ value: enabler.name, label: enabler.name });
-    });
+    if (context === 'filter') {
+      // For filtering, add a special "Unassigned" option.
+      options.unshift({
+        value: '__UNASSIGNED__',
+        label: `${appUser.fgCode || 'Guide'} (Unassigned)`,
+      });
+    }
 
     return options.sort((a, b) => a.label.localeCompare(b.label));
   }

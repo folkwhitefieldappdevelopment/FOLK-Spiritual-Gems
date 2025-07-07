@@ -100,7 +100,9 @@ export default function CallingAssistantPage() {
       const generalSearchMatch =
         !search || name.includes(search) || phone.includes(search) || nativePlace.includes(search);
 
-      const enablerMatch = !enablerFilter || person.enablerInTouchWith === enablerFilter;
+      const enablerMatch = enablerFilter === '__UNASSIGNED__'
+        ? !person.enablerInTouchWith
+        : !enablerFilter || person.enablerInTouchWith === enablerFilter;
       const sourceMatch = !contactSourceFilter || person.contactSource === contactSourceFilter;
       const occupationMatch = !occupationFilter || person.occupation === occupationFilter;
       const chantingMatch =
