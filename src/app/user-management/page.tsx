@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { createUser, getUsers, updateUser, getFolkGuides } from '@/services/user-service';
+import { createUser, getUsers, updateUser, getFolkGuides, getEnablersForGuide } from '@/services/user-service';
 import { deleteUserAndAuth } from '@/services/user-actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { userRoles, type UserRole, type AppUser } from '@/lib/types';
@@ -76,12 +76,25 @@ export default function UserManagementPage() {
   }, [appUser, router, toast]);
   
   const fetchUsersAndGuides = React.useCallback(async () => {
+    if (!appUser) return;
+
     setIsLoadingUsers(true);
     setFetchError(null);
     try {
+      let usersPromise: Promise<AppUser[]>;
+
+      if (appUser.role.includes('Admin')) {
+        usersPromise = getUsers();
+      } else if (appUser.role.includes('Folk Guide')) {
+        usersPromise = getEnablersForGuide(appUser.id);
+      } else {
+        // This case should be handled by the page guard, but as a fallback.
+        usersPromise = Promise.resolve([]);
+      }
+      
       const [usersData, guidesData] = await Promise.all([
-        getUsers(),
-        getFolkGuides(),
+        usersPromise,
+        getFolkGuides(), // All roles might need this for the dialog
       ]);
 
       const sanitizedUsers = usersData.map(u => {
@@ -108,11 +121,14 @@ export default function UserManagementPage() {
     } finally {
       setIsLoadingUsers(false);
     }
-  }, [toast]);
+  }, [appUser, toast]);
 
   React.useEffect(() => {
-    fetchUsersAndGuides();
-  }, [fetchUsersAndGuides]);
+    if (appUser) {
+        fetchUsersAndGuides();
+    }
+  }, [appUser, fetchUsersAndGuides]);
+
 
   const handleOpenCreateDialog = () => {
     setEditingUser(undefined);
@@ -298,7 +314,15 @@ export default function UserManagementPage() {
                                       </TableRow>
                                   </TableHeader>
                                   <TableBody>
-                                      {filteredUsers.map(user => (
+                                      {filteredUsers.map(user => {
+                                        const isSelf = user.id === appUser?.id;
+                                        const isManagedByGuide = appUser?.role.includes('Folk Guide') && user.reportsTo?.guideId === appUser?.id;
+                                        const isAdmin = appUser?.role.includes('Admin');
+
+                                        const canEdit = isAdmin || isManagedByGuide;
+                                        const canDelete = !isSelf && (isAdmin || isManagedByGuide);
+
+                                        return (
                                         <TableRow key={user.id}>
                                           <TableCell>
                                             <div className="flex items-center gap-3">
@@ -326,24 +350,29 @@ export default function UserManagementPage() {
                                           <TableCell className="text-right">
                                             <DropdownMenu>
                                               <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!canEdit && !canDelete}>
                                                   <MoreHorizontal className="h-4 w-4" />
                                                 </Button>
                                               </DropdownMenuTrigger>
                                               <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onSelect={() => handleEditUser(user)}>
-                                                  <Edit className="mr-2 h-4 w-4" />
-                                                  Edit
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onSelect={() => setUserToDelete(user)} className="text-destructive focus:text-destructive">
-                                                  <Trash2 className="mr-2 h-4 w-4" />
-                                                  Delete
-                                                </DropdownMenuItem>
+                                                {canEdit && (
+                                                    <DropdownMenuItem onSelect={() => handleEditUser(user)}>
+                                                        <Edit className="mr-2 h-4 w-4" />
+                                                        Edit
+                                                    </DropdownMenuItem>
+                                                )}
+                                                {canDelete && (
+                                                    <DropdownMenuItem onSelect={() => setUserToDelete(user)} className="text-destructive focus:text-destructive">
+                                                        <Trash2 className="mr-2 h-4 w-4" />
+                                                        Delete
+                                                    </DropdownMenuItem>
+                                                )}
                                               </DropdownMenuContent>
                                             </DropdownMenu>
                                           </TableCell>
                                         </TableRow>
-                                      ))}
+                                        );
+                                      })}
                                   </TableBody>
                               </Table>
                           ) : (
