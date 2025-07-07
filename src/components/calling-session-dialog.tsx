@@ -39,6 +39,9 @@ import { Textarea } from "@/components/ui/textarea";
 const callFormSchema = z.object({
   remark: z.string().trim().optional(),
   status: z.string().min(1, { message: "Please select a call status." }),
+  sg: z.string().optional(),
+  ma: z.string().optional(),
+  frp: z.string().optional(),
 });
 
 type CallFormValues = z.infer<typeof callFormSchema>;
@@ -46,7 +49,15 @@ type CallFormValues = z.infer<typeof callFormSchema>;
 type CallingSessionDialogProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSaveRemark: (personId: string, remark: string, duration: string, status: CallStatus) => void;
+  onSaveRemark: (
+    personId: string, 
+    remark: string, 
+    duration: string, 
+    status: CallStatus,
+    sg: boolean | undefined,
+    ma: boolean | undefined,
+    frp: boolean | undefined
+  ) => void;
   people: Person[];
   currentEvent: string;
 };
@@ -68,20 +79,29 @@ export function CallingSessionDialog({
     defaultValues: {
       remark: "",
       status: "",
+      sg: "",
+      ma: "",
+      frp: "",
     },
   });
   
   React.useEffect(() => {
     if (isOpen) {
         setCurrentIndex(0);
-        form.reset({ remark: "", status: "" });
+        form.reset({ remark: "", status: "", sg: "", ma: "", frp: "" });
     }
   }, [isOpen, form]);
 
   React.useEffect(() => {
     if (currentPerson) {
         // Reset with last status, but clear the remark field for a new entry.
-        form.reset({ remark: "", status: currentPerson.lastCallStatus || "" });
+        form.reset({ 
+            remark: "", 
+            status: currentPerson.lastCallStatus || "",
+            sg: typeof currentPerson.lastSg === 'boolean' ? (currentPerson.lastSg ? 'yes' : 'no') : '',
+            ma: typeof currentPerson.lastMa === 'boolean' ? (currentPerson.lastMa ? 'yes' : 'no') : '',
+            frp: typeof currentPerson.lastFrp === 'boolean' ? (currentPerson.lastFrp ? 'yes' : 'no') : '',
+        });
         setCallStartTime(new Date());
     }
   }, [currentPerson, form]);
@@ -111,7 +131,11 @@ export function CallingSessionDialog({
     const seconds = durationInSeconds % 60;
     const durationString = `${minutes}m ${seconds}s`;
 
-    onSaveRemark(currentPerson.id, data.remark || '', durationString, data.status as CallStatus);
+    const sg = data.sg === 'yes' ? true : data.sg === 'no' ? false : undefined;
+    const ma = data.ma === 'yes' ? true : data.ma === 'no' ? false : undefined;
+    const frp = data.frp === 'yes' ? true : data.frp === 'no' ? false : undefined;
+
+    onSaveRemark(currentPerson.id, data.remark || '', durationString, data.status as CallStatus, sg, ma, frp);
     toast({
         title: "Call Logged",
         description: `Status for ${currentPerson.firstName} has been updated.`
@@ -181,6 +205,68 @@ export function CallingSessionDialog({
                         </FormItem>
                       )}
                     />
+                     <div className="grid grid-cols-3 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="sg"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>SG</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="yes">Yes</SelectItem>
+                                            <SelectItem value="no">No</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="ma"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>MA</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="yes">Yes</SelectItem>
+                                            <SelectItem value="no">No</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="frp"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>FRP</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="yes">Yes</SelectItem>
+                                            <SelectItem value="no">No</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </FormItem>
+                            )}
+                        />
+                    </div>
                     <FormField
                     control={form.control}
                     name="remark"

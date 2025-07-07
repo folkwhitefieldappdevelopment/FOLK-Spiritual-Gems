@@ -8,7 +8,7 @@ import { Button } from "./ui/button";
 import { Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 import Link from "next/link";
-import { Users, UserSquare, Settings, Gem, PhoneCall, Headset, UserCog } from "lucide-react";
+import { Users, UserSquare, Settings, Gem, Headset, UserCog } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { usePathname } from "next/navigation";
 
@@ -28,7 +28,6 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
       { href: "/", label: "Contacts", icon: Users },
       { href: "/groups", label: "Groups", icon: UserSquare },
       { href: "/calling-assistant", label: "Calling Assistant", icon: Headset },
-      { href: "/call-analyzer", label: "Call Analyzer", icon: PhoneCall },
       { href: "/user-management", label: "User Management", icon: UserCog, adminOnly: true },
       { href: "/settings", label: "Settings", icon: Settings },
     ];
@@ -88,9 +87,9 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
           </nav>
         </SheetContent>
       </Sheet>
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 overflow-hidden">
         <h1 className="font-semibold text-lg truncate">{title}</h1>
-        <p className="text-sm text-muted-foreground">{description}</p>
+        <p className="text-sm text-muted-foreground break-words">{description}</p>
       </div>
       <div className="flex items-center gap-2">
         {children}

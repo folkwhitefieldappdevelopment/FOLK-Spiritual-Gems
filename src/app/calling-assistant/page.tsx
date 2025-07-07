@@ -45,6 +45,9 @@ export default function CallingAssistantPage() {
   const [occupationFilter, setOccupationFilter] = React.useState("");
   const [chantingFilter, setChantingFilter] = React.useState("");
   const [callStatusFilter, setCallStatusFilter] = React.useState("");
+  const [sgFilter, setSgFilter] = React.useState("");
+  const [maFilter, setMaFilter] = React.useState("");
+  const [frpFilter, setFrpFilter] = React.useState("");
   const [sortBy, setSortBy] = React.useState("createdAt_desc");
 
   const [isSessionDialogOpen, setIsSessionDialogOpen] = React.useState(false);
@@ -106,7 +109,12 @@ export default function CallingAssistantPage() {
       
       const statusMatch = !callStatusFilter || person.lastCallStatus === callStatusFilter;
 
-      return generalSearchMatch && enablerMatch && sourceMatch && occupationMatch && chantingMatch && statusMatch;
+      const sgMatch = !sgFilter || (sgFilter === 'yes' ? person.lastSg === true : person.lastSg === false);
+      const maMatch = !maFilter || (maFilter === 'yes' ? person.lastMa === true : person.lastMa === false);
+      const frpMatch = !frpFilter || (frpFilter === 'yes' ? person.lastFrp === true : person.lastFrp === false);
+
+
+      return generalSearchMatch && enablerMatch && sourceMatch && occupationMatch && chantingMatch && statusMatch && sgMatch && maMatch && frpMatch;
     });
 
     return filtered.sort((a, b) => {
@@ -127,7 +135,7 @@ export default function CallingAssistantPage() {
       }
       return 0;
     });
-  }, [people, searchTerm, enablerFilter, contactSourceFilter, occupationFilter, chantingFilter, callStatusFilter, sortBy]);
+  }, [people, searchTerm, enablerFilter, contactSourceFilter, occupationFilter, chantingFilter, callStatusFilter, sgFilter, maFilter, frpFilter, sortBy]);
   
   const clearFilters = () => {
     setSearchTerm("");
@@ -136,6 +144,9 @@ export default function CallingAssistantPage() {
     setOccupationFilter("");
     setChantingFilter("");
     setCallStatusFilter("");
+    setSgFilter("");
+    setMaFilter("");
+    setFrpFilter("");
     setSortBy("createdAt_desc");
   };
 
@@ -143,36 +154,48 @@ export default function CallingAssistantPage() {
     setEditingPerson(person);
   };
   
-  const handleSessionSave = (personId: string, remark: string, duration: string, status: CallStatus) => {
+  const handleSessionSave = (personId: string, remark: string, duration: string, status: CallStatus, sg: boolean | undefined, ma: boolean | undefined, frp: boolean | undefined) => {
     const callTime = new Date(); // Use a client-side timestamp for the history entry
     const currentEvent = currentCallingEvent;
+    
+    const callHistoryEntry: any = {
+      remark: remark,
+      calledAt: callTime,
+      duration: duration,
+      status: status,
+      event: currentEvent,
+    };
+    if (sg !== undefined) callHistoryEntry.sg = sg;
+    if (ma !== undefined) callHistoryEntry.ma = ma;
+    if (frp !== undefined) callHistoryEntry.frp = frp;
 
-    updatePerson(personId, {
-        lastCallRemark: remark,
-        lastCallAt: serverTimestamp(),
-        lastCallStatus: status,
-        // @ts-ignore
-        callHistory: arrayUnion({
-            remark: remark,
-            calledAt: callTime,
-            duration: duration,
-            status: status,
-            event: currentEvent,
-        })
-    });
+    const updateData: any = {
+      lastCallRemark: remark,
+      lastCallAt: serverTimestamp(),
+      lastCallStatus: status,
+      callHistory: arrayUnion(callHistoryEntry),
+    };
+    if (sg !== undefined) updateData.lastSg = sg;
+    if (ma !== undefined) updateData.lastMa = ma;
+    if (frp !== undefined) updateData.lastFrp = frp;
+
+    updatePerson(personId, updateData);
     
     // Optimistic update using the same client-side timestamp
     setPeople(prev => prev.map(p => {
         if (p.id === personId) {
-            const newHistoryEntry = { remark, calledAt: callTime, duration, status, event: currentEvent };
-            const newHistory = p.callHistory ? [...p.callHistory, newHistoryEntry] : [newHistoryEntry];
-            return {
+            const newHistory = p.callHistory ? [...p.callHistory, callHistoryEntry] : [callHistoryEntry];
+            const updatedPerson = {
                 ...p,
                 callHistory: newHistory,
                 lastCallRemark: remark,
                 lastCallAt: callTime, // Show the client time in UI immediately
                 lastCallStatus: status,
             };
+            if (sg !== undefined) updatedPerson.lastSg = sg;
+            if (ma !== undefined) updatedPerson.lastMa = ma;
+            if (frp !== undefined) updatedPerson.lastFrp = frp;
+            return updatedPerson;
         }
         return p;
     }));
@@ -217,7 +240,7 @@ export default function CallingAssistantPage() {
                     Start Calling Session ({filteredPeople.length})
                 </Button>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
                 <Select value={enablerFilter} onValueChange={(value) => setEnablerFilter(value === '__all__' ? '' : value)}>
                     <SelectTrigger>
                         <SelectValue placeholder="Filter by Enabler" />
@@ -245,7 +268,37 @@ export default function CallingAssistantPage() {
                         {occupationStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                     </SelectContent>
                 </Select>
-                <Button variant="outline" onClick={clearFilters} className="xl:col-start-4">Clear Filters</Button>
+                <Select value={sgFilter} onValueChange={(value) => setSgFilter(value === 'all' ? '' : value)}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Filter by SG" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="yes">Yes</SelectItem>
+                        <SelectItem value="no">No</SelectItem>
+                    </SelectContent>
+                </Select>
+                <Select value={maFilter} onValueChange={(value) => setMaFilter(value === 'all' ? '' : value)}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Filter by MA" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="yes">Yes</SelectItem>
+                        <SelectItem value="no">No</SelectItem>
+                    </SelectContent>
+                </Select>
+                <Select value={frpFilter} onValueChange={(value) => setFrpFilter(value === 'all' ? '' : value)}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Filter by FRP" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="yes">Yes</SelectItem>
+                        <SelectItem value="no">No</SelectItem>
+                    </SelectContent>
+                </Select>
+                <Button variant="outline" onClick={clearFilters}>Clear Filters</Button>
             </div>
         </div>
 

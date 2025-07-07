@@ -60,7 +60,13 @@ export type Person = {
     duration?: string;
     status?: CallStatus;
     event?: string;
+    sg?: boolean;
+    ma?: boolean;
+    frp?: boolean;
   }[];
+  lastSg?: boolean;
+  lastMa?: boolean;
+  lastFrp?: boolean;
 };
 
 export const userRoles = ['Admin', 'Folk Guide', 'Folk Enabler'] as const;
