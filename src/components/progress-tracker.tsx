@@ -185,7 +185,7 @@ export function ProgressTracker({
             <table className="w-full caption-bottom text-sm border-collapse">
             <TableHeader className="sticky top-0 z-30 bg-muted">
                 <TableRow>
-                <TableHead rowSpan={2} className="w-[300px] font-bold text-foreground align-bottom sticky left-0 z-40 bg-muted p-2 border-b border-r">
+                <TableHead rowSpan={2} className="w-[300px] font-bold text-foreground align-bottom sticky left-0 z-40 bg-muted py-2 pr-2 pl-9 border-b border-r">
                     Category
                 </TableHead>
                 <TableHead colSpan={3} className="text-center font-bold text-foreground border-l border-b p-2">
@@ -225,13 +225,13 @@ export function ProgressTracker({
                 {checklistData.map((category, catIndex) => (
                 <React.Fragment key={category.category}>
                     <TableRow className="bg-secondary">
-                    <TableCell colSpan={10} className="font-bold text-primary sticky left-0 z-20 bg-secondary p-2 border-b border-r">
+                    <TableCell colSpan={10} className="font-bold text-primary sticky left-0 z-20 bg-secondary py-2 pr-2 pl-9 border-b border-r">
                         {category.category}
                     </TableCell>
                     </TableRow>
                     {category.items.map((item, itemIndex) => (
                     <TableRow key={item.question}>
-                        <TableCell className="font-medium text-sm text-muted-foreground align-top sticky left-0 z-20 bg-card p-2 border-b border-r">
+                        <TableCell className="font-medium text-sm text-muted-foreground align-top sticky left-0 z-20 bg-card py-2 pr-2 pl-9 border-b border-r">
                         {item.link ? (
                             <Link
                             href={item.link}
