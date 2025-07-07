@@ -112,9 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: authError.code === 'auth/invalid-credential' ? 'Invalid email or password.' : 'An error occurred during sign-in.'
       });
       console.error("Error signing in", err);
-      if (err instanceof Error) {
-        setError(err);
-      }
+      // Do not set a global error for a failed login attempt. The toast is sufficient.
       setLoading(false); // Set loading to false on error
       throw err;
     }
