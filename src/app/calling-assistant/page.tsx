@@ -68,7 +68,7 @@ export default function CallingAssistantPage() {
       try {
         const [peopleData, enablersData, sourcesData, eventData] = await Promise.all([
           getPeople(appUser),
-          getEnablers(appUser),
+          getEnablers(appUser, 'filter'),
           getContactSources(),
           getCurrentCallingEvent(),
         ]);

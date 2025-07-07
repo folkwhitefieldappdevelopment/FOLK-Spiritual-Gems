@@ -143,7 +143,7 @@ export function CreateUpdatePersonDialog({
         if (!appUser) return;
         try {
             const [enablers, sources, fields] = await Promise.all([
-              getEnablers(appUser), 
+              getEnablers(appUser, 'assignment'), 
               getContactSources(),
               getCustomPersonFields()
             ]);

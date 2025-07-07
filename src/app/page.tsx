@@ -89,7 +89,7 @@ export default function ContactsPage() {
       try {
         const [peopleData, enablersData, sourcesData] = await Promise.all([
           getPeople(appUser),
-          getEnablers(appUser),
+          getEnablers(appUser, 'filter'),
           getContactSources(),
         ]);
         setPeople(peopleData);
