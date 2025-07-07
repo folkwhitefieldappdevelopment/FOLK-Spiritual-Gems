@@ -255,7 +255,7 @@ export default function PersonDetailPage() {
 
                       <div className="mt-6 w-full text-left grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                           <div className="font-semibold text-muted-foreground">Phone</div>
-                          <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-3">
                             <a href={`tel:${person.phone}`} className="flex items-center gap-2 text-primary hover:underline">
                               <Phone className="h-4 w-4" />
                               {person.phone}
