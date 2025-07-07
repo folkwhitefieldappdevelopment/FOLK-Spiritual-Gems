@@ -33,34 +33,43 @@ const getCellClass = (
   currentValue: string,
   goalValue: string,
 ) => {
+  // First, handle empty/unfilled values
+  if (!currentValue || currentValue.trim() === '' || currentValue.trim() === '-') {
+    return 'bg-gray-200/50 dark:bg-gray-800/50';
+  }
+
   const goalNumber = parseNumber(goalValue);
   const currentNumber = parseNumber(currentValue);
 
-  if (goalNumber !== null && currentNumber !== null && goalNumber > 0) {
-    if (isNaN(currentNumber) || currentValue.trim() === '' || currentValue.trim() === '-') {
-      return 'bg-gray-200/50 dark:bg-gray-800/50';
+  // Handle numeric goals (like Chanting)
+  if (goalNumber !== null && goalNumber > 0) {
+    if (currentNumber === null) {
+      // Value is not a number, but it's not empty. Mark as invalid/red.
+      return 'bg-red-100 dark:bg-red-900/50';
     }
     const ratio = currentNumber / goalNumber;
     if (ratio >= 1) return 'bg-green-100 dark:bg-green-900/50';
     if (ratio >= 0.75) return 'bg-yellow-100 dark:bg-yellow-800/50';
     if (ratio >= 0.5) return 'bg-orange-100 dark:bg-orange-800/50';
-    return 'bg-red-100 dark:bg-red-900/50';
+    return 'bg-red-100 dark:bg-red-900/50'; // For ratios < 0.5, including 0
   }
 
-  if (currentValue.toLowerCase() === 'yes') {
-    return 'bg-green-100 dark:bg-green-900/50';
+  // Handle "Yes/No" goals
+  if (goalValue.toLowerCase() === 'yes') {
+    if (currentValue.toLowerCase() === 'yes') {
+      return 'bg-green-100 dark:bg-green-900/50';
+    }
+    if (currentValue.toLowerCase() === 'no') {
+      return 'bg-red-100 dark:bg-red-900/50';
+    }
   }
-  if (currentValue.toLowerCase() === 'no') {
-    return 'bg-red-100 dark:bg-red-900/50';
-  }
-  if (!currentValue || currentValue.trim() === '-') {
-    return 'bg-gray-200/50 dark:bg-gray-800/50';
-  }
-  // if it's not a yes/no goal, and has a number, make it blue
+
+  // Handle other non-numeric, non-yes/no goals that have a value
   if (goalValue.toLowerCase() !== 'yes' && /\d/.test(currentValue)) {
-    return 'bg-blue-100 dark:bg-blue-900/50';
+     return 'bg-blue-100 dark:bg-blue-900/50';
   }
 
+  // Default for any other case (e.g., text input for a non-numeric goal)
   return 'bg-gray-100 dark:bg-gray-800/50';
 };
 
@@ -159,7 +168,7 @@ export function ProgressTracker({
   };
 
   return (
-    <Card className="h-[calc(100vh-4rem)] flex flex-col">
+    <Card className="h-[calc(100vh-10rem)] flex flex-col">
       <CardHeader>
         <CardTitle>Progress Checklist</CardTitle>
       </CardHeader>
