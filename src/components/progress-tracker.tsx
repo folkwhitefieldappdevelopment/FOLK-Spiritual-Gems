@@ -167,22 +167,22 @@ export function ProgressTracker({
         <table className="w-full caption-bottom text-sm border-separate border-spacing-0">
           <TableHeader className="sticky top-0 z-30 bg-card">
             <TableRow className="bg-muted hover:bg-muted border-b-0">
-              <TableHead rowSpan={2} className="w-[300px] font-bold text-foreground align-bottom sticky left-0 z-40 bg-muted">
+              <TableHead rowSpan={2} className="w-[300px] font-bold text-foreground align-bottom sticky left-0 z-40 bg-muted p-2 border-b border-r">
                 Category
               </TableHead>
-              <TableHead colSpan={3} className="text-center font-bold text-foreground border-l">
+              <TableHead colSpan={3} className="text-center font-bold text-foreground border-l border-b p-2">
                 L-1
                 <p className="font-normal text-xs text-muted-foreground">
                   4 months
                 </p>
               </TableHead>
-              <TableHead colSpan={3} className="text-center font-bold text-foreground border-l">
+              <TableHead colSpan={3} className="text-center font-bold text-foreground border-l border-b p-2">
                 L-2
                 <p className="font-normal text-xs text-muted-foreground">
                   4 months
                 </p>
               </TableHead>
-              <TableHead colSpan={3} className="text-center font-bold text-foreground border-l">
+              <TableHead colSpan={3} className="text-center font-bold text-foreground border-l border-b p-2">
                 L-3
                 <p className="font-normal text-xs text-muted-foreground">
                   4 months
@@ -190,30 +190,30 @@ export function ProgressTracker({
               </TableHead>
             </TableRow>
             <TableRow className="bg-muted hover:bg-muted">
-              <TableHead className="text-center text-xs font-semibold border-l">Goal</TableHead>
-              <TableHead className="text-center text-xs font-semibold">Achieved</TableHead>
-              <TableHead className="text-center text-xs font-semibold">Remarks</TableHead>
+              <TableHead className="text-center text-xs font-semibold border-l border-b p-1">Goal</TableHead>
+              <TableHead className="text-center text-xs font-semibold border-b p-1">Achieved</TableHead>
+              <TableHead className="text-center text-xs font-semibold border-b p-1">Remarks</TableHead>
 
-              <TableHead className="text-center text-xs font-semibold border-l">Goal</TableHead>
-              <TableHead className="text-center text-xs font-semibold">Achieved</TableHead>
-              <TableHead className="text-center text-xs font-semibold">Remarks</TableHead>
+              <TableHead className="text-center text-xs font-semibold border-l border-b p-1">Goal</TableHead>
+              <TableHead className="text-center text-xs font-semibold border-b p-1">Achieved</TableHead>
+              <TableHead className="text-center text-xs font-semibold border-b p-1">Remarks</TableHead>
               
-              <TableHead className="text-center text-xs font-semibold border-l">Goal</TableHead>
-              <TableHead className="text-center text-xs font-semibold">Achieved</TableHead>
-              <TableHead className="text-center text-xs font-semibold">Remarks</TableHead>
+              <TableHead className="text-center text-xs font-semibold border-l border-b p-1">Goal</TableHead>
+              <TableHead className="text-center text-xs font-semibold border-b p-1">Achieved</TableHead>
+              <TableHead className="text-center text-xs font-semibold border-b p-1">Remarks</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {checklistData.map((category, catIndex) => (
               <React.Fragment key={category.category}>
                 <TableRow className="bg-secondary">
-                  <TableCell colSpan={10} className="font-bold text-primary sticky left-0 z-20 bg-secondary">
+                  <TableCell colSpan={10} className="font-bold text-primary sticky left-0 z-20 bg-secondary p-2 border-b border-r">
                     {category.category}
                   </TableCell>
                 </TableRow>
                 {category.items.map((item, itemIndex) => (
                   <TableRow key={item.question}>
-                    <TableCell className="font-medium text-sm text-muted-foreground align-top sticky left-0 z-20 bg-card">
+                    <TableCell className="font-medium text-sm text-muted-foreground align-top sticky left-0 z-20 bg-card p-2 border-b border-r">
                       {item.link ? (
                         <Link
                           href={item.link}
@@ -233,12 +233,12 @@ export function ProgressTracker({
                       
                       return (
                         <React.Fragment key={levelIndex}>
-                          <TableCell className="text-center text-xs p-1 border-l bg-muted/20 align-top">
+                          <TableCell className="text-center text-xs p-1 border-l bg-muted/20 align-top border-b">
                             {goal || '-'}
                           </TableCell>
                           <TableCell
                             className={cn(
-                              'text-center text-sm align-top p-0',
+                              'text-center text-sm align-top p-0 border-b',
                               getCellClass(
                                   progress?.[catIndex]?.answers?.[itemIndex]?.[`l${levelIndex + 1}` as keyof ProgressLevelAnswers] || '',
                                   goal
@@ -247,7 +247,7 @@ export function ProgressTracker({
                           >
                             {renderCellContent(catIndex, itemIndex, levelIndex)}
                           </TableCell>
-                          <TableCell className="text-center text-sm align-top p-0">
+                          <TableCell className="text-center text-sm align-top p-0 border-b">
                             <Input
                                 type="text"
                                 value={currentRemark}
