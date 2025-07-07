@@ -23,6 +23,7 @@ import {
   ChartLegendContent,
 } from '@/components/ui/chart';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart, Cell, Line, LineChart, Tooltip, Legend } from 'recharts';
+import { CallReport } from '@/components/call-report';
 
 const CHART_COLORS = [
   'hsl(var(--chart-1))',
@@ -204,146 +205,148 @@ export default function DashboardPage() {
     }
     
     return (
-      <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-                <div className="text-2xl font-bold">{totalContacts}</div>
-                <p className="text-xs text-muted-foreground">All contacts in the system</p>
-            </CardContent>
-        </Card>
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">New This Week</CardTitle>
-                <UserPlus className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-                <div className="text-2xl font-bold">+{newThisWeek}</div>
-                <p className="text-xs text-muted-foreground">New contacts added since Monday</p>
-            </CardContent>
-        </Card>
-         <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Enablers</CardTitle>
-                <Briefcase className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-                <div className="text-2xl font-bold">{enablerCount}</div>
-                <p className="text-xs text-muted-foreground">{enablerCountDescription}</p>
-            </CardContent>
-        </Card>
-        
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <CardTitle>New Contacts Trend</CardTitle>
-            <CardDescription>New contacts added each week for the past 12 weeks.</CardDescription>
-          </CardHeader>
-          <CardContent>
-             <ChartContainer config={{}} className="h-[250px] w-full">
-                <LineChart data={newContactsByWeek} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip content={<ChartTooltipContent />} />
-                  <Line type="monotone" dataKey="newContacts" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4, fill: "hsl(var(--primary))" }} />
-                </LineChart>
-              </ChartContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-3">
-            <CardHeader>
-                <CardTitle>Contacts by Enabler</CardTitle>
-                <CardDescription>Distribution of contacts among enablers.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer config={{}} className="h-[300px] w-full">
-                <BarChart data={contactsByEnabler} layout="vertical" margin={{ left: 10, right: 10 }}>
-                  <CartesianGrid horizontal={false} />
-                  <XAxis type="number" dataKey="value" allowDecimals={false} />
-                  <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 12 }} />
-                  <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} content={<ChartTooltipContent />} />
-                  <Bar dataKey="value" radius={4}>
-                    {contactsByEnabler.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ChartContainer>
-            </CardContent>
-        </Card>
-        
-        {appUser?.role.includes('Admin') && enablersByGuideData.length > 0 && (
+      <div className="space-y-6">
+        <CallReport people={people} relatedUsers={relatedUsers} />
+        <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                  <div className="text-2xl font-bold">{totalContacts}</div>
+                  <p className="text-xs text-muted-foreground">All contacts in the system</p>
+              </CardContent>
+          </Card>
+          <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">New This Week</CardTitle>
+                  <UserPlus className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                  <div className="text-2xl font-bold">+{newThisWeek}</div>
+                  <p className="text-xs text-muted-foreground">New contacts added since Monday</p>
+              </CardContent>
+          </Card>
+          <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Enablers</CardTitle>
+                  <Briefcase className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                  <div className="text-2xl font-bold">{enablerCount}</div>
+                  <p className="text-xs text-muted-foreground">{enablerCountDescription}</p>
+              </CardContent>
+          </Card>
+          
           <Card className="lg:col-span-3">
             <CardHeader>
-                <CardTitle>Enablers per Folk Guide</CardTitle>
-                <CardDescription>Distribution of enablers among folk guides.</CardDescription>
+              <CardTitle>New Contacts Trend</CardTitle>
+              <CardDescription>New contacts added each week for the past 12 weeks.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={{}} className="h-[250px] w-full">
+                  <LineChart data={newContactsByWeek} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip content={<ChartTooltipContent />} />
+                    <Line type="monotone" dataKey="newContacts" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4, fill: "hsl(var(--primary))" }} />
+                  </LineChart>
+                </ChartContainer>
+            </CardContent>
+          </Card>
+
+          <Card className="lg:col-span-3">
+              <CardHeader>
+                  <CardTitle>Contacts by Enabler</CardTitle>
+                  <CardDescription>Distribution of contacts among enablers.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={{}} className="h-[300px] w-full">
+                  <BarChart data={contactsByEnabler} layout="vertical" margin={{ left: 10, right: 10 }}>
+                    <CartesianGrid horizontal={false} />
+                    <XAxis type="number" dataKey="value" allowDecimals={false} />
+                    <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 12 }} />
+                    <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} content={<ChartTooltipContent />} />
+                    <Bar dataKey="value" radius={4}>
+                      {contactsByEnabler.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ChartContainer>
+              </CardContent>
+          </Card>
+          
+          {appUser?.role.includes('Admin') && enablersByGuideData.length > 0 && (
+            <Card className="lg:col-span-3">
+              <CardHeader>
+                  <CardTitle>Enablers per Folk Guide</CardTitle>
+                  <CardDescription>Distribution of enablers among folk guides.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={{}} className="h-[300px] w-full">
+                  <BarChart data={enablersByGuideData} layout="vertical" margin={{ left: 20, right: 10 }}>
+                    <CartesianGrid horizontal={false} />
+                    <XAxis type="number" dataKey="value" allowDecimals={false} />
+                    <YAxis type="category" dataKey="name" width={150} tick={{ fontSize: 12 }} />
+                    <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} content={<ChartTooltipContent />} />
+                    <Bar dataKey="value" radius={4}>
+                      {enablersByGuideData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+          )}
+
+          <Card>
+              <CardHeader>
+                  <CardTitle>By Chanting Status</CardTitle>
+                  <CardDescription>Breakdown of contacts' chanting habits.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={{}} className="h-[300px] w-full">
+                  <PieChart>
+                    <Tooltip content={<ChartTooltipContent nameKey="name" />} />
+                    <Legend content={<ChartLegendContent />} />
+                    <Pie data={contactsByChantingStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} labelLine={false} label={({ percent }) => `${(percent * 100).toFixed(0)}%`}>
+                      {contactsByChantingStatus.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ChartContainer>
+              </CardContent>
+          </Card>
+          
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle>By Occupation Status</CardTitle>
+              <CardDescription>
+                Breakdown of contacts by their current occupation.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <ChartContainer config={{}} className="h-[300px] w-full">
-                <BarChart data={enablersByGuideData} layout="vertical" margin={{ left: 20, right: 10 }}>
-                  <CartesianGrid horizontal={false} />
-                  <XAxis type="number" dataKey="value" allowDecimals={false} />
-                  <YAxis type="category" dataKey="name" width={150} tick={{ fontSize: 12 }} />
-                  <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} content={<ChartTooltipContent />} />
-                  <Bar dataKey="value" radius={4}>
-                    {enablersByGuideData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
+                <BarChart data={contactsByOccupation} layout="vertical" margin={{ left: 10, right: 10 }}>
+                    <CartesianGrid horizontal={false} />
+                    <XAxis type="number" dataKey="value" allowDecimals={false} />
+                    <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 12 }} />
+                    <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} content={<ChartTooltipContent />} />
+                    <Bar dataKey="value" radius={4}>
+                      {contactsByOccupation.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
               </ChartContainer>
             </CardContent>
           </Card>
-        )}
-
-        <Card>
-            <CardHeader>
-                <CardTitle>By Chanting Status</CardTitle>
-                <CardDescription>Breakdown of contacts' chanting habits.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer config={{}} className="h-[300px] w-full">
-                <PieChart>
-                  <Tooltip content={<ChartTooltipContent nameKey="name" />} />
-                  <Legend content={<ChartLegendContent />} />
-                  <Pie data={contactsByChantingStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} labelLine={false} label={({ percent }) => `${(percent * 100).toFixed(0)}%`}>
-                    {contactsByChantingStatus.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ChartContainer>
-            </CardContent>
-        </Card>
-        
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>By Occupation Status</CardTitle>
-            <CardDescription>
-              Breakdown of contacts by their current occupation.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={{}} className="h-[300px] w-full">
-               <BarChart data={contactsByOccupation} layout="vertical" margin={{ left: 10, right: 10 }}>
-                  <CartesianGrid horizontal={false} />
-                  <XAxis type="number" dataKey="value" allowDecimals={false} />
-                  <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 12 }} />
-                  <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} content={<ChartTooltipContent />} />
-                  <Bar dataKey="value" radius={4}>
-                    {contactsByOccupation.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-
+        </div>
       </div>
     );
   }
