@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "./ui/input";
 
 const callFormSchema = z.object({
   remark: z.string().trim().optional(),
@@ -42,6 +43,7 @@ const callFormSchema = z.object({
   sg: z.string().optional(),
   ma: z.string().optional(),
   frp: z.string().optional(),
+  duration: z.string().optional(),
 });
 
 type CallFormValues = z.infer<typeof callFormSchema>;
@@ -71,7 +73,6 @@ export function CallingSessionDialog({
 }: CallingSessionDialogProps) {
   const { toast } = useToast();
   const [currentIndex, setCurrentIndex] = React.useState(0);
-  const [callStartTime, setCallStartTime] = React.useState<Date | null>(null);
   const currentPerson = people[currentIndex];
 
   const form = useForm<CallFormValues>({
@@ -82,27 +83,28 @@ export function CallingSessionDialog({
       sg: "",
       ma: "",
       frp: "",
+      duration: "",
     },
   });
   
   React.useEffect(() => {
     if (isOpen) {
         setCurrentIndex(0);
-        form.reset({ remark: "", status: "", sg: "", ma: "", frp: "" });
+        form.reset({ remark: "", status: "", sg: "", ma: "", frp: "", duration: "" });
     }
   }, [isOpen, form]);
 
   React.useEffect(() => {
     if (currentPerson) {
-        // Reset with last status, but clear the remark field for a new entry.
+        // Reset with last status, but clear the remark and duration fields for a new entry.
         form.reset({ 
             remark: "", 
+            duration: "",
             status: currentPerson.lastCallStatus || "",
             sg: typeof currentPerson.lastSg === 'boolean' ? (currentPerson.lastSg ? 'yes' : 'no') : '',
             ma: typeof currentPerson.lastMa === 'boolean' ? (currentPerson.lastMa ? 'yes' : 'no') : '',
             frp: typeof currentPerson.lastFrp === 'boolean' ? (currentPerson.lastFrp ? 'yes' : 'no') : '',
         });
-        setCallStartTime(new Date());
     }
   }, [currentPerson, form]);
   
@@ -123,19 +125,13 @@ export function CallingSessionDialog({
   };
   
   const onSubmit = (data: CallFormValues) => {
-    if (!currentPerson || !callStartTime) return;
+    if (!currentPerson) return;
     
-    const callEndTime = new Date();
-    const durationInSeconds = Math.round((callEndTime.getTime() - callStartTime.getTime()) / 1000);
-    const minutes = Math.floor(durationInSeconds / 60);
-    const seconds = durationInSeconds % 60;
-    const durationString = `${minutes}m ${seconds}s`;
-
     const sg = data.sg === 'yes' ? true : data.sg === 'no' ? false : undefined;
     const ma = data.ma === 'yes' ? true : data.ma === 'no' ? false : undefined;
     const frp = data.frp === 'yes' ? true : data.frp === 'no' ? false : undefined;
 
-    onSaveRemark(currentPerson.id, data.remark || '', durationString, data.status as CallStatus, sg, ma, frp);
+    onSaveRemark(currentPerson.id, data.remark || '', data.duration || '', data.status as CallStatus, sg, ma, frp);
     toast({
         title: "Call Logged",
         description: `Status for ${currentPerson.firstName} has been updated.`
@@ -183,28 +179,43 @@ export function CallingSessionDialog({
 
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} id="call-form" className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="status"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Call Status</FormLabel>
-                           <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select a call status" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                               {callStatuses.map(status => (
-                                <SelectItem key={status} value={status}>{status}</SelectItem>
-                               ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="status"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Call Status</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a call status" />
+                                    </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                    {callStatuses.map(status => (
+                                        <SelectItem key={status} value={status}>{status}</SelectItem>
+                                    ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="duration"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Call Duration (Optional)</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="e.g., 5m 30s" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
                      <div className="grid grid-cols-3 gap-4">
                         <FormField
                             control={form.control}
