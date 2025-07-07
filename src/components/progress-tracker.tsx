@@ -165,8 +165,8 @@ export function ProgressTracker({
       </CardHeader>
       <CardContent className="flex-1 overflow-auto rounded-lg border p-0">
         <table className="w-full caption-bottom text-sm border-separate border-spacing-0">
-          <TableHeader className="sticky top-0 z-30 bg-card">
-            <TableRow className="bg-muted hover:bg-muted border-b-0">
+          <TableHeader className="sticky top-0 z-30 bg-muted">
+            <TableRow className="border-b-0">
               <TableHead rowSpan={2} className="w-[300px] font-bold text-foreground align-bottom sticky left-0 z-40 bg-muted p-2 border-b border-r">
                 Category
               </TableHead>
@@ -189,7 +189,7 @@ export function ProgressTracker({
                 </p>
               </TableHead>
             </TableRow>
-            <TableRow className="bg-muted hover:bg-muted">
+            <TableRow>
               <TableHead className="text-center text-xs font-semibold border-l border-b p-1">Goal</TableHead>
               <TableHead className="text-center text-xs font-semibold border-b p-1">Achieved</TableHead>
               <TableHead className="text-center text-xs font-semibold border-b p-1">Remarks</TableHead>
