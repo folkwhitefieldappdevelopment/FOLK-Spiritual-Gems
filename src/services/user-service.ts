@@ -37,8 +37,9 @@ export const createUser = async (userData: UserData): Promise<void> => {
     }
   }
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
   const actionCodeSettings = {
-    url: window.location.origin + '/login', 
+    url: `${appUrl}/login`, 
     handleCodeInApp: true,
   };
 

@@ -145,8 +145,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const sendPasswordReset = async (email: string) => {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+    const actionCodeSettings = {
+      url: `${appUrl}/login`,
+      handleCodeInApp: true,
+    };
     try {
-      await sendPasswordResetEmail(auth, email);
+      await sendPasswordResetEmail(auth, email, actionCodeSettings);
     } catch (err) {
       console.error("Error sending password reset email", err);
       // We don't distinguish between user-not-found and other errors to avoid email enumeration attacks
