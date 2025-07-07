@@ -153,7 +153,7 @@ export function ProgressTracker({
         onChange={(e) =>
           onProgressChange(catIndex, itemIndex, levelIndex, e.target.value, 'achieved')
         }
-        className="w-full h-auto p-1 text-xs text-center bg-transparent border-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0"
+        className="w-full h-full p-1 text-xs text-center bg-transparent border-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0"
       />
     );
   };
@@ -163,111 +163,114 @@ export function ProgressTracker({
       <CardHeader>
         <CardTitle>Progress Checklist</CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 overflow-auto rounded-lg border p-0">
-        <table className="w-full caption-bottom text-sm border-separate border-spacing-0">
-          <TableHeader className="sticky top-0 z-30 bg-muted">
-            <TableRow className="border-b-0">
-              <TableHead rowSpan={2} className="w-[300px] font-bold text-foreground align-bottom sticky left-0 z-40 bg-muted p-2 border-b border-r">
-                Category
-              </TableHead>
-              <TableHead colSpan={3} className="text-center font-bold text-foreground border-l border-b p-2">
-                L-1
-                <p className="font-normal text-xs text-muted-foreground">
-                  4 months
-                </p>
-              </TableHead>
-              <TableHead colSpan={3} className="text-center font-bold text-foreground border-l border-b p-2">
-                L-2
-                <p className="font-normal text-xs text-muted-foreground">
-                  4 months
-                </p>
-              </TableHead>
-              <TableHead colSpan={3} className="text-center font-bold text-foreground border-l border-b p-2">
-                L-3
-                <p className="font-normal text-xs text-muted-foreground">
-                  4 months
-                </p>
-              </TableHead>
-            </TableRow>
-            <TableRow>
-              <TableHead className="text-center text-xs font-semibold border-l border-b p-1">Goal</TableHead>
-              <TableHead className="text-center text-xs font-semibold border-b p-1">Achieved</TableHead>
-              <TableHead className="text-center text-xs font-semibold border-b p-1">Remarks</TableHead>
-
-              <TableHead className="text-center text-xs font-semibold border-l border-b p-1">Goal</TableHead>
-              <TableHead className="text-center text-xs font-semibold border-b p-1">Achieved</TableHead>
-              <TableHead className="text-center text-xs font-semibold border-b p-1">Remarks</TableHead>
-              
-              <TableHead className="text-center text-xs font-semibold border-l border-b p-1">Goal</TableHead>
-              <TableHead className="text-center text-xs font-semibold border-b p-1">Achieved</TableHead>
-              <TableHead className="text-center text-xs font-semibold border-b p-1">Remarks</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {checklistData.map((category, catIndex) => (
-              <React.Fragment key={category.category}>
-                <TableRow className="bg-secondary">
-                  <TableCell colSpan={10} className="font-bold text-primary sticky left-0 z-20 bg-secondary p-2 border-b border-r">
-                    {category.category}
-                  </TableCell>
+      <CardContent className="flex-1 p-0 relative">
+        <div className="absolute inset-0 overflow-auto">
+            <table className="w-full caption-bottom text-sm border-collapse">
+            <TableHeader className="sticky top-0 z-30 bg-muted">
+                <TableRow>
+                <TableHead rowSpan={2} className="w-[300px] font-bold text-foreground align-bottom sticky left-0 z-40 bg-muted p-2 border-b border-r">
+                    Category
+                </TableHead>
+                <TableHead colSpan={3} className="text-center font-bold text-foreground border-l border-b p-2">
+                    L-1
+                    <p className="font-normal text-xs text-muted-foreground">
+                    4 months
+                    </p>
+                </TableHead>
+                <TableHead colSpan={3} className="text-center font-bold text-foreground border-l border-b p-2">
+                    L-2
+                    <p className="font-normal text-xs text-muted-foreground">
+                    4 months
+                    </p>
+                </TableHead>
+                <TableHead colSpan={3} className="text-center font-bold text-foreground border-l border-b p-2">
+                    L-3
+                    <p className="font-normal text-xs text-muted-foreground">
+                    4 months
+                    </p>
+                </TableHead>
                 </TableRow>
-                {category.items.map((item, itemIndex) => (
-                  <TableRow key={item.question}>
-                    <TableCell className="font-medium text-sm text-muted-foreground align-top sticky left-0 z-20 bg-card p-2 border-b border-r">
-                      {item.link ? (
-                        <Link
-                          href={item.link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="underline text-blue-600 hover:text-blue-800"
-                        >
-                          {item.question}
-                        </Link>
-                      ) : (
-                        item.question
-                      )}
+                <TableRow>
+                <TableHead className="text-center text-xs font-semibold border-l border-b p-1">Goal</TableHead>
+                <TableHead className="text-center text-xs font-semibold border-b p-1">Achieved</TableHead>
+                <TableHead className="text-center text-xs font-semibold border-b p-1">Remarks</TableHead>
+
+                <TableHead className="text-center text-xs font-semibold border-l border-b p-1">Goal</TableHead>
+                <TableHead className="text-center text-xs font-semibold border-b p-1">Achieved</TableHead>
+                <TableHead className="text-center text-xs font-semibold border-b p-1">Remarks</TableHead>
+                
+                <TableHead className="text-center text-xs font-semibold border-l border-b p-1">Goal</TableHead>
+                <TableHead className="text-center text-xs font-semibold border-b p-1">Achieved</TableHead>
+                <TableHead className="text-center text-xs font-semibold border-b p-1">Remarks</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {checklistData.map((category, catIndex) => (
+                <React.Fragment key={category.category}>
+                    <TableRow className="bg-secondary">
+                    <TableCell colSpan={10} className="font-bold text-primary sticky left-0 z-20 bg-secondary p-2 border-b border-r">
+                        {category.category}
                     </TableCell>
-                    {item.levels.map((goal, levelIndex) => {
-                      const remarkKey = `l${levelIndex + 1}_remark` as keyof ProgressLevelAnswers;
-                      const currentRemark = progress?.[catIndex]?.answers?.[itemIndex]?.[remarkKey] || '';
-                      
-                      return (
-                        <React.Fragment key={levelIndex}>
-                          <TableCell className="text-center text-xs p-1 border-l bg-muted/20 align-top border-b">
-                            {goal || '-'}
-                          </TableCell>
-                          <TableCell
-                            className={cn(
-                              'text-center text-sm align-top p-0 border-b',
-                              getCellClass(
-                                  progress?.[catIndex]?.answers?.[itemIndex]?.[`l${levelIndex + 1}` as keyof ProgressLevelAnswers] || '',
-                                  goal
-                              )
-                            )}
-                          >
-                            {renderCellContent(catIndex, itemIndex, levelIndex)}
-                          </TableCell>
-                          <TableCell className="text-center text-sm align-top p-0 border-b">
-                            <Input
-                                type="text"
-                                value={currentRemark}
-                                placeholder="-"
-                                onChange={(e) =>
-                                onProgressChange(catIndex, itemIndex, levelIndex, e.target.value, 'remark')
-                                }
-                                className="w-full h-full p-1 text-xs text-center bg-transparent border-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0"
-                            />
-                          </TableCell>
-                        </React.Fragment>
-                      )
-                    })}
-                  </TableRow>
+                    </TableRow>
+                    {category.items.map((item, itemIndex) => (
+                    <TableRow key={item.question}>
+                        <TableCell className="font-medium text-sm text-muted-foreground align-top sticky left-0 z-20 bg-card p-2 border-b border-r">
+                        {item.link ? (
+                            <Link
+                            href={item.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="underline text-blue-600 hover:text-blue-800"
+                            >
+                            {item.question}
+                            </Link>
+                        ) : (
+                            item.question
+                        )}
+                        </TableCell>
+                        {item.levels.map((goal, levelIndex) => {
+                        const remarkKey = `l${levelIndex + 1}_remark` as keyof ProgressLevelAnswers;
+                        const currentRemark = progress?.[catIndex]?.answers?.[itemIndex]?.[remarkKey] || '';
+                        
+                        return (
+                            <React.Fragment key={levelIndex}>
+                            <TableCell className="text-center text-xs p-1 border-l bg-muted/20 align-top border-b">
+                                {goal || '-'}
+                            </TableCell>
+                            <TableCell
+                                className={cn(
+                                'text-center text-sm align-top p-0 border-b',
+                                getCellClass(
+                                    progress?.[catIndex]?.answers?.[itemIndex]?.[`l${levelIndex + 1}` as keyof ProgressLevelAnswers] || '',
+                                    goal
+                                )
+                                )}
+                            >
+                                {renderCellContent(catIndex, itemIndex, levelIndex)}
+                            </TableCell>
+                            <TableCell className="text-center text-sm align-top p-0 border-b">
+                                <Input
+                                    type="text"
+                                    value={currentRemark}
+                                    placeholder="-"
+                                    onChange={(e) =>
+                                    onProgressChange(catIndex, itemIndex, levelIndex, e.target.value, 'remark')
+                                    }
+                                    className="w-full h-full p-1 text-xs text-center bg-transparent border-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0"
+                                />
+                            </TableCell>
+                            </React.Fragment>
+                        )
+                        })}
+                    </TableRow>
+                    ))}
+                </React.Fragment>
                 ))}
-              </React.Fragment>
-            ))}
-          </TableBody>
-        </table>
+            </TableBody>
+            </table>
+        </div>
       </CardContent>
     </Card>
   );
 }
+
