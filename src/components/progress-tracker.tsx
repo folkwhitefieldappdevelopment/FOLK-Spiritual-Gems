@@ -33,15 +33,17 @@ const getCellClass = (
   currentValue: string,
   goalValue: string,
 ) => {
-  // First, handle empty/unfilled values
-  if (!currentValue || currentValue.trim() === '' || currentValue.trim() === '-') {
+  const value = (currentValue || "").trim();
+
+  // 1. Explicitly check for empty or placeholder values first.
+  if (value === "" || value === "-") {
     return 'bg-gray-200/50 dark:bg-gray-800/50';
   }
 
   const goalNumber = parseNumber(goalValue);
-  const currentNumber = parseNumber(currentValue);
+  const currentNumber = parseNumber(value);
 
-  // Handle numeric goals (like Chanting)
+  // 2. Handle numeric goals (like Chanting)
   if (goalNumber !== null && goalNumber > 0) {
     if (currentNumber === null) {
       // Value is not a number, but it's not empty. Mark as invalid/red.
@@ -51,26 +53,31 @@ const getCellClass = (
     if (ratio >= 1) return 'bg-green-100 dark:bg-green-900/50';
     if (ratio >= 0.75) return 'bg-yellow-100 dark:bg-yellow-800/50';
     if (ratio >= 0.5) return 'bg-orange-100 dark:bg-orange-800/50';
-    return 'bg-red-100 dark:bg-red-900/50'; // For ratios < 0.5, including 0
+    return 'bg-red-100 dark:bg-red-900/50'; // For ratios < 0.5, including 0.
   }
 
-  // Handle "Yes/No" goals
+  // 3. Handle "Yes/No" goals
   if (goalValue.toLowerCase() === 'yes') {
-    if (currentValue.toLowerCase() === 'yes') {
+    if (value.toLowerCase() === 'yes') {
       return 'bg-green-100 dark:bg-green-900/50';
     }
-    if (currentValue.toLowerCase() === 'no') {
+    if (value.toLowerCase() === 'no') {
       return 'bg-red-100 dark:bg-red-900/50';
+    }
+     // If it's a Yes/No goal but has other text, treat as invalid/red
+    return 'bg-red-100 dark:bg-red-900/50';
+  }
+
+  // 4. Handle other text-based goals that have been filled.
+  // If the goal is not numeric, any text counts as progress.
+  if (goalValue && !goalNumber) {
+    if (value) {
+      return 'bg-blue-100 dark:bg-blue-900/50';
     }
   }
 
-  // Handle other non-numeric, non-yes/no goals that have a value
-  if (goalValue.toLowerCase() !== 'yes' && /\d/.test(currentValue)) {
-     return 'bg-blue-100 dark:bg-blue-900/50';
-  }
-
-  // Default for any other case (e.g., text input for a non-numeric goal)
-  return 'bg-gray-100 dark:bg-gray-800/50';
+  // 5. Fallback for any other case should be neutral gray.
+  return 'bg-gray-200/50 dark:bg-gray-800/50';
 };
 
 type ProgressTrackerProps = {
