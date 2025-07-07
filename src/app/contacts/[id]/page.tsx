@@ -217,8 +217,8 @@ export default function PersonDetailPage() {
     return (
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
             <div className="mx-auto max-w-4xl space-y-6">
-              <div className={cn("grid grid-cols-1 gap-6", isAdmin && "lg:grid-cols-3")}>
-                <div className={cn(isAdmin ? "lg:col-span-1" : "lg:col-span-3")}>
+              <div className={cn("flex flex-col lg:flex-row gap-6", !isAdmin && "lg:flex-col")}>
+                <div className={cn(isAdmin ? "lg:w-1/3" : "w-full")}>
                   <Card>
                     <CardContent className="pt-6 text-center flex flex-col items-center">
                       <Dialog>
@@ -323,7 +323,7 @@ export default function PersonDetailPage() {
                   </Card>
                 </div>
                 {isAdmin && (
-                  <div className="lg:col-span-2">
+                  <div className="lg:w-2/3">
                     <ProgressTracker 
                       progress={person.progress}
                       onProgressChange={handleProgressChange}
