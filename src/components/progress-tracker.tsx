@@ -163,7 +163,7 @@ export function ProgressTracker({
       <CardHeader>
         <CardTitle>Progress Checklist</CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 overflow-hidden">
+      <CardContent className="flex-1 overflow-hidden p-0">
         <div className="relative h-full w-full overflow-auto border">
             <table className="w-full caption-bottom text-sm border-collapse">
             <TableHeader className="sticky top-0 z-30 bg-muted">
