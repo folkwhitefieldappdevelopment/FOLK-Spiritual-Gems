@@ -42,7 +42,7 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
     };
 
   return (
-    <header className="sticky top-0 z-30 flex items-center gap-2 border-b bg-background px-4 py-3 h-auto sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 sm:gap-4">
+    <header className="sticky top-0 z-30 flex items-center gap-2 border-b bg-background px-4 py-3 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 sm:gap-4">
        <Sheet open={isMobileSheetOpen} onOpenChange={setIsMobileSheetOpen}>
         <SheetTrigger asChild>
           <Button size="icon" variant="outline" className="sm:hidden">
@@ -62,7 +62,7 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
               onClick={handleLinkClick}
             >
               <Gem className="h-5 w-5 transition-all group-hover:scale-110" />
-              <span className="sr-only">FOLK SPIRITUAL GEM</span>
+              <span className="sr-only">FOLK SPIRITUAL GEMS</span>
             </Link>
             {navItems.map((item) => {
                if (item.adminOnly && !appUser?.role?.includes('Admin')) {

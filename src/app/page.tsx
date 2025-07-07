@@ -140,7 +140,7 @@ export default function ContactsPage() {
       }
       if (sortBy === "name_desc") {
         return `${b.firstName} ${b.lastName}`.localeCompare(
-          `${a.firstName} ${a.lastName}`
+          `${a.firstName} ${b.lastName}`
         );
       }
       if (sortBy === "createdAt_desc") {
@@ -609,7 +609,7 @@ export default function ContactsPage() {
         <AppSidebar />
         <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
             <PageHeader
-              title="FOLK SPIRITUAL GEM"
+              title="FOLK SPIRITUAL GEMS"
               description="Your central hub for managing contacts and activities."
             >
               <div className="flex items-center gap-2">
