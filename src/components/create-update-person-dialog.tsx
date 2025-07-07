@@ -5,11 +5,13 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import type { Person, CustomField } from "@/lib/types";
+import type { Person, CustomField, AppUser } from "@/lib/types";
 import { occupationStatuses } from "@/lib/types";
 import { Camera, Upload, SwitchCamera } from "lucide-react";
 import { getEnablers, getContactSources, getCustomPersonFields } from "@/services/settings-service";
+import { getFolkGuides } from "@/services/user-service";
 import { useAuth } from "@/contexts/auth-context";
+import { useAdmin } from "@/contexts/admin-context";
 
 import {
   Dialog,
@@ -62,6 +64,7 @@ const createPersonFormSchema = (allPeople: Person[], currentPersonId?: string) =
     chantingStatus: z.string().optional(),
     fromOtherCamp: z.boolean().default(false),
     enablerInTouchWith: z.string().optional(),
+    folkGuideId: z.string().optional(),
   }).refine(
     (data) => {
       // Return false if a different person already has this phone number
@@ -94,6 +97,7 @@ export function CreateUpdatePersonDialog({
 }: CreateUpdatePersonDialogProps) {
   const { toast } = useToast();
   const { appUser } = useAuth();
+  const { isAdmin } = useAdmin();
   const personFormSchema = createPersonFormSchema(allPeople, person?.id);
   
   const form = useForm<PersonFormValues>({
@@ -113,6 +117,7 @@ export function CreateUpdatePersonDialog({
       chantingStatus: "",
       fromOtherCamp: false,
       enablerInTouchWith: "",
+      folkGuideId: "",
     },
   });
 
@@ -130,6 +135,8 @@ export function CreateUpdatePersonDialog({
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   const [customData, setCustomData] = React.useState<{ [key: string]: any }>({});
+  const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
+
 
   React.useEffect(() => {
     const loadOptions = async () => {
@@ -143,6 +150,10 @@ export function CreateUpdatePersonDialog({
             setEnablerOptions(enablers);
             setContactSourceOptions(sources);
             setCustomFields(fields);
+            if (isAdmin) {
+                const guides = await getFolkGuides();
+                setFolkGuides(guides);
+            }
         } catch (error) {
             console.error('Failed to load dropdown options for dialog', error);
             toast({ variant: 'destructive', title: 'Could not load form options.' });
@@ -171,6 +182,7 @@ export function CreateUpdatePersonDialog({
           chantingStatus: person.chantingStatus,
           fromOtherCamp: person.fromOtherCamp,
           enablerInTouchWith: person.enablerInTouchWith,
+          folkGuideId: person.folkGuideId,
         });
         setPhotoPreview(person.photoUrl);
         setCustomData(person.customData || {});
@@ -190,6 +202,7 @@ export function CreateUpdatePersonDialog({
           chantingStatus: "",
           fromOtherCamp: false,
           enablerInTouchWith: "",
+          folkGuideId: "",
         });
         setPhotoPreview(null);
         setCustomData({});
@@ -198,7 +211,7 @@ export function CreateUpdatePersonDialog({
       setHasCameraPermission(null);
       setCameraMode('user');
     }
-  }, [person, form, isOpen, toast, appUser]);
+  }, [person, form, isOpen, toast, appUser, isAdmin]);
 
   const handleSwitchCamera = () => {
     setCameraMode((prev) => (prev === 'user' ? 'environment' : 'user'));
@@ -287,8 +300,21 @@ export function CreateUpdatePersonDialog({
   };
 
   const onSubmit = (data: PersonFormValues) => {
+    const saveData: Partial<Person> = { ...data };
+
+    if (isAdmin && data.folkGuideId) {
+        const selectedGuide = folkGuides.find(g => g.id === data.folkGuideId);
+        if (selectedGuide) {
+            saveData.folkGuideId = selectedGuide.id;
+            saveData.folkGuide = `${selectedGuide.name} (${selectedGuide.fgCode || 'N/A'})`;
+        } else {
+            saveData.folkGuideId = '';
+            saveData.folkGuide = '';
+        }
+    }
+
     onSave({
-      ...data,
+      ...saveData,
       organisation: data.organisation || "",
       rentDetails: data.rentDetails || "",
       nativePlace: data.nativePlace || "",
@@ -300,7 +326,7 @@ export function CreateUpdatePersonDialog({
         person?.photoUrl ||
         `https://placehold.co/100x100.png`,
       customData: customData,
-    });
+    } as Omit<Person, "id" | "progress" | "createdAt">);
     setIsOpen(false);
   };
 
@@ -668,6 +694,49 @@ export function CreateUpdatePersonDialog({
                       </FormItem>
                     )}
                   />
+
+                  {isAdmin ? (
+                    <FormField
+                      control={form.control}
+                      name="folkGuideId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Folk Guide</FormLabel>
+                          <Select
+                            onValueChange={(value) => field.onChange(value === '__NONE__' ? '' : value)}
+                            value={field.value || '__NONE__'}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Assign a Folk Guide" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="__NONE__">Unassigned</SelectItem>
+                              {folkGuides.map(guide => <SelectItem key={guide.id} value={guide.id}>{`${guide.name} (${guide.fgCode || 'N/A'})`}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  ) : (
+                    <div className="space-y-2">
+                      <Label>Folk Guide</Label>
+                      <Input
+                        disabled
+                        value={
+                          (person?.folkGuide) ||
+                          (appUser?.role.includes('Folk Guide')
+                            ? `${appUser.name} (${appUser.fgCode || 'N/A'})`
+                            : appUser?.role.includes('Folk Enabler') && appUser.reportsTo
+                            ? `${appUser.reportsTo.guideName} (${appUser.reportsTo.guideFgCode || 'N/A'})`
+                            : 'N/A')
+                        }
+                        className="mt-1"
+                      />
+                    </div>
+                  )}
 
                   <FormField
                     control={form.control}

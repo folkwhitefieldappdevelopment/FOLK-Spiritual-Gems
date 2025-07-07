@@ -291,6 +291,9 @@ export default function PersonDetailPage() {
                           
                           <div className="font-semibold text-muted-foreground">Enabler</div>
                           <div>{person.enablerInTouchWith || 'N/A'}</div>
+
+                          <div className="font-semibold text-muted-foreground">Folk Guide</div>
+                          <div>{person.folkGuide || 'N/A'}</div>
                       </div>
 
                       {hasCustomData && (

@@ -27,34 +27,9 @@ export const getPeople = async (appUser: AppUser | null): Promise<Person[]> => {
   }
 
   if (appUser.role.includes('Folk Guide')) {
-    const usersCollection = collection(db, 'users');
-    const enablersQuery = query(usersCollection, where('reportsTo.guideId', '==', appUser.id));
-    const enablersSnapshot = await getDocs(enablersQuery);
-    const enablerNames = enablersSnapshot.docs.map(doc => doc.data().name as string);
-    const managedNames = [appUser.name, ...enablerNames];
-
-    // Firestore 'in' queries are limited to 30 items. If more are needed, this would require multiple queries.
-    if (managedNames.length === 0) return [];
-    
-    // Chunk the array into parts of 30
-    const chunks: string[][] = [];
-    for (let i = 0; i < managedNames.length; i += 30) {
-      chunks.push(managedNames.slice(i, i + 30));
-    }
-    
-    const promises = chunks.map(chunk => {
-        const q = query(peopleCollection, where('enablerInTouchWith', 'in', chunk));
-        return getDocs(q);
-    });
-
-    const snapshots = await Promise.all(promises);
-    const people: Person[] = [];
-    snapshots.forEach(snapshot => {
-        snapshot.docs.forEach(doc => {
-            people.push({ id: doc.id, ...doc.data() } as Person);
-        });
-    });
-    return people;
+    const q = query(peopleCollection, where('folkGuideId', '==', appUser.id));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Person));
   }
 
   // Default for Folk Enabler and any other role
@@ -84,8 +59,20 @@ export const createPerson = async (
   }
 
   let assignedEnabler = personData.enablerInTouchWith;
+  let { folkGuide, folkGuideId } = personData;
 
-  // If unassigned, and the creator is a Folk Guide, auto-assign.
+  // Auto-assignment for Folk Guide if not provided (e.g., by non-admin)
+  if (!folkGuideId) {
+    if (appUser.role.includes('Folk Guide')) {
+      folkGuideId = appUser.id;
+      folkGuide = `${appUser.name} (${appUser.fgCode || 'N/A'})`;
+    } else if (appUser.role.includes('Folk Enabler') && appUser.reportsTo) {
+      folkGuideId = appUser.reportsTo.guideId;
+      folkGuide = `${appUser.reportsTo.guideName} (${appUser.reportsTo.guideFgCode || 'N/A'})`;
+    }
+  }
+
+  // If unassigned, and the creator is a Folk Guide, auto-assign enabler.
   if (!assignedEnabler && appUser.role.includes('Folk Guide')) {
     const usersCollection = collection(db, 'users');
     const enablersQuery = query(usersCollection, where('reportsTo.guideId', '==', appUser.id));
@@ -132,6 +119,8 @@ export const createPerson = async (
   const dataToSave = {
     ...personData,
     enablerInTouchWith: assignedEnabler || '',
+    folkGuide: folkGuide || '',
+    folkGuideId: folkGuideId || '',
     createdAt: serverTimestamp(),
   };
 
@@ -175,6 +164,17 @@ export const importPeople = async (
     let peopleToImport = [...assignedPeople];
     let newLastAssignedIndex: number | undefined = undefined;
 
+    // Determine Folk Guide info for the batch
+    let folkGuideInfo: { folkGuide?: string; folkGuideId?: string } = {};
+    if (appUser.role.includes('Folk Guide')) {
+      folkGuideInfo.folkGuideId = appUser.id;
+      folkGuideInfo.folkGuide = `${appUser.name} (${appUser.fgCode || 'N/A'})`;
+    } else if (appUser.role.includes('Folk Enabler') && appUser.reportsTo) {
+      folkGuideInfo.folkGuideId = appUser.reportsTo.guideId;
+      folkGuideInfo.folkGuide = `${appUser.reportsTo.guideName} (${appUser.reportsTo.guideFgCode || 'N/A'})`;
+    }
+
+
     if (unassignedPeople.length > 0 && appUser.role.includes('Folk Guide')) {
         const usersCollection = collection(db, 'users');
         const enablersQuery = query(usersCollection, where('reportsTo.guideId', '==', appUser.id));
@@ -217,6 +217,7 @@ export const importPeople = async (
         const docRef = doc(collection(db, 'people'));
         const dataWithTimestamp = {
             ...person,
+            ...folkGuideInfo,
             createdAt: serverTimestamp()
         };
         batch.set(docRef, dataWithTimestamp);

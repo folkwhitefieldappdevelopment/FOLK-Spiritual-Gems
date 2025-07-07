@@ -50,6 +50,8 @@ export type Person = {
   chantingStatus: string;
   fromOtherCamp: boolean;
   enablerInTouchWith: string;
+  folkGuide?: string;
+  folkGuideId?: string;
   progress: ProgressCategoryAnswers[];
   customData?: { [key: string]: any };
   createdAt?: any; // Firestore Timestamp
