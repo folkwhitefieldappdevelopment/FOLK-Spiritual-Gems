@@ -87,9 +87,9 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
           </nav>
         </SheetContent>
       </Sheet>
-      <div className="flex-1">
-        <h1 className="font-semibold text-lg">{title}</h1>
-        <p className="text-sm text-muted-foreground">{description}</p>
+      <div className="flex-1 min-w-0">
+        <h1 className="font-semibold text-lg truncate">{title}</h1>
+        <p className="text-sm text-muted-foreground break-words">{description}</p>
       </div>
       <div className="flex items-center gap-4">
         {children}
