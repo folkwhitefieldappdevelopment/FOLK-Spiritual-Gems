@@ -88,3 +88,23 @@ export const createInitialProgress = (): ProgressCategoryAnswers[] => {
     answers: category.items.map(() => ({ l1: '', l2: '', l3: '' })),
   }));
 };
+
+// The event name for the current calling campaign.
+// You can ask me to change this value when you start a new campaign.
+export const CURRENT_CALLING_EVENT = "Spiritual Camp - July 2024";
+
+export const callStatuses = [
+    'A1 - Coming',
+    'A2 - Not Interested',
+    'A3 - Next Week/Upcoming week',
+    'A4 - Tentative',
+    'B - Not Answering',
+    'C - Busy',
+    'D - Wrong Number',
+    'E - Switched Off',
+    'F - Not Reachable',
+    'G - Completely Shifted to Another city',
+    'Y2 - Call me later',
+    'Y3 - Next Month',
+    'Z - Already Attended',
+] as const;

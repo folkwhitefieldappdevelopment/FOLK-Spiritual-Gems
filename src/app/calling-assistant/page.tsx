@@ -3,8 +3,9 @@
 
 import * as React from "react";
 import { Headset, Search, Sunrise, Loader2 } from "lucide-react";
-import type { Person } from "@/lib/types";
+import type { Person, CallStatus } from "@/lib/types";
 import { occupationStatuses } from "@/lib/types";
+import { callStatuses, CURRENT_CALLING_EVENT } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -43,6 +44,7 @@ export default function CallingAssistantPage() {
   const [contactSourceFilter, setContactSourceFilter] = React.useState("");
   const [occupationFilter, setOccupationFilter] = React.useState("");
   const [chantingFilter, setChantingFilter] = React.useState("");
+  const [callStatusFilter, setCallStatusFilter] = React.useState("");
   const [sortBy, setSortBy] = React.useState("createdAt_desc");
 
   const [isSessionDialogOpen, setIsSessionDialogOpen] = React.useState(false);
@@ -98,8 +100,10 @@ export default function CallingAssistantPage() {
       const chantingMatch =
         !chantingFilter ||
         person.chantingStatus.toLowerCase().includes(chantingFilter.toLowerCase());
+      
+      const statusMatch = !callStatusFilter || person.lastCallStatus === callStatusFilter;
 
-      return generalSearchMatch && enablerMatch && sourceMatch && occupationMatch && chantingMatch;
+      return generalSearchMatch && enablerMatch && sourceMatch && occupationMatch && chantingMatch && statusMatch;
     });
 
     return filtered.sort((a, b) => {
@@ -110,7 +114,7 @@ export default function CallingAssistantPage() {
       }
       if (sortBy === "name_desc") {
         return `${b.firstName} ${b.lastName}`.localeCompare(
-          `${a.firstName} ${a.lastName}`
+          `${a.firstName} ${b.lastName}`
         );
       }
       if (sortBy === "createdAt_desc") {
@@ -120,7 +124,7 @@ export default function CallingAssistantPage() {
       }
       return 0;
     });
-  }, [people, searchTerm, enablerFilter, contactSourceFilter, occupationFilter, chantingFilter, sortBy]);
+  }, [people, searchTerm, enablerFilter, contactSourceFilter, occupationFilter, chantingFilter, callStatusFilter, sortBy]);
   
   const clearFilters = () => {
     setSearchTerm("");
@@ -128,6 +132,7 @@ export default function CallingAssistantPage() {
     setContactSourceFilter("");
     setOccupationFilter("");
     setChantingFilter("");
+    setCallStatusFilter("");
     setSortBy("createdAt_desc");
   };
 
@@ -135,30 +140,37 @@ export default function CallingAssistantPage() {
     setEditingPerson(person);
   };
   
-  const handleSessionSave = (personId: string, remark: string, duration: string) => {
+  const handleSessionSave = (personId: string, remark: string, duration: string, status: CallStatus) => {
     const callTime = new Date(); // Use a client-side timestamp for the history entry
+    const currentEvent = CURRENT_CALLING_EVENT;
 
     updatePerson(personId, {
         lastCallRemark: remark,
-        lastCallAt: serverTimestamp(), // This is fine as it's a top-level field
+        lastCallAt: serverTimestamp(),
+        lastCallStatus: status,
+        lastCallEvent: currentEvent,
         // @ts-ignore
         callHistory: arrayUnion({
             remark: remark,
-            calledAt: callTime, // Use the client-side timestamp here, which is allowed inside arrayUnion
+            calledAt: callTime,
             duration: duration,
+            status: status,
+            event: currentEvent,
         })
     });
     
     // Optimistic update using the same client-side timestamp
     setPeople(prev => prev.map(p => {
         if (p.id === personId) {
-            const newHistoryEntry = { remark, calledAt: callTime, duration };
+            const newHistoryEntry = { remark, calledAt: callTime, duration, status, event: currentEvent };
             const newHistory = p.callHistory ? [...p.callHistory, newHistoryEntry] : [newHistoryEntry];
             return {
                 ...p,
                 callHistory: newHistory,
                 lastCallRemark: remark,
                 lastCallAt: callTime, // Show the client time in UI immediately
+                lastCallStatus: status,
+                lastCallEvent: currentEvent,
             };
         }
         return p;
@@ -204,7 +216,7 @@ export default function CallingAssistantPage() {
                     Start Calling Session ({filteredPeople.length})
                 </Button>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 <Select value={enablerFilter} onValueChange={(value) => setEnablerFilter(value === '__all__' ? '' : value)}>
                     <SelectTrigger>
                         <SelectValue placeholder="Filter by Enabler" />
@@ -214,13 +226,13 @@ export default function CallingAssistantPage() {
                         {enablerOptions.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}
                     </SelectContent>
                 </Select>
-                  <Select value={contactSourceFilter} onValueChange={(value) => setContactSourceFilter(value === '__all__' ? '' : value)}>
+                 <Select value={callStatusFilter} onValueChange={(value) => setCallStatusFilter(value === '__all__' ? '' : value)}>
                     <SelectTrigger>
-                        <SelectValue placeholder="Filter by Source" />
+                        <SelectValue placeholder="Filter by Call Status" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="__all__">All Sources</SelectItem>
-                        {contactSourceOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        <SelectItem value="__all__">All Statuses</SelectItem>
+                        {callStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                     </SelectContent>
                 </Select>
                 <Select value={occupationFilter} onValueChange={(value) => setOccupationFilter(value === '__all__' ? '' : value)}>
@@ -232,16 +244,7 @@ export default function CallingAssistantPage() {
                         {occupationStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                     </SelectContent>
                 </Select>
-                <div className="relative">
-                  <Sunrise className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                      placeholder="Filter by Chanting Status"
-                      value={chantingFilter}
-                      onChange={(e) => setChantingFilter(e.target.value)}
-                      className="pl-10"
-                  />
-                </div>
-                <Button variant="outline" onClick={clearFilters}>Clear Filters</Button>
+                <Button variant="outline" onClick={clearFilters} className="xl:col-start-4">Clear Filters</Button>
             </div>
         </div>
 
@@ -269,7 +272,7 @@ export default function CallingAssistantPage() {
         <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
             <PageHeader
               title="Calling Assistant"
-              description="A focused view to call contacts and log remarks."
+              description={`A focused view to call contacts for: ${CURRENT_CALLING_EVENT}`}
             />
             <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
               {renderContent()}
@@ -281,6 +284,7 @@ export default function CallingAssistantPage() {
           onClose={() => setIsSessionDialogOpen(false)}
           people={filteredPeople}
           onSaveRemark={handleSessionSave}
+          currentEvent={CURRENT_CALLING_EVENT}
         />
 
         {editingPerson && (

@@ -5,7 +5,8 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import type { Person } from "@/lib/types";
+import type { Person, CallStatus } from "@/lib/types";
+import { callStatuses } from "@/lib/data";
 import { Phone, SkipForward, Square, CheckSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -26,10 +27,18 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
 const callFormSchema = z.object({
-  remark: z.string().trim(),
+  remark: z.string().trim().optional(),
+  status: z.string().min(1, { message: "Please select a call status." }),
 });
 
 type CallFormValues = z.infer<typeof callFormSchema>;
@@ -37,8 +46,9 @@ type CallFormValues = z.infer<typeof callFormSchema>;
 type CallingSessionDialogProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSaveRemark: (personId: string, remark: string, duration: string) => void;
+  onSaveRemark: (personId: string, remark: string, duration: string, status: CallStatus) => void;
   people: Person[];
+  currentEvent: string;
 };
 
 export function CallingSessionDialog({
@@ -46,6 +56,7 @@ export function CallingSessionDialog({
   onClose,
   onSaveRemark,
   people,
+  currentEvent
 }: CallingSessionDialogProps) {
   const { toast } = useToast();
   const [currentIndex, setCurrentIndex] = React.useState(0);
@@ -56,19 +67,20 @@ export function CallingSessionDialog({
     resolver: zodResolver(callFormSchema),
     defaultValues: {
       remark: "",
+      status: "",
     },
   });
   
   React.useEffect(() => {
     if (isOpen) {
         setCurrentIndex(0);
-        form.reset({ remark: "" });
+        form.reset({ remark: "", status: "" });
     }
   }, [isOpen, form]);
 
   React.useEffect(() => {
     if (currentPerson) {
-        form.reset({ remark: "" });
+        form.reset({ remark: currentPerson.lastCallRemark || "", status: currentPerson.lastCallStatus || "" });
         setCallStartTime(new Date());
     }
   }, [currentPerson, form]);
@@ -98,24 +110,15 @@ export function CallingSessionDialog({
     const seconds = durationInSeconds % 60;
     const durationString = `${minutes}m ${seconds}s`;
 
-    onSaveRemark(currentPerson.id, data.remark, durationString);
+    onSaveRemark(currentPerson.id, data.remark || '', durationString, data.status as CallStatus);
     toast({
-        title: "Remark Saved",
-        description: `Remark for ${currentPerson.firstName} has been logged.`
+        title: "Call Logged",
+        description: `Status for ${currentPerson.firstName} has been updated.`
     });
     goToNext();
   };
 
   const handleCloseDialog = () => {
-    // Prevent closing via overlay click if there are still people to call
-    if (currentIndex < people.length - 1) {
-        toast({
-            title: "Session in Progress",
-            description: "Please use the 'End Session' button to close.",
-            variant: "destructive"
-        });
-        return;
-    }
     onClose();
   }
 
@@ -131,7 +134,7 @@ export function CallingSessionDialog({
             Calling: {currentPerson.firstName} {currentPerson.lastName}
           </DialogTitle>
           <DialogDescription>
-            Contact {currentIndex + 1} of {people.length}
+            Contact {currentIndex + 1} of {people.length} for: <span className="font-semibold text-primary">{currentEvent}</span>
           </DialogDescription>
         </DialogHeader>
 
@@ -149,11 +152,33 @@ export function CallingSessionDialog({
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} id="call-form" className="space-y-4">
                     <FormField
+                      control={form.control}
+                      name="status"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Call Status</FormLabel>
+                           <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a call status" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                               {callStatuses.map(status => (
+                                <SelectItem key={status} value={status}>{status}</SelectItem>
+                               ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
                     control={form.control}
                     name="remark"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Call Remarks</FormLabel>
+                        <FormLabel>Call Remarks (Optional)</FormLabel>
                         <FormControl>
                             <Textarea
                                 placeholder="e.g., Discussed about the upcoming event, interested to join."
@@ -178,7 +203,7 @@ export function CallingSessionDialog({
                 <SkipForward className="mr-2 h-4 w-4"/>
                 Skip
             </Button>
-            <Button type="submit" form="call-form" className="col-span-1">
+            <Button type="submit" form="call-form" className="col-span-1" disabled={form.formState.isSubmitting}>
                 <CheckSquare className="mr-2 h-4 w-4"/>
                 Save & Next
             </Button>

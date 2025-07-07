@@ -2,7 +2,7 @@
 "use client";
 
 import Link from 'next/link';
-import { MoreHorizontal, Phone, MapPin, Trash2, Edit, Sunrise, MessageSquare, Clock } from "lucide-react";
+import { MoreHorizontal, Phone, Calendar, Edit, Trash2, MessageSquare, Clock, CheckCircle2 } from "lucide-react";
 import { formatDistanceToNow } from 'date-fns';
 import type { Person } from "@/lib/types";
 import {
@@ -62,8 +62,17 @@ export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView =
             <TableRow>
               <TableHead className="min-w-[200px]">Name</TableHead>
               <TableHead className="hidden sm:table-cell">Phone</TableHead>
-              <TableHead className="hidden md:table-cell">Last Called</TableHead>
-              <TableHead>Last Remark</TableHead>
+              {isCallingAssistantView ? (
+                <>
+                  <TableHead className="hidden md:table-cell">Event</TableHead>
+                  <TableHead>Call Status</TableHead>
+                </>
+              ) : (
+                <>
+                  <TableHead className="hidden md:table-cell">Last Called</TableHead>
+                  <TableHead>Last Remark</TableHead>
+                </>
+              )}
               <TableHead className="w-[50px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -94,39 +103,65 @@ export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView =
                     {person.phone}
                   </a>
                 </TableCell>
-                <TableCell className="hidden md:table-cell">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
+                
+                {isCallingAssistantView ? (
+                   <>
+                    <TableCell className="hidden md:table-cell">
                         <span className="flex items-center gap-2 truncate text-sm text-muted-foreground">
-                          <Clock className="h-4 w-4 shrink-0" />
-                           {person.lastCallAt ? 
-                                `${formatDistanceToNow(safeDate(person.lastCallAt)!, { addSuffix: true })}` 
-                                : 'Never'
-                            }
+                          <Calendar className="h-4 w-4 shrink-0" />
+                          <span className="truncate">{person.lastCallEvent || 'N/A'}</span>
                         </span>
-                      </TooltipTrigger>
-                       {person.lastCallAt && (
-                         <TooltipContent>
-                            <p>{safeDate(person.lastCallAt)!.toLocaleString()}</p>
-                         </TooltipContent>
-                       )}
-                    </Tooltip>
-                </TableCell>
-                <TableCell>
-                  <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="flex items-center gap-2 truncate text-sm text-muted-foreground">
-                          <MessageSquare className="h-4 w-4 shrink-0" />
-                          <span className="truncate">{person.lastCallRemark || 'No remarks yet'}</span>
-                        </span>
-                      </TooltipTrigger>
-                      {person.lastCallRemark && (
-                        <TooltipContent>
-                            <p className="max-w-xs">{person.lastCallRemark}</p>
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
-                </TableCell>
+                    </TableCell>
+                    <TableCell>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="flex items-center gap-2 truncate text-sm text-muted-foreground">
+                            <CheckCircle2 className="h-4 w-4 shrink-0" />
+                            <span className="truncate">{person.lastCallStatus || 'Not Called'}</span>
+                          </span>
+                        </TooltipTrigger>
+                        {person.lastCallStatus && <TooltipContent><p>{person.lastCallStatus}</p></TooltipContent>}
+                      </Tooltip>
+                    </TableCell>
+                  </>
+                ) : (
+                   <>
+                    <TableCell className="hidden md:table-cell">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="flex items-center gap-2 truncate text-sm text-muted-foreground">
+                              <Clock className="h-4 w-4 shrink-0" />
+                              {person.lastCallAt ? 
+                                    `${formatDistanceToNow(safeDate(person.lastCallAt)!, { addSuffix: true })}` 
+                                    : 'Never'
+                                }
+                            </span>
+                          </TooltipTrigger>
+                          {person.lastCallAt && (
+                            <TooltipContent>
+                                <p>{safeDate(person.lastCallAt)!.toLocaleString()}</p>
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                    </TableCell>
+                    <TableCell>
+                      <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="flex items-center gap-2 truncate text-sm text-muted-foreground">
+                              <MessageSquare className="h-4 w-4 shrink-0" />
+                              <span className="truncate">{person.lastCallRemark || 'No remarks yet'}</span>
+                            </span>
+                          </TooltipTrigger>
+                          {person.lastCallRemark && (
+                            <TooltipContent>
+                                <p className="max-w-xs">{person.lastCallRemark}</p>
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                    </TableCell>
+                   </>
+                )}
+                
                 <TableCell className="text-right">
                   <AlertDialog>
                     <DropdownMenu>

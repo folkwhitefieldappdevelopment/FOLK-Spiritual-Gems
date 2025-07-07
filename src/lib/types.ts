@@ -1,5 +1,7 @@
 
 
+import type { callStatuses } from './data';
+
 export const progressCategories = [
   'Association',
   'Book Reading',
@@ -27,6 +29,8 @@ export type CustomFieldType = (typeof customFieldTypes)[number];
 export const occupationStatuses = ['Working', 'Student', 'Searching for job'] as const;
 export type OccupationStatus = (typeof occupationStatuses)[number];
 
+export type CallStatus = (typeof callStatuses)[number];
+
 export type Person = {
   id: string;
   firstName: string;
@@ -49,7 +53,15 @@ export type Person = {
   createdAt?: any; // Firestore Timestamp
   lastCallRemark?: string;
   lastCallAt?: any; // Firestore Timestamp
-  callHistory?: { remark: string; calledAt: any; duration?: string; }[];
+  lastCallStatus?: CallStatus;
+  lastCallEvent?: string;
+  callHistory?: { 
+    remark: string; 
+    calledAt: any; 
+    duration?: string;
+    status?: CallStatus;
+    event?: string;
+  }[];
 };
 
 export const userRoles = ['Admin', 'Folk Guide', 'Folk Enabler'] as const;
