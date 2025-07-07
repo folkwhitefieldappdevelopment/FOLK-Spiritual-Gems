@@ -154,14 +154,13 @@ export default function CallingAssistantPage() {
     setEditingPerson(person);
   };
   
-  const handleSessionSave = (personId: string, remark: string, duration: string, status: CallStatus, sg: boolean | undefined, ma: boolean | undefined, frp: boolean | undefined) => {
+  const handleSessionSave = (personId: string, remark: string, status: CallStatus, sg: boolean | undefined, ma: boolean | undefined, frp: boolean | undefined) => {
     const callTime = new Date(); // Use a client-side timestamp for the history entry
     const currentEvent = currentCallingEvent;
     
     const callHistoryEntry: any = {
       remark: remark,
       calledAt: callTime,
-      duration: duration,
       status: status,
       event: currentEvent,
     };

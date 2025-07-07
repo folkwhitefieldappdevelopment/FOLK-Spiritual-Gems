@@ -44,12 +44,6 @@ export function CallHistory({ person }: { person: Person }) {
                                             <Clock className="h-4 w-4 text-muted-foreground" />
                                             <span>{safeDate(log.calledAt)?.toLocaleString() ?? 'N/A'}</span>
                                         </p>
-                                        {log.duration && (
-                                            <p className="font-medium flex items-center gap-2 text-muted-foreground">
-                                                <Timer className="h-4 w-4" />
-                                                <span>{log.duration}</span>
-                                            </p>
-                                        )}
                                     </div>
                                     <div className="pl-6">
                                         <p className="text-sm text-foreground">{log.remark || <span className="italic text-muted-foreground">No remark was left.</span>}</p>
@@ -64,6 +58,21 @@ export function CallHistory({ person }: { person: Person }) {
                                                 <div className="flex items-center gap-1.5">
                                                     <CheckCircle2 className="h-3 w-3" />
                                                     <span>Status: <strong className="text-foreground">{log.status}</strong></span>
+                                                </div>
+                                            )}
+                                            {typeof log.sg === 'boolean' && (
+                                                <div className="flex items-center gap-1.5">
+                                                    <span>SG: <strong className="font-semibold text-foreground">{log.sg ? 'Yes' : 'No'}</strong></span>
+                                                </div>
+                                            )}
+                                            {typeof log.ma === 'boolean' && (
+                                                <div className="flex items-center gap-1.5">
+                                                    <span>MA: <strong className="font-semibold text-foreground">{log.ma ? 'Yes' : 'No'}</strong></span>
+                                                </div>
+                                            )}
+                                            {typeof log.frp === 'boolean' && (
+                                                <div className="flex items-center gap-1.5">
+                                                    <span>FRP: <strong className="font-semibold text-foreground">{log.frp ? 'Yes' : 'No'}</strong></span>
                                                 </div>
                                             )}
                                         </div>

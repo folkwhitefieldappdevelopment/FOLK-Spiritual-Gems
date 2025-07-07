@@ -35,7 +35,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "./ui/input";
 
 const callFormSchema = z.object({
   remark: z.string().trim().optional(),
@@ -43,7 +42,6 @@ const callFormSchema = z.object({
   sg: z.string().optional(),
   ma: z.string().optional(),
   frp: z.string().optional(),
-  duration: z.string().optional(),
 });
 
 type CallFormValues = z.infer<typeof callFormSchema>;
@@ -54,7 +52,6 @@ type CallingSessionDialogProps = {
   onSaveRemark: (
     personId: string, 
     remark: string, 
-    duration: string, 
     status: CallStatus,
     sg: boolean | undefined,
     ma: boolean | undefined,
@@ -83,23 +80,21 @@ export function CallingSessionDialog({
       sg: "",
       ma: "",
       frp: "",
-      duration: "",
     },
   });
   
   React.useEffect(() => {
     if (isOpen) {
         setCurrentIndex(0);
-        form.reset({ remark: "", status: "", sg: "", ma: "", frp: "", duration: "" });
+        form.reset({ remark: "", status: "", sg: "", ma: "", frp: "" });
     }
   }, [isOpen, form]);
 
   React.useEffect(() => {
     if (currentPerson) {
-        // Reset with last status, but clear the remark and duration fields for a new entry.
+        // Reset with last status, but clear the remark for a new entry.
         form.reset({ 
             remark: "", 
-            duration: "",
             status: currentPerson.lastCallStatus || "",
             sg: typeof currentPerson.lastSg === 'boolean' ? (currentPerson.lastSg ? 'yes' : 'no') : '',
             ma: typeof currentPerson.lastMa === 'boolean' ? (currentPerson.lastMa ? 'yes' : 'no') : '',
@@ -131,7 +126,7 @@ export function CallingSessionDialog({
     const ma = data.ma === 'yes' ? true : data.ma === 'no' ? false : undefined;
     const frp = data.frp === 'yes' ? true : data.frp === 'no' ? false : undefined;
 
-    onSaveRemark(currentPerson.id, data.remark || '', data.duration || '', data.status as CallStatus, sg, ma, frp);
+    onSaveRemark(currentPerson.id, data.remark || '', data.status as CallStatus, sg, ma, frp);
     toast({
         title: "Call Logged",
         description: `Status for ${currentPerson.firstName} has been updated.`
@@ -179,43 +174,28 @@ export function CallingSessionDialog({
 
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} id="call-form" className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <FormField
-                            control={form.control}
-                            name="status"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Call Status</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select a call status" />
-                                    </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                    {callStatuses.map(status => (
-                                        <SelectItem key={status} value={status}>{status}</SelectItem>
-                                    ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="duration"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Call Duration (Optional)</FormLabel>
+                    <FormField
+                        control={form.control}
+                        name="status"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Call Status</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
                                 <FormControl>
-                                    <Input placeholder="e.g., 5m 30s" {...field} />
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a call status" />
+                                </SelectTrigger>
                                 </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </div>
+                                <SelectContent>
+                                {callStatuses.map(status => (
+                                    <SelectItem key={status} value={status}>{status}</SelectItem>
+                                ))}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
                      <div className="grid grid-cols-3 gap-4">
                         <FormField
                             control={form.control}
