@@ -163,10 +163,10 @@ export function ProgressTracker({
         <CardTitle>Progress Checklist</CardTitle>
       </CardHeader>
       <CardContent className="flex-1 overflow-auto rounded-lg border p-0">
-        <table className="relative w-full caption-bottom text-sm border-collapse">
-          <TableHeader className="sticky top-0 z-10 bg-card">
-            <TableRow className="bg-muted/50 hover:bg-muted/50 border-b-0">
-              <TableHead rowSpan={2} className="w-[300px] font-bold text-foreground align-bottom sticky left-0 z-20 bg-muted/50">
+        <table className="w-full caption-bottom text-sm border-separate border-spacing-0">
+          <TableHeader className="sticky top-0 z-30 bg-card">
+            <TableRow className="bg-muted hover:bg-muted border-b-0">
+              <TableHead rowSpan={2} className="w-[300px] font-bold text-foreground align-bottom sticky left-0 z-40 bg-muted">
                 Category
               </TableHead>
               <TableHead colSpan={2} className="text-center font-bold text-foreground border-l">
@@ -188,7 +188,7 @@ export function ProgressTracker({
                 </p>
               </TableHead>
             </TableRow>
-            <TableRow className="bg-muted/50 hover:bg-muted/50">
+            <TableRow className="bg-muted hover:bg-muted">
               <TableHead className="text-center text-xs font-semibold border-l">Goal</TableHead>
               <TableHead className="text-center text-xs font-semibold">Achieved</TableHead>
               <TableHead className="text-center text-xs font-semibold border-l">Goal</TableHead>
@@ -200,14 +200,14 @@ export function ProgressTracker({
           <TableBody>
             {checklistData.map((category, catIndex) => (
               <React.Fragment key={category.category}>
-                <TableRow className="bg-secondary/50">
-                  <TableCell colSpan={7} className="font-bold text-primary sticky left-0 bg-secondary/50">
+                <TableRow className="bg-secondary">
+                  <TableCell colSpan={7} className="font-bold text-primary sticky left-0 z-20 bg-secondary">
                     {category.category}
                   </TableCell>
                 </TableRow>
                 {category.items.map((item, itemIndex) => (
                   <TableRow key={item.question}>
-                    <TableCell className="font-medium text-sm text-muted-foreground align-top sticky left-0 bg-card">
+                    <TableCell className="font-medium text-sm text-muted-foreground align-top sticky left-0 z-20 bg-card">
                       {item.link ? (
                         <Link
                           href={item.link}
