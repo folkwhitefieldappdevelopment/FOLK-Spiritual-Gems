@@ -134,17 +134,28 @@ export default function PersonDetailPage() {
     }
   };
 
-  const handleProgressChange = async (catIndex: number, itemIndex: number, levelIndex: number, value: string) => {
+  const handleProgressChange = async (
+    catIndex: number,
+    itemIndex: number,
+    levelIndex: number,
+    value: string,
+    field: 'achieved' | 'remark' = 'achieved'
+  ) => {
     if (!person) return;
 
     const newProgress = JSON.parse(JSON.stringify(person.progress));
-    const levelKey = `l${levelIndex + 1}` as keyof ProgressLevelAnswers;
     
     if (!newProgress[catIndex]) return;
     if (!newProgress[catIndex].answers) newProgress[catIndex].answers = [];
-    if (!newProgress[catIndex].answers[itemIndex]) newProgress[catIndex].answers[itemIndex] = {l1:'', l2:'', l3:''};
+    if (!newProgress[catIndex].answers[itemIndex]) newProgress[catIndex].answers[itemIndex] = {l1:'', l2:'', l3:'', l1_remark: '', l2_remark: '', l3_remark: ''};
     
-    newProgress[catIndex].answers[itemIndex][levelKey] = value;
+    if (field === 'achieved') {
+      const levelKey = `l${levelIndex + 1}` as keyof ProgressLevelAnswers;
+      newProgress[catIndex].answers[itemIndex][levelKey] = value;
+    } else { // remark
+      const remarkKey = `l${levelIndex + 1}_remark` as keyof ProgressLevelAnswers;
+      newProgress[catIndex].answers[itemIndex][remarkKey] = value;
+    }
     
     const updatedPerson = { ...person, progress: newProgress };
     

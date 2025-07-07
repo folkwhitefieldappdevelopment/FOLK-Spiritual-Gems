@@ -85,7 +85,7 @@ export const checklistData = [
 export const createInitialProgress = (): ProgressCategoryAnswers[] => {
   return checklistData.map((category) => ({
     name: category.category as any,
-    answers: category.items.map(() => ({ l1: '', l2: '', l3: '' })),
+    answers: category.items.map(() => ({ l1: '', l2: '', l3: '', l1_remark: '', l2_remark: '', l3_remark: '' })),
   }));
 };
 

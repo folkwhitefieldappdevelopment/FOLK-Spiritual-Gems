@@ -70,7 +70,8 @@ type ProgressTrackerProps = {
     catIndex: number,
     itemIndex: number,
     levelIndex: number,
-    value: string
+    value: string,
+    field: 'achieved' | 'remark'
   ) => void;
 };
 
@@ -110,7 +111,7 @@ export function ProgressTracker({
         <Select
           value={currentValue}
           onValueChange={(value) =>
-            onProgressChange(catIndex, itemIndex, levelIndex, value === '-' ? '' : value)
+            onProgressChange(catIndex, itemIndex, levelIndex, value === '-' ? '' : value, 'achieved')
           }
         >
           <SelectTrigger className="w-full h-auto p-1 text-xs bg-transparent border-none focus:ring-0 focus:ring-offset-0">
@@ -129,7 +130,7 @@ export function ProgressTracker({
         <Select
           value={currentValue}
           onValueChange={(value) =>
-            onProgressChange(catIndex, itemIndex, levelIndex, value === '-' ? '' : value)
+            onProgressChange(catIndex, itemIndex, levelIndex, value === '-' ? '' : value, 'achieved')
           }
         >
           <SelectTrigger className="w-full h-auto p-1 text-xs bg-transparent border-none focus:ring-0 focus:ring-offset-0">
@@ -150,7 +151,7 @@ export function ProgressTracker({
         value={currentValue}
         placeholder={goalValue || '-'}
         onChange={(e) =>
-          onProgressChange(catIndex, itemIndex, levelIndex, e.target.value)
+          onProgressChange(catIndex, itemIndex, levelIndex, e.target.value, 'achieved')
         }
         className="w-full h-auto p-1 text-xs text-center bg-transparent border-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0"
       />
@@ -169,19 +170,19 @@ export function ProgressTracker({
               <TableHead rowSpan={2} className="w-[300px] font-bold text-foreground align-bottom sticky left-0 z-40 bg-muted">
                 Category
               </TableHead>
-              <TableHead colSpan={2} className="text-center font-bold text-foreground border-l">
+              <TableHead colSpan={3} className="text-center font-bold text-foreground border-l">
                 L-1
                 <p className="font-normal text-xs text-muted-foreground">
                   4 months
                 </p>
               </TableHead>
-              <TableHead colSpan={2} className="text-center font-bold text-foreground border-l">
+              <TableHead colSpan={3} className="text-center font-bold text-foreground border-l">
                 L-2
                 <p className="font-normal text-xs text-muted-foreground">
                   4 months
                 </p>
               </TableHead>
-              <TableHead colSpan={2} className="text-center font-bold text-foreground border-l">
+              <TableHead colSpan={3} className="text-center font-bold text-foreground border-l">
                 L-3
                 <p className="font-normal text-xs text-muted-foreground">
                   4 months
@@ -191,17 +192,22 @@ export function ProgressTracker({
             <TableRow className="bg-muted hover:bg-muted">
               <TableHead className="text-center text-xs font-semibold border-l">Goal</TableHead>
               <TableHead className="text-center text-xs font-semibold">Achieved</TableHead>
+              <TableHead className="text-center text-xs font-semibold">Remarks</TableHead>
+
               <TableHead className="text-center text-xs font-semibold border-l">Goal</TableHead>
               <TableHead className="text-center text-xs font-semibold">Achieved</TableHead>
+              <TableHead className="text-center text-xs font-semibold">Remarks</TableHead>
+              
               <TableHead className="text-center text-xs font-semibold border-l">Goal</TableHead>
               <TableHead className="text-center text-xs font-semibold">Achieved</TableHead>
+              <TableHead className="text-center text-xs font-semibold">Remarks</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {checklistData.map((category, catIndex) => (
               <React.Fragment key={category.category}>
                 <TableRow className="bg-secondary">
-                  <TableCell colSpan={7} className="font-bold text-primary sticky left-0 z-20 bg-secondary">
+                  <TableCell colSpan={10} className="font-bold text-primary sticky left-0 z-20 bg-secondary">
                     {category.category}
                   </TableCell>
                 </TableRow>
@@ -221,24 +227,40 @@ export function ProgressTracker({
                         item.question
                       )}
                     </TableCell>
-                    {item.levels.map((goal, levelIndex) => (
-                      <React.Fragment key={levelIndex}>
-                         <TableCell className="text-center text-xs p-1 border-l bg-muted/20 align-top">
-                           {goal || '-'}
-                         </TableCell>
-                         <TableCell
-                          className={cn(
-                            'text-center text-sm align-top p-0',
-                            getCellClass(
-                               progress?.[catIndex]?.answers?.[itemIndex]?.[`l${levelIndex + 1}` as keyof ProgressLevelAnswers] || '',
-                               goal
-                            )
-                          )}
-                        >
-                          {renderCellContent(catIndex, itemIndex, levelIndex)}
-                        </TableCell>
-                      </React.Fragment>
-                    ))}
+                    {item.levels.map((goal, levelIndex) => {
+                      const remarkKey = `l${levelIndex + 1}_remark` as keyof ProgressLevelAnswers;
+                      const currentRemark = progress?.[catIndex]?.answers?.[itemIndex]?.[remarkKey] || '';
+                      
+                      return (
+                        <React.Fragment key={levelIndex}>
+                          <TableCell className="text-center text-xs p-1 border-l bg-muted/20 align-top">
+                            {goal || '-'}
+                          </TableCell>
+                          <TableCell
+                            className={cn(
+                              'text-center text-sm align-top p-0',
+                              getCellClass(
+                                  progress?.[catIndex]?.answers?.[itemIndex]?.[`l${levelIndex + 1}` as keyof ProgressLevelAnswers] || '',
+                                  goal
+                              )
+                            )}
+                          >
+                            {renderCellContent(catIndex, itemIndex, levelIndex)}
+                          </TableCell>
+                          <TableCell className="text-center text-sm align-top p-0">
+                            <Input
+                                type="text"
+                                value={currentRemark}
+                                placeholder="-"
+                                onChange={(e) =>
+                                onProgressChange(catIndex, itemIndex, levelIndex, e.target.value, 'remark')
+                                }
+                                className="w-full h-full p-1 text-xs text-center bg-transparent border-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0"
+                            />
+                          </TableCell>
+                        </React.Fragment>
+                      )
+                    })}
                   </TableRow>
                 ))}
               </React.Fragment>

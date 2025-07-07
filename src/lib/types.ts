@@ -1,5 +1,4 @@
 
-
 import type { callStatuses } from './data';
 
 export const progressCategories = [
@@ -16,6 +15,9 @@ export type ProgressLevelAnswers = {
   l1: string;
   l2: string;
   l3: string;
+  l1_remark?: string;
+  l2_remark?: string;
+  l3_remark?: string;
 };
 
 export type ProgressCategoryAnswers = {
