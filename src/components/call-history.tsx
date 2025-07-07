@@ -21,7 +21,7 @@ export function CallHistory({ person }: { person: Person }) {
             const dateA = safeDate(a.calledAt);
             const dateB = safeDate(b.calledAt);
             if (!dateA || !dateB) return 0;
-            return dateB.getTime() - a.getTime();
+            return dateB.getTime() - dateA.getTime();
         });
     }, [person.callHistory]);
 
