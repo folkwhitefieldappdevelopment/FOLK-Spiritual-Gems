@@ -59,12 +59,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setUser(user);
               setAppUser(appUserData);
             } else {
-              // User not in our DB, deny access.
+              // User not in our DB, deny access by showing a generic error.
               toast({
                 variant: 'destructive',
-                title: 'Access Denied',
-                description: 'This account is not authorized. Please contact an administrator.',
-                duration: 5000,
+                title: 'Sign-in Failed',
+                description: 'Invalid email or password.',
               });
               await firebaseSignOut(auth);
               setUser(null);
