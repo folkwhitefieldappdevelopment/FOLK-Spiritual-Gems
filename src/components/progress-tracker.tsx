@@ -80,6 +80,7 @@ const getCellClass = (
   return 'bg-gray-200/50 dark:bg-gray-800/50';
 };
 
+
 type ProgressTrackerProps = {
   progress: ProgressCategoryAnswers[];
   onProgressChange: (
@@ -175,7 +176,7 @@ export function ProgressTracker({
   };
 
   return (
-    <Card className="h-[calc(100vh-14rem)] flex flex-col">
+    <Card className="h-[calc(100vh-8rem)] flex flex-col">
       <CardHeader>
         <CardTitle>Progress Checklist</CardTitle>
       </CardHeader>
