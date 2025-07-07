@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ReactNode } from "react";
@@ -42,7 +43,7 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
     };
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+    <header className="sticky top-0 z-30 flex items-center gap-2 border-b bg-background px-4 py-3 h-auto sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 sm:gap-4">
        <Sheet open={isMobileSheetOpen} onOpenChange={setIsMobileSheetOpen}>
         <SheetTrigger asChild>
           <Button size="icon" variant="outline" className="sm:hidden">
@@ -87,11 +88,11 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
           </nav>
         </SheetContent>
       </Sheet>
-      <div className="flex-1 min-w-0 overflow-hidden">
+      <div className="flex-1 min-w-0">
         <h1 className="font-semibold text-lg truncate">{title}</h1>
-        <p className="text-sm text-muted-foreground break-words">{description}</p>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
         {children}
         <UserNav />
       </div>
