@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -159,7 +158,7 @@ export function ProgressTracker({
   };
 
   return (
-    <Card className="h-full flex flex-col">
+    <Card className="h-[calc(100vh-10rem)] flex flex-col">
       <CardHeader>
         <CardTitle>Progress Checklist</CardTitle>
       </CardHeader>
