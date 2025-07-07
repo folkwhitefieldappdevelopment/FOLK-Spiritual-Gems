@@ -151,7 +151,6 @@ export default function CallingAssistantPage() {
         lastCallRemark: remark,
         lastCallAt: serverTimestamp(),
         lastCallStatus: status,
-        lastCallEvent: currentEvent,
         // @ts-ignore
         callHistory: arrayUnion({
             remark: remark,
@@ -173,7 +172,6 @@ export default function CallingAssistantPage() {
                 lastCallRemark: remark,
                 lastCallAt: callTime, // Show the client time in UI immediately
                 lastCallStatus: status,
-                lastCallEvent: currentEvent,
             };
         }
         return p;

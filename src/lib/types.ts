@@ -54,7 +54,6 @@ export type Person = {
   lastCallRemark?: string;
   lastCallAt?: any; // Firestore Timestamp
   lastCallStatus?: CallStatus;
-  lastCallEvent?: string;
   callHistory?: { 
     remark: string; 
     calledAt: any; 
