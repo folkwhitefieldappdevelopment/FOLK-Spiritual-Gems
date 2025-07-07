@@ -300,21 +300,9 @@ export function CreateUpdatePersonDialog({
   };
 
   const onSubmit = (data: PersonFormValues) => {
-    const saveData: Partial<Person> = { ...data };
-
-    if (isAdmin && data.folkGuideId) {
-        const selectedGuide = folkGuides.find(g => g.id === data.folkGuideId);
-        if (selectedGuide) {
-            saveData.folkGuideId = selectedGuide.id;
-            saveData.folkGuide = `${selectedGuide.name} (${selectedGuide.fgCode || 'N/A'})`;
-        } else {
-            saveData.folkGuideId = '';
-            saveData.folkGuide = '';
-        }
-    }
-
-    onSave({
-      ...saveData,
+    // Create the base object with all fields EXCEPT folk guide info
+    const saveData: Partial<Omit<Person, 'folkGuide' | 'folkGuideId'>> = {
+      ...data,
       organisation: data.organisation || "",
       rentDetails: data.rentDetails || "",
       nativePlace: data.nativePlace || "",
@@ -326,7 +314,27 @@ export function CreateUpdatePersonDialog({
         person?.photoUrl ||
         `https://placehold.co/100x100.png`,
       customData: customData,
-    } as Omit<Person, "id" | "progress" | "createdAt">);
+    };
+
+    // Cast to a type that allows adding folkGuide fields back
+    const finalData: Partial<Person> = saveData;
+    
+    // Only admins can modify the folk guide.
+    if (isAdmin) {
+        const selectedGuide = folkGuides.find(g => g.id === data.folkGuideId);
+        if (selectedGuide) {
+            finalData.folkGuideId = selectedGuide.id;
+            finalData.folkGuide = `${selectedGuide.name} (${selectedGuide.fgCode || 'N/A'})`;
+        } else {
+            // Admin explicitly unassigned the guide.
+            finalData.folkGuideId = '';
+            finalData.folkGuide = '';
+        }
+    }
+
+    // `finalData` now only contains folk guide info if the user is an admin.
+    // For other users, these fields are omitted, so they won't be changed on update.
+    onSave(finalData as Omit<Person, "id" | "progress" | "createdAt">);
     setIsOpen(false);
   };
 
