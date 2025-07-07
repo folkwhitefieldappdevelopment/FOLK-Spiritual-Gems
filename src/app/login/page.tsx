@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { auth } from '@/lib/firebase';
 import { isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
+import { ForgotPasswordDialog } from '@/components/forgot-password-dialog';
 
 export default function LoginPage() {
   const { user, signIn, loading, error } = useAuth();
@@ -20,8 +21,8 @@ export default function LoginPage() {
   const { toast } = useToast();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
-  // Local loading state specifically for the magic link verification process
   const [isVerifyingLink, setIsVerifyingLink] = React.useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = React.useState(false);
 
   // This effect handles the magic link sign-in
   React.useEffect(() => {
@@ -95,50 +96,64 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4">
-       <div className="mb-8 flex h-40 w-40 items-center justify-center rounded-full bg-primary/10 shadow-2xl">
-        <Gem className="h-24 w-24 text-primary drop-shadow-lg" />
+    <>
+      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4">
+        <div className="mb-8 flex h-40 w-40 items-center justify-center rounded-full bg-primary/10 shadow-2xl">
+          <Gem className="h-24 w-24 text-primary drop-shadow-lg" />
+        </div>
+        <Card className="w-full max-w-sm">
+          <CardHeader className="text-center">
+            <CardTitle className="text-lg sm:text-xl md:text-2xl">FOLK SPIRITUAL GEMS</CardTitle>
+            <CardDescription>
+              Central Contact Management App
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={loading}
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <Button
+                      type="button"
+                      variant="link"
+                      className="p-0 h-auto text-xs"
+                      onClick={() => setIsForgotPasswordOpen(true)}
+                      disabled={loading}
+                  >
+                      Forgot Password?
+                  </Button>
+                </div>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  minLength={6}
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={loading || !email || !password}>
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {loading ? 'Signing in...' : 'Sign In'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <CardTitle className="text-lg sm:text-xl md:text-2xl">FOLK SPIRITUAL GEMS</CardTitle>
-          <CardDescription>
-            Central Contact Management App
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="name@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={loading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={loading}
-                minLength={6}
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={loading || !email || !password}>
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {loading ? 'Signing in...' : 'Sign In'}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+      <ForgotPasswordDialog isOpen={isForgotPasswordOpen} setIsOpen={setIsForgotPasswordOpen} />
+    </>
   );
 }

@@ -9,6 +9,7 @@ import {
     reauthenticateWithCredential,
     EmailAuthProvider,
     updatePassword,
+    sendPasswordResetEmail,
     type User,
     type AuthError
 } from 'firebase/auth';
@@ -25,6 +26,7 @@ type AuthContextType = {
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<void>;
 };
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
@@ -143,9 +145,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     // Update the password
     await updatePassword(user, newPassword);
-  }
+  };
 
-  const value = { user, appUser, loading, error, signIn, signOut, changePassword };
+  const sendPasswordReset = async (email: string) => {
+    try {
+      await sendPasswordResetEmail(auth, email);
+    } catch (err) {
+      console.error("Error sending password reset email", err);
+      // We don't distinguish between user-not-found and other errors to avoid email enumeration attacks
+      throw new Error('Failed to send password reset email. Please try again.');
+    }
+  };
+
+  const value = { user, appUser, loading, error, signIn, signOut, changePassword, sendPasswordReset };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
