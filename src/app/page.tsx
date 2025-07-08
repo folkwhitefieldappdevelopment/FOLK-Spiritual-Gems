@@ -509,6 +509,18 @@ export default function ContactsPage() {
     }
   };
   
+  const handleSelectionChange = React.useCallback((personId: string, checked: boolean) => {
+    setSelectedIds(prev => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(personId);
+      } else {
+        newSet.delete(personId);
+      }
+      return newSet;
+    });
+  }, []);
+
   const isLoadingAction = isImporting || isExporting;
   const loadingText = isImporting ? 'Importing...' : isExporting ? 'Exporting...' : '';
 
@@ -625,8 +637,8 @@ export default function ContactsPage() {
               <PersonCard
                 key={person.id}
                 person={person}
-                selectedIds={selectedIds}
-                setSelectedIds={setSelectedIds}
+                isSelected={selectedIds.has(person.id)}
+                onSelectionChange={handleSelectionChange}
               />
             ))}
           </div>

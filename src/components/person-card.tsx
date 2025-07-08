@@ -20,8 +20,8 @@ import { Checkbox } from './ui/checkbox';
 
 type PersonCardProps = {
   person: Person;
-  selectedIds: Set<string>;
-  setSelectedIds: React.Dispatch<React.SetStateAction<Set<string>>>;
+  isSelected: boolean;
+  onSelectionChange: (personId: string, checked: boolean) => void;
 };
 
 const calculateScore = (categoryProgress: ProgressCategoryAnswers): number => {
@@ -100,9 +100,8 @@ const getProgressColor = (score: number): string => {
     return 'bg-red-500';
 };
 
-export function PersonCard({ person, selectedIds, setSelectedIds }: PersonCardProps) {
+const PersonCardComponent = ({ person, isSelected, onSelectionChange }: PersonCardProps) => {
   const { isAdmin } = useAdmin();
-  const isSelected = selectedIds.has(person.id);
 
   let occupationDisplay = person.occupation;
   if ((person.occupation === 'Working' || person.occupation === 'Student') && person.organisation) {
@@ -115,18 +114,6 @@ export function PersonCard({ person, selectedIds, setSelectedIds }: PersonCardPr
     `${nameParts[0]?.charAt(0) || ''}${nameParts.length > 1 ? nameParts[nameParts.length - 1]?.charAt(0) || '' : ''}`
   ).toUpperCase();
 
-  const handleSelectionChange = (checked: boolean) => {
-    setSelectedIds(prev => {
-      const newSet = new Set(prev);
-      if (checked) {
-        newSet.add(person.id);
-      } else {
-        newSet.delete(person.id);
-      }
-      return newSet;
-    });
-  };
-
   return (
       <Card className={cn("flex flex-col h-full relative group/card", isSelected && "ring-2 ring-primary border-primary")}>
         <div 
@@ -138,7 +125,7 @@ export function PersonCard({ person, selectedIds, setSelectedIds }: PersonCardPr
         >
           <Checkbox
             checked={isSelected}
-            onCheckedChange={(checked) => handleSelectionChange(!!checked)}
+            onCheckedChange={(checked) => onSelectionChange(person.id, !!checked)}
             aria-label={`Select ${fullName}`}
             className="h-5 w-5"
           />
@@ -211,3 +198,5 @@ export function PersonCard({ person, selectedIds, setSelectedIds }: PersonCardPr
       </Card>
   );
 }
+
+export const PersonCard = React.memo(PersonCardComponent);
