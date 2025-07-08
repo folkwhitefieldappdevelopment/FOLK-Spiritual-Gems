@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -30,7 +29,7 @@ export function CallHistory({ person }: { person: Person }) {
             <CardHeader>
                 <CardTitle>Call History</CardTitle>
                 <CardDescription>
-                    A log of all past calls with {person.firstName}.
+                    A log of all past calls with {person.fullName || ''}.
                 </CardDescription>
             </CardHeader>
             <CardContent>

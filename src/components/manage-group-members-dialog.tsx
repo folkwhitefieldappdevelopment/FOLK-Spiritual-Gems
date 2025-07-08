@@ -60,7 +60,7 @@ export function ManageGroupMembersDialog({
 
   const filteredPeople = React.useMemo(() => {
     return allPeople.filter(person => 
-      `${person.firstName} ${person.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())
+      (person.fullName || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [allPeople, searchTerm]);
 
@@ -89,33 +89,40 @@ export function ManageGroupMembersDialog({
           <ScrollArea className="h-72 w-full rounded-md border">
             <div className="p-4 space-y-4">
               {filteredPeople.length > 0 ? (
-                filteredPeople.map((person) => (
-                  <div key={person.id} className="flex items-center space-x-3">
-                    <Checkbox
-                      id={`person-${person.id}`}
-                      checked={selectedMemberIds.has(person.id)}
-                      onCheckedChange={(checked) =>
-                        handleMemberSelect(person.id, !!checked)
-                      }
-                    />
-                    <Avatar className="h-8 w-8">
-                       <AvatarImage
-                          src={person.photoUrl}
-                          alt={`${person.firstName} ${person.lastName}`}
-                        />
-                       <AvatarFallback>
-                          {person.firstName.charAt(0)}
-                          {person.lastName.charAt(0)}
-                        </AvatarFallback>
-                    </Avatar>
-                    <Label
-                      htmlFor={`person-${person.id}`}
-                      className="text-sm font-medium leading-none"
-                    >
-                      {person.firstName} {person.lastName}
-                    </Label>
-                  </div>
-                ))
+                filteredPeople.map((person) => {
+                  const fullName = person.fullName || '';
+                  const nameParts = fullName.split(' ');
+                  const fallback = nameParts.length > 1 && nameParts[0] && nameParts[nameParts.length-1]
+                    ? `${nameParts[0].charAt(0)}${nameParts[nameParts.length-1].charAt(0)}`
+                    : fullName.substring(0, 2);
+
+                  return (
+                    <div key={person.id} className="flex items-center space-x-3">
+                      <Checkbox
+                        id={`person-${person.id}`}
+                        checked={selectedMemberIds.has(person.id)}
+                        onCheckedChange={(checked) =>
+                          handleMemberSelect(person.id, !!checked)
+                        }
+                      />
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage
+                            src={person.photoUrl}
+                            alt={fullName}
+                          />
+                        <AvatarFallback>
+                            {fallback}
+                          </AvatarFallback>
+                      </Avatar>
+                      <Label
+                        htmlFor={`person-${person.id}`}
+                        className="text-sm font-medium leading-none"
+                      >
+                        {fullName}
+                      </Label>
+                    </div>
+                  );
+                })
               ) : (
                 <p className="text-sm text-muted-foreground text-center p-4">
                   {allPeople.length === 0 ? "No contacts available to add." : "No contacts found."}

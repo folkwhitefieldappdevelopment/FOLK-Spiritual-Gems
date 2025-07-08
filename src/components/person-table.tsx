@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from 'next/link';
@@ -73,10 +72,11 @@ export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView =
           </TableHeader>
           <TableBody>
             {people.map((person) => {
-              const nameParts = person.fullName.split(" ");
-              const fallback = nameParts.length > 1 
+              const fullName = person.fullName || '';
+              const nameParts = fullName.split(" ");
+              const fallback = nameParts.length > 1 && nameParts[0] && nameParts[nameParts.length - 1]
                 ? `${nameParts[0].charAt(0)}${nameParts[nameParts.length - 1].charAt(0)}` 
-                : person.fullName.substring(0, 2);
+                : fullName.substring(0, 2);
 
               return (
               <TableRow key={person.id}>
@@ -85,7 +85,7 @@ export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView =
                     <Avatar>
                       <AvatarImage
                         src={person.photoUrl}
-                        alt={person.fullName}
+                        alt={fullName}
                         data-ai-hint="person portrait"
                       />
                       <AvatarFallback>
@@ -93,7 +93,7 @@ export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView =
                       </AvatarFallback>
                     </Avatar>
                     <div className="font-medium group-hover:underline">
-                      {person.fullName}
+                      {fullName}
                     </div>
                   </Link>
                 </TableCell>
@@ -196,7 +196,7 @@ export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView =
                         <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                         <AlertDialogDescription>
                           This action cannot be undone. This will permanently
-                          delete {person.fullName}.
+                          delete {fullName || 'this contact'}.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>

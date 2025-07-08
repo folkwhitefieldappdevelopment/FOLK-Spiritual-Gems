@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -213,10 +212,11 @@ export default function PersonDetailPage() {
     }
 
     const hasCustomData = customFields.some(field => person.customData && person.customData[field.id]);
-    const nameParts = person.fullName.split(' ');
-    const fallback = nameParts.length > 1 
+    const fullName = person.fullName || '';
+    const nameParts = fullName.split(' ');
+    const fallback = nameParts.length > 1 && nameParts[0] && nameParts[nameParts.length - 1]
       ? `${nameParts[0].charAt(0)}${nameParts[nameParts.length - 1].charAt(0)}` 
-      : person.fullName.substring(0, 2);
+      : fullName.substring(0, 2);
 
     return (
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
@@ -230,7 +230,7 @@ export default function PersonDetailPage() {
                           <Avatar className="h-32 w-32 mb-4 cursor-pointer hover:opacity-80 transition-opacity">
                             <AvatarImage
                               src={person.photoUrl}
-                              alt={person.fullName}
+                              alt={fullName}
                               data-ai-hint="person portrait"
                             />
                             <AvatarFallback>
@@ -240,17 +240,17 @@ export default function PersonDetailPage() {
                         </DialogTrigger>
                         <DialogContent className="p-0 border-0 max-w-lg bg-transparent shadow-none">
                           <DialogHeader>
-                            <DialogTitle className="sr-only">Profile photo for {person.fullName}</DialogTitle>
+                            <DialogTitle className="sr-only">Profile photo for {fullName}</DialogTitle>
                           </DialogHeader>
                           <img
                             src={person.photoUrl}
-                            alt={person.fullName}
+                            alt={fullName}
                             className="rounded-lg w-full h-auto object-contain"
                           />
                         </DialogContent>
                       </Dialog>
                       <h2 className="text-2xl font-bold">
-                        {person.fullName}
+                        {fullName}
                       </h2>
                       <p className="text-muted-foreground mt-1">
                           {person.sgRating ? `Rating: ${person.sgRating}/10` : 'No rating'}
@@ -362,7 +362,7 @@ export default function PersonDetailPage() {
             {person && !fetchError && (
                 <PageHeader
                     title="Contact Details"
-                    description={`Viewing profile for ${person.fullName}`}
+                    description={`Viewing profile for ${person.fullName || ''}`}
                 >
                     <div className="flex items-center gap-2">
                     <Button
@@ -390,7 +390,7 @@ export default function PersonDetailPage() {
                             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                             <AlertDialogDescription>
                             This action cannot be undone. This will permanently delete{' '}
-                            {person.fullName}.
+                            {person.fullName || 'this contact'}.
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

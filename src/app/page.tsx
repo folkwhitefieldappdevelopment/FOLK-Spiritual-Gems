@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -112,9 +111,9 @@ export default function ContactsPage() {
   const filteredPeople = React.useMemo(() => {
     const filtered = people.filter((person) => {
       const search = searchTerm.toLowerCase();
-      const name = person.fullName.toLowerCase();
+      const name = (person.fullName || '').toLowerCase();
       const phone = person.phone.toLowerCase();
-      const nativePlace = person.nativePlace.toLowerCase();
+      const nativePlace = (person.nativePlace || '').toLowerCase();
 
       const generalSearchMatch =
         !search || name.includes(search) || phone.includes(search) || nativePlace.includes(search);
@@ -129,17 +128,17 @@ export default function ContactsPage() {
       
       const chantingMatch =
         !chantingFilter ||
-        person.chantingStatus.toLowerCase().includes(chantingFilter.toLowerCase());
+        (person.chantingStatus || '').toLowerCase().includes(chantingFilter.toLowerCase());
 
       return generalSearchMatch && enablerMatch && sourceMatch && occupationMatch && chantingMatch;
     });
 
     return filtered.sort((a, b) => {
       if (sortBy === "name_asc") {
-        return a.fullName.localeCompare(b.fullName);
+        return (a.fullName || '').localeCompare(b.fullName || '');
       }
       if (sortBy === "name_desc") {
-        return b.fullName.localeCompare(a.fullName);
+        return (b.fullName || '').localeCompare(a.fullName || '');
       }
       if (sortBy === "createdAt_desc") {
         const dateA = a.createdAt
@@ -228,7 +227,7 @@ export default function ContactsPage() {
         if (p.photoUrl.startsWith('data:image')) {
           try {
             const extension = p.photoUrl.split(';')[0].split('/')[1] || 'png';
-            const nameParts = p.fullName.split(' ');
+            const nameParts = (p.fullName || 'contact').split(' ');
             const fileName = `${nameParts.join('_')}_${p.id}.${extension}`;
             photoColumnValue = `photos/${fileName}`;
 

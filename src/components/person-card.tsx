@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from 'next/link';
@@ -104,10 +103,11 @@ export function PersonCard({ person }: PersonCardProps) {
     occupationDisplay = `${person.occupation} at ${person.organisation}`;
   }
 
-  const nameParts = person.fullName.split(" ");
-  const fallback = nameParts.length > 1 
+  const fullName = person.fullName || '';
+  const nameParts = fullName.split(" ");
+  const fallback = nameParts.length > 1 && nameParts[0] && nameParts[nameParts.length - 1]
     ? `${nameParts[0].charAt(0)}${nameParts[nameParts.length - 1].charAt(0)}` 
-    : person.fullName.substring(0, 2);
+    : fullName.substring(0, 2);
 
   return (
     <Link href={`/contacts/${person.id}`} className="block transition-all hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg">
@@ -116,7 +116,7 @@ export function PersonCard({ person }: PersonCardProps) {
             <Avatar className="h-16 w-16">
             <AvatarImage
                 src={person.photoUrl}
-                alt={person.fullName}
+                alt={fullName}
                 data-ai-hint="person portrait"
             />
             <AvatarFallback>
@@ -125,7 +125,7 @@ export function PersonCard({ person }: PersonCardProps) {
             </Avatar>
             <div className="flex-1">
               <CardTitle className="text-xl">
-                  {person.fullName}
+                  {fullName}
               </CardTitle>
               <CardDescription>{person.sgRating ? `Rating: ${person.sgRating}/10` : 'No rating'}</CardDescription>
             </div>
