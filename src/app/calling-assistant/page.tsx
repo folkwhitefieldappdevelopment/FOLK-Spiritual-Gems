@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { Headset, Search, Sunrise, Loader2 } from "lucide-react";
+import { Headset, Search, Sunrise, Loader2, Edit } from "lucide-react";
 import type { Person, CallStatus } from "@/lib/types";
 import { occupationStatuses } from "@/lib/types";
 import { callStatuses } from "@/lib/data";
@@ -27,9 +27,19 @@ import {
   getPeople,
   updatePerson,
 } from "@/services/people-service";
-import { getEnablers, getContactSources, getCurrentCallingEvent, type EnablerOption } from "@/services/settings-service";
+import { getEnablers, getContactSources, getCurrentCallingEvent, updateCurrentCallingEvent, type EnablerOption } from "@/services/settings-service";
 import { serverTimestamp, arrayUnion } from "firebase/firestore";
 import { useAuth } from "@/contexts/auth-context";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+
 
 export default function CallingAssistantPage() {
   const { toast } = useToast();
@@ -56,6 +66,11 @@ export default function CallingAssistantPage() {
   const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
   const [currentCallingEvent, setCurrentCallingEvent] = React.useState("Loading event...");
+
+  // State for the event editing dialog
+  const [isEventDialogOpen, setIsEventDialogOpen] = React.useState(false);
+  const [isStartingSessionFlow, setIsStartingSessionFlow] = React.useState(false);
+  const [editableEventName, setEditableEventName] = React.useState("");
 
   React.useEffect(() => {
     if (!appUser) {
@@ -210,6 +225,37 @@ export default function CallingAssistantPage() {
     });
   };
 
+  const handleOpenEventDialog = (isStartingFlow: boolean) => {
+    setEditableEventName(currentCallingEvent);
+    setIsStartingSessionFlow(isStartingFlow);
+    setIsEventDialogOpen(true);
+  };
+
+  const handleSaveEventAndContinue = async () => {
+    if (!editableEventName.trim()) {
+      toast({ variant: 'destructive', title: 'Event name cannot be empty.' });
+      return;
+    }
+
+    if (editableEventName !== currentCallingEvent) {
+      try {
+        await updateCurrentCallingEvent(editableEventName);
+        setCurrentCallingEvent(editableEventName);
+        toast({ title: 'Calling Event Updated' });
+      } catch (error) {
+        toast({ variant: 'destructive', title: 'Error updating event.' });
+        return; 
+      }
+    }
+
+    setIsEventDialogOpen(false);
+
+    if (isStartingSessionFlow) {
+      setIsSessionDialogOpen(true);
+    }
+  };
+
+
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -236,7 +282,7 @@ export default function CallingAssistantPage() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                 <Button size="sm" onClick={() => setIsSessionDialogOpen(true)} disabled={filteredPeople.length === 0}>
+                 <Button size="sm" onClick={() => handleOpenEventDialog(true)} disabled={filteredPeople.length === 0}>
                     <Headset className="mr-2 h-4 w-4" />
                     Start Calling Session ({filteredPeople.length})
                 </Button>
@@ -327,13 +373,50 @@ export default function CallingAssistantPage() {
         <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
             <PageHeader
               title="Calling Assistant"
-              description={`A focused view to call contacts for: ${currentCallingEvent}`}
+              description={
+                <span className="flex items-center gap-1">
+                  A focused view to call contacts for:
+                  <strong className="text-foreground ml-1">{currentCallingEvent}</strong>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleOpenEventDialog(false)}>
+                    <Edit className="h-3 w-3" />
+                  </Button>
+                </span>
+              }
             />
             <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
               {renderContent()}
             </main>
         </div>
         
+        <Dialog open={isEventDialogOpen} onOpenChange={setIsEventDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{isStartingSessionFlow ? 'Confirm Calling Event' : 'Edit Calling Event'}</DialogTitle>
+              <DialogDescription>
+                {isStartingSessionFlow
+                  ? 'Confirm or update the event name before you start your calling session.'
+                  : 'Update the name of the current calling event.'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <Label htmlFor="eventName">Event Name</Label>
+              <Input
+                id="eventName"
+                value={editableEventName}
+                onChange={(e) => setEditableEventName(e.target.value)}
+                className="mt-1"
+                placeholder="e.g., Spiritual Camp - July 2024"
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEventDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleSaveEventAndContinue}>
+                {isStartingSessionFlow ? 'Start Session' : 'Save'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <CallingSessionDialog
           isOpen={isSessionDialogOpen}
           onClose={() => setIsSessionDialogOpen(false)}

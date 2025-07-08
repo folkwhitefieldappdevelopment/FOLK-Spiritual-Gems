@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import * as React from 'react';
 import { UserNav } from './user-nav';
 import { Button } from "./ui/button";
-import { Menu } from "lucide-react";
+import { Menu, Edit } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 import Link from "next/link";
 import { Users, UserSquare, Settings, Gem, Headset, UserCog } from "lucide-react";
@@ -15,7 +15,7 @@ import { usePathname } from "next/navigation";
 
 type PageHeaderProps = {
   title: string;
-  description: string;
+  description: React.ReactNode;
   children?: ReactNode;
 };
 
@@ -89,7 +89,7 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
       </Sheet>
       <div className="flex-1 min-w-0 overflow-hidden">
         <h1 className="font-semibold text-lg truncate">{title}</h1>
-        <p className="text-sm text-muted-foreground break-words">{description}</p>
+        <div className="text-sm text-muted-foreground break-words">{description}</div>
       </div>
       <div className="flex items-center gap-2">
         {children}
