@@ -27,6 +27,7 @@ type AuthContextType = {
   signOut: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
+  updateCurrentAppUser: (updates: Partial<AppUser>) => void;
 };
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
@@ -37,6 +38,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [appUser, setAppUser] = React.useState<AppUser | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<Error | null>(initialConfigError);
+
+  const updateCurrentAppUser = (updates: Partial<AppUser>) => {
+    setAppUser(prev => prev ? {...prev, ...updates} : null);
+  }
 
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, 
@@ -159,7 +164,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const value = { user, appUser, loading, error, signIn, signOut, changePassword, sendPasswordReset };
+  const value = { user, appUser, loading, error, signIn, signOut, changePassword, sendPasswordReset, updateCurrentAppUser };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

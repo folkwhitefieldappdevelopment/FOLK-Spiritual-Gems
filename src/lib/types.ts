@@ -89,6 +89,7 @@ export type AppUser = {
     guideFgCode: string;
   };
   lastAssignedEnablerIndex?: number;
+  currentCallingEvent?: string;
 };
 
 export type Group = {

@@ -17,7 +17,8 @@ import { CallingSessionDialog } from "@/components/calling-session-dialog";
 import { AuthGuard } from "@/components/auth-guard";
 import { FirebaseConfigError } from "@/components/firebase-config-error";
 import { getPeople, updatePerson } from "@/services/people-service";
-import { getEnablers, getContactSources, getCurrentCallingEvent, updateCurrentCallingEvent, type EnablerOption } from "@/services/settings-service";
+import { getEnablers, getContactSources, type EnablerOption } from "@/services/settings-service";
+import { updateUser } from "@/services/user-service";
 import { serverTimestamp, arrayUnion } from "firebase/firestore";
 import { useAuth } from "@/contexts/auth-context";
 import {
@@ -34,7 +35,7 @@ import { SortPopover, type SortDescriptor } from '@/components/sort-popover';
 
 export default function CallingAssistantPage() {
   const { toast } = useToast();
-  const { appUser } = useAuth();
+  const { appUser, updateCurrentAppUser } = useAuth();
 
   const [people, setPeople] = React.useState<Person[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -64,16 +65,15 @@ export default function CallingAssistantPage() {
       setIsLoading(true);
       setFetchError(null);
       try {
-        const [peopleData, enablersData, sourcesData, eventData] = await Promise.all([
+        const [peopleData, enablersData, sourcesData] = await Promise.all([
           getPeople(appUser),
           getEnablers(appUser, 'filter'),
           getContactSources(),
-          getCurrentCallingEvent(),
         ]);
         setPeople(peopleData);
         setEnablerOptions(enablersData);
         setContactSourceOptions(sourcesData);
-        setCurrentCallingEvent(eventData);
+        setCurrentCallingEvent(appUser.currentCallingEvent || 'General Calling');
       } catch (error) {
         console.error("Failed to load data:", error);
         if (error instanceof Error) {
@@ -269,6 +269,7 @@ export default function CallingAssistantPage() {
   };
 
   const handleSaveEventAndContinue = async () => {
+    if (!appUser) return;
     if (!editableEventName.trim()) {
       toast({ variant: 'destructive', title: 'Event name cannot be empty.' });
       return;
@@ -276,8 +277,9 @@ export default function CallingAssistantPage() {
 
     if (editableEventName !== currentCallingEvent) {
       try {
-        await updateCurrentCallingEvent(editableEventName);
+        await updateUser(appUser.id, { currentCallingEvent: editableEventName });
         setCurrentCallingEvent(editableEventName);
+        updateCurrentAppUser({ currentCallingEvent: editableEventName });
         toast({ title: 'Calling Event Updated' });
       } catch (error) {
         toast({ variant: 'destructive', title: 'Error updating event.' });
