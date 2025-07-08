@@ -13,36 +13,43 @@ import {
   query,
   where,
   runTransaction,
+  type DocumentSnapshot,
 } from 'firebase/firestore';
 import type { Person, AppUser } from '@/lib/types';
+
+const processPersonDoc = (doc: DocumentSnapshot): Person => {
+  const data = doc.data() as any; // Use 'any' to access potential legacy fields
+  // Backward compatibility: If fullName is missing, construct it from firstName/lastName.
+  if (!data.fullName && (data.firstName || data.lastName)) {
+    data.fullName = `${data.firstName || ''} ${data.lastName || ''}`.trim();
+  }
+  return { id: doc.id, ...data } as Person;
+};
 
 export const getPeople = async (appUser: AppUser | null): Promise<Person[]> => {
   if (!appUser) return [];
 
   const peopleCollection = collection(db, 'people');
+  let q;
 
   if (appUser.role.includes('Admin')) {
-    const snapshot = await getDocs(peopleCollection);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Person));
+    q = query(peopleCollection);
+  } else if (appUser.role.includes('Folk Guide')) {
+    q = query(peopleCollection, where('folkGuideId', '==', appUser.id));
+  } else {
+    // Default for Folk Enabler and any other role
+    q = query(peopleCollection, where('enablerInTouchWith', '==', appUser.name));
   }
-
-  if (appUser.role.includes('Folk Guide')) {
-    const q = query(peopleCollection, where('folkGuideId', '==', appUser.id));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Person));
-  }
-
-  // Default for Folk Enabler and any other role
-  const q = query(peopleCollection, where('enablerInTouchWith', '==', appUser.name));
+  
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Person));
+  return snapshot.docs.map(processPersonDoc);
 };
 
 export const getPerson = async (id: string): Promise<Person | null> => {
   const docRef = doc(db, 'people', id);
   const docSnap = await getDoc(docRef);
   if (docSnap.exists()) {
-    return { id: docSnap.id, ...docSnap.data() } as Person;
+    return processPersonDoc(docSnap);
   }
   return null;
 };
