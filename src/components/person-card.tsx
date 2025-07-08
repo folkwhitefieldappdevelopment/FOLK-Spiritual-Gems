@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from 'next/link';
@@ -110,8 +109,8 @@ export function PersonCard({ person }: PersonCardProps) {
   return (
     <Link href={`/contacts/${person.id}`} className="block transition-all hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg">
         <Card className="flex flex-col h-full">
-        <CardHeader className="flex flex-col items-center text-center pt-6 pb-4">
-            <Avatar className="h-20 w-20 mb-2">
+        <CardHeader className="flex flex-row items-center gap-4 p-4">
+            <Avatar className="h-16 w-16">
             <AvatarImage
                 src={person.photoUrl}
                 alt={fullName}
@@ -121,12 +120,12 @@ export function PersonCard({ person }: PersonCardProps) {
                 {fallback}
             </AvatarFallback>
             </Avatar>
-            <CardTitle className="text-xl">
-                {fullName}
-            </CardTitle>
-            <CardDescription>{person.sgRating ? `Rating: ${person.sgRating}/10` : 'No rating'}</CardDescription>
+            <div className="flex flex-col">
+                <CardTitle className="text-lg">{fullName}</CardTitle>
+                <CardDescription>{person.sgRating ? `Rating: ${person.sgRating}/10` : 'No rating'}</CardDescription>
+            </div>
         </CardHeader>
-        <CardContent className="flex-grow space-y-3">
+        <CardContent className="flex-grow space-y-3 pt-0 p-4">
             <div className="flex items-center text-sm text-muted-foreground">
               <User className="mr-2 h-4 w-4" />
               <span className="truncate">{person.age} years old</span>
