@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -111,7 +112,7 @@ export default function ContactsPage() {
   const filteredPeople = React.useMemo(() => {
     const filtered = people.filter((person) => {
       const search = searchTerm.toLowerCase();
-      const name = (person.fullName || '').toLowerCase();
+      const name = `${person.firstName || ''} ${person.lastName || ''}`.toLowerCase();
       const phone = person.phone.toLowerCase();
       const nativePlace = (person.nativePlace || '').toLowerCase();
 
@@ -135,10 +136,14 @@ export default function ContactsPage() {
 
     return filtered.sort((a, b) => {
       if (sortBy === "name_asc") {
-        return (a.fullName || '').localeCompare(b.fullName || '');
+        const nameA = `${a.firstName || ''} ${a.lastName || ''}`.trim();
+        const nameB = `${b.firstName || ''} ${b.lastName || ''}`.trim();
+        return nameA.localeCompare(nameB);
       }
       if (sortBy === "name_desc") {
-        return (b.fullName || '').localeCompare(a.fullName || '');
+        const nameA = `${a.firstName || ''} ${a.lastName || ''}`.trim();
+        const nameB = `${b.firstName || ''} ${b.lastName || ''}`.trim();
+        return nameB.localeCompare(nameA);
       }
       if (sortBy === "createdAt_desc") {
         const dateA = a.createdAt
@@ -168,12 +173,13 @@ export default function ContactsPage() {
 
   const handleSampleDownload = () => {
     const headers = [
-      "fullName", "phone", "photoUrl", "age", "stayingWith",
+      "firstName", "lastName", "phone", "photoUrl", "age", "stayingWith",
       "occupation", "organisation", "rentDetails", "nativePlace", "sgRating",
       "contactSource", "chantingStatus", "fromOtherCamp", "enablerInTouchWith"
     ];
     const dummyContact = [{
-      fullName: "John Doe",
+      firstName: "John",
+      lastName: "Doe",
       phone: "9876543210",
       photoUrl: "https://placehold.co/100x100.png",
       age: 25,
@@ -227,8 +233,8 @@ export default function ContactsPage() {
         if (p.photoUrl.startsWith('data:image')) {
           try {
             const extension = p.photoUrl.split(';')[0].split('/')[1] || 'png';
-            const nameParts = (p.fullName || 'contact').split(' ');
-            const fileName = `${nameParts.join('_')}_${p.id}.${extension}`;
+            const name = `${p.firstName}_${p.lastName}`.trim();
+            const fileName = `${name}_${p.id}.${extension}`;
             photoColumnValue = `photos/${fileName}`;
 
             const response = await fetch(p.photoUrl);
@@ -239,7 +245,7 @@ export default function ContactsPage() {
             }
 
           } catch (e) {
-            console.error(`Failed to process image for ${p.fullName}:`, e);
+            console.error(`Failed to process image for ${p.firstName} ${p.lastName}:`, e);
             photoColumnValue = 'Error processing image';
           }
         } else {
@@ -248,7 +254,8 @@ export default function ContactsPage() {
       }
       
       exportData.push({
-        fullName: p.fullName,
+        firstName: p.firstName,
+        lastName: p.lastName,
         phone: p.phone,
         photoUrl: photoColumnValue,
         age: p.age,
@@ -319,8 +326,8 @@ export default function ContactsPage() {
 
         const newPeople: Omit<Person, 'id' | 'createdAt'>[] = json
           .map((row: any) => {
-            if (!row.fullName || !row.phone) {
-              console.warn("Skipping row due to missing data: fullName and phone are required.", row);
+            if (!row.firstName || !row.lastName || !row.phone) {
+              console.warn("Skipping row due to missing data: firstName, lastName and phone are required.", row);
               return null;
             }
 
@@ -336,7 +343,8 @@ export default function ContactsPage() {
             const enablerValue = String(row.enablerInTouchWith || '').trim();
 
             return {
-              fullName: String(row.fullName),
+              firstName: String(row.firstName),
+              lastName: String(row.lastName),
               phone,
               age: isValidAge ? age : 25,
               stayingWith: stayingWith,
@@ -373,7 +381,7 @@ export default function ContactsPage() {
           toast({
             variant: "destructive",
             title: "Import Failed",
-            description: skippedCount > 0 ? "All contacts in the file were duplicates or invalid." : "No valid contacts found. Ensure columns include at least: fullName, phone.",
+            description: skippedCount > 0 ? "All contacts in the file were duplicates or invalid." : "No valid contacts found. Ensure columns include at least: firstName, lastName, phone.",
           });
           return;
         }

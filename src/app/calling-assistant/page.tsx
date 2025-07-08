@@ -93,7 +93,7 @@ export default function CallingAssistantPage() {
   const filteredPeople = React.useMemo(() => {
     const filtered = people.filter((person) => {
       const search = searchTerm.toLowerCase();
-      const name = person.fullName.toLowerCase();
+      const name = `${person.firstName || ''} ${person.lastName || ''}`.toLowerCase();
       const phone = person.phone.toLowerCase();
       const nativePlace = person.nativePlace.toLowerCase();
 
@@ -121,10 +121,14 @@ export default function CallingAssistantPage() {
 
     return filtered.sort((a, b) => {
       if (sortBy === "name_asc") {
-        return a.fullName.localeCompare(b.fullName);
+        const nameA = `${a.firstName || ''} ${a.lastName || ''}`.trim();
+        const nameB = `${b.firstName || ''} ${b.lastName || ''}`.trim();
+        return nameA.localeCompare(nameB);
       }
       if (sortBy === "name_desc") {
-        return b.fullName.localeCompare(a.fullName);
+        const nameA = `${a.firstName || ''} ${a.lastName || ''}`.trim();
+        const nameB = `${b.firstName || ''} ${b.lastName || ''}`.trim();
+        return nameB.localeCompare(nameA);
       }
       if (sortBy === "createdAt_desc") {
         const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);

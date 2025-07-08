@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -212,11 +213,8 @@ export default function PersonDetailPage() {
     }
 
     const hasCustomData = customFields.some(field => person.customData && person.customData[field.id]);
-    const fullName = person.fullName || '';
-    const nameParts = fullName.split(' ');
-    const fallback = nameParts.length > 1 && nameParts[0] && nameParts[nameParts.length - 1]
-      ? `${nameParts[0].charAt(0)}${nameParts[nameParts.length - 1].charAt(0)}` 
-      : fullName.substring(0, 2);
+    const fullName = `${person.firstName || ''} ${person.lastName || ''}`.trim();
+    const fallback = `${(person.firstName || ' ').charAt(0)}${(person.lastName || ' ').charAt(0)}`.toUpperCase();
 
     return (
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
@@ -362,7 +360,7 @@ export default function PersonDetailPage() {
             {person && !fetchError && (
                 <PageHeader
                     title="Contact Details"
-                    description={`Viewing profile for ${person.fullName || ''}`}
+                    description={`Viewing profile for ${`${person.firstName || ''} ${person.lastName || ''}`.trim()}`}
                 >
                     <div className="flex items-center gap-2">
                     <Button
@@ -390,7 +388,7 @@ export default function PersonDetailPage() {
                             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                             <AlertDialogDescription>
                             This action cannot be undone. This will permanently delete{' '}
-                            {person.fullName || 'this contact'}.
+                            {`${person.firstName || ''} ${person.lastName || ''}`.trim() || 'this contact'}.
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

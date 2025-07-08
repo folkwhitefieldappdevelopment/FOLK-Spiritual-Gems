@@ -233,6 +233,7 @@ export default function GroupDetailPage() {
             setIsOpen={() => setEditingPerson(undefined)}
             onSave={(data) => handleSavePersonDialog(data)}
             person={editingPerson}
+            allPeople={allPeople}
           />
         )}
         

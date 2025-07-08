@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -59,9 +60,10 @@ export function ManageGroupMembersDialog({
   };
 
   const filteredPeople = React.useMemo(() => {
-    return allPeople.filter(person => 
-      (person.fullName || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    return allPeople.filter(person => {
+      const name = `${person.firstName || ''} ${person.lastName || ''}`.toLowerCase();
+      return name.includes(searchTerm.toLowerCase())
+    });
   }, [allPeople, searchTerm]);
 
   return (
@@ -90,11 +92,8 @@ export function ManageGroupMembersDialog({
             <div className="p-4 space-y-4">
               {filteredPeople.length > 0 ? (
                 filteredPeople.map((person) => {
-                  const fullName = person.fullName || '';
-                  const nameParts = fullName.split(' ');
-                  const fallback = nameParts.length > 1 && nameParts[0] && nameParts[nameParts.length-1]
-                    ? `${nameParts[0].charAt(0)}${nameParts[nameParts.length-1].charAt(0)}`
-                    : fullName.substring(0, 2);
+                  const fullName = `${person.firstName || ''} ${person.lastName || ''}`.trim();
+                  const fallback = `${(person.firstName || ' ').charAt(0)}${(person.lastName || ' ').charAt(0)}`.toUpperCase();
 
                   return (
                     <div key={person.id} className="flex items-center space-x-3">

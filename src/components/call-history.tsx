@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -24,12 +25,14 @@ export function CallHistory({ person }: { person: Person }) {
         });
     }, [person.callHistory]);
 
+    const fullName = `${person.firstName || ''} ${person.lastName || ''}`.trim();
+
     return (
         <Card>
             <CardHeader>
                 <CardTitle>Call History</CardTitle>
                 <CardDescription>
-                    A log of all past calls with {person.fullName || ''}.
+                    A log of all past calls with {fullName}.
                 </CardDescription>
             </CardHeader>
             <CardContent>

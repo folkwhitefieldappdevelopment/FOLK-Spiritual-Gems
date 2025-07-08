@@ -1,3 +1,4 @@
+
 import type { callStatuses } from './data';
 
 export const progressCategories = [
@@ -34,7 +35,8 @@ export type CallStatus = (typeof callStatuses)[number];
 
 export type Person = {
   id: string;
-  fullName: string;
+  firstName: string;
+  lastName: string;
   phone: string;
   photoUrl: string;
   age: number;

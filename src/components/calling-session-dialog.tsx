@@ -125,11 +125,12 @@ export function CallingSessionDialog({
     const sg = data.sg === 'yes' ? true : data.sg === 'no' ? false : undefined;
     const ma = data.ma === 'yes' ? true : data.ma === 'no' ? false : undefined;
     const frp = data.frp === 'yes' ? true : data.frp === 'no' ? false : undefined;
+    const fullName = `${currentPerson.firstName || ''} ${currentPerson.lastName || ''}`.trim();
 
     onSaveRemark(currentPerson.id, data.remark || '', data.status as CallStatus, sg, ma, frp);
     toast({
         title: "Call Logged",
-        description: `Status for ${currentPerson.fullName} has been updated.`
+        description: `Status for ${fullName} has been updated.`
     });
     goToNext();
   };
@@ -141,13 +142,15 @@ export function CallingSessionDialog({
   if (!isOpen || !currentPerson) {
     return null;
   }
+  
+  const fullName = `${currentPerson.firstName || ''} ${currentPerson.lastName || ''}`.trim();
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleCloseDialog()}>
       <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>
-            Calling: {currentPerson.fullName}
+            Calling: {fullName}
           </DialogTitle>
           <DialogDescription>
             Contact {currentIndex + 1} of {people.length} for: <span className="font-semibold text-primary">{currentEvent}</span>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -103,11 +104,8 @@ export function PersonCard({ person }: PersonCardProps) {
     occupationDisplay = `${person.occupation} at ${person.organisation}`;
   }
 
-  const fullName = person.fullName || '';
-  const nameParts = fullName.split(" ");
-  const fallback = nameParts.length > 1 && nameParts[0] && nameParts[nameParts.length - 1]
-    ? `${nameParts[0].charAt(0)}${nameParts[nameParts.length - 1].charAt(0)}` 
-    : fullName.substring(0, 2);
+  const fullName = `${person.firstName || ''} ${person.lastName || ''}`.trim();
+  const fallback = `${(person.firstName || ' ').charAt(0)}${(person.lastName || ' ').charAt(0)}`.toUpperCase();
 
   return (
     <Link href={`/contacts/${person.id}`} className="block transition-all hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg">
