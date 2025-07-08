@@ -253,9 +253,9 @@ export default function PersonDetailPage() {
                           {person.sgRating ? `Rating: ${person.sgRating}/10` : 'No rating'}
                       </p>
 
-                      <div className="mt-6 w-full text-left grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                      <div className="mt-6 w-full text-left grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-3 text-sm">
                           <div className="font-semibold text-muted-foreground">Phone</div>
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center flex-wrap gap-x-3 gap-y-1">
                             <a href={`tel:${person.phone}`} className="flex items-center gap-2 text-primary hover:underline">
                               <Phone className="h-4 w-4" />
                               {person.phone}
@@ -309,7 +309,7 @@ export default function PersonDetailPage() {
                       {hasCustomData && (
                         <>
                           <Separator className="my-4" />
-                          <div className="w-full text-left grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                          <div className="w-full text-left grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-3 text-sm">
                              {customFields.map(field => {
                                 const value = person.customData?.[field.id];
                                 if (!value) return null;
