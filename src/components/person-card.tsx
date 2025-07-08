@@ -2,6 +2,7 @@
 "use client";
 
 import Link from 'next/link';
+import * as React from 'react';
 import { User, Briefcase } from "lucide-react";
 import type { Person, ProgressCategoryAnswers, ProgressLevelAnswers } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -15,9 +16,12 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Checkbox } from './ui/checkbox';
 
 type PersonCardProps = {
   person: Person;
+  selectedIds: Set<string>;
+  setSelectedIds: React.Dispatch<React.SetStateAction<Set<string>>>;
 };
 
 const calculateScore = (categoryProgress: ProgressCategoryAnswers): number => {
@@ -96,8 +100,9 @@ const getProgressColor = (score: number): string => {
     return 'bg-red-500';
 };
 
-export function PersonCard({ person }: PersonCardProps) {
+export function PersonCard({ person, selectedIds, setSelectedIds }: PersonCardProps) {
   const { isAdmin } = useAdmin();
+  const isSelected = selectedIds.has(person.id);
 
   let occupationDisplay = person.occupation;
   if ((person.occupation === 'Working' || person.occupation === 'Student') && person.organisation) {
@@ -110,71 +115,99 @@ export function PersonCard({ person }: PersonCardProps) {
     `${nameParts[0]?.charAt(0) || ''}${nameParts.length > 1 ? nameParts[nameParts.length - 1]?.charAt(0) || '' : ''}`
   ).toUpperCase();
 
+  const handleSelectionChange = (checked: boolean) => {
+    setSelectedIds(prev => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(person.id);
+      } else {
+        newSet.delete(person.id);
+      }
+      return newSet;
+    });
+  };
+
   return (
-    <Link href={`/contacts/${person.id}`} className="block transition-all hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg">
-        <Card className="flex flex-col h-full">
-        <CardHeader className="flex flex-row items-center gap-4 p-4">
-            <Avatar className="h-16 w-16">
-            <AvatarImage
-                src={person.photoUrl}
-                alt={fullName}
-                data-ai-hint="person portrait"
-            />
-            <AvatarFallback>
-                {fallback}
-            </AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col">
-                <CardTitle className="text-lg">{fullName}</CardTitle>
-                <CardDescription>{person.sgRating ? `Rating: ${person.sgRating}/10` : 'No rating'}</CardDescription>
-            </div>
-        </CardHeader>
-        <CardContent className="flex-grow space-y-3 pt-0 p-4">
-            <div className="flex items-center text-sm text-muted-foreground">
-              <User className="mr-2 h-4 w-4" />
-              <span className="truncate">{person.age} years old</span>
-            </div>
-            <div className="flex items-center text-sm text-muted-foreground">
-                <Briefcase className="mr-2 h-4 w-4" />
-                <span className="truncate">{occupationDisplay || 'N/A'}</span>
-            </div>
-            {isAdmin && person.progress && person.progress.length > 0 && (
-            <div className="mt-4 pt-4 border-t space-y-2">
-                <h4 className="text-sm font-semibold text-foreground mb-2">
-                Progress Overview
-                </h4>
-                <div className="space-y-1.5">
-                    {person.progress.map((category) => {
-                        const score = calculateScore(category);
-                        const progressColor = getProgressColor(score);
-                        const hasProgress = score > -Infinity;
-                        
-                        return (
-                        <div key={category.name} className="flex items-center text-sm">
-                            <span
-                            className={cn(
-                                "h-2.5 w-2.5 rounded-full mr-2 shrink-0",
-                                progressColor
-                            )}
-                            />
-                            <span
-                            className={cn(
-                                "truncate",
-                                hasProgress
-                                ? "text-foreground"
-                                : "text-muted-foreground"
-                            )}
-                            >
-                            {category.name}
-                            </span>
-                        </div>
-                        );
-                    })}
+      <Card className={cn("flex flex-col h-full relative group/card", isSelected && "ring-2 ring-primary border-primary")}>
+        <div 
+          className="absolute top-3 right-3 z-10"
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+          }}
+        >
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={(checked) => handleSelectionChange(!!checked)}
+            aria-label={`Select ${fullName}`}
+            className="h-5 w-5"
+          />
+        </div>
+        <Link href={`/contacts/${person.id}`} className="block transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg h-full">
+          <div className="flex flex-col h-full">
+            <CardHeader className="flex flex-row items-center gap-4 p-4">
+                <Avatar className="h-16 w-16">
+                <AvatarImage
+                    src={person.photoUrl}
+                    alt={fullName}
+                    data-ai-hint="person portrait"
+                />
+                <AvatarFallback>
+                    {fallback}
+                </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col">
+                    <CardTitle className="text-lg">{fullName}</CardTitle>
+                    <CardDescription>{person.sgRating ? `Rating: ${person.sgRating}/10` : 'No rating'}</CardDescription>
                 </div>
-            </div>
-            )}
-        </CardContent>
-        </Card>
-    </Link>
+            </CardHeader>
+            <CardContent className="flex-grow space-y-3 pt-0 p-4">
+                <div className="flex items-center text-sm text-muted-foreground">
+                  <User className="mr-2 h-4 w-4" />
+                  <span className="truncate">{person.age} years old</span>
+                </div>
+                <div className="flex items-center text-sm text-muted-foreground">
+                    <Briefcase className="mr-2 h-4 w-4" />
+                    <span className="truncate">{occupationDisplay || 'N/A'}</span>
+                </div>
+                {isAdmin && person.progress && person.progress.length > 0 && (
+                <div className="mt-4 pt-4 border-t space-y-2">
+                    <h4 className="text-sm font-semibold text-foreground mb-2">
+                    Progress Overview
+                    </h4>
+                    <div className="space-y-1.5">
+                        {person.progress.map((category) => {
+                            const score = calculateScore(category);
+                            const progressColor = getProgressColor(score);
+                            const hasProgress = score > -Infinity;
+                            
+                            return (
+                            <div key={category.name} className="flex items-center text-sm">
+                                <span
+                                className={cn(
+                                    "h-2.5 w-2.5 rounded-full mr-2 shrink-0",
+                                    progressColor
+                                )}
+                                />
+                                <span
+                                className={cn(
+                                    "truncate",
+                                    hasProgress
+                                    ? "text-foreground"
+                                    : "text-muted-foreground"
+                                )}
+                                >
+                                {category.name}
+                                </span>
+                            </div>
+                            );
+                        })}
+                    </div>
+                </div>
+                )}
+            </CardContent>
+          </div>
+        </Link>
+      </Card>
   );
 }

@@ -159,6 +159,16 @@ export const deletePerson = async (id: string): Promise<void> => {
   await deleteDoc(docRef);
 };
 
+export const deletePeople = async (ids: string[]): Promise<void> => {
+  if (ids.length === 0) return;
+  const batch = writeBatch(db);
+  ids.forEach(id => {
+    const docRef = doc(db, 'people', id);
+    batch.delete(docRef);
+  });
+  await batch.commit();
+};
+
 export const importPeople = async (
     people: Omit<Person, 'id' | 'createdAt'>[],
     appUser: AppUser

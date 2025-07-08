@@ -11,6 +11,7 @@ import {
   Briefcase,
   Sunrise,
   Loader2,
+  Trash2,
 } from "lucide-react";
 import { read, utils, write } from "xlsx";
 import JSZip from "jszip";
@@ -41,10 +42,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
   getPeople,
   createPerson,
   updatePerson,
   deletePerson,
+  deletePeople,
   importPeople,
 } from "@/services/people-service";
 import { getEnablers, getContactSources, type EnablerOption } from "@/services/settings-service";
@@ -73,6 +86,7 @@ export default function ContactsPage() {
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(
     undefined
   );
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
@@ -158,6 +172,11 @@ export default function ContactsPage() {
     });
   }, [people, searchTerm, enablerFilter, contactSourceFilter, occupationFilter, chantingFilter, sortBy]);
   
+  // Clear selection when filters change
+  React.useEffect(() => {
+    setSelectedIds(new Set());
+  }, [searchTerm, enablerFilter, contactSourceFilter, occupationFilter, chantingFilter, sortBy]);
+
   const clearFilters = () => {
     setSearchTerm("");
     setEnablerFilter("");
@@ -433,6 +452,25 @@ export default function ContactsPage() {
     }
   };
 
+  const handleDeleteSelected = async () => {
+    try {
+      await deletePeople(Array.from(selectedIds));
+      setPeople((prev) => prev.filter((p) => !selectedIds.has(p.id)));
+      toast({
+        title: "Contacts Deleted",
+        description: `${selectedIds.size} contacts have been removed.`,
+      });
+      setSelectedIds(new Set());
+    } catch (error) {
+       toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not delete the selected contacts.",
+      });
+    }
+  };
+
+
   const handleSavePerson = async (personData: Omit<Person, "id" | "progress" | "createdAt">) => {
     if (!appUser) return;
     try {
@@ -587,6 +625,8 @@ export default function ContactsPage() {
               <PersonCard
                 key={person.id}
                 person={person}
+                selectedIds={selectedIds}
+                setSelectedIds={setSelectedIds}
               />
             ))}
           </div>
@@ -595,6 +635,8 @@ export default function ContactsPage() {
             people={filteredPeople}
             onEdit={handleEditPerson}
             onDelete={handleDeletePerson}
+            selectedIds={selectedIds}
+            setSelectedIds={setSelectedIds}
           />
         )}
       </>
@@ -606,42 +648,72 @@ export default function ContactsPage() {
       <div className="flex min-h-screen w-full flex-col bg-background">
         <AppSidebar />
         <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
-            <PageHeader
-              title="FOLK SPIRITUAL GEMS"
-              description="Your central hub for managing contacts and activities."
-            >
-              <div className="flex items-center gap-2">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
-                         {isLoadingAction ? (
-                          <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
-                        ) : (
-                          <Upload className="h-4 w-4 sm:mr-2" />
-                        )}
-                        <span className="hidden sm:inline">{isLoadingAction ? loadingText : 'Import/Export'}</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem onClick={() => fileInputRef.current?.click()} disabled={isLoadingAction}>
-                        Import from Excel
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleExport} disabled={isLoadingAction}>
-                        Export to Excel
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleSampleDownload} disabled={isLoadingAction}>
-                        Download Sample Excel
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+            {selectedIds.size > 0 ? (
+                 <PageHeader
+                    title={`${selectedIds.size} selected`}
+                    description="You can perform actions on the selected contacts."
+                 >
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm">
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete ({selectedIds.size})
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete the selected {selectedIds.size} contacts. This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleDeleteSelected} className="bg-destructive hover:bg-destructive/90">
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                 </PageHeader>
+            ) : (
+               <PageHeader
+                  title="FOLK SPIRITUAL GEMS"
+                  description="Your central hub for managing contacts and activities."
+                >
+                  <div className="flex items-center gap-2">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
+                             {isLoadingAction ? (
+                              <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
+                            ) : (
+                              <Upload className="h-4 w-4 sm:mr-2" />
+                            )}
+                            <span className="hidden sm:inline">{isLoadingAction ? loadingText : 'Import/Export'}</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuItem onClick={() => fileInputRef.current?.click()} disabled={isLoadingAction}>
+                            Import from Excel
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={handleExport} disabled={isLoadingAction}>
+                            Export to Excel
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={handleSampleDownload} disabled={isLoadingAction}>
+                            Download Sample Excel
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
 
-                  <Button size="sm" onClick={handleAddPerson} className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
-                    <PlusCircle className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Add Person</span>
-                  </Button>
-              </div>
-            </PageHeader>
+                      <Button size="sm" onClick={handleAddPerson} className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
+                        <PlusCircle className="h-4 w-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Add Person</span>
+                      </Button>
+                  </div>
+                </PageHeader>
+            )}
             <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
               {renderContent()}
             </main>
