@@ -110,8 +110,8 @@ export function PersonCard({ person }: PersonCardProps) {
   return (
     <Link href={`/contacts/${person.id}`} className="block transition-all hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg">
         <Card className="flex flex-col h-full">
-        <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-4">
-            <Avatar className="h-16 w-16">
+        <CardHeader className="flex flex-col items-center text-center pt-6 pb-4">
+            <Avatar className="h-20 w-20 mb-2">
             <AvatarImage
                 src={person.photoUrl}
                 alt={fullName}
@@ -121,12 +121,10 @@ export function PersonCard({ person }: PersonCardProps) {
                 {fallback}
             </AvatarFallback>
             </Avatar>
-            <div className="flex-1">
-              <CardTitle className="text-xl">
-                  {fullName}
-              </CardTitle>
-              <CardDescription>{person.sgRating ? `Rating: ${person.sgRating}/10` : 'No rating'}</CardDescription>
-            </div>
+            <CardTitle className="text-xl">
+                {fullName}
+            </CardTitle>
+            <CardDescription>{person.sgRating ? `Rating: ${person.sgRating}/10` : 'No rating'}</CardDescription>
         </CardHeader>
         <CardContent className="flex-grow space-y-3">
             <div className="flex items-center text-sm text-muted-foreground">
