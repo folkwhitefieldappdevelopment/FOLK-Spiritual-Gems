@@ -5,22 +5,17 @@ import * as React from "react";
 import {
   List,
   PlusCircle,
-  Search,
   LayoutGrid,
   Upload,
-  Briefcase,
-  Sunrise,
-  Loader2,
   Trash2,
   Users,
+  Loader2,
 } from "lucide-react";
 import { read, utils, write } from "xlsx";
 import JSZip from "jszip";
 import { createInitialProgress } from "@/lib/data";
 import type { Person, Group } from "@/lib/types";
-import { occupationStatuses } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { AppSidebar } from "@/components/app-sidebar";
 import { PageHeader } from "@/components/page-header";
@@ -28,13 +23,6 @@ import { PersonCard } from "@/components/person-card";
 import { PersonTable } from "@/components/person-table";
 import { CreateUpdatePersonDialog } from "@/components/create-update-person-dialog";
 import { FirebaseConfigError } from "@/components/firebase-config-error";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,7 +39,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
   getPeople,
@@ -67,6 +54,7 @@ import { AuthGuard } from "@/components/auth-guard";
 import { useAuth } from "@/contexts/auth-context";
 import { CreateUpdateGroupDialog } from "@/components/create-update-group-dialog";
 import { SortPopover, type SortDescriptor } from "@/components/sort-popover";
+import { FilterPopover, type FilterRule } from "@/components/filter-popover";
 
 export default function ContactsPage() {
   const { toast } = useToast();
@@ -80,11 +68,7 @@ export default function ContactsPage() {
   const [isExporting, setIsExporting] = React.useState(false);
   const [view, setView] = React.useState<"card" | "table">("card");
   
-  const [searchTerm, setSearchTerm] = React.useState("");
-  const [enablerFilter, setEnablerFilter] = React.useState("");
-  const [contactSourceFilter, setContactSourceFilter] = React.useState("");
-  const [occupationFilter, setOccupationFilter] = React.useState("");
-  const [chantingFilter, setChantingFilter] = React.useState("");
+  const [filters, setFilters] = React.useState<FilterRule[]>([]);
   const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([{ field: 'createdAt', direction: 'desc' }]);
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
@@ -132,31 +116,68 @@ export default function ContactsPage() {
   }, [appUser]);
 
   const filteredPeople = React.useMemo(() => {
-    const filtered = people.filter((person) => {
-      const search = searchTerm.toLowerCase();
-      const name = (person.fullName || '').toLowerCase();
-      const phone = person.phone.toLowerCase();
-      const nativePlace = (person.nativePlace || '').toLowerCase();
+    let tempPeople = [...people];
 
-      const generalSearchMatch =
-        !search || name.includes(search) || phone.includes(search) || nativePlace.includes(search);
+    // Apply filters
+    if (filters.length > 0) {
+      tempPeople = tempPeople.filter(person => {
+        return filters.every(filter => {
+          const personValue = person[filter.field as keyof Person];
 
-      const enablerMatch = enablerFilter === '__UNASSIGNED__'
-        ? !person.enablerInTouchWith
-        : !enablerFilter || person.enablerInTouchWith === enablerFilter;
-      
-      const sourceMatch = !contactSourceFilter || person.contactSource === contactSourceFilter;
+          if (filter.operator === 'is_empty') {
+            return personValue === null || personValue === undefined || personValue === '';
+          }
+          if (filter.operator === 'is_not_empty') {
+            return personValue !== null && personValue !== undefined && personValue !== '';
+          }
+          
+          if (personValue === null || personValue === undefined) return false;
 
-      const occupationMatch = !occupationFilter || person.occupation === occupationFilter;
-      
-      const chantingMatch =
-        !chantingFilter ||
-        (person.chantingStatus || '').toLowerCase().includes(chantingFilter.toLowerCase());
+          const filterValue = filter.value;
+          
+          if (typeof filter.value === 'undefined' || filter.value === null || filter.value === '') return true;
 
-      return generalSearchMatch && enablerMatch && sourceMatch && occupationMatch && chantingMatch;
-    });
+          const personString = String(personValue).toLowerCase();
+          const filterString = String(filterValue).toLowerCase();
 
-    return filtered.sort((a, b) => {
+          switch (filter.operator) {
+            case 'contains':
+              return personString.includes(filterString);
+            case 'not_contains':
+              return !personString.includes(filterString);
+            case 'is': {
+              if (typeof personValue === 'boolean') {
+                return personValue === (filterValue === 'true' || filterValue === true);
+              }
+              return personString === filterString;
+            }
+            case 'is_not': {
+              if (typeof personValue === 'boolean') {
+                return personValue !== (filterValue === 'true' || filterValue === true);
+              }
+              return personString !== filterString;
+            }
+            case 'eq':
+              return Number(personValue) === Number(filterValue);
+            case 'neq':
+              return Number(personValue) !== Number(filterValue);
+            case 'gt':
+              return Number(personValue) > Number(filterValue);
+            case 'lt':
+              return Number(personValue) < Number(filterValue);
+            case 'gte':
+              return Number(personValue) >= Number(filterValue);
+            case 'lte':
+              return Number(personValue) <= Number(filterValue);
+            default:
+              return true;
+          }
+        });
+      });
+    }
+
+    // Apply sorting
+    return tempPeople.sort((a, b) => {
       for (const { field, direction } of sortDescriptors) {
         const valA = a[field as keyof Person];
         const valB = b[field as keyof Person];
@@ -185,20 +206,11 @@ export default function ContactsPage() {
       }
       return 0;
     });
-  }, [people, searchTerm, enablerFilter, contactSourceFilter, occupationFilter, chantingFilter, sortDescriptors]);
+  }, [people, filters, sortDescriptors]);
   
   React.useEffect(() => {
     setSelectedIds(new Set());
-  }, [searchTerm, enablerFilter, contactSourceFilter, occupationFilter, chantingFilter, sortDescriptors]);
-
-  const clearFilters = () => {
-    setSearchTerm("");
-    setEnablerFilter("");
-    setContactSourceFilter("");
-    setOccupationFilter("");
-    setChantingFilter("");
-    setSortDescriptors([{ field: 'createdAt', direction: 'desc' }]);
-  };
+  }, [filters, sortDescriptors]);
 
   const handleSampleDownload = () => {
     const headers = [
@@ -366,7 +378,7 @@ export default function ContactsPage() {
             const rating = parseInt(String(row.sgRating), 10);
             const isValidRating = !isNaN(rating) && rating >= 0 && rating <= 10;
             const phone = String(row.phone).replace(/\s+/g, '');
-            const occupation = occupationStatuses.includes(row.occupation) ? row.occupation : "Working";
+            const occupation = ["Working", "Student", "Searching for job"].includes(row.occupation) ? row.occupation : "Working";
             const photoUrlValue = String(row.photoUrl || '').trim();
             const isValidPhotoUrl = photoUrlValue.startsWith('http') || photoUrlValue.startsWith('data:image');
             const enablerValue = String(row.enablerInTouchWith || '').trim();
@@ -376,7 +388,7 @@ export default function ContactsPage() {
               phone,
               age: isValidAge ? age : 25,
               stayingWith: stayingWith,
-              occupation: occupation,
+              occupation: occupation as any,
               organisation: String(row.organisation || ""),
               rentDetails: String(row.rentDetails || ""),
               nativePlace: String(row.nativePlace || ""),
@@ -610,80 +622,40 @@ export default function ContactsPage() {
       <>
         <div className="mb-6 flex flex-col gap-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                placeholder="Search by name, phone, or native place..."
-                className="pl-10 w-full sm:w-[300px]"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                />
-            </div>
-            <div className="flex items-center gap-2">
-                <SortPopover
-                  sortDescriptors={sortDescriptors}
-                  setSortDescriptors={setSortDescriptors}
-                />
-                <div className="flex items-center rounded-md bg-muted p-1">
-                <Button
-                    variant={view === "card" ? "secondary" : "ghost"}
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setView("card")}
-                    aria-label="Card View"
-                >
-                    <LayoutGrid className="h-4 w-4" />
-                </Button>
-                <Button
-                    variant={view === "table" ? "secondary" : "ghost"}
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setView("table")}
-                    aria-label="Table View"
-                >
-                    <List className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-2">
+                    <FilterPopover 
+                        filters={filters}
+                        setFilters={setFilters}
+                        enablerOptions={enablerOptions}
+                        contactSourceOptions={contactSourceOptions}
+                    />
+                    <SortPopover
+                    sortDescriptors={sortDescriptors}
+                    setSortDescriptors={setSortDescriptors}
+                    />
                 </div>
-            </div>
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                <Select value={enablerFilter} onValueChange={(value) => setEnablerFilter(value === '__all__' ? '' : value)}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Filter by Enabler" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="__all__">All Enablers</SelectItem>
-                        {enablerOptions.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-                  <Select value={contactSourceFilter} onValueChange={(value) => setContactSourceFilter(value === '__all__' ? '' : value)}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Filter by Source" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="__all__">All Sources</SelectItem>
-                        {contactSourceOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-                <Select value={occupationFilter} onValueChange={(value) => setOccupationFilter(value === '__all__' ? '' : value)}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Filter by Occupation" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="__all__">All Occupations</SelectItem>
-                        {occupationStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-                <div className="relative">
-                  <Sunrise className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                      placeholder="Filter by Chanting Status"
-                      value={chantingFilter}
-                      onChange={(e) => setChantingFilter(e.target.value)}
-                      className="pl-10"
-                  />
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center rounded-md bg-muted p-1">
+                    <Button
+                        variant={view === "card" ? "secondary" : "ghost"}
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setView("card")}
+                        aria-label="Card View"
+                    >
+                        <LayoutGrid className="h-4 w-4" />
+                    </Button>
+                    <Button
+                        variant={view === "table" ? "secondary" : "ghost"}
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setView("table")}
+                        aria-label="Table View"
+                    >
+                        <List className="h-4 w-4" />
+                    </Button>
+                    </div>
                 </div>
-                <Button variant="outline" onClick={clearFilters}>Clear Filters</Button>
             </div>
         </div>
 
