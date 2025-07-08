@@ -123,8 +123,17 @@ export default function LoginPage() {
                 />
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  minLength={6}
+                />
+                <div className="flex justify-end">
                   <Button
                       type="button"
                       variant="link"
@@ -135,15 +144,6 @@ export default function LoginPage() {
                       Forgot Password?
                   </Button>
                 </div>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  disabled={loading}
-                  minLength={6}
-                />
               </div>
               <Button type="submit" className="w-full" disabled={loading || !email || !password}>
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
