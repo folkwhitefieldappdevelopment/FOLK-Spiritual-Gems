@@ -112,7 +112,7 @@ export default function ContactsPage() {
   const filteredPeople = React.useMemo(() => {
     const filtered = people.filter((person) => {
       const search = searchTerm.toLowerCase();
-      const name = `${person.firstName} ${person.lastName}`.toLowerCase();
+      const name = person.fullName.toLowerCase();
       const phone = person.phone.toLowerCase();
       const nativePlace = person.nativePlace.toLowerCase();
 
@@ -136,14 +136,10 @@ export default function ContactsPage() {
 
     return filtered.sort((a, b) => {
       if (sortBy === "name_asc") {
-        return `${a.firstName} ${a.lastName}`.localeCompare(
-          `${b.firstName} ${b.lastName}`
-        );
+        return a.fullName.localeCompare(b.fullName);
       }
       if (sortBy === "name_desc") {
-        return `${b.firstName} ${b.lastName}`.localeCompare(
-          `${a.firstName} ${b.lastName}`
-        );
+        return b.fullName.localeCompare(a.fullName);
       }
       if (sortBy === "createdAt_desc") {
         const dateA = a.createdAt
@@ -173,13 +169,12 @@ export default function ContactsPage() {
 
   const handleSampleDownload = () => {
     const headers = [
-      "firstName", "lastName", "phone", "photoUrl", "age", "stayingWith",
+      "fullName", "phone", "photoUrl", "age", "stayingWith",
       "occupation", "organisation", "rentDetails", "nativePlace", "sgRating",
       "contactSource", "chantingStatus", "fromOtherCamp", "enablerInTouchWith"
     ];
     const dummyContact = [{
-      firstName: "John",
-      lastName: "Doe",
+      fullName: "John Doe",
       phone: "9876543210",
       photoUrl: "https://placehold.co/100x100.png",
       age: 25,
@@ -233,7 +228,8 @@ export default function ContactsPage() {
         if (p.photoUrl.startsWith('data:image')) {
           try {
             const extension = p.photoUrl.split(';')[0].split('/')[1] || 'png';
-            const fileName = `${p.firstName}_${p.lastName}_${p.id}.${extension}`;
+            const nameParts = p.fullName.split(' ');
+            const fileName = `${nameParts.join('_')}_${p.id}.${extension}`;
             photoColumnValue = `photos/${fileName}`;
 
             const response = await fetch(p.photoUrl);
@@ -244,7 +240,7 @@ export default function ContactsPage() {
             }
 
           } catch (e) {
-            console.error(`Failed to process image for ${p.firstName}:`, e);
+            console.error(`Failed to process image for ${p.fullName}:`, e);
             photoColumnValue = 'Error processing image';
           }
         } else {
@@ -253,8 +249,7 @@ export default function ContactsPage() {
       }
       
       exportData.push({
-        firstName: p.firstName,
-        lastName: p.lastName,
+        fullName: p.fullName,
         phone: p.phone,
         photoUrl: photoColumnValue,
         age: p.age,
@@ -325,8 +320,8 @@ export default function ContactsPage() {
 
         const newPeople: Omit<Person, 'id' | 'createdAt'>[] = json
           .map((row: any) => {
-            if (!row.firstName || !row.lastName || !row.phone) {
-              console.warn("Skipping row due to missing data: firstName, lastName, and phone are required.", row);
+            if (!row.fullName || !row.phone) {
+              console.warn("Skipping row due to missing data: fullName and phone are required.", row);
               return null;
             }
 
@@ -342,8 +337,7 @@ export default function ContactsPage() {
             const enablerValue = String(row.enablerInTouchWith || '').trim();
 
             return {
-              firstName: String(row.firstName),
-              lastName: String(row.lastName),
+              fullName: String(row.fullName),
               phone,
               age: isValidAge ? age : 25,
               stayingWith: stayingWith,
@@ -380,7 +374,7 @@ export default function ContactsPage() {
           toast({
             variant: "destructive",
             title: "Import Failed",
-            description: skippedCount > 0 ? "All contacts in the file were duplicates or invalid." : "No valid contacts found. Ensure columns include at least: firstName, lastName, phone.",
+            description: skippedCount > 0 ? "All contacts in the file were duplicates or invalid." : "No valid contacts found. Ensure columns include at least: fullName, phone.",
           });
           return;
         }

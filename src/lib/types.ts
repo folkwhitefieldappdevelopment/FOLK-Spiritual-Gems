@@ -35,8 +35,7 @@ export type CallStatus = (typeof callStatuses)[number];
 
 export type Person = {
   id: string;
-  firstName: string;
-  lastName: string;
+  fullName: string;
   phone: string;
   photoUrl: string;
   age: number;

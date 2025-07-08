@@ -129,7 +129,7 @@ export function CallingSessionDialog({
     onSaveRemark(currentPerson.id, data.remark || '', data.status as CallStatus, sg, ma, frp);
     toast({
         title: "Call Logged",
-        description: `Status for ${currentPerson.firstName} has been updated.`
+        description: `Status for ${currentPerson.fullName} has been updated.`
     });
     goToNext();
   };
@@ -147,7 +147,7 @@ export function CallingSessionDialog({
       <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>
-            Calling: {currentPerson.firstName} {currentPerson.lastName}
+            Calling: {currentPerson.fullName}
           </DialogTitle>
           <DialogDescription>
             Contact {currentIndex + 1} of {people.length} for: <span className="font-semibold text-primary">{currentEvent}</span>

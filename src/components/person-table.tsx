@@ -72,23 +72,28 @@ export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView =
             </TableRow>
           </TableHeader>
           <TableBody>
-            {people.map((person) => (
+            {people.map((person) => {
+              const nameParts = person.fullName.split(" ");
+              const fallback = nameParts.length > 1 
+                ? `${nameParts[0].charAt(0)}${nameParts[nameParts.length - 1].charAt(0)}` 
+                : person.fullName.substring(0, 2);
+
+              return (
               <TableRow key={person.id}>
                 <TableCell>
                   <Link href={`/contacts/${person.id}`} className="flex items-center gap-3 group">
                     <Avatar>
                       <AvatarImage
                         src={person.photoUrl}
-                        alt={`${person.firstName} ${person.lastName}`}
+                        alt={person.fullName}
                         data-ai-hint="person portrait"
                       />
                       <AvatarFallback>
-                        {person.firstName.charAt(0)}
-                        {person.lastName.charAt(0)}
+                        {fallback}
                       </AvatarFallback>
                     </Avatar>
                     <div className="font-medium group-hover:underline">
-                      {person.firstName} {person.lastName}
+                      {person.fullName}
                     </div>
                   </Link>
                 </TableCell>
@@ -191,7 +196,7 @@ export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView =
                         <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                         <AlertDialogDescription>
                           This action cannot be undone. This will permanently
-                          delete {person.firstName} {person.lastName}.
+                          delete {person.fullName}.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -207,7 +212,7 @@ export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView =
                   </AlertDialog>
                 </TableCell>
               </TableRow>
-            ))}
+            )})}
           </TableBody>
         </Table>
       </div>
