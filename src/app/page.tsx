@@ -173,13 +173,12 @@ export default function ContactsPage() {
 
   const handleSampleDownload = () => {
     const headers = [
-      "firstName", "lastName", "phone", "photoUrl", "age", "stayingWith",
+      "fullName", "phone", "photoUrl", "age", "stayingWith",
       "occupation", "organisation", "rentDetails", "nativePlace", "sgRating",
       "contactSource", "chantingStatus", "fromOtherCamp", "enablerInTouchWith"
     ];
     const dummyContact = [{
-      firstName: "John",
-      lastName: "Doe",
+      fullName: "John Doe",
       phone: "9876543210",
       photoUrl: "https://placehold.co/100x100.png",
       age: 25,
@@ -254,8 +253,7 @@ export default function ContactsPage() {
       }
       
       exportData.push({
-        firstName: p.firstName,
-        lastName: p.lastName,
+        fullName: `${p.firstName || ''} ${p.lastName || ''}`.trim(),
         phone: p.phone,
         photoUrl: photoColumnValue,
         age: p.age,
@@ -326,8 +324,18 @@ export default function ContactsPage() {
 
         const newPeople: Omit<Person, 'id' | 'createdAt'>[] = json
           .map((row: any) => {
-            if (!row.firstName || !row.lastName || !row.phone) {
-              console.warn("Skipping row due to missing data: firstName, lastName and phone are required.", row);
+            const rowFullName = String(row.fullName || '').trim();
+            let firstName = String(row.firstName || '').trim();
+            let lastName = String(row.lastName || '').trim();
+
+            if (!firstName && rowFullName) {
+              const nameParts = rowFullName.split(' ');
+              firstName = nameParts.shift() || '';
+              lastName = nameParts.join(' ');
+            }
+            
+            if (!firstName || !lastName || !row.phone) {
+              console.warn("Skipping row due to missing data: fullName (or firstName & lastName) and phone are required.", row);
               return null;
             }
 
@@ -343,8 +351,8 @@ export default function ContactsPage() {
             const enablerValue = String(row.enablerInTouchWith || '').trim();
 
             return {
-              firstName: String(row.firstName),
-              lastName: String(row.lastName),
+              firstName,
+              lastName,
               phone,
               age: isValidAge ? age : 25,
               stayingWith: stayingWith,
@@ -381,7 +389,7 @@ export default function ContactsPage() {
           toast({
             variant: "destructive",
             title: "Import Failed",
-            description: skippedCount > 0 ? "All contacts in the file were duplicates or invalid." : "No valid contacts found. Ensure columns include at least: firstName, lastName, phone.",
+            description: skippedCount > 0 ? "All contacts in the file were duplicates or invalid." : "No valid contacts found. Ensure columns include at least: fullName (or firstName, lastName) and phone.",
           });
           return;
         }
