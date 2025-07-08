@@ -61,7 +61,7 @@ export function ManageGroupMembersDialog({
 
   const filteredPeople = React.useMemo(() => {
     return allPeople.filter(person => {
-      const name = `${person.firstName || ''} ${person.lastName || ''}`.toLowerCase();
+      const name = (person.fullName || '').toLowerCase();
       return name.includes(searchTerm.toLowerCase())
     });
   }, [allPeople, searchTerm]);
@@ -92,8 +92,11 @@ export function ManageGroupMembersDialog({
             <div className="p-4 space-y-4">
               {filteredPeople.length > 0 ? (
                 filteredPeople.map((person) => {
-                  const fullName = `${person.firstName || ''} ${person.lastName || ''}`.trim();
-                  const fallback = `${(person.firstName || ' ').charAt(0)}${(person.lastName || ' ').charAt(0)}`.toUpperCase();
+                  const fullName = person.fullName || '';
+                  const nameParts = fullName.split(' ');
+                  const fallback = (
+                    `${nameParts[0]?.charAt(0) || ''}${nameParts.length > 1 ? nameParts[nameParts.length - 1]?.charAt(0) || '' : ''}`
+                  ).toUpperCase();
 
                   return (
                     <div key={person.id} className="flex items-center space-x-3">

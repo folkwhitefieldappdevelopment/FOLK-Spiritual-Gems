@@ -50,8 +50,7 @@ import { Textarea } from "./ui/textarea";
 
 const createPersonFormSchema = (allPeople: Person[], currentPersonId?: string) => 
   z.object({
-    firstName: z.string().min(2, { message: "First name must be at least 2 characters." }),
-    lastName: z.string().min(2, { message: "Last name must be at least 2 characters." }),
+    fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
     phone: z.string().regex(/^[6-9]\d{9}$/, { message: "Please enter a valid 10-digit Indian mobile number." }),
     age: z.coerce.number().min(16, "Must be at least 16").max(40, "Must be at most 40"),
     stayingWith: z.enum(["PG / Hostel", "Flat", "Family"]),
@@ -103,8 +102,7 @@ export function CreateUpdatePersonDialog({
   const form = useForm<PersonFormValues>({
     resolver: zodResolver(personFormSchema),
     defaultValues: {
-      firstName: "",
-      lastName: "",
+      fullName: "",
       phone: "",
       age: 18,
       stayingWith: "Family",
@@ -168,8 +166,7 @@ export function CreateUpdatePersonDialog({
         const isStandardOccupation = occupationStatuses.includes(person.occupation);
 
         form.reset({
-          firstName: person.firstName,
-          lastName: person.lastName,
+          fullName: person.fullName,
           phone: person.phone,
           age: person.age,
           stayingWith: person.stayingWith,
@@ -188,8 +185,7 @@ export function CreateUpdatePersonDialog({
         setCustomData(person.customData || {});
       } else {
         form.reset({
-          firstName: "",
-          lastName: "",
+          fullName: "",
           phone: "",
           age: 18,
           stayingWith: "Family",
@@ -359,9 +355,11 @@ export function CreateUpdatePersonDialog({
   }
 
   const currentPhoto = photoPreview || person?.photoUrl;
-  const firstName = form.watch("firstName");
-  const lastName = form.watch("lastName");
-  const fallback = `${(firstName || '').charAt(0)}${(lastName || '').charAt(0)}`.toUpperCase();
+  const fullName = form.watch("fullName");
+  const nameParts = (fullName || ' ').split(' ');
+  const fallback = (
+    `${nameParts[0]?.charAt(0) || ''}${nameParts.length > 1 ? nameParts[nameParts.length - 1]?.charAt(0) || '' : ''}`
+  ).toUpperCase();
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -456,35 +454,19 @@ export function CreateUpdatePersonDialog({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="firstName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>First Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="John" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="lastName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Last Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Doe" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
+                  <FormField
+                    control={form.control}
+                    name="fullName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Full Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="John Doe" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />                  
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField

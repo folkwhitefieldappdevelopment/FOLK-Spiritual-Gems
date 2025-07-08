@@ -125,7 +125,7 @@ export function CallingSessionDialog({
     const sg = data.sg === 'yes' ? true : data.sg === 'no' ? false : undefined;
     const ma = data.ma === 'yes' ? true : data.ma === 'no' ? false : undefined;
     const frp = data.frp === 'yes' ? true : data.frp === 'no' ? false : undefined;
-    const fullName = `${currentPerson.firstName || ''} ${currentPerson.lastName || ''}`.trim();
+    const fullName = currentPerson.fullName || '';
 
     onSaveRemark(currentPerson.id, data.remark || '', data.status as CallStatus, sg, ma, frp);
     toast({
@@ -143,7 +143,7 @@ export function CallingSessionDialog({
     return null;
   }
   
-  const fullName = `${currentPerson.firstName || ''} ${currentPerson.lastName || ''}`.trim();
+  const fullName = currentPerson.fullName || '';
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleCloseDialog()}>

@@ -25,7 +25,7 @@ export function CallHistory({ person }: { person: Person }) {
         });
     }, [person.callHistory]);
 
-    const fullName = `${person.firstName || ''} ${person.lastName || ''}`.trim();
+    const fullName = person.fullName || '';
 
     return (
         <Card>

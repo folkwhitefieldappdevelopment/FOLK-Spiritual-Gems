@@ -73,8 +73,11 @@ export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView =
           </TableHeader>
           <TableBody>
             {people.map((person) => {
-              const fullName = `${person.firstName || ''} ${person.lastName || ''}`.trim();
-              const fallback = `${(person.firstName || ' ').charAt(0)}${(person.lastName || ' ').charAt(0)}`.toUpperCase();
+              const fullName = person.fullName || '';
+              const nameParts = fullName.split(' ');
+              const fallback = (
+                `${nameParts[0]?.charAt(0) || ''}${nameParts.length > 1 ? nameParts[nameParts.length - 1]?.charAt(0) || '' : ''}`
+              ).toUpperCase();
 
               return (
               <TableRow key={person.id}>
