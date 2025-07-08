@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -60,7 +61,7 @@ export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView =
   
   const isSelectionEnabled = !isCallingAssistantView && !!selectedIds && !!setSelectedIds;
 
-  const handleSelectAll = (checked: boolean) => {
+  const handleSelectAll = React.useCallback((checked: boolean) => {
     if (isSelectionEnabled && setSelectedIds) {
       if (checked) {
         setSelectedIds(new Set(people.map(p => p.id)));
@@ -68,9 +69,9 @@ export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView =
         setSelectedIds(new Set());
       }
     }
-  };
+  }, [isSelectionEnabled, setSelectedIds, people]);
 
-  const handleSelectOne = (personId: string, checked: boolean) => {
+  const handleSelectOne = React.useCallback((personId: string, checked: boolean) => {
     if (isSelectionEnabled && setSelectedIds) {
       setSelectedIds(prev => {
         const newSet = new Set(prev);
@@ -82,9 +83,9 @@ export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView =
         return newSet;
       });
     }
-  };
+  }, [isSelectionEnabled, setSelectedIds]);
 
-  const numSelected = selectedIds?.size || 0;
+  const numSelected = selectedIds ? selectedIds.size : 0;
   const rowCount = people.length;
 
   return (
@@ -121,7 +122,7 @@ export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView =
               const fallback = (
                 `${nameParts[0]?.charAt(0) || ''}${nameParts.length > 1 ? nameParts[nameParts.length - 1]?.charAt(0) || '' : ''}`
               ).toUpperCase();
-              const isSelected = isSelectionEnabled ? selectedIds.has(person.id) : false;
+              const isSelected = isSelectionEnabled && selectedIds ? selectedIds.has(person.id) : false;
 
               return (
               <TableRow key={person.id} data-state={isSelected ? "selected" : undefined}>
