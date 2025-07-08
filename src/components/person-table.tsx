@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from 'next/link';
@@ -46,8 +45,8 @@ type PersonTableProps = {
   onEdit: (person: Person) => void;
   onDelete: (personId: string) => void;
   isCallingAssistantView?: boolean;
-  selectedIds: Set<string>;
-  setSelectedIds: React.Dispatch<React.SetStateAction<Set<string>>>;
+  selectedIds?: Set<string>;
+  setSelectedIds?: React.Dispatch<React.SetStateAction<Set<string>>>;
 };
 
 const safeDate = (timestamp: any): Date | null => {
@@ -59,27 +58,33 @@ const safeDate = (timestamp: any): Date | null => {
 
 export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView = false, selectedIds, setSelectedIds }: PersonTableProps) {
   
+  const isSelectionEnabled = !isCallingAssistantView && !!selectedIds && !!setSelectedIds;
+
   const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedIds(new Set(people.map(p => p.id)));
-    } else {
-      setSelectedIds(new Set());
+    if (isSelectionEnabled && setSelectedIds) {
+      if (checked) {
+        setSelectedIds(new Set(people.map(p => p.id)));
+      } else {
+        setSelectedIds(new Set());
+      }
     }
   };
 
   const handleSelectOne = (personId: string, checked: boolean) => {
-    setSelectedIds(prev => {
-      const newSet = new Set(prev);
-      if (checked) {
-        newSet.add(personId);
-      } else {
-        newSet.delete(personId);
-      }
-      return newSet;
-    });
+    if (isSelectionEnabled && setSelectedIds) {
+      setSelectedIds(prev => {
+        const newSet = new Set(prev);
+        if (checked) {
+          newSet.add(personId);
+        } else {
+          newSet.delete(personId);
+        }
+        return newSet;
+      });
+    }
   };
 
-  const numSelected = selectedIds.size;
+  const numSelected = selectedIds?.size || 0;
   const rowCount = people.length;
 
   return (
@@ -88,14 +93,16 @@ export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView =
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[50px]">
-                <Checkbox
-                  checked={numSelected === rowCount && rowCount > 0}
-                  onCheckedChange={handleSelectAll}
-                  aria-label="Select all"
-                  data-state={numSelected > 0 && numSelected < rowCount ? 'indeterminate' : undefined}
-                />
-              </TableHead>
+              {isSelectionEnabled && (
+                <TableHead className="w-[50px]">
+                  <Checkbox
+                    checked={numSelected === rowCount && rowCount > 0}
+                    onCheckedChange={handleSelectAll}
+                    aria-label="Select all"
+                    data-state={numSelected > 0 && numSelected < rowCount ? 'indeterminate' : undefined}
+                  />
+                </TableHead>
+              )}
               <TableHead className="min-w-[200px]">Name</TableHead>
               <TableHead className="hidden sm:table-cell">Phone</TableHead>
               {isCallingAssistantView ? (
@@ -114,17 +121,19 @@ export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView =
               const fallback = (
                 `${nameParts[0]?.charAt(0) || ''}${nameParts.length > 1 ? nameParts[nameParts.length - 1]?.charAt(0) || '' : ''}`
               ).toUpperCase();
-              const isSelected = selectedIds.has(person.id);
+              const isSelected = isSelectionEnabled ? selectedIds.has(person.id) : false;
 
               return (
               <TableRow key={person.id} data-state={isSelected ? "selected" : undefined}>
-                <TableCell>
-                  <Checkbox
-                    checked={isSelected}
-                    onCheckedChange={(checked) => handleSelectOne(person.id, !!checked)}
-                    aria-label={`Select ${fullName}`}
-                  />
-                </TableCell>
+                {isSelectionEnabled && (
+                  <TableCell>
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={(checked) => handleSelectOne(person.id, !!checked)}
+                      aria-label={`Select ${fullName}`}
+                    />
+                  </TableCell>
+                )}
                 <TableCell>
                   <Link href={`/contacts/${person.id}`} className="flex items-center gap-3 group">
                     <Avatar>
