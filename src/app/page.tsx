@@ -66,6 +66,7 @@ import { getEnablers, getContactSources, type EnablerOption } from "@/services/s
 import { AuthGuard } from "@/components/auth-guard";
 import { useAuth } from "@/contexts/auth-context";
 import { CreateUpdateGroupDialog } from "@/components/create-update-group-dialog";
+import { SortPopover, type SortDescriptor } from "@/components/sort-popover";
 
 export default function ContactsPage() {
   const { toast } = useToast();
@@ -84,7 +85,7 @@ export default function ContactsPage() {
   const [contactSourceFilter, setContactSourceFilter] = React.useState("");
   const [occupationFilter, setOccupationFilter] = React.useState("");
   const [chantingFilter, setChantingFilter] = React.useState("");
-  const [sortBy, setSortBy] = React.useState("createdAt_desc");
+  const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([{ field: 'createdAt', direction: 'desc' }]);
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = React.useState(false);
@@ -156,33 +157,39 @@ export default function ContactsPage() {
     });
 
     return filtered.sort((a, b) => {
-      if (sortBy === "name_asc") {
-        return (a.fullName || '').localeCompare(b.fullName || '');
-      }
-      if (sortBy === "name_desc") {
-        return (b.fullName || '').localeCompare(a.fullName || '');
-      }
-      if (sortBy === "createdAt_desc") {
-        const dateA = a.createdAt
-          ? a.createdAt.toDate
-            ? a.createdAt.toDate()
-            : a.createdAt
-          : new Date(0);
-        const dateB = b.createdAt
-          ? b.createdAt.toDate
-            ? b.createdAt.toDate()
-            : b.createdAt
-          : new Date(0);
-        return dateB.getTime() - dateA.getTime();
+      for (const { field, direction } of sortDescriptors) {
+        const valA = a[field as keyof Person];
+        const valB = b[field as keyof Person];
+
+        let comparison = 0;
+
+        if (valA == null && valB != null) {
+          comparison = 1;
+        } else if (valA != null && valB == null) {
+          comparison = -1;
+        } else if (valA == null && valB == null) {
+          comparison = 0;
+        } else if (field === 'createdAt') {
+            const dateA = (valA as any)?.toDate ? (valA as any).toDate() : new Date(0);
+            const dateB = (valB as any)?.toDate ? (valB as any).toDate() : new Date(0);
+            comparison = dateA.getTime() - dateB.getTime();
+        } else if (typeof valA === 'string' && typeof valB === 'string') {
+          comparison = valA.localeCompare(valB, undefined, { numeric: true });
+        } else if (typeof valA === 'number' && typeof valB === 'number') {
+          comparison = valA - valB;
+        }
+
+        if (comparison !== 0) {
+          return direction === 'asc' ? comparison : -comparison;
+        }
       }
       return 0;
     });
-  }, [people, searchTerm, enablerFilter, contactSourceFilter, occupationFilter, chantingFilter, sortBy]);
+  }, [people, searchTerm, enablerFilter, contactSourceFilter, occupationFilter, chantingFilter, sortDescriptors]);
   
-  // Clear selection when filters change
   React.useEffect(() => {
     setSelectedIds(new Set());
-  }, [searchTerm, enablerFilter, contactSourceFilter, occupationFilter, chantingFilter, sortBy]);
+  }, [searchTerm, enablerFilter, contactSourceFilter, occupationFilter, chantingFilter, sortDescriptors]);
 
   const clearFilters = () => {
     setSearchTerm("");
@@ -190,7 +197,7 @@ export default function ContactsPage() {
     setContactSourceFilter("");
     setOccupationFilter("");
     setChantingFilter("");
-    setSortBy("createdAt_desc");
+    setSortDescriptors([{ field: 'createdAt', direction: 'desc' }]);
   };
 
   const handleSampleDownload = () => {
@@ -386,7 +393,6 @@ export default function ContactsPage() {
           .filter((p): p is Omit<Person, 'id' | 'createdAt'> => {
              if (p === null) return false;
     
-            // Check for duplicates
             if (existingPhones.has(p.phone) || phonesInThisFile.has(p.phone)) {
                 console.warn(`Skipping duplicate phone number during import: ${p.phone}`);
                 return false;
@@ -536,10 +542,9 @@ export default function ContactsPage() {
         title: "Members Added",
         description: `${selectedIds.size} contacts have been added to the group.`,
       });
-      // Refetch groups data to update member counts
       const updatedGroups = await getGroups();
       setGroups(updatedGroups);
-      setSelectedIds(new Set()); // Clear selection
+      setSelectedIds(new Set());
     } catch (error) {
       toast({
         variant: "destructive",
@@ -559,7 +564,6 @@ export default function ContactsPage() {
       const newGroup = await createGroup(newGroupData);
       setGroups((prev) => [...prev, newGroup]);
       
-      // Now add selected members to this new group
       if (selectedIds.size > 0) {
         await addPeopleToGroup(newGroup.id, Array.from(selectedIds));
          toast({
@@ -575,7 +579,7 @@ export default function ContactsPage() {
           description: `The new group "${newGroup.name}" has been added.`,
         });
       }
-      setIsCreateGroupDialogOpen(false); // Close dialog
+      setIsCreateGroupDialogOpen(false);
     } catch (error) {
        toast({
         variant: "destructive",
@@ -616,16 +620,10 @@ export default function ContactsPage() {
                 />
             </div>
             <div className="flex items-center gap-2">
-                <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="Sort by..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="createdAt_desc">Recently Added</SelectItem>
-                    <SelectItem value="name_asc">Alphabetical (A-Z)</SelectItem>
-                    <SelectItem value="name_desc">Alphabetical (Z-A)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <SortPopover
+                  sortDescriptors={sortDescriptors}
+                  setSortDescriptors={setSortDescriptors}
+                />
                 <div className="flex items-center rounded-md bg-muted p-1">
                 <Button
                     variant={view === "card" ? "secondary" : "ghost"}
