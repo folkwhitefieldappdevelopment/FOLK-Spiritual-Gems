@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { Headset, Search, Sunrise, Loader2, Edit } from "lucide-react";
+import { Headset, Loader2, Edit } from "lucide-react";
 import type { Person, CallStatus } from "@/lib/types";
 import { occupationStatuses } from "@/lib/types";
 import { callStatuses } from "@/lib/data";
@@ -16,17 +16,7 @@ import { CreateUpdatePersonDialog } from "@/components/create-update-person-dial
 import { CallingSessionDialog } from "@/components/calling-session-dialog";
 import { AuthGuard } from "@/components/auth-guard";
 import { FirebaseConfigError } from "@/components/firebase-config-error";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  getPeople,
-  updatePerson,
-} from "@/services/people-service";
+import { getPeople, updatePerson } from "@/services/people-service";
 import { getEnablers, getContactSources, getCurrentCallingEvent, updateCurrentCallingEvent, type EnablerOption } from "@/services/settings-service";
 import { serverTimestamp, arrayUnion } from "firebase/firestore";
 import { useAuth } from "@/contexts/auth-context";
@@ -39,7 +29,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-
+import { FilterPopover, type FilterRule, type FilterableField } from '@/components/filter-popover';
+import { SortPopover, type SortDescriptor } from '@/components/sort-popover';
 
 export default function CallingAssistantPage() {
   const { toast } = useToast();
@@ -49,16 +40,8 @@ export default function CallingAssistantPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
   
-  const [searchTerm, setSearchTerm] = React.useState("");
-  const [enablerFilter, setEnablerFilter] = React.useState("");
-  const [contactSourceFilter, setContactSourceFilter] = React.useState("");
-  const [occupationFilter, setOccupationFilter] = React.useState("");
-  const [chantingFilter, setChantingFilter] = React.useState("");
-  const [callStatusFilter, setCallStatusFilter] = React.useState("");
-  const [sgFilter, setSgFilter] = React.useState("");
-  const [maFilter, setMaFilter] = React.useState("");
-  const [frpFilter, setFrpFilter] = React.useState("");
-  const [sortBy, setSortBy] = React.useState("createdAt_desc");
+  const [filters, setFilters] = React.useState<FilterRule[]>([]);
+  const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([{ field: 'createdAt', direction: 'desc' }]);
 
   const [isSessionDialogOpen, setIsSessionDialogOpen] = React.useState(false);
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(undefined);
@@ -105,63 +88,121 @@ export default function CallingAssistantPage() {
     fetchData();
   }, [appUser]);
 
+  const filterableFields: FilterableField[] = React.useMemo(() => {
+    return [
+      { value: 'fullName', label: 'Name', type: 'string' },
+      { value: 'phone', label: 'Phone', type: 'string' },
+      { value: 'nativePlace', label: 'Native Place', type: 'string' },
+      { value: 'lastCallStatus', label: 'Call Status', type: 'enum', options: callStatuses.map(s => ({ value: s, label: s })) },
+      { value: 'enablerInTouchWith', label: 'Enabler', type: 'enum', options: enablerOptions },
+      { value: 'occupation', label: 'Occupation', type: 'enum', options: occupationStatuses.map(s => ({ value: s, label: s })) },
+      { value: 'lastSg', label: 'SG Attended', type: 'boolean' },
+      { value: 'lastMa', label: 'MA Attended', type: 'boolean' },
+      { value: 'lastFrp', label: 'FRP Attended', type: 'boolean' },
+      { value: 'chantingStatus', label: 'Chanting Status', type: 'string' },
+      { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(s => ({ value: s, label: s })) },
+    ]
+  }, [enablerOptions, contactSourceOptions]);
+
+
   const filteredPeople = React.useMemo(() => {
-    const filtered = people.filter((person) => {
-      const search = searchTerm.toLowerCase();
-      const name = (person.fullName || '').toLowerCase();
-      const phone = person.phone.toLowerCase();
-      const nativePlace = person.nativePlace.toLowerCase();
+    let tempPeople = [...people];
 
-      const generalSearchMatch =
-        !search || name.includes(search) || phone.includes(search) || nativePlace.includes(search);
+    // Apply filters
+    if (filters.length > 0) {
+      tempPeople = tempPeople.filter(person => {
+        return filters.every(filter => {
+          const personValue = person[filter.field as keyof Person];
 
-      const enablerMatch = enablerFilter === '__UNASSIGNED__'
-        ? !person.enablerInTouchWith
-        : !enablerFilter || person.enablerInTouchWith === enablerFilter;
-      const sourceMatch = !contactSourceFilter || person.contactSource === contactSourceFilter;
-      const occupationMatch = !occupationFilter || person.occupation === occupationFilter;
-      const chantingMatch =
-        !chantingFilter ||
-        person.chantingStatus.toLowerCase().includes(chantingFilter.toLowerCase());
-      
-      const statusMatch = !callStatusFilter || person.lastCallStatus === callStatusFilter;
+          // Special handling for 'Unassigned' enabler
+          if (filter.field === 'enablerInTouchWith' && filter.value === '__UNASSIGNED__') {
+             if (filter.operator === 'is') return !personValue;
+             if (filter.operator === 'is_not') return !!personValue;
+          }
 
-      const sgMatch = !sgFilter || (sgFilter === 'yes' ? person.lastSg === true : person.lastSg === false);
-      const maMatch = !maFilter || (maFilter === 'yes' ? person.lastMa === true : person.lastMa === false);
-      const frpMatch = !frpFilter || (frpFilter === 'yes' ? person.lastFrp === true : person.lastFrp === false);
+          if (filter.operator === 'is_empty') {
+            return personValue === null || personValue === undefined || personValue === '';
+          }
+          if (filter.operator === 'is_not_empty') {
+            return personValue !== null && personValue !== undefined && personValue !== '';
+          }
+          
+          if (personValue === null || personValue === undefined) return false;
 
+          const filterValue = filter.value;
+          
+          if (typeof filter.value === 'undefined' || filter.value === null || filter.value === '') return true;
 
-      return generalSearchMatch && enablerMatch && sourceMatch && occupationMatch && chantingMatch && statusMatch && sgMatch && maMatch && frpMatch;
-    });
+          const personString = String(personValue).toLowerCase();
+          const filterString = String(filterValue).toLowerCase();
 
-    return filtered.sort((a, b) => {
-      if (sortBy === "name_asc") {
-        return (a.fullName || '').localeCompare(b.fullName || '');
-      }
-      if (sortBy === "name_desc") {
-        return (b.fullName || '').localeCompare(a.fullName || '');
-      }
-      if (sortBy === "createdAt_desc") {
-        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
-        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
-        return dateB.getTime() - dateA.getTime();
+          switch (filter.operator) {
+            case 'contains':
+              return personString.includes(filterString);
+            case 'not_contains':
+              return !personString.includes(filterString);
+            case 'is': {
+              if (typeof personValue === 'boolean') {
+                return personValue === (filterValue === 'true' || filterValue === true);
+              }
+              return personString === filterString;
+            }
+            case 'is_not': {
+              if (typeof personValue === 'boolean') {
+                return personValue !== (filterValue === 'true' || filterValue === true);
+              }
+              return personString !== filterString;
+            }
+            case 'eq':
+              return Number(personValue) === Number(filterValue);
+            case 'neq':
+              return Number(personValue) !== Number(filterValue);
+            case 'gt':
+              return Number(personValue) > Number(filterValue);
+            case 'lt':
+              return Number(personValue) < Number(filterValue);
+            case 'gte':
+              return Number(personValue) >= Number(filterValue);
+            case 'lte':
+              return Number(personValue) <= Number(filterValue);
+            default:
+              return true;
+          }
+        });
+      });
+    }
+
+    // Apply sorting
+    return tempPeople.sort((a, b) => {
+      for (const { field, direction } of sortDescriptors) {
+        const valA = a[field as keyof Person];
+        const valB = b[field as keyof Person];
+
+        let comparison = 0;
+
+        if (valA == null && valB != null) {
+          comparison = 1;
+        } else if (valA != null && valB == null) {
+          comparison = -1;
+        } else if (valA == null && valB == null) {
+          comparison = 0;
+        } else if (field === 'createdAt' || field === 'lastCallAt') {
+            const dateA = (valA as any)?.toDate ? (valA as any).toDate() : new Date(0);
+            const dateB = (valB as any)?.toDate ? (valB as any).toDate() : new Date(0);
+            comparison = dateA.getTime() - dateB.getTime();
+        } else if (typeof valA === 'string' && typeof valB === 'string') {
+          comparison = valA.localeCompare(valB, undefined, { numeric: true });
+        } else if (typeof valA === 'number' && typeof valB === 'number') {
+          comparison = valA - valB;
+        }
+
+        if (comparison !== 0) {
+          return direction === 'asc' ? comparison : -comparison;
+        }
       }
       return 0;
     });
-  }, [people, searchTerm, enablerFilter, contactSourceFilter, occupationFilter, chantingFilter, callStatusFilter, sgFilter, maFilter, frpFilter, sortBy]);
-  
-  const clearFilters = () => {
-    setSearchTerm("");
-    setEnablerFilter("");
-    setContactSourceFilter("");
-    setOccupationFilter("");
-    setChantingFilter("");
-    setCallStatusFilter("");
-    setSgFilter("");
-    setMaFilter("");
-    setFrpFilter("");
-    setSortBy("createdAt_desc");
-  };
+  }, [people, filters, sortDescriptors]);
 
   const handleEditPerson = (person: Person) => {
     setEditingPerson(person);
@@ -269,79 +310,21 @@ export default function CallingAssistantPage() {
       <>
         <div className="mb-6 flex flex-col gap-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                    placeholder="Search by name, phone, or native place..."
-                    className="pl-10 w-full sm:w-[300px]"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                <div className="flex items-center gap-2">
+                    <FilterPopover 
+                        filters={filters}
+                        setFilters={setFilters}
+                        filterableFields={filterableFields}
+                    />
+                    <SortPopover
+                        sortDescriptors={sortDescriptors}
+                        setSortDescriptors={setSortDescriptors}
                     />
                 </div>
                  <Button size="sm" onClick={() => handleOpenEventDialog(true)} disabled={filteredPeople.length === 0}>
                     <Headset className="mr-2 h-4 w-4" />
                     Start Calling Session ({filteredPeople.length})
                 </Button>
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-                <Select value={enablerFilter} onValueChange={(value) => setEnablerFilter(value === '__all__' ? '' : value)}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Filter by Enabler" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="__all__">All Enablers</SelectItem>
-                        {enablerOptions.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-                 <Select value={callStatusFilter} onValueChange={(value) => setCallStatusFilter(value === '__all__' ? '' : value)}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Filter by Call Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="__all__">All Statuses</SelectItem>
-                        {callStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-                <Select value={occupationFilter} onValueChange={(value) => setOccupationFilter(value === '__all__' ? '' : value)}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Filter by Occupation" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="__all__">All Occupations</SelectItem>
-                        {occupationStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-                <Select value={sgFilter} onValueChange={(value) => setSgFilter(value === 'all' ? '' : value)}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Filter by SG" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="yes">Yes</SelectItem>
-                        <SelectItem value="no">No</SelectItem>
-                    </SelectContent>
-                </Select>
-                <Select value={maFilter} onValueChange={(value) => setMaFilter(value === 'all' ? '' : value)}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Filter by MA" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="yes">Yes</SelectItem>
-                        <SelectItem value="no">No</SelectItem>
-                    </SelectContent>
-                </Select>
-                <Select value={frpFilter} onValueChange={(value) => setFrpFilter(value === 'all' ? '' : value)}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Filter by FRP" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="yes">Yes</SelectItem>
-                        <SelectItem value="no">No</SelectItem>
-                    </SelectContent>
-                </Select>
-                <Button variant="outline" onClick={clearFilters}>Clear Filters</Button>
             </div>
         </div>
 

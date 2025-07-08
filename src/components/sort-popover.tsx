@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -25,6 +26,7 @@ export type SortDescriptor = {
 
 const sortableFields = [
   { value: 'createdAt', label: 'Date Added' },
+  { value: 'lastCallAt', label: 'Last Called' },
   { value: 'fullName', label: 'Name' },
   { value: 'age', label: 'Age' },
   { value: 'sgRating', label: 'Rating' },

@@ -15,6 +15,7 @@ import { read, utils, write } from "xlsx";
 import JSZip from "jszip";
 import { createInitialProgress } from "@/lib/data";
 import type { Person, Group } from "@/lib/types";
+import { occupationStatuses } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -54,7 +55,7 @@ import { AuthGuard } from "@/components/auth-guard";
 import { useAuth } from "@/contexts/auth-context";
 import { CreateUpdateGroupDialog } from "@/components/create-update-group-dialog";
 import { SortPopover, type SortDescriptor } from "@/components/sort-popover";
-import { FilterPopover, type FilterRule } from "@/components/filter-popover";
+import { FilterPopover, type FilterRule, type FilterableField } from "@/components/filter-popover";
 
 export default function ContactsPage() {
   const { toast } = useToast();
@@ -114,6 +115,19 @@ export default function ContactsPage() {
     };
     fetchData();
   }, [appUser]);
+
+  const filterableFields: FilterableField[] = React.useMemo(() => [
+    { value: 'fullName', label: 'Name', type: 'string' },
+    { value: 'phone', label: 'Phone', type: 'string' },
+    { value: 'age', label: 'Age', type: 'number' },
+    { value: 'sgRating', label: 'Rating', type: 'number' },
+    { value: 'occupation', label: 'Occupation', type: 'enum', options: occupationStatuses.map(s => ({ value: s, label: s })) },
+    { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(s => ({ value: s, label: s })) },
+    { value: 'enablerInTouchWith', label: 'Enabler', type: 'enum', options: enablerOptions },
+    { value: 'chantingStatus', label: 'Chanting Status', type: 'string' },
+    { value: 'nativePlace', label: 'Native Place', type: 'string' },
+    { value: 'fromOtherCamp', label: 'From Other Camp', type: 'boolean' },
+  ], [enablerOptions, contactSourceOptions]);
 
   const filteredPeople = React.useMemo(() => {
     let tempPeople = [...people];
@@ -190,7 +204,7 @@ export default function ContactsPage() {
           comparison = -1;
         } else if (valA == null && valB == null) {
           comparison = 0;
-        } else if (field === 'createdAt') {
+        } else if (field === 'createdAt' || field === 'lastCallAt') {
             const dateA = (valA as any)?.toDate ? (valA as any).toDate() : new Date(0);
             const dateB = (valB as any)?.toDate ? (valB as any).toDate() : new Date(0);
             comparison = dateA.getTime() - dateB.getTime();
@@ -626,8 +640,7 @@ export default function ContactsPage() {
                     <FilterPopover 
                         filters={filters}
                         setFilters={setFilters}
-                        enablerOptions={enablerOptions}
-                        contactSourceOptions={contactSourceOptions}
+                        filterableFields={filterableFields}
                     />
                     <SortPopover
                     sortDescriptors={sortDescriptors}

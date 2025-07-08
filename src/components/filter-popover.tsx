@@ -8,8 +8,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { occupationStatuses } from '@/lib/types';
-import type { EnablerOption } from '@/services/settings-service';
 
 export type FilterRule = {
   id: string;
@@ -18,7 +16,7 @@ export type FilterRule = {
   value: any;
 };
 
-type FilterableField = {
+export type FilterableField = {
   value: string;
   label: string;
   type: 'string' | 'number' | 'enum' | 'boolean';
@@ -57,26 +55,11 @@ const operators: Record<FilterableField['type'], Operator[]> = {
 type FilterPopoverProps = {
   filters: FilterRule[];
   setFilters: React.Dispatch<React.SetStateAction<FilterRule[]>>;
-  enablerOptions: EnablerOption[];
-  contactSourceOptions: string[];
+  filterableFields: FilterableField[];
 };
 
-export function FilterPopover({ filters, setFilters, enablerOptions, contactSourceOptions }: FilterPopoverProps) {
+export function FilterPopover({ filters, setFilters, filterableFields }: FilterPopoverProps) {
     
-  const filterableFields: FilterableField[] = React.useMemo(() => [
-    { value: 'fullName', label: 'Name', type: 'string' },
-    { value: 'phone', label: 'Phone', type: 'string' },
-    { value: 'age', label: 'Age', type: 'number' },
-    { value: 'sgRating', label: 'Rating', type: 'number' },
-    { value: 'occupation', label: 'Occupation', type: 'enum', options: occupationStatuses.map(s => ({ value: s, label: s })) },
-    { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(s => ({ value: s, label: s })) },
-    { value: 'enablerInTouchWith', label: 'Enabler', type: 'enum', options: enablerOptions },
-    { value: 'chantingStatus', label: 'Chanting Status', type: 'string' },
-    { value: 'nativePlace', label: 'Native Place', type: 'string' },
-    { value: 'fromOtherCamp', label: 'From Other Camp', type: 'boolean' },
-  ], [enablerOptions, contactSourceOptions]);
-
-
   const getField = (fieldValue: string) => filterableFields.find(f => f.value === fieldValue);
 
   const handleUpdateFilter = (id: string, key: keyof FilterRule, value: any) => {
@@ -102,8 +85,8 @@ export function FilterPopover({ filters, setFilters, enablerOptions, contactSour
       ...prev,
       {
         id: crypto.randomUUID(),
-        field: 'fullName',
-        operator: 'contains',
+        field: filterableFields[0]?.value || 'fullName',
+        operator: filterableFields[0]?.type === 'string' ? 'contains' : 'is',
         value: '',
       },
     ]);
