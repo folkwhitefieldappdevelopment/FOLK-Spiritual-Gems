@@ -12,11 +12,12 @@ import {
   Sunrise,
   Loader2,
   Trash2,
+  Users,
 } from "lucide-react";
 import { read, utils, write } from "xlsx";
 import JSZip from "jszip";
 import { createInitialProgress } from "@/lib/data";
-import type { Person } from "@/lib/types";
+import type { Person, Group } from "@/lib/types";
 import { occupationStatuses } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,15 +61,18 @@ import {
   deletePeople,
   importPeople,
 } from "@/services/people-service";
+import { getGroups, createGroup, addPeopleToGroup } from "@/services/groups-service";
 import { getEnablers, getContactSources, type EnablerOption } from "@/services/settings-service";
 import { AuthGuard } from "@/components/auth-guard";
 import { useAuth } from "@/contexts/auth-context";
+import { CreateUpdateGroupDialog } from "@/components/create-update-group-dialog";
 
 export default function ContactsPage() {
   const { toast } = useToast();
   const { appUser } = useAuth();
 
   const [people, setPeople] = React.useState<Person[]>([]);
+  const [groups, setGroups] = React.useState<Group[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
   const [isImporting, setIsImporting] = React.useState(false);
@@ -83,6 +87,7 @@ export default function ContactsPage() {
   const [sortBy, setSortBy] = React.useState("createdAt_desc");
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = React.useState(false);
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(
     undefined
   );
@@ -101,14 +106,16 @@ export default function ContactsPage() {
       setIsLoading(true);
       setFetchError(null);
       try {
-        const [peopleData, enablersData, sourcesData] = await Promise.all([
+        const [peopleData, enablersData, sourcesData, groupsData] = await Promise.all([
           getPeople(appUser),
           getEnablers(appUser, 'filter'),
           getContactSources(),
+          getGroups(),
         ]);
         setPeople(peopleData);
         setEnablerOptions(enablersData);
         setContactSourceOptions(sourcesData);
+        setGroups(groupsData);
       } catch (error) {
         console.error("Failed to load data:", error);
         if (error instanceof Error) {
@@ -521,6 +528,64 @@ export default function ContactsPage() {
     });
   }, []);
 
+  const handleAddToGroup = async (groupId: string) => {
+    if (selectedIds.size === 0) return;
+    try {
+      await addPeopleToGroup(groupId, Array.from(selectedIds));
+      toast({
+        title: "Members Added",
+        description: `${selectedIds.size} contacts have been added to the group.`,
+      });
+      // Refetch groups data to update member counts
+      const updatedGroups = await getGroups();
+      setGroups(updatedGroups);
+      setSelectedIds(new Set()); // Clear selection
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not add contacts to the group.",
+      });
+    }
+  };
+
+  const handleSaveGroupAndAddMembers = async (groupData: Omit<Group, "id" | "memberCount" | "peopleIds">) => {
+    try {
+      const newGroupData: Omit<Group, 'id'> = {
+        memberCount: 0,
+        peopleIds: [],
+        ...groupData,
+      };
+      const newGroup = await createGroup(newGroupData);
+      setGroups((prev) => [...prev, newGroup]);
+      
+      // Now add selected members to this new group
+      if (selectedIds.size > 0) {
+        await addPeopleToGroup(newGroup.id, Array.from(selectedIds));
+         toast({
+          title: "Group Created & Members Added",
+          description: `The group "${newGroup.name}" was created and ${selectedIds.size} contacts were added.`,
+        });
+        const updatedGroups = await getGroups();
+        setGroups(updatedGroups);
+        setSelectedIds(new Set());
+      } else {
+         toast({
+          title: "Group Created",
+          description: `The new group "${newGroup.name}" has been added.`,
+        });
+      }
+      setIsCreateGroupDialogOpen(false); // Close dialog
+    } catch (error) {
+       toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not create or add members to the new group.",
+      });
+    }
+  };
+
+
   const isLoadingAction = isImporting || isExporting;
   const loadingText = isImporting ? 'Importing...' : isExporting ? 'Exporting...' : '';
 
@@ -665,28 +730,54 @@ export default function ContactsPage() {
                     title={`${selectedIds.size} selected`}
                     description="You can perform actions on the selected contacts."
                  >
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete ({selectedIds.size})
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This will permanently delete the selected {selectedIds.size} contacts. This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={handleDeleteSelected} className="bg-destructive hover:bg-destructive/90">
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    <div className="flex items-center gap-2">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                <Users className="mr-2 h-4 w-4" />
+                                Add to Group
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                {groups.map((group) => (
+                                <DropdownMenuItem
+                                    key={group.id}
+                                    onSelect={() => handleAddToGroup(group.id)}
+                                >
+                                    {group.name}
+                                </DropdownMenuItem>
+                                ))}
+                                {groups.length > 0 && <DropdownMenuSeparator />}
+                                <DropdownMenuItem onSelect={() => setIsCreateGroupDialogOpen(true)}>
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Create New Group
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm">
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete ({selectedIds.size})
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This will permanently delete the selected {selectedIds.size} contacts. This action cannot be undone.
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteSelected} className="bg-destructive hover:bg-destructive/90">
+                                Delete
+                            </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                        </AlertDialog>
+                    </div>
                  </PageHeader>
             ) : (
                <PageHeader
@@ -736,6 +827,11 @@ export default function ContactsPage() {
           onSave={handleSavePerson}
           person={editingPerson}
           allPeople={people}
+        />
+        <CreateUpdateGroupDialog
+            isOpen={isCreateGroupDialogOpen}
+            setIsOpen={setIsCreateGroupDialogOpen}
+            onSave={handleSaveGroupAndAddMembers}
         />
         <input
           type="file"

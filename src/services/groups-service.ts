@@ -7,6 +7,7 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  runTransaction,
 } from 'firebase/firestore';
 import type { Group } from '@/lib/types';
 
@@ -39,4 +40,25 @@ export const updateGroup = async (id: string, groupData: Partial<Omit<Group, 'id
 export const deleteGroup = async (id: string): Promise<void> => {
   const docRef = doc(db, 'groups', id);
   await deleteDoc(docRef);
+};
+
+export const addPeopleToGroup = async (groupId: string, peopleIds: string[]): Promise<void> => {
+  const groupRef = doc(db, 'groups', groupId);
+
+  await runTransaction(db, async (transaction) => {
+    const groupDoc = await transaction.get(groupRef);
+    if (!groupDoc.exists()) {
+      throw new Error("Group not found.");
+    }
+
+    const currentPeopleIds: string[] = groupDoc.data().peopleIds || [];
+    const newPeopleIds = Array.from(new Set([...currentPeopleIds, ...peopleIds]));
+
+    if (newPeopleIds.length > currentPeopleIds.length) {
+      transaction.update(groupRef, { 
+        peopleIds: newPeopleIds,
+        memberCount: newPeopleIds.length
+      });
+    }
+  });
 };
