@@ -1,5 +1,5 @@
 
-import type { ProgressCategoryAnswers } from './types';
+import type { ProgressCategory } from './types';
 
 export const checklistData = [
   {
@@ -82,10 +82,15 @@ export const checklistData = [
 ];
 
 
-export const createInitialProgress = (): ProgressCategoryAnswers[] => {
+export const createInitialProgress = (): ProgressCategory[] => {
   return checklistData.map((category) => ({
     name: category.category as any,
-    answers: category.items.map(() => ({ l1: '', l2: '', l3: '', l1_remark: '', l2_remark: '', l3_remark: '' })),
+    items: category.items.map(item => ({
+      question: item.question,
+      levels: item.levels as [string, string, string],
+      link: item.link,
+      answers: { l1: '', l2: '', l3: '', l1_remark: '', l2_remark: '', l3_remark: '' }
+    }))
   }));
 };
 

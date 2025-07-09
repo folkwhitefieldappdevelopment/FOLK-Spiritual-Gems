@@ -4,9 +4,8 @@
 import Link from 'next/link';
 import * as React from 'react';
 import { User, Briefcase, Tags } from "lucide-react";
-import type { Person, ProgressCategoryAnswers, ProgressLevelAnswers, Group } from "@/lib/types";
+import type { Person, ProgressCategory, ProgressLevelAnswers, Group } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { checklistData } from '@/lib/data';
 import { useAdmin } from '@/contexts/admin-context';
 import {
   Card,
@@ -26,9 +25,14 @@ type PersonCardProps = {
   groups: Group[];
 };
 
-const calculateScore = (categoryProgress: ProgressCategoryAnswers): number => {
-  const categoryInfo = checklistData.find(c => c.category === categoryProgress.name);
-  if (!categoryInfo || !categoryProgress.answers) return -Infinity; // Special value for no data
+const parseNumber = (str: string): number | null => {
+  if (!str) return null;
+  const match = str.match(/\d+/);
+  return match ? parseInt(match[0], 10) : null;
+};
+
+const calculateScore = (categoryProgress: ProgressCategory): number => {
+  if (!categoryProgress || !categoryProgress.items) return -Infinity;
 
   const parseNumber = (str: string): number | null => {
     if (!str) return null;
@@ -37,13 +41,13 @@ const calculateScore = (categoryProgress: ProgressCategoryAnswers): number => {
   };
 
   // Special handling for Chanting. Score from 0 to 100.
-  if (categoryInfo.category === 'Chanting') {
-    const chantingItemIndex = categoryInfo.items.findIndex(item => item.question.includes('Chanting'));
-    if (chantingItemIndex !== -1) {
-      const answerObj = categoryProgress.answers?.[chantingItemIndex];
-       if (answerObj) {
-          const rounds = Math.max(0, ...Object.values(answerObj).map(a => parseNumber(a) || 0));
-          return (rounds / 16) * 100;
+  if (categoryProgress.name === 'Chanting') {
+    const chantingItem = categoryProgress.items.find(item => item.question.includes('Chanting'));
+    if (chantingItem) {
+        const answerObj = chantingItem.answers;
+        if (answerObj) {
+            const rounds = Math.max(0, ...Object.values(answerObj).map(a => parseNumber(a) || 0));
+            return (rounds / 16) * 100;
         }
     }
   }
@@ -52,13 +56,13 @@ const calculateScore = (categoryProgress: ProgressCategoryAnswers): number => {
   let score = 0;
   let hasAnyInput = false;
 
-  categoryInfo.items.forEach((item, itemIndex) => {
+  categoryProgress.items.forEach((item) => {
     item.levels.forEach((goal, levelIndex) => {
       const goalStr = (goal || "").trim();
       if (goalStr && goalStr !== '-') {
         totalGoals++;
         
-        const answerObj = categoryProgress.answers?.[itemIndex];
+        const answerObj = item.answers;
         const levelKey = `l${levelIndex + 1}` as keyof ProgressLevelAnswers;
         const answer = answerObj ? answerObj[levelKey] || '' : '';
         const normAnswer = answer.trim().toLowerCase();

@@ -20,9 +20,16 @@ export type ProgressLevelAnswers = {
   l3_remark?: string;
 };
 
-export type ProgressCategoryAnswers = {
+export type ChecklistItem = {
+  question: string;
+  levels: [string, string, string]; // Goals for L1, L2, L3
+  link?: string;
+  answers: ProgressLevelAnswers;
+};
+
+export type ProgressCategory = {
   name: ProgressCategoryName;
-  answers: ProgressLevelAnswers[];
+  items: ChecklistItem[];
 };
 
 export const customFieldTypes = ['text', 'textarea', 'number', 'date', 'boolean'] as const;
@@ -51,7 +58,7 @@ export type Person = {
   enablerInTouchWith: string;
   folkGuide?: string;
   folkGuideId?: string;
-  progress: ProgressCategoryAnswers[];
+  progress: ProgressCategory[];
   customData?: { [key: string]: any };
   generalRemarks?: string;
   createdAt?: any; // Firestore Timestamp

@@ -1,10 +1,10 @@
+
 'use client';
 
 import * as React from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { checklistData } from '@/lib/data';
-import type { ProgressCategoryAnswers, ProgressLevelAnswers } from '@/lib/types';
+import type { ProgressCategory, ProgressLevelAnswers } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import {
   TableBody,
@@ -82,19 +82,21 @@ const getCellClass = (
 
 
 type ProgressTrackerProps = {
-  progress: ProgressCategoryAnswers[];
+  progress: ProgressCategory[];
   onProgressChange: (
     catIndex: number,
     itemIndex: number,
     levelIndex: number,
     value: string,
-    field: 'achieved' | 'remark'
+    field: 'achieved' | 'remark' | 'goal'
   ) => void;
+  isEditable: boolean;
 };
 
 export function ProgressTracker({
   progress,
   onProgressChange,
+  isEditable,
 }: ProgressTrackerProps) {
   const [maxVisibleLevel, setMaxVisibleLevel] = React.useState(1);
 
@@ -111,16 +113,16 @@ export function ProgressTracker({
     );
   }
   
-  const renderCellContent = (
+  const renderAchievedCellContent = (
     catIndex: number,
     itemIndex: number,
     levelIndex: number
   ) => {
-    const category = checklistData[catIndex];
+    const category = progress[catIndex];
     const item = category.items[itemIndex];
     const goalValue = item.levels[levelIndex];
     const levelKey = `l${levelIndex + 1}` as keyof ProgressLevelAnswers;
-    const currentValue = progress?.[catIndex]?.answers?.[itemIndex]?.[levelKey] || '';
+    const currentValue = item.answers[levelKey] || '';
     
     const goalNumber = parseNumber(goalValue);
 
@@ -144,7 +146,7 @@ export function ProgressTracker({
       );
     }
 
-    if (goalValue.toLowerCase() === 'yes' || category.category === 'Expedition') {
+    if (goalValue.toLowerCase() === 'yes' || category.name === 'Expedition') {
       return (
         <Select
           value={currentValue}
@@ -250,11 +252,11 @@ export function ProgressTracker({
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {checklistData.map((category, catIndex) => (
-                <React.Fragment key={category.category}>
+                {progress.map((category, catIndex) => (
+                <React.Fragment key={category.name}>
                     <TableRow className="bg-secondary">
                     <TableCell colSpan={totalColumns} className="font-bold text-primary sticky left-0 z-20 bg-secondary py-2 pr-2 pl-4 border-b border-r">
-                        {category.category}
+                        {category.name}
                     </TableCell>
                     </TableRow>
                     {category.items.map((item, itemIndex) => (
@@ -278,24 +280,33 @@ export function ProgressTracker({
                           return null;
                         }
 
+                        const levelKey = `l${levelIndex + 1}` as keyof ProgressLevelAnswers;
                         const remarkKey = `l${levelIndex + 1}_remark` as keyof ProgressLevelAnswers;
-                        const currentRemark = progress?.[catIndex]?.answers?.[itemIndex]?.[remarkKey] || '';
+                        const currentValue = item.answers?.[levelKey] || '';
+                        const currentRemark = item.answers?.[remarkKey] || '';
                         
                         return (
                             <React.Fragment key={levelIndex}>
                             <TableCell className="text-center text-xs p-1 border-l bg-muted/20 align-top border-b">
-                                {goal || '-'}
+                                {isEditable ? (
+                                    <Input
+                                        type="text"
+                                        value={goal}
+                                        placeholder="-"
+                                        onChange={(e) => onProgressChange(catIndex, itemIndex, levelIndex, e.target.value, 'goal')}
+                                        className="w-full h-full p-1 text-xs text-center bg-transparent border-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0"
+                                    />
+                                    ) : (
+                                    goal || '-'
+                                )}
                             </TableCell>
                             <TableCell
                                 className={cn(
                                 'text-center text-sm align-top p-0 border-b',
-                                getCellClass(
-                                    progress?.[catIndex]?.answers?.[itemIndex]?.[`l${levelIndex + 1}` as keyof ProgressLevelAnswers] || '',
-                                    goal
-                                )
+                                getCellClass(currentValue, goal)
                                 )}
                             >
-                                {renderCellContent(catIndex, itemIndex, levelIndex)}
+                                {renderAchievedCellContent(catIndex, itemIndex, levelIndex)}
                             </TableCell>
                             <TableCell className="text-center text-sm align-top p-0 border-b">
                                 <Input

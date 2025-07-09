@@ -4,9 +4,10 @@
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Edit, Trash2, Phone, Loader2, Tags } from 'lucide-react';
-import type { Person, ProgressCategoryAnswers, ProgressLevelAnswers, CustomField, Group } from '@/lib/types';
+import type { Person, ProgressLevelAnswers, CustomField, Group, ProgressCategory } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAdmin } from '@/contexts/admin-context';
+import { useAuth } from '@/contexts/auth-context';
 import { cn } from '@/lib/utils';
 import { getPerson, updatePerson, deletePerson } from '@/services/people-service';
 import { getCustomPersonFields } from '@/services/settings-service';
@@ -50,6 +51,7 @@ export default function PersonDetailPage() {
   const params = useParams();
   const { toast } = useToast();
   const personId = params.id as string;
+  const { appUser } = useAuth();
   const { isAdmin } = useAdmin();
 
   const [person, setPerson] = React.useState<Person | null>(null);
@@ -59,6 +61,10 @@ export default function PersonDetailPage() {
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [allPeople, setAllPeople] = React.useState<Person[]>([]);
+  
+  const canEditGoals = React.useMemo(() => {
+    return isAdmin || appUser?.role.includes('Folk Guide');
+  }, [isAdmin, appUser]);
 
   React.useEffect(() => {
     if (!personId) return;
@@ -77,7 +83,7 @@ export default function PersonDetailPage() {
         setAllGroups(groupsData);
 
         if (personData) {
-          if (!personData.progress || !Array.isArray(personData.progress) || personData.progress.length === 0 || !personData.progress[0]?.answers || !Array.isArray(personData.progress[0].answers)) {
+          if (!personData.progress || !Array.isArray(personData.progress) || personData.progress.length === 0 || !personData.progress[0]?.items) {
             personData.progress = createInitialProgress();
           }
           setPerson(personData);
@@ -145,22 +151,24 @@ export default function PersonDetailPage() {
     itemIndex: number,
     levelIndex: number,
     value: string,
-    field: 'achieved' | 'remark' = 'achieved'
+    field: 'achieved' | 'remark' | 'goal'
   ) => {
     if (!person) return;
 
-    const newProgress = JSON.parse(JSON.stringify(person.progress));
-    
-    if (!newProgress[catIndex]) return;
-    if (!newProgress[catIndex].answers) newProgress[catIndex].answers = [];
-    if (!newProgress[catIndex].answers[itemIndex]) newProgress[catIndex].answers[itemIndex] = {l1:'', l2:'', l3:'', l1_remark: '', l2_remark: '', l3_remark: ''};
-    
-    if (field === 'achieved') {
+    const newProgress = JSON.parse(JSON.stringify(person.progress)) as ProgressCategory[];
+    const targetItem = newProgress[catIndex]?.items?.[itemIndex];
+
+    if (!targetItem) return;
+
+    if (field === 'goal') {
+      if (!canEditGoals) return;
+      targetItem.levels[levelIndex] = value;
+    } else if (field === 'achieved') {
       const levelKey = `l${levelIndex + 1}` as keyof ProgressLevelAnswers;
-      newProgress[catIndex].answers[itemIndex][levelKey] = value;
+      targetItem.answers[levelKey] = value;
     } else { // remark
       const remarkKey = `l${levelIndex + 1}_remark` as keyof ProgressLevelAnswers;
-      newProgress[catIndex].answers[itemIndex][remarkKey] = value;
+      targetItem.answers[remarkKey] = value;
     }
     
     const updatedPerson = { ...person, progress: newProgress };
@@ -365,6 +373,7 @@ export default function PersonDetailPage() {
                     <ProgressTracker 
                       progress={person.progress}
                       onProgressChange={handleProgressChange}
+                      isEditable={canEditGoals}
                     />
                   </div>
                 )}
