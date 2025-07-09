@@ -2,8 +2,8 @@
 "use client";
 
 import * as React from "react";
-import { Headset, Loader2, Edit, Search } from "lucide-react";
-import type { Person, CallStatus, CustomField, Group } from "@/lib/types";
+import { Headset, Loader2, Edit, Search, Users, UserCheck, PlusCircle } from "lucide-react";
+import type { Person, CallStatus, CustomField, Group, AppUser } from "@/lib/types";
 import { occupationStatuses } from "@/lib/types";
 import { callStatuses } from "@/lib/data";
 import { Button } from "@/components/ui/button";
@@ -16,9 +16,9 @@ import { CreateUpdatePersonDialog } from "@/components/create-update-person-dial
 import { CallingSessionDialog } from "@/components/calling-session-dialog";
 import { AuthGuard } from "@/components/auth-guard";
 import { FirebaseConfigError } from "@/components/firebase-config-error";
-import { getPeople, updatePerson } from "@/services/people-service";
+import { getPeople, updatePerson, assignHelperToPeople } from "@/services/people-service";
 import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
-import { getGroups } from "@/services/groups-service";
+import { getGroups, createGroup, addPeopleToGroup } from "@/services/groups-service";
 import { updateUser } from "@/services/user-service";
 import { serverTimestamp, arrayUnion } from "firebase/firestore";
 import { useAuth } from "@/contexts/auth-context";
@@ -40,6 +40,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { CreateUpdateGroupDialog } from '@/components/create-update-group-dialog';
+import { AssignHelperDialog } from '@/components/assign-helper-dialog';
 
 export default function CallingAssistantPage() {
   const { toast } = useToast();
@@ -53,6 +62,7 @@ export default function CallingAssistantPage() {
   const [searchTerm, setSearchTerm] = React.useState("");
   const [filters, setFilters] = React.useState<FilterRule[]>([]);
   const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([{ field: 'lastCallAt', direction: 'asc' }]);
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
 
   const [isSessionDialogOpen, setIsSessionDialogOpen] = React.useState(false);
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(undefined);
@@ -63,6 +73,11 @@ export default function CallingAssistantPage() {
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [selectedGroupId, setSelectedGroupId] = React.useState<string>('all');
   const [currentCallingEvent, setCurrentCallingEvent] = React.useState("Loading event...");
+  
+  const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = React.useState(false);
+  const [isAssignHelperDialogOpen, setIsAssignHelperDialogOpen] = React.useState(false);
+  const isSelectionActive = selectedIds.size > 0;
+  const canAssignHelper = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
 
   // State for the event editing dialog
   const [isEventDialogOpen, setIsEventDialogOpen] = React.useState(false);
@@ -72,13 +87,9 @@ export default function CallingAssistantPage() {
   const [callRangeNames, setCallRangeNames] = React.useState({ from: '', to: '' });
   const [sessionStartIndex, setSessionStartIndex] = React.useState(0);
 
-  React.useEffect(() => {
-    if (!appUser) {
-        setIsLoading(true);
-        return;
-    }
-    const fetchData = async () => {
-      setIsLoading(true);
+  const fetchPageData = React.useCallback(async () => {
+    if (!appUser) return;
+     setIsLoading(true);
       setFetchError(null);
       try {
         const [peopleData, enablersData, sourcesData, customFieldsData, groupsData] = await Promise.all([
@@ -93,7 +104,9 @@ export default function CallingAssistantPage() {
         setContactSourceOptions(sourcesData);
         setCustomFields(customFieldsData);
         setGroups(groupsData);
-        setCurrentCallingEvent(appUser.currentCallingEvent || 'General Calling');
+        if (appUser.currentCallingEvent) {
+            setCurrentCallingEvent(appUser.currentCallingEvent);
+        }
       } catch (error) {
         console.error("Failed to load data:", error);
         if (error instanceof Error) {
@@ -104,9 +117,15 @@ export default function CallingAssistantPage() {
       } finally {
         setIsLoading(false);
       }
-    };
-    fetchData();
   }, [appUser]);
+
+  React.useEffect(() => {
+    fetchPageData();
+  }, [fetchPageData]);
+  
+  React.useEffect(() => {
+    setSelectedIds(new Set());
+  }, [filters, sortDescriptors, searchTerm, selectedGroupId]);
 
   const filterableFields: FilterableField[] = React.useMemo(() => {
     return [
@@ -409,6 +428,74 @@ export default function CallingAssistantPage() {
     
     setIsEventDialogOpen(false);
   };
+  
+  const handleAddToGroup = async (targetGroupId: string) => {
+    if (selectedIds.size === 0 || !appUser) return;
+    try {
+        await addPeopleToGroup(targetGroupId, Array.from(selectedIds));
+        toast({ title: 'Members Added', description: `${selectedIds.size} contacts have been added to the other group.` });
+        const updatedGroups = await getGroups(appUser);
+        setGroups(updatedGroups);
+        setSelectedIds(new Set());
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not add contacts to the group.' });
+    }
+  };
+
+  const handleSaveGroupAndAddMembers = async (groupData: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy">) => {
+    if (!appUser) return;
+    try {
+        const newGroupData: Omit<Group, 'id' | 'createdBy'> = {
+            memberCount: 0,
+            peopleIds: [],
+            ...groupData,
+        };
+        const newGroup = await createGroup(newGroupData, appUser);
+        setGroups((prev) => [...prev, newGroup]);
+        
+        if (selectedIds.size > 0) {
+            await addPeopleToGroup(newGroup.id, Array.from(selectedIds));
+            toast({
+                title: "Group Created & Members Added",
+                description: `The group "${newGroup.name}" was created and ${selectedIds.size} contacts were added.`,
+            });
+            const updatedGroups = await getGroups(appUser);
+            setGroups(updatedGroups);
+            setSelectedIds(new Set());
+        } else {
+            toast({
+                title: "Group Created",
+                description: `The new group "${newGroup.name}" has been added.`,
+            });
+        }
+        setIsCreateGroupDialogOpen(false);
+    } catch (error) {
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not create or add members to the new group.",
+        });
+    }
+  };
+
+  const handleAssignHelper = async (helper: AppUser | null) => {
+    if (selectedIds.size === 0) return;
+    try {
+        await assignHelperToPeople(Array.from(selectedIds), helper);
+        toast({
+            title: helper ? 'Helper Assigned' : 'Helper Unassigned',
+            description: `${selectedIds.size} contacts have been updated.`,
+        });
+        // Refetch all people data to show the change
+        if (appUser) {
+            const peopleData = await getPeople(appUser);
+            setPeople(peopleData);
+        }
+        setSelectedIds(new Set());
+    } catch (error) {
+        toast({ variant: "destructive", title: "Error", description: "Could not assign helper." });
+    }
+  };
 
 
   const renderContent = () => {
@@ -429,39 +516,76 @@ export default function CallingAssistantPage() {
         <div className="mb-6 flex flex-col gap-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2 flex-wrap">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Search by name or phone..."
-                            className="pl-10 w-full sm:w-64"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-                    <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
-                        <SelectTrigger className="w-full sm:w-auto min-w-[180px]">
-                            <SelectValue placeholder="Filter by group..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Contacts</SelectItem>
-                            {groups.map((group) => (
-                                <SelectItem key={group.id} value={group.id}>
-                                    {group.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <FilterPopover 
-                        filters={filters}
-                        setFilters={setFilters}
-                        filterableFields={filterableFields}
-                    />
-                    <SortPopover
-                        sortDescriptors={sortDescriptors}
-                        setSortDescriptors={setSortDescriptors}
-                    />
+                    {isSelectionActive ? (
+                        <>
+                            <span className="text-sm font-semibold">{selectedIds.size} selected</span>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" size="sm"><Users className="mr-2 h-4 w-4" />Add to Group</Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    {groups.map((g) => <DropdownMenuItem key={g.id} onSelect={() => handleAddToGroup(g.id)}>{g.name}</DropdownMenuItem>)}
+                                    {groups.length > 0 && <DropdownMenuSeparator />}
+                                    <DropdownMenuItem onSelect={() => setIsCreateGroupDialogOpen(true)}>
+                                        <PlusCircle className="mr-2 h-4 w-4" />
+                                        Create New Group
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            {canAssignHelper && <Button variant="outline" size="sm" onClick={() => setIsAssignHelperDialogOpen(true)}><UserCheck className="mr-2 h-4 w-4" />Assign Helper</Button>}
+                        </>
+                    ) : (
+                        <>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Search by name or phone..."
+                                    className="pl-10 w-full sm:w-64"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                            <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
+                                <SelectTrigger className="w-full sm:w-auto min-w-[180px]">
+                                    <SelectValue placeholder="Filter by group..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Contacts</SelectItem>
+                                    {groups.map((group) => (
+                                        <SelectItem key={group.id} value={group.id}>
+                                            {group.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <FilterPopover 
+                                filters={filters}
+                                setFilters={setFilters}
+                                filterableFields={filterableFields}
+                            />
+                            <SortPopover
+                                sortDescriptors={sortDescriptors}
+                                setSortDescriptors={setSortDescriptors}
+                            />
+                        </>
+                    )}
+                    {filteredPeople.length > 0 && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                                if (selectedIds.size === filteredPeople.length) {
+                                    setSelectedIds(new Set());
+                                } else {
+                                    setSelectedIds(new Set(filteredPeople.map(p => p.id)));
+                                }
+                            }}
+                        >
+                            {selectedIds.size === filteredPeople.length ? 'Deselect All' : 'Select All'}
+                        </Button>
+                    )}
                 </div>
-                 <Button size="sm" onClick={() => handleOpenEventDialog(true)} disabled={filteredPeople.length === 0}>
+                 <Button size="sm" onClick={() => handleOpenEventDialog(true)} disabled={filteredPeople.length === 0 || isSelectionActive}>
                     <Headset className="mr-2 h-4 w-4" />
                     Start Calling Session ({filteredPeople.length})
                 </Button>
@@ -479,6 +603,8 @@ export default function CallingAssistantPage() {
             onEdit={handleEditPerson}
             onDelete={handleDeletePerson}
             isCallingAssistantView={true}
+            selectedIds={selectedIds}
+            setSelectedIds={setSelectedIds}
           />
         )}
       </>
@@ -582,6 +708,19 @@ export default function CallingAssistantPage() {
           sessionStartIndex={sessionStartIndex}
           totalPeopleCount={filteredPeople.length}
         />
+        
+        <CreateUpdateGroupDialog
+            isOpen={isCreateGroupDialogOpen}
+            setIsOpen={setIsCreateGroupDialogOpen}
+            onSave={handleSaveGroupAndAddMembers}
+        />
+        
+        <AssignHelperDialog
+          isOpen={isAssignHelperDialogOpen}
+          setIsOpen={setIsAssignHelperDialogOpen}
+          onSave={handleAssignHelper}
+          peopleCount={selectedIds.size}
+        />
 
         {editingPerson && (
            <CreateUpdatePersonDialog
@@ -596,3 +735,5 @@ export default function CallingAssistantPage() {
     </AuthGuard>
   );
 }
+
+    

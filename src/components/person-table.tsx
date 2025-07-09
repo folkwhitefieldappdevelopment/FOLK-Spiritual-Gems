@@ -60,7 +60,7 @@ const safeDate = (timestamp: any): Date | null => {
 
 export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView = false, selectedIds, setSelectedIds }: PersonTableProps) {
   
-  const isSelectionEnabled = !isCallingAssistantView && !!selectedIds && !!setSelectedIds;
+  const isSelectionEnabled = !!selectedIds && !!setSelectedIds;
 
   const handleSelectAll = React.useCallback((checked: boolean) => {
     if (isSelectionEnabled && setSelectedIds) {
@@ -285,3 +285,5 @@ export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView =
     </TooltipProvider>
   );
 }
+
+    
