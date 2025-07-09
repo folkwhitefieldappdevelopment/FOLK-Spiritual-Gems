@@ -637,17 +637,69 @@ export default function ContactsPage() {
       <>
         <div className="mb-6 flex flex-col gap-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2">
-                    <FilterPopover 
-                        filters={filters}
-                        setFilters={setFilters}
-                        filterableFields={filterableFields}
-                    />
-                    <SortPopover
-                    sortDescriptors={sortDescriptors}
-                    setSortDescriptors={setSortDescriptors}
-                    />
-                </div>
+                {selectedIds.size > 0 ? (
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold">{selectedIds.size} selected</span>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                <Users className="mr-2 h-4 w-4" />
+                                Add to Group
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                {groups.map((group) => (
+                                <DropdownMenuItem
+                                    key={group.id}
+                                    onSelect={() => handleAddToGroup(group.id)}
+                                >
+                                    {group.name}
+                                </DropdownMenuItem>
+                                ))}
+                                {groups.length > 0 && <DropdownMenuSeparator />}
+                                <DropdownMenuItem onSelect={() => setIsCreateGroupDialogOpen(true)}>
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Create New Group
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive" size="sm">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This will permanently delete the selected {selectedIds.size} contacts. This action cannot be undone.
+                                </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDeleteSelected} className="bg-destructive hover:bg-destructive/90">
+                                    Delete
+                                </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-2">
+                        <FilterPopover 
+                            filters={filters}
+                            setFilters={setFilters}
+                            filterableFields={filterableFields}
+                        />
+                        <SortPopover
+                            sortDescriptors={sortDescriptors}
+                            setSortDescriptors={setSortDescriptors}
+                        />
+                    </div>
+                )}
                 <div className="flex items-center gap-2">
                     <div className="flex items-center rounded-md bg-muted p-1">
                     <Button
@@ -709,98 +761,42 @@ export default function ContactsPage() {
       <div className="flex min-h-screen w-full flex-col bg-background">
         <AppSidebar />
         <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
-            {selectedIds.size > 0 ? (
-                 <PageHeader
-                    title={`${selectedIds.size} selected`}
-                    description="You can perform actions on the selected contacts."
-                 >
-                    <div className="flex items-center gap-2">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm">
-                                <Users className="mr-2 h-4 w-4" />
-                                Add to Group
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                {groups.map((group) => (
-                                <DropdownMenuItem
-                                    key={group.id}
-                                    onSelect={() => handleAddToGroup(group.id)}
-                                >
-                                    {group.name}
-                                </DropdownMenuItem>
-                                ))}
-                                {groups.length > 0 && <DropdownMenuSeparator />}
-                                <DropdownMenuItem onSelect={() => setIsCreateGroupDialogOpen(true)}>
-                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                    Create New Group
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+            <PageHeader
+                title="FOLK SPIRITUAL GEMS"
+                description="Your central hub for managing contacts and activities."
+            >
+                <div className="flex items-center gap-2">
+                    <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
+                            {isLoadingAction ? (
+                            <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
+                        ) : (
+                            <Upload className="h-4 w-4 sm:mr-2" />
+                        )}
+                        <span className="hidden sm:inline">{isLoadingAction ? loadingText : 'Import/Export'}</span>
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => fileInputRef.current?.click()} disabled={isLoadingAction}>
+                        Import from Excel
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleExport} disabled={isLoadingAction}>
+                        Export to Excel
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleSampleDownload} disabled={isLoadingAction}>
+                        Download Sample Excel
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                    </DropdownMenu>
 
-                        <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="sm">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete ({selectedIds.size})
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                This will permanently delete the selected {selectedIds.size} contacts. This action cannot be undone.
-                            </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDeleteSelected} className="bg-destructive hover:bg-destructive/90">
-                                Delete
-                            </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                        </AlertDialog>
-                    </div>
-                 </PageHeader>
-            ) : (
-               <PageHeader
-                  title="FOLK SPIRITUAL GEMS"
-                  description="Your central hub for managing contacts and activities."
-                >
-                  <div className="flex items-center gap-2">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm" className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
-                             {isLoadingAction ? (
-                              <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
-                            ) : (
-                              <Upload className="h-4 w-4 sm:mr-2" />
-                            )}
-                            <span className="hidden sm:inline">{isLoadingAction ? loadingText : 'Import/Export'}</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem onClick={() => fileInputRef.current?.click()} disabled={isLoadingAction}>
-                            Import from Excel
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={handleExport} disabled={isLoadingAction}>
-                            Export to Excel
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={handleSampleDownload} disabled={isLoadingAction}>
-                            Download Sample Excel
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-
-                      <Button size="sm" onClick={handleAddPerson} className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
-                        <PlusCircle className="h-4 w-4 sm:mr-2" />
-                        <span className="hidden sm:inline">Add Person</span>
-                      </Button>
-                  </div>
-                </PageHeader>
-            )}
+                    <Button size="sm" onClick={handleAddPerson} className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
+                    <PlusCircle className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Add Person</span>
+                    </Button>
+                </div>
+            </PageHeader>
             <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
               {renderContent()}
             </main>
