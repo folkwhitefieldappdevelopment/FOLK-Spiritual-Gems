@@ -37,6 +37,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "./ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Badge } from "./ui/badge";
+import { ScrollArea } from "./ui/scroll-area";
 
 const callFormSchema = z.object({
   remark: z.string().trim().optional(),
@@ -405,6 +406,16 @@ export function CallingSessionDialog({
 
                             <div className="font-semibold text-muted-foreground">Folk Guide</div>
                             <div>{currentPerson.folkGuide || 'N/A'}</div>
+                        </div>
+
+                        <Separator />
+                        <div className="space-y-2">
+                            <h4 className="text-sm font-semibold text-foreground">Progress Notes</h4>
+                            <ScrollArea className="h-24 w-full rounded-md border p-3 text-sm">
+                                <p className="whitespace-pre-wrap">
+                                    {currentPerson.generalRemarks || <span className="text-muted-foreground italic">No progress notes recorded yet.</span>}
+                                </p>
+                            </ScrollArea>
                         </div>
 
                         {personGroups.length > 0 && (

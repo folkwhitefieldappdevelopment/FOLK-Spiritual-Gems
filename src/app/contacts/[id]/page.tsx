@@ -42,6 +42,7 @@ import { CreateUpdatePersonDialog } from '@/components/create-update-person-dial
 import { ProgressTracker } from '@/components/progress-tracker';
 import { Separator } from '@/components/ui/separator';
 import { CallHistory } from '@/components/call-history';
+import { GeneralRemarksCard } from '@/components/general-remarks-card';
 import { Badge } from '@/components/ui/badge';
 
 export default function PersonDetailPage() {
@@ -227,7 +228,7 @@ export default function PersonDetailPage() {
 
     return (
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
-            <div className="mx-auto max-w-4xl space-y-6">
+            <div className="mx-auto max-w-7xl space-y-6">
               <div className={cn("flex flex-col lg:flex-row gap-6", !isAdmin && "lg:flex-col")}>
                 <div className={cn(isAdmin ? "lg:w-1/3" : "w-full")}>
                   <Card>
@@ -368,7 +369,14 @@ export default function PersonDetailPage() {
                   </div>
                 )}
               </div>
-              <CallHistory person={person} />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <GeneralRemarksCard
+                  personId={person.id}
+                  initialRemarks={person.generalRemarks || ''}
+                  personName={fullName}
+                />
+                <CallHistory person={person} />
+              </div>
             </div>
           </main>
     );

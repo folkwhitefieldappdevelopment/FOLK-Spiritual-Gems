@@ -53,6 +53,7 @@ export type Person = {
   folkGuideId?: string;
   progress: ProgressCategoryAnswers[];
   customData?: { [key: string]: any };
+  generalRemarks?: string;
   createdAt?: any; // Firestore Timestamp
   lastCallRemark?: string;
   lastCallAt?: any; // Firestore Timestamp
