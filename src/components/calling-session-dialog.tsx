@@ -112,7 +112,7 @@ export function CallingSessionDialog({
     if (!isInitializing && currentPerson) {
         form.reset({ 
             remark: "", 
-            status: currentPerson.lastCallStatus || "",
+            status: "", // Reset status for each new person
             sg: typeof currentPerson.lastSg === 'boolean' ? (currentPerson.lastSg ? 'yes' : 'no') : '',
             ma: typeof currentPerson.lastMa === 'boolean' ? (currentPerson.lastMa ? 'yes' : 'no') : '',
             frp: typeof currentPerson.lastFrp === 'boolean' ? (currentPerson.lastFrp ? 'yes' : 'no') : '',
@@ -250,7 +250,7 @@ export function CallingSessionDialog({
                                 render={({ field }) => (
                                     <FormItem>
                                     <FormLabel>Call Status</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select a call status" />
