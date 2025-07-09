@@ -173,10 +173,12 @@ export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView =
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="flex flex-col gap-1 text-xs">
+                  <div className="flex flex-col gap-1 text-xs items-start">
                     <div className="font-semibold">{person.enablerInTouchWith || <span className="text-muted-foreground/60">Unassigned</span>}</div>
                     {person.assignedHelperName && (
-                        <Badge variant="outline" className="font-normal">Helper: {person.assignedHelperName}</Badge>
+                      <div className="inline-block whitespace-normal rounded-full border bg-secondary px-2.5 py-1 text-xs font-normal text-secondary-foreground max-w-[150px]">
+                        <span className="font-semibold">Helper:</span> {person.assignedHelperName}
+                      </div>
                     )}
                   </div>
                 </TableCell>
