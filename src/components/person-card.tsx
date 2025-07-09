@@ -150,15 +150,22 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
           isSelected && "ring-2 ring-primary border-primary"
         )}
       >
-        {isSelectionActive && (
-           <div className="absolute top-3 right-3 z-10 pointer-events-none">
+        <div 
+            className="absolute top-3 right-3 z-10" 
+            onClick={(e) => {
+                // This stops the click on the checkbox area from triggering the card's main onClick handler.
+                e.stopPropagation();
+            }}
+        >
              <Checkbox
                checked={isSelected}
-               aria-hidden="true"
+               onCheckedChange={(checked) =>
+                 onSelectionChange(person.id, !!checked)
+               }
+               aria-label={`Select ${fullName}`}
                className="h-5 w-5"
              />
-           </div>
-        )}
+        </div>
         
         <div className="flex flex-col h-full">
             <CardHeader className="flex flex-row items-center gap-4 p-4">
