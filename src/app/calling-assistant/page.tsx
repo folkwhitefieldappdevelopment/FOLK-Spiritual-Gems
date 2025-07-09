@@ -86,7 +86,7 @@ export default function CallingAssistantPage() {
           getEnablers(appUser, 'filter'),
           getContactSources(),
           getCustomPersonFields(),
-          getGroups(),
+          getGroups(appUser),
         ]);
         setPeople(peopleData);
         setEnablerOptions(enablersData);

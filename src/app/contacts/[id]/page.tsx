@@ -67,7 +67,7 @@ export default function PersonDetailPage() {
   }, [isAdmin, appUser]);
 
   React.useEffect(() => {
-    if (!personId) return;
+    if (!personId || !appUser) return;
 
     const fetchPerson = async () => {
       setIsLoading(true);
@@ -76,7 +76,7 @@ export default function PersonDetailPage() {
         const [personData, fieldsData, groupsData] = await Promise.all([
             getPerson(personId),
             getCustomPersonFields(),
-            getGroups(),
+            getGroups(appUser),
         ]);
         
         setCustomFields(fieldsData);
@@ -108,7 +108,7 @@ export default function PersonDetailPage() {
     };
 
     fetchPerson();
-  }, [personId, router, toast]);
+  }, [personId, router, toast, appUser]);
 
   const handleSavePersonDialog = async (personData: Omit<Person, 'id' | 'progress'>) => {
     if (!person) return;

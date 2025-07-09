@@ -111,6 +111,7 @@ export type Group = {
   description: string;
   memberCount: number;
   peopleIds: string[];
+  createdBy?: string;
 };
 
 export type CustomField = {

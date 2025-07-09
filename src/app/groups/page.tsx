@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getGroups, createGroup, updateGroup, deleteGroup } from "@/services/groups-service";
 import { AuthGuard } from "@/components/auth-guard";
 import { FirebaseConfigError } from "@/components/firebase-config-error";
+import { useAuth } from "@/contexts/auth-context";
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { PageHeader } from "@/components/page-header";
@@ -16,6 +17,7 @@ import { CreateUpdateGroupDialog } from "@/components/create-update-group-dialog
 
 export default function GroupsPage() {
   const { toast } = useToast();
+  const { appUser } = useAuth();
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
@@ -25,11 +27,12 @@ export default function GroupsPage() {
   );
 
   React.useEffect(() => {
+    if (!appUser) return;
     const fetchGroups = async () => {
       setIsLoading(true);
       setFetchError(null);
       try {
-        const groupsData = await getGroups();
+        const groupsData = await getGroups(appUser);
         setGroups(groupsData);
       } catch (error) {
         console.error("Failed to fetch groups", error);
@@ -43,7 +46,7 @@ export default function GroupsPage() {
       }
     };
     fetchGroups();
-  }, []);
+  }, [appUser]);
 
   const handleCreateGroup = () => {
     setEditingGroup(undefined);
@@ -66,8 +69,9 @@ export default function GroupsPage() {
   };
 
   const handleSaveGroup = async (
-    groupData: Omit<Group, "id" | "memberCount" | "peopleIds">
+    groupData: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy">
   ) => {
+    if (!appUser) return;
     try {
       if (editingGroup) {
         // Update existing group
@@ -83,12 +87,12 @@ export default function GroupsPage() {
         });
       } else {
         // Create new group
-        const newGroupData: Omit<Group, 'id'> = {
+        const newGroupData: Omit<Group, 'id' | 'createdBy'> = {
           memberCount: 0,
           peopleIds: [],
           ...groupData,
         };
-        const newGroup = await createGroup(newGroupData);
+        const newGroup = await createGroup(newGroupData, appUser);
         setGroups((prev) => [...prev, newGroup]);
         toast({
           title: "Group Created",

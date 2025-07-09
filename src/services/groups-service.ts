@@ -8,12 +8,24 @@ import {
   updateDoc,
   deleteDoc,
   runTransaction,
+  query,
+  where,
 } from 'firebase/firestore';
-import type { Group } from '@/lib/types';
+import type { Group, AppUser } from '@/lib/types';
 
-export const getGroups = async (): Promise<Group[]> => {
+export const getGroups = async (appUser: AppUser): Promise<Group[]> => {
   const groupsCollection = collection(db, 'groups');
-  const snapshot = await getDocs(groupsCollection);
+  
+  let q;
+  if (appUser.role.includes('Admin')) {
+    // Admins see all groups
+    q = query(groupsCollection);
+  } else {
+    // Other users only see groups they created
+    q = query(groupsCollection, where('createdBy', '==', appUser.id));
+  }
+  
+  const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Group));
 };
 
@@ -26,10 +38,14 @@ export const getGroup = async (id: string): Promise<Group | null> => {
   return null;
 };
 
-export const createGroup = async (groupData: Omit<Group, 'id'>): Promise<Group> => {
+export const createGroup = async (groupData: Omit<Group, 'id' | 'createdBy'>, appUser: AppUser): Promise<Group> => {
   const groupsCollection = collection(db, 'groups');
-  const docRef = await addDoc(groupsCollection, groupData);
-  return { id: docRef.id, ...groupData };
+  const dataToSave = {
+    ...groupData,
+    createdBy: appUser.id,
+  };
+  const docRef = await addDoc(groupsCollection, dataToSave);
+  return { id: docRef.id, ...dataToSave } as Group;
 };
 
 export const updateGroup = async (id: string, groupData: Partial<Omit<Group, 'id'>>): Promise<void> => {

@@ -42,7 +42,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
   getPeople,
@@ -103,7 +102,7 @@ export default function ContactsPage() {
         getPeople(appUser),
         getEnablers(appUser, 'filter'),
         getContactSources(),
-        getGroups(),
+        getGroups(appUser),
       ]);
       setPeople(peopleData);
       setEnablerOptions(enablersData);
@@ -590,7 +589,8 @@ export default function ContactsPage() {
         title: "Members Added",
         description: `${selectedIds.size} contacts have been added to the group.`,
       });
-      const updatedGroups = await getGroups();
+      if (!appUser) return;
+      const updatedGroups = await getGroups(appUser);
       setGroups(updatedGroups);
       setSelectedIds(new Set());
     } catch (error) {
@@ -602,14 +602,15 @@ export default function ContactsPage() {
     }
   };
 
-  const handleSaveGroupAndAddMembers = async (groupData: Omit<Group, "id" | "memberCount" | "peopleIds">) => {
+  const handleSaveGroupAndAddMembers = async (groupData: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy">) => {
+    if (!appUser) return;
     try {
-      const newGroupData: Omit<Group, 'id'> = {
+      const newGroupData: Omit<Group, 'id' | 'createdBy'> = {
         memberCount: 0,
         peopleIds: [],
         ...groupData,
       };
-      const newGroup = await createGroup(newGroupData);
+      const newGroup = await createGroup(newGroupData, appUser);
       setGroups((prev) => [...prev, newGroup]);
       
       if (selectedIds.size > 0) {
@@ -618,7 +619,7 @@ export default function ContactsPage() {
           title: "Group Created & Members Added",
           description: `The group "${newGroup.name}" was created and ${selectedIds.size} contacts were added.`,
         });
-        const updatedGroups = await getGroups();
+        const updatedGroups = await getGroups(appUser);
         setGroups(updatedGroups);
         setSelectedIds(new Set());
       } else {

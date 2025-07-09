@@ -40,7 +40,7 @@ type GroupFormValues = z.infer<typeof groupFormSchema>;
 type CreateUpdateGroupDialogProps = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  onSave: (data: Omit<Group, "id" | "memberCount" | "peopleIds">) => void;
+  onSave: (data: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy">) => void;
   group?: Group;
 };
 

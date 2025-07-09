@@ -62,6 +62,18 @@ export default function GroupDetailPage() {
         setAllPeople(sanitizedPeople);
         
         if (groupData) {
+          const isOwner = groupData.createdBy === appUser.id;
+          const isAdmin = appUser.role.includes('Admin');
+          if (!isOwner && !isAdmin) {
+            toast({
+              variant: 'destructive',
+              title: 'Access Denied',
+              description: 'You do not have permission to view this group.',
+            });
+            router.push('/groups');
+            return;
+          }
+
           setGroup(groupData);
           const groupMembers = sanitizedPeople.filter(p => groupData.peopleIds.includes(p.id));
           setMembers(groupMembers);
