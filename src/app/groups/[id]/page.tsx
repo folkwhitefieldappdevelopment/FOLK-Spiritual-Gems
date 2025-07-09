@@ -366,5 +366,3 @@ export default function GroupDetailPage() {
     </AuthGuard>
   );
 }
-
-    
