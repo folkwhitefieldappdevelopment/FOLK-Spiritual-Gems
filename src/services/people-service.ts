@@ -147,7 +147,21 @@ export const createPerson = async (
   }
 
   const dataToSave = {
-    ...personData,
+    fullName: personData.fullName || '',
+    phone: personData.phone || '',
+    photoUrl: personData.photoUrl || 'https://placehold.co/100x100.png',
+    age: personData.age || 18,
+    stayingWith: personData.stayingWith || 'Family',
+    occupation: personData.occupation || 'Working',
+    organisation: personData.organisation || '',
+    rentDetails: personData.rentDetails || '',
+    nativePlace: personData.nativePlace || '',
+    sgRating: personData.sgRating || 0,
+    contactSource: personData.contactSource || '',
+    chantingStatus: personData.chantingStatus || '',
+    fromOtherCamp: personData.fromOtherCamp || false,
+    progress: personData.progress,
+    customData: personData.customData || {},
     enablerInTouchWith: assignedEnabler || '',
     folkGuide: folkGuide || '',
     folkGuideId: folkGuideId || '',
@@ -255,12 +269,28 @@ export const importPeople = async (
     const batch = writeBatch(db);
     peopleToImport.forEach((person) => {
         const docRef = doc(collection(db, 'people'));
-        const dataWithTimestamp = {
-            ...person,
-            ...folkGuideInfo,
+        const dataToSave = {
+            fullName: person.fullName || '',
+            phone: person.phone || '',
+            photoUrl: person.photoUrl || 'https://placehold.co/100x100.png',
+            age: person.age || 18,
+            stayingWith: person.stayingWith || 'Family',
+            occupation: person.occupation || 'Working',
+            organisation: person.organisation || '',
+            rentDetails: person.rentDetails || '',
+            nativePlace: person.nativePlace || '',
+            sgRating: person.sgRating || 0,
+            contactSource: person.contactSource || '',
+            chantingStatus: person.chantingStatus || '',
+            fromOtherCamp: person.fromOtherCamp || false,
+            progress: person.progress,
+            customData: person.customData || {},
+            enablerInTouchWith: person.enablerInTouchWith || '',
+            folkGuide: folkGuideInfo.folkGuide || person.folkGuide || '',
+            folkGuideId: folkGuideInfo.folkGuideId || person.folkGuideId || '',
             createdAt: serverTimestamp()
         };
-        batch.set(docRef, dataWithTimestamp);
+        batch.set(docRef, dataToSave);
     });
 
     if (newLastAssignedIndex !== undefined) {
