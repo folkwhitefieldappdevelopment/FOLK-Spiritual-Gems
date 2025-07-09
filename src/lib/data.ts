@@ -21,10 +21,6 @@ export const checklistData = [
         question: 'Weekly programs attended (No.s)',
         levels: ['4', '4', '4'],
       },
-      {
-        question: 'Weekly program goal met?',
-        levels: ['Yes', 'Yes', 'Yes'],
-      },
       { question: 'Guru issue related', levels: ['SP Office Quote', 'Struggle for Truth', 'Final Order'] },
     ],
   },
