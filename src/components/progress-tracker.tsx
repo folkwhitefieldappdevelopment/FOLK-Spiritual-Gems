@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
+import { Button } from './ui/button';
 
 const parseNumber = (str: string): number | null => {
   if (!str) return null;
@@ -95,6 +96,8 @@ export function ProgressTracker({
   progress,
   onProgressChange,
 }: ProgressTrackerProps) {
+  const [maxVisibleLevel, setMaxVisibleLevel] = React.useState(1);
+
   if (!progress || progress.length === 0) {
     return (
       <Card>
@@ -174,10 +177,24 @@ export function ProgressTracker({
     );
   };
 
+  const totalColumns = 1 + maxVisibleLevel * 3;
+
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Progress Checklist</CardTitle>
+        <div className="flex items-center gap-2">
+            {maxVisibleLevel > 1 && (
+                <Button variant="outline" size="sm" onClick={() => setMaxVisibleLevel(l => l - 1)}>
+                    Hide L{maxVisibleLevel}
+                </Button>
+            )}
+            {maxVisibleLevel < 3 && (
+                <Button size="sm" onClick={() => setMaxVisibleLevel(l => l + 1)}>
+                    Show L{maxVisibleLevel + 1}
+                </Button>
+            )}
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         <div className="relative h-[660px] w-full overflow-auto border">
@@ -193,38 +210,50 @@ export function ProgressTracker({
                     4 months
                     </p>
                 </TableHead>
-                <TableHead colSpan={3} className="text-center font-bold text-foreground border-l border-b p-2">
-                    L-2
-                    <p className="font-normal text-xs text-muted-foreground">
-                    4 months
-                    </p>
-                </TableHead>
-                <TableHead colSpan={3} className="text-center font-bold text-foreground border-l border-b p-2">
-                    L-3
-                    <p className="font-normal text-xs text-muted-foreground">
-                    4 months
-                    </p>
-                </TableHead>
+                {maxVisibleLevel >= 2 && (
+                    <TableHead colSpan={3} className="text-center font-bold text-foreground border-l border-b p-2">
+                        L-2
+                        <p className="font-normal text-xs text-muted-foreground">
+                        4 months
+                        </p>
+                    </TableHead>
+                )}
+                {maxVisibleLevel >= 3 && (
+                    <TableHead colSpan={3} className="text-center font-bold text-foreground border-l border-b p-2">
+                        L-3
+                        <p className="font-normal text-xs text-muted-foreground">
+                        4 months
+                        </p>
+                    </TableHead>
+                )}
                 </TableRow>
                 <TableRow>
                 <TableHead className="text-center text-xs font-semibold border-l border-b p-1">Goal</TableHead>
                 <TableHead className="text-center text-xs font-semibold border-b p-1">Achieved</TableHead>
                 <TableHead className="text-center text-xs font-semibold border-b p-1">Remarks</TableHead>
 
-                <TableHead className="text-center text-xs font-semibold border-l border-b p-1">Goal</TableHead>
-                <TableHead className="text-center text-xs font-semibold border-b p-1">Achieved</TableHead>
-                <TableHead className="text-center text-xs font-semibold border-b p-1">Remarks</TableHead>
+                {maxVisibleLevel >= 2 && (
+                    <>
+                        <TableHead className="text-center text-xs font-semibold border-l border-b p-1">Goal</TableHead>
+                        <TableHead className="text-center text-xs font-semibold border-b p-1">Achieved</TableHead>
+                        <TableHead className="text-center text-xs font-semibold border-b p-1">Remarks</TableHead>
+                    </>
+                )}
                 
-                <TableHead className="text-center text-xs font-semibold border-l border-b p-1">Goal</TableHead>
-                <TableHead className="text-center text-xs font-semibold border-b p-1">Achieved</TableHead>
-                <TableHead className="text-center text-xs font-semibold border-b p-1">Remarks</TableHead>
+                {maxVisibleLevel >= 3 && (
+                    <>
+                        <TableHead className="text-center text-xs font-semibold border-l border-b p-1">Goal</TableHead>
+                        <TableHead className="text-center text-xs font-semibold border-b p-1">Achieved</TableHead>
+                        <TableHead className="text-center text-xs font-semibold border-b p-1">Remarks</TableHead>
+                    </>
+                )}
                 </TableRow>
             </TableHeader>
             <TableBody>
                 {checklistData.map((category, catIndex) => (
                 <React.Fragment key={category.category}>
                     <TableRow className="bg-secondary">
-                    <TableCell colSpan={10} className="font-bold text-primary sticky left-0 z-20 bg-secondary py-2 pr-2 pl-4 border-b border-r">
+                    <TableCell colSpan={totalColumns} className="font-bold text-primary sticky left-0 z-20 bg-secondary py-2 pr-2 pl-4 border-b border-r">
                         {category.category}
                     </TableCell>
                     </TableRow>
@@ -245,6 +274,10 @@ export function ProgressTracker({
                         )}
                         </TableCell>
                         {item.levels.map((goal, levelIndex) => {
+                        if (levelIndex >= maxVisibleLevel) {
+                          return null;
+                        }
+
                         const remarkKey = `l${levelIndex + 1}_remark` as keyof ProgressLevelAnswers;
                         const currentRemark = progress?.[catIndex]?.answers?.[itemIndex]?.[remarkKey] || '';
                         
