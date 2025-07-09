@@ -758,9 +758,7 @@ export default function ContactsPage() {
                             />
                         </>
                     )}
-                </div>
-                <div className="flex items-center gap-2">
-                     {filteredPeople.length > 0 && (
+                    {filteredPeople.length > 0 && (
                         <Button
                             variant="outline"
                             size="sm"
@@ -775,6 +773,8 @@ export default function ContactsPage() {
                             {selectedIds.size === filteredPeople.length ? 'Deselect All' : 'Select All'}
                         </Button>
                     )}
+                </div>
+                <div className="flex items-center gap-2">
                     <div className="flex items-center rounded-md bg-muted p-1">
                     <Button
                         variant={view === "card" ? "secondary" : "ghost"}
