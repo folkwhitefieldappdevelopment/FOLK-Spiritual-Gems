@@ -50,6 +50,12 @@ export function CallHistory({ person }: { person: Person }) {
                                     <div className="pl-6">
                                         <p className="text-sm text-foreground">{log.remark || <span className="italic text-muted-foreground">No remark was left.</span>}</p>
                                         <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 pt-2">
+                                            {log.duration && (
+                                                <div className="flex items-center gap-1.5">
+                                                    <Timer className="h-3 w-3" />
+                                                    <span>Duration: <strong className="text-foreground">{log.duration}</strong></span>
+                                                </div>
+                                            )}
                                             {log.event && (
                                                 <div className="flex items-center gap-1.5">
                                                     <Calendar className="h-3 w-3" />
