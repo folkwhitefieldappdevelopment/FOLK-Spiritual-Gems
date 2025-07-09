@@ -84,7 +84,7 @@ export const createInitialProgress = (): ProgressCategory[] => {
     items: category.items.map(item => ({
       question: item.question,
       levels: item.levels as [string, string, string],
-      link: item.link,
+      link: item.link || "",
       answers: { l1: '', l2: '', l3: '', l1_remark: '', l2_remark: '', l3_remark: '' }
     }))
   }));
