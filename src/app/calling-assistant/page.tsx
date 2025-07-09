@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { Headset, Loader2, Edit } from "lucide-react";
+import { Headset, Loader2, Edit, Search } from "lucide-react";
 import type { Person, CallStatus, CustomField, Group } from "@/lib/types";
 import { occupationStatuses } from "@/lib/types";
 import { callStatuses } from "@/lib/data";
@@ -43,6 +43,7 @@ export default function CallingAssistantPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
   
+  const [searchTerm, setSearchTerm] = React.useState("");
   const [filters, setFilters] = React.useState<FilterRule[]>([]);
   const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([{ field: 'lastCallAt', direction: 'asc' }]);
 
@@ -119,7 +120,18 @@ export default function CallingAssistantPage() {
   const filteredPeople = React.useMemo(() => {
     let tempPeople = [...people];
 
-    // Apply filters
+    // Apply search filter
+    if (searchTerm.trim()) {
+        const lowercasedFilter = searchTerm.trim().toLowerCase();
+        tempPeople = tempPeople.filter(person => {
+            return (
+                person.fullName.toLowerCase().includes(lowercasedFilter) ||
+                person.phone.includes(lowercasedFilter)
+            );
+        });
+    }
+
+    // Apply advanced filters
     if (filters.length > 0) {
       tempPeople = tempPeople.filter(person => {
         return filters.every(filter => {
@@ -213,7 +225,7 @@ export default function CallingAssistantPage() {
       }
       return 0;
     });
-  }, [people, filters, sortDescriptors]);
+  }, [people, searchTerm, filters, sortDescriptors]);
 
   React.useEffect(() => {
     if (!isEventDialogOpen || !isStartingSessionFlow || filteredPeople.length === 0) {
@@ -397,7 +409,16 @@ export default function CallingAssistantPage() {
       <>
         <div className="mb-6 flex flex-col gap-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search by name or phone..."
+                            className="pl-10 w-full sm:w-64"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
                     <FilterPopover 
                         filters={filters}
                         setFilters={setFilters}
@@ -418,7 +439,7 @@ export default function CallingAssistantPage() {
         {filteredPeople.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <p>No contacts found.</p>
-            <p className="text-sm">Try adjusting your filters.</p>
+            <p className="text-sm">Try adjusting your search or filters.</p>
           </div>
         ) : (
           <PersonTable

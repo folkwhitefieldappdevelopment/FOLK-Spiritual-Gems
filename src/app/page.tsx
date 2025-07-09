@@ -11,6 +11,7 @@ import {
   Users,
   Loader2,
   UserCheck,
+  Search,
 } from "lucide-react";
 import { read, utils, write } from "xlsx";
 import JSZip from "jszip";
@@ -60,6 +61,7 @@ import { CreateUpdateGroupDialog } from "@/components/create-update-group-dialog
 import { AssignHelperDialog } from "@/components/assign-helper-dialog";
 import { SortPopover, type SortDescriptor } from "@/components/sort-popover";
 import { FilterPopover, type FilterRule, type FilterableField } from "@/components/filter-popover";
+import { Input } from "@/components/ui/input";
 
 export default function ContactsPage() {
   const { toast } = useToast();
@@ -73,6 +75,7 @@ export default function ContactsPage() {
   const [isExporting, setIsExporting] = React.useState(false);
   const [view, setView] = React.useState<"card" | "table">("card");
   
+  const [searchTerm, setSearchTerm] = React.useState("");
   const [filters, setFilters] = React.useState<FilterRule[]>([]);
   const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([{ field: 'createdAt', direction: 'desc' }]);
 
@@ -140,7 +143,18 @@ export default function ContactsPage() {
   const filteredPeople = React.useMemo(() => {
     let tempPeople = [...people];
 
-    // Apply filters
+    // Apply search filter
+    if (searchTerm.trim()) {
+        const lowercasedFilter = searchTerm.trim().toLowerCase();
+        tempPeople = tempPeople.filter(person => {
+            return (
+                person.fullName.toLowerCase().includes(lowercasedFilter) ||
+                person.phone.includes(lowercasedFilter)
+            );
+        });
+    }
+
+    // Apply advanced filters
     if (filters.length > 0) {
       tempPeople = tempPeople.filter(person => {
         return filters.every(filter => {
@@ -228,11 +242,11 @@ export default function ContactsPage() {
       }
       return 0;
     });
-  }, [people, filters, sortDescriptors]);
+  }, [people, searchTerm, filters, sortDescriptors]);
   
   React.useEffect(() => {
     setSelectedIds(new Set());
-  }, [filters, sortDescriptors]);
+  }, [filters, sortDescriptors, searchTerm]);
 
   const handleSampleDownload = () => {
     const headers = [
@@ -724,6 +738,15 @@ export default function ContactsPage() {
                         </>
                     ) : (
                         <>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Search by name or phone..."
+                                    className="pl-10 w-full sm:w-64"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
                             <FilterPopover 
                                 filters={filters}
                                 setFilters={setFilters}
@@ -764,7 +787,7 @@ export default function ContactsPage() {
         {filteredPeople.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
             <p>No contacts found.</p>
-            <p className="text-sm">Try adjusting your filters or add a new person.</p>
+            <p className="text-sm">Try adjusting your search or filters.</p>
           </div>
         )}
 
