@@ -335,7 +335,7 @@ export default function GroupDetailPage() {
             {filteredMembers.map((person) => <PersonCard key={person.id} person={person} isSelected={selectedIds.has(person.id)} onSelectionChange={handleSelectionChange} groups={allGroups.filter(g => g.peopleIds.includes(person.id))} isSelectionActive={isSelectionActive} />)}
           </div>
         ) : (
-          <PersonTable people={filteredMembers} onEdit={handleEditPerson} onDelete={(id) => removeMembersFromGroup([id])} selectedIds={selectedIds} setSelectedIds={setSelectedIds} />
+          <PersonTable people={filteredMembers} onEdit={handleEditPerson} onDelete={(id) => removeMembersFromGroup([id])} selectedIds={selectedIds} setSelectedIds={setSelectedIds} isSelectionActive={isSelectionActive}/>
         )}
       </>
     );

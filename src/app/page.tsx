@@ -832,6 +832,7 @@ export default function ContactsPage() {
             onDelete={handleDeletePerson}
             selectedIds={selectedIds}
             setSelectedIds={setSelectedIds}
+            isSelectionActive={isSelectionActive}
           />
         )}
       </>

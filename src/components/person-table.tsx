@@ -31,7 +31,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   Tooltip,
@@ -47,6 +46,7 @@ type PersonTableProps = {
   onEdit: (person: Person) => void;
   onDelete: (personId: string) => void;
   isCallingAssistantView?: boolean;
+  isSelectionActive?: boolean;
   selectedIds?: Set<string>;
   setSelectedIds?: React.Dispatch<React.SetStateAction<Set<string>>>;
 };
@@ -58,7 +58,7 @@ const safeDate = (timestamp: any): Date | null => {
     return null;
 }
 
-export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView = false, selectedIds, setSelectedIds }: PersonTableProps) {
+export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView = false, isSelectionActive = false, selectedIds, setSelectedIds }: PersonTableProps) {
   
   const isSelectionEnabled = !!selectedIds && !!setSelectedIds;
 
@@ -137,21 +137,42 @@ export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView =
                   </TableCell>
                 )}
                 <TableCell>
-                  <Link href={`/contacts/${person.id}`} className="flex items-center gap-3 group">
-                    <Avatar>
-                      <AvatarImage
-                        src={person.photoUrl}
-                        alt={fullName}
-                        data-ai-hint="person portrait"
-                      />
-                      <AvatarFallback>
-                        {fallback}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="font-medium group-hover:underline">
-                      {fullName}
+                  {isSelectionActive ? (
+                    <div
+                      className="flex items-center gap-3 group cursor-pointer"
+                      onClick={() => handleSelectOne(person.id, !isSelected)}
+                    >
+                      <Avatar>
+                        <AvatarImage
+                          src={person.photoUrl}
+                          alt={fullName}
+                          data-ai-hint="person portrait"
+                        />
+                        <AvatarFallback>
+                          {fallback}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="font-medium group-hover:underline">
+                        {fullName}
+                      </div>
                     </div>
-                  </Link>
+                  ) : (
+                    <Link href={`/contacts/${person.id}`} className="flex items-center gap-3 group">
+                      <Avatar>
+                        <AvatarImage
+                          src={person.photoUrl}
+                          alt={fullName}
+                          data-ai-hint="person portrait"
+                        />
+                        <AvatarFallback>
+                          {fallback}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="font-medium group-hover:underline">
+                        {fullName}
+                      </div>
+                    </Link>
+                  )}
                 </TableCell>
                 <TableCell className="hidden sm:table-cell">
                   <div className="flex items-center gap-3">
@@ -285,5 +306,3 @@ export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView =
     </TooltipProvider>
   );
 }
-
-    

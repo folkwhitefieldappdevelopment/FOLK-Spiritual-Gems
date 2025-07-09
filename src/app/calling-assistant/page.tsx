@@ -605,6 +605,7 @@ export default function CallingAssistantPage() {
             isCallingAssistantView={true}
             selectedIds={selectedIds}
             setSelectedIds={setSelectedIds}
+            isSelectionActive={isSelectionActive}
           />
         )}
       </>
