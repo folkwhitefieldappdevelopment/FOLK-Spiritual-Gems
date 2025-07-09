@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -24,7 +25,15 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useEffect } from "react";
+import { useAuth } from "@/contexts/auth-context";
 
 const groupFormSchema = z.object({
   name: z.string().min(2, {
@@ -33,6 +42,7 @@ const groupFormSchema = z.object({
   description: z.string().max(160, {
     message: "Description must not be longer than 160 characters.",
   }).optional(),
+  visibility: z.enum(['private', 'team']).default('private'),
 });
 
 type GroupFormValues = z.infer<typeof groupFormSchema>;
@@ -40,7 +50,7 @@ type GroupFormValues = z.infer<typeof groupFormSchema>;
 type CreateUpdateGroupDialogProps = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  onSave: (data: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy">) => void;
+  onSave: (data: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy" | "creatorRole">) => void;
   group?: Group;
 };
 
@@ -50,11 +60,14 @@ export function CreateUpdateGroupDialog({
   onSave,
   group,
 }: CreateUpdateGroupDialogProps) {
+  const { appUser } = useAuth();
+
   const form = useForm<GroupFormValues>({
     resolver: zodResolver(groupFormSchema),
     defaultValues: {
       name: "",
       description: "",
+      visibility: "private",
     },
   });
 
@@ -63,11 +76,13 @@ export function CreateUpdateGroupDialog({
       form.reset({
         name: group.name,
         description: group.description,
+        visibility: group.visibility || "private",
       });
     } else {
         form.reset({
             name: "",
             description: "",
+            visibility: "private",
         });
     }
   }, [group, form]);
@@ -76,9 +91,14 @@ export function CreateUpdateGroupDialog({
     onSave({
         name: data.name,
         description: data.description || '',
+        visibility: data.visibility,
     });
     setIsOpen(false);
   };
+  
+  const canSetVisibility = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
+  const teamVisibilityLabel = appUser?.role.includes('Admin') ? 'Share with all Folk Guides' : 'Share with my Enablers';
+
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -123,6 +143,29 @@ export function CreateUpdateGroupDialog({
                 </FormItem>
               )}
             />
+            {canSetVisibility && (
+              <FormField
+                control={form.control}
+                name="visibility"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Visibility</FormLabel>
+                     <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select visibility" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="private">Private (only me)</SelectItem>
+                          <SelectItem value="team">{teamVisibilityLabel}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <DialogFooter>
               <Button type="submit">Save changes</Button>
             </DialogFooter>

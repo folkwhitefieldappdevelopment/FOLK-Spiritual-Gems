@@ -1,3 +1,4 @@
+
 import { db } from '@/lib/firebase';
 import {
   collection,
@@ -10,23 +11,59 @@ import {
   runTransaction,
   query,
   where,
+  type QuerySnapshot,
+  type DocumentData,
 } from 'firebase/firestore';
 import type { Group, AppUser } from '@/lib/types';
 
 export const getGroups = async (appUser: AppUser): Promise<Group[]> => {
   const groupsCollection = collection(db, 'groups');
-  
-  let q;
+  const results = new Map<string, Group>();
+
+  // 1. Get the user's own groups
+  const myGroupsQuery = query(groupsCollection, where('createdBy', '==', appUser.id));
+  const myGroupsSnap = await getDocs(myGroupsQuery);
+  myGroupsSnap.forEach(doc => {
+    if (!results.has(doc.id)) {
+      results.set(doc.id, { id: doc.id, ...doc.data() } as Group);
+    }
+  });
+
+  // If the user is an admin, they can see all groups, so we can just fetch all and return.
   if (appUser.role.includes('Admin')) {
-    // Admins see all groups
-    q = query(groupsCollection);
-  } else {
-    // Other users only see groups they created
-    q = query(groupsCollection, where('createdBy', '==', appUser.id));
+    const allGroupsSnap = await getDocs(collection(db, 'groups'));
+    allGroupsSnap.forEach(doc => {
+        if (!results.has(doc.id)) {
+            results.set(doc.id, { id: doc.id, ...doc.data() } as Group)
+        }
+    });
+    return Array.from(results.values()).sort((a,b) => a.name.localeCompare(b.name));
   }
   
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Group));
+  // 2. Get groups shared by others based on user's role
+  if (appUser.role.includes('Folk Guide')) {
+    // A Folk Guide can see groups shared by Admins.
+    const sharedByAdminQuery = query(groupsCollection, where('visibility', '==', 'team'), where('creatorRole', 'array-contains', 'Admin'));
+    const sharedByAdminSnap = await getDocs(sharedByAdminQuery);
+    sharedByAdminSnap.forEach(doc => {
+      if (!results.has(doc.id)) {
+        results.set(doc.id, { id: doc.id, ...doc.data() } as Group);
+      }
+    });
+  }
+  
+  if (appUser.role.includes('Folk Enabler') && appUser.reportsTo?.guideId) {
+    // An Enabler can see groups shared by their specific guide.
+    const sharedByGuideQuery = query(groupsCollection, where('visibility', '==', 'team'), where('createdBy', '==', appUser.reportsTo.guideId));
+    const sharedByGuideSnap = await getDocs(sharedByGuideQuery);
+    sharedByGuideSnap.forEach(doc => {
+      if (!results.has(doc.id)) {
+        results.set(doc.id, { id: doc.id, ...doc.data() } as Group);
+      }
+    });
+  }
+  
+  return Array.from(results.values()).sort((a,b) => a.name.localeCompare(b.name));
 };
 
 export const getGroup = async (id: string): Promise<Group | null> => {
@@ -38,11 +75,15 @@ export const getGroup = async (id: string): Promise<Group | null> => {
   return null;
 };
 
-export const createGroup = async (groupData: Omit<Group, 'id' | 'createdBy'>, appUser: AppUser): Promise<Group> => {
+export const createGroup = async (groupData: Omit<Group, 'id' | 'memberCount' | 'peopleIds' | 'createdBy' | 'creatorRole'>, appUser: AppUser): Promise<Group> => {
   const groupsCollection = collection(db, 'groups');
   const dataToSave = {
     ...groupData,
     createdBy: appUser.id,
+    creatorRole: appUser.role,
+    visibility: groupData.visibility || 'private',
+    memberCount: 0,
+    peopleIds: [],
   };
   const docRef = await addDoc(groupsCollection, dataToSave);
   return { id: docRef.id, ...dataToSave } as Group;

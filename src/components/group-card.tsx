@@ -1,6 +1,7 @@
+
 "use client";
 import Link from "next/link";
-import { Users, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { Users, MoreHorizontal, Edit, Trash2, Globe, Lock } from "lucide-react";
 import type { Group } from "@/lib/types";
 
 import {
@@ -11,6 +12,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -104,13 +106,19 @@ export function GroupCard({ group, onEdit, onDelete }: GroupCardProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex-grow"></CardContent>
-        <CardFooter>
+        <CardFooter className="flex justify-between items-center">
           <div className="flex items-center text-sm text-muted-foreground">
             <Users className="mr-2 h-4 w-4" />
             <span>
               {group.memberCount} member{group.memberCount !== 1 && "s"}
             </span>
           </div>
+          {group.visibility === 'team' && (
+            <Badge variant="outline">
+              <Globe className="mr-1 h-3 w-3" />
+              Team
+            </Badge>
+          )}
         </CardFooter>
       </Card>
     </Link>

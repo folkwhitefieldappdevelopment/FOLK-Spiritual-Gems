@@ -112,6 +112,8 @@ export type Group = {
   memberCount: number;
   peopleIds: string[];
   createdBy?: string;
+  creatorRole?: UserRole[];
+  visibility?: 'private' | 'team';
 };
 
 export type CustomField = {
