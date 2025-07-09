@@ -113,7 +113,7 @@ export type Group = {
   peopleIds: string[];
   createdBy?: string;
   creatorRole?: UserRole[];
-  visibility?: 'private' | 'team';
+  visibility: UserRole[];
 };
 
 export type CustomField = {

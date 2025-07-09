@@ -113,12 +113,21 @@ export function GroupCard({ group, onEdit, onDelete }: GroupCardProps) {
               {group.memberCount} member{group.memberCount !== 1 && "s"}
             </span>
           </div>
-          {group.visibility === 'team' && (
-            <Badge variant="outline">
-              <Globe className="mr-1 h-3 w-3" />
-              Team
-            </Badge>
-          )}
+          <div className="flex items-center gap-1">
+              {group.visibility?.length > 0 ? (
+                group.visibility.map(role => (
+                  <Badge key={role} variant="outline" className="flex items-center gap-1">
+                    <Globe className="mr-1 h-3 w-3" />
+                    {role.replace('Folk ', '')}
+                  </Badge>
+                ))
+              ) : (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  <Lock className="h-3 w-3" />
+                  Private
+                </Badge>
+              )}
+          </div>
         </CardFooter>
       </Card>
     </Link>
