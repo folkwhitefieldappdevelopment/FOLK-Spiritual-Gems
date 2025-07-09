@@ -146,7 +146,7 @@ export function ProgressTracker({
       );
     }
 
-    if (goalValue.toLowerCase() === 'yes' || category.name === 'Expedition') {
+    if (goalValue.toLowerCase() === 'yes' || category.name === 'Expedition' || item.question === 'Guru issue related') {
       return (
         <Select
           value={currentValue}
