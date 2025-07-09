@@ -19,49 +19,34 @@ import type { Group, AppUser } from '@/lib/types';
 export const getGroups = async (appUser: AppUser): Promise<Group[]> => {
   const groupsCollection = collection(db, 'groups');
   const results = new Map<string, Group>();
+  const queries: Promise<QuerySnapshot<DocumentData>>[] = [];
 
-  // 1. Get the user's own groups
-  const myGroupsQuery = query(groupsCollection, where('createdBy', '==', appUser.id));
-  const myGroupsSnap = await getDocs(myGroupsQuery);
-  myGroupsSnap.forEach(doc => {
-    if (!results.has(doc.id)) {
-      results.set(doc.id, { id: doc.id, ...doc.data() } as Group);
-    }
-  });
+  // Query 1: Always get the user's own groups
+  queries.push(getDocs(query(groupsCollection, where('createdBy', '==', appUser.id))));
 
-  // If the user is an admin, they can see all groups, so we can just fetch all and return.
+  // If user is Admin, they get all groups.
+  // We can just get all and the Set will handle duplicates.
   if (appUser.role.includes('Admin')) {
-    const allGroupsSnap = await getDocs(collection(db, 'groups'));
-    allGroupsSnap.forEach(doc => {
+    queries.push(getDocs(collection(db, 'groups')));
+  } else {
+    // If not admin, all roles (Guide, Enabler) can see team groups created by Admins
+    queries.push(getDocs(query(groupsCollection, where('visibility', '==', 'team'), where('creatorRole', 'array-contains', 'Admin'))));
+
+    // If they are an enabler, they also see team groups created by their guide
+    if (appUser.role.includes('Folk Enabler') && appUser.reportsTo?.guideId) {
+      queries.push(getDocs(query(groupsCollection, where('visibility', '==', 'team'), where('createdBy', '==', appUser.reportsTo.guideId))));
+    }
+  }
+
+  const snapshots = await Promise.all(queries);
+
+  snapshots.forEach(snap => {
+    snap.forEach(doc => {
         if (!results.has(doc.id)) {
-            results.set(doc.id, { id: doc.id, ...doc.data() } as Group)
+            results.set(doc.id, { id: doc.id, ...doc.data() } as Group);
         }
     });
-    return Array.from(results.values()).sort((a,b) => a.name.localeCompare(b.name));
-  }
-  
-  // 2. Get groups shared by others based on user's role
-  if (appUser.role.includes('Folk Guide')) {
-    // A Folk Guide can see groups shared by Admins.
-    const sharedByAdminQuery = query(groupsCollection, where('visibility', '==', 'team'), where('creatorRole', 'array-contains', 'Admin'));
-    const sharedByAdminSnap = await getDocs(sharedByAdminQuery);
-    sharedByAdminSnap.forEach(doc => {
-      if (!results.has(doc.id)) {
-        results.set(doc.id, { id: doc.id, ...doc.data() } as Group);
-      }
-    });
-  }
-  
-  if (appUser.role.includes('Folk Enabler') && appUser.reportsTo?.guideId) {
-    // An Enabler can see groups shared by their specific guide.
-    const sharedByGuideQuery = query(groupsCollection, where('visibility', '==', 'team'), where('createdBy', '==', appUser.reportsTo.guideId));
-    const sharedByGuideSnap = await getDocs(sharedByGuideQuery);
-    sharedByGuideSnap.forEach(doc => {
-      if (!results.has(doc.id)) {
-        results.set(doc.id, { id: doc.id, ...doc.data() } as Group);
-      }
-    });
-  }
+  });
   
   return Array.from(results.values()).sort((a,b) => a.name.localeCompare(b.name));
 };

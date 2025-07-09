@@ -97,7 +97,7 @@ export function CreateUpdateGroupDialog({
   };
   
   const canSetVisibility = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
-  const teamVisibilityLabel = appUser?.role.includes('Admin') ? 'Share with all Folk Guides' : 'Share with my Enablers';
+  const teamVisibilityLabel = appUser?.role.includes('Admin') ? 'Share with all Guides & Enablers' : 'Share with my Enablers';
 
 
   return (
