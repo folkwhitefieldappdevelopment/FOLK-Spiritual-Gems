@@ -38,6 +38,7 @@ export default function CallingAssistantPage() {
   const { appUser, updateCurrentAppUser } = useAuth();
 
   const [people, setPeople] = React.useState<Person[]>([]);
+  const [peopleForSession, setPeopleForSession] = React.useState<Person[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
   
@@ -55,6 +56,7 @@ export default function CallingAssistantPage() {
   const [isEventDialogOpen, setIsEventDialogOpen] = React.useState(false);
   const [isStartingSessionFlow, setIsStartingSessionFlow] = React.useState(false);
   const [editableEventName, setEditableEventName] = React.useState("");
+  const [callRange, setCallRange] = React.useState({ from: '1', to: '' });
 
   React.useEffect(() => {
     if (!appUser) {
@@ -271,6 +273,7 @@ export default function CallingAssistantPage() {
 
   const handleOpenEventDialog = (isStartingFlow: boolean) => {
     setEditableEventName(currentCallingEvent);
+    setCallRange({ from: '1', to: String(filteredPeople.length) });
     setIsStartingSessionFlow(isStartingFlow);
     setIsEventDialogOpen(true);
   };
@@ -294,11 +297,41 @@ export default function CallingAssistantPage() {
       }
     }
 
-    setIsEventDialogOpen(false);
-
     if (isStartingSessionFlow) {
+      const fromIndex = parseInt(callRange.from, 10);
+      const toIndex = callRange.to.trim() === '' ? filteredPeople.length : parseInt(callRange.to, 10);
+
+      if (
+        isNaN(fromIndex) ||
+        isNaN(toIndex) ||
+        fromIndex < 1 ||
+        toIndex > filteredPeople.length ||
+        fromIndex > toIndex
+      ) {
+        toast({
+          variant: 'destructive',
+          title: 'Invalid Range',
+          description: `Please enter a valid range between 1 and ${filteredPeople.length}.`,
+        });
+        return;
+      }
+      
+      const peopleToCall = filteredPeople.slice(fromIndex - 1, toIndex);
+
+      if (peopleToCall.length === 0) {
+        toast({
+          variant: 'destructive',
+          title: 'No Contacts Selected',
+          description: 'The specified range is empty.',
+        });
+        return;
+      }
+      
+      setPeopleForSession(peopleToCall);
       setIsSessionDialogOpen(true);
     }
+    
+    setIsEventDialogOpen(false);
   };
 
 
@@ -382,19 +415,48 @@ export default function CallingAssistantPage() {
               <DialogTitle>{isStartingSessionFlow ? 'Confirm Calling Event' : 'Edit Calling Event'}</DialogTitle>
               <DialogDescription>
                 {isStartingSessionFlow
-                  ? 'Confirm or update the event name before you start your calling session.'
+                  ? 'Confirm the event and optionally specify a range of contacts to call.'
                   : 'Update the name of the current calling event.'}
               </DialogDescription>
             </DialogHeader>
-            <div className="py-4">
-              <Label htmlFor="eventName">Event Name</Label>
-              <Input
-                id="eventName"
-                value={editableEventName}
-                onChange={(e) => setEditableEventName(e.target.value)}
-                className="mt-1"
-                placeholder="e.g., Spiritual Camp - July 2024"
-              />
+            <div className="space-y-4 py-4">
+              <div>
+                <Label htmlFor="eventName">Event Name</Label>
+                <Input
+                  id="eventName"
+                  value={editableEventName}
+                  onChange={(e) => setEditableEventName(e.target.value)}
+                  className="mt-1"
+                  placeholder="e.g., Spiritual Camp - July 2024"
+                />
+              </div>
+              {isStartingSessionFlow && (
+                <div className="space-y-2">
+                  <Label>Calling Range</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                        type="number"
+                        placeholder="From"
+                        value={callRange.from}
+                        onChange={(e) => setCallRange(prev => ({...prev, from: e.target.value}))}
+                        min="1"
+                        max={filteredPeople.length}
+                    />
+                    <span className="text-muted-foreground">to</span>
+                    <Input
+                        type="number"
+                        placeholder="To"
+                        value={callRange.to}
+                        onChange={(e) => setCallRange(prev => ({...prev, to: e.target.value}))}
+                        min="1"
+                        max={filteredPeople.length}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                      Select a range from your filtered list of {filteredPeople.length} contacts.
+                  </p>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsEventDialogOpen(false)}>Cancel</Button>
@@ -408,7 +470,7 @@ export default function CallingAssistantPage() {
         <CallingSessionDialog
           isOpen={isSessionDialogOpen}
           onClose={() => setIsSessionDialogOpen(false)}
-          people={filteredPeople}
+          people={peopleForSession}
           onSaveRemark={handleSessionSave}
           currentEvent={currentCallingEvent}
         />
