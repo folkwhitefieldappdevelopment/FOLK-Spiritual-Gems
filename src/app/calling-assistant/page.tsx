@@ -213,23 +213,29 @@ export default function CallingAssistantPage() {
       return;
     }
 
-    const fromInput = callRange.from.trim();
-    const toInput = callRange.to.trim();
+    const handler = setTimeout(() => {
+        const fromInput = callRange.from.trim();
+        const toInput = callRange.to.trim();
 
-    const fromIndex = parseInt(fromInput, 10) - 1;
-    const toIndex = toInput === '' ? filteredPeople.length - 1 : parseInt(toInput, 10) - 1;
+        const fromIndex = parseInt(fromInput, 10) - 1;
+        const toIndex = toInput === '' ? filteredPeople.length - 1 : parseInt(toInput, 10) - 1;
 
-    let fromName = '';
-    if (fromInput && !isNaN(fromIndex) && fromIndex >= 0 && fromIndex < filteredPeople.length) {
-      fromName = filteredPeople[fromIndex]?.fullName || '';
-    }
+        let fromName = '';
+        if (fromInput && !isNaN(fromIndex) && fromIndex >= 0 && fromIndex < filteredPeople.length) {
+          fromName = filteredPeople[fromIndex]?.fullName || '';
+        }
 
-    let toName = '';
-    if (!isNaN(toIndex) && toIndex >= 0 && toIndex < filteredPeople.length) {
-      toName = filteredPeople[toIndex]?.fullName || '';
-    }
+        let toName = '';
+        if (!isNaN(toIndex) && toIndex >= 0 && toIndex < filteredPeople.length) {
+          toName = filteredPeople[toIndex]?.fullName || '';
+        }
 
-    setCallRangeNames({ from: fromName, to: toName });
+        setCallRangeNames({ from: fromName, to: toName });
+    }, 300); // Debounce for 300ms
+
+    return () => {
+        clearTimeout(handler);
+    };
   }, [callRange, filteredPeople, isEventDialogOpen, isStartingSessionFlow]);
 
   const handleEditPerson = (person: Person) => {
