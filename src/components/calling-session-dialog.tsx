@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import type { Person, CallStatus, CustomField, Group } from "@/lib/types";
 import { callStatuses } from "@/lib/data";
-import { Phone, SkipForward, Square, CheckSquare, Loader2, Tags } from "lucide-react";
+import { Phone, Square, CheckSquare, Loader2, Tags, ArrowLeft, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 import {
@@ -120,7 +120,7 @@ export function CallingSessionDialog({
     }
   }, [currentPerson, form, isInitializing]);
   
-  const goToNext = () => {
+  const handleNext = () => {
     if (currentIndex < people.length - 1) {
         setCurrentIndex(currentIndex + 1);
     } else {
@@ -132,8 +132,10 @@ export function CallingSessionDialog({
     }
   }
 
-  const handleSkip = () => {
-    goToNext();
+  const handlePrevious = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+    }
   };
   
   const onSubmit = (data: CallFormValues) => {
@@ -149,7 +151,7 @@ export function CallingSessionDialog({
         title: "Call Logged",
         description: `Status for ${fullName} has been updated.`
     });
-    goToNext();
+    handleNext();
   };
 
   const handleCloseDialog = () => {
@@ -345,19 +347,38 @@ export function CallingSessionDialog({
                             />
                         </form>
                     </Form>
-                     <div className="grid grid-cols-3 gap-2 pt-4">
-                        <Button variant="secondary" onClick={onClose} className="col-span-1">
+                     <div className="flex items-center justify-between pt-4">
+                        <Button variant="secondary" onClick={onClose}>
                             <Square className="mr-2 h-4 w-4"/>
                             End Session
                         </Button>
-                         <Button variant="outline" onClick={handleSkip} className="col-span-1">
-                            <SkipForward className="mr-2 h-4 w-4"/>
-                            Skip
-                        </Button>
-                        <Button type="submit" form="call-form" className="col-span-1" disabled={form.formState.isSubmitting}>
-                            <CheckSquare className="mr-2 h-4 w-4"/>
-                            Save & Next
-                        </Button>
+                         <div className="flex items-center gap-2">
+                             <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={handlePrevious}
+                                disabled={currentIndex === 0}
+                                aria-label="Previous Contact"
+                            >
+                                <ArrowLeft className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={handleNext}
+                                aria-label="Next Contact (Skip)"
+                            >
+                                <ArrowRight className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                type="submit"
+                                form="call-form"
+                                disabled={form.formState.isSubmitting}
+                            >
+                                <CheckSquare className="mr-2 h-4 w-4"/>
+                                Save & Next
+                            </Button>
+                        </div>
                     </div>
                 </div>
 
