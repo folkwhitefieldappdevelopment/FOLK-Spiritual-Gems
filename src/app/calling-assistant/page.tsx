@@ -57,6 +57,7 @@ export default function CallingAssistantPage() {
   const [isStartingSessionFlow, setIsStartingSessionFlow] = React.useState(false);
   const [editableEventName, setEditableEventName] = React.useState("");
   const [callRange, setCallRange] = React.useState({ from: '1', to: '' });
+  const [callRangeNames, setCallRangeNames] = React.useState({ from: '', to: '' });
 
   React.useEffect(() => {
     if (!appUser) {
@@ -89,6 +90,32 @@ export default function CallingAssistantPage() {
     };
     fetchData();
   }, [appUser]);
+
+  React.useEffect(() => {
+    if (!isEventDialogOpen || !isStartingSessionFlow || filteredPeople.length === 0) {
+      setCallRangeNames({ from: '', to: '' });
+      return;
+    }
+
+    const fromInput = callRange.from.trim();
+    const toInput = callRange.to.trim();
+
+    const fromIndex = parseInt(fromInput, 10) - 1;
+    const toIndex = toInput === '' ? filteredPeople.length - 1 : parseInt(toInput, 10) - 1;
+
+    let fromName = '';
+    if (fromInput && !isNaN(fromIndex) && fromIndex >= 0 && fromIndex < filteredPeople.length) {
+      fromName = filteredPeople[fromIndex]?.fullName || '';
+    }
+
+    let toName = '';
+    if (!isNaN(toIndex) && toIndex >= 0 && toIndex < filteredPeople.length) {
+      toName = filteredPeople[toIndex]?.fullName || '';
+    }
+
+    setCallRangeNames({ from: fromName, to: toName });
+  }, [callRange, filteredPeople, isEventDialogOpen, isStartingSessionFlow]);
+
 
   const filterableFields: FilterableField[] = React.useMemo(() => {
     return [
@@ -455,6 +482,12 @@ export default function CallingAssistantPage() {
                   <p className="text-xs text-muted-foreground">
                       Select a range from your filtered list of {filteredPeople.length} contacts.
                   </p>
+                  {callRangeNames.from && (
+                    <div className="text-xs text-muted-foreground mt-2 border-l-2 border-primary pl-2 space-y-1">
+                        <p>From: <strong className="text-foreground">{callRange.from}. {callRangeNames.from}</strong></p>
+                        {callRangeNames.to && <p>To: <strong className="text-foreground">{callRange.to || filteredPeople.length}. {callRangeNames.to}</strong></p>}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
