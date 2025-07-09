@@ -34,7 +34,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "./ui/scroll-area";
 import { Separator } from "./ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
@@ -170,8 +169,8 @@ export function CallingSessionDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleCloseDialog()}>
-      <DialogContent className="sm:max-w-4xl" onPointerDownOutside={(e) => e.preventDefault()}>
-        <DialogHeader>
+      <DialogContent className="sm:max-w-4xl flex flex-col max-h-[90vh] p-0" onPointerDownOutside={(e) => e.preventDefault()}>
+        <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b">
           <DialogTitle>
             Calling Session
           </DialogTitle>
@@ -180,7 +179,7 @@ export function CallingSessionDialog({
           </DialogDescription>
         </DialogHeader>
         
-        <div className="grid md:grid-cols-2 gap-x-8 gap-y-4 py-4">
+        <div className="grid md:grid-cols-2 gap-x-8 gap-y-4 p-6 overflow-y-auto">
             {/* Left Column: Form & Actions */}
             <div className="flex flex-col space-y-4">
                 <div className="flex items-center justify-between rounded-lg border p-3">
@@ -337,84 +336,82 @@ export function CallingSessionDialog({
             </div>
 
             {/* Right Column: Person Details */}
-            <div className="border-l md:pl-8">
-                <ScrollArea className="h-[55vh]">
-                    <div className="space-y-4 pr-6">
-                        <div className="flex flex-col items-center text-center">
-                            <Avatar className="h-24 w-24 mb-3">
-                                <AvatarImage src={currentPerson.photoUrl} alt={fullName} data-ai-hint="person portrait" />
-                                <AvatarFallback>{fallback}</AvatarFallback>
-                            </Avatar>
-                            <h3 className="font-semibold text-lg text-foreground">{fullName}</h3>
-                            <p className="text-sm text-muted-foreground">
-                                {currentPerson.sgRating ? `Rating: ${currentPerson.sgRating}/10` : 'No rating'}
-                            </p>
-                        </div>
-
-                        <Separator />
-
-                        <div className="text-sm grid grid-cols-[120px_1fr] gap-x-2 gap-y-3">
-                            <div className="font-semibold text-muted-foreground">Age</div>
-                            <div>{currentPerson.age}</div>
-
-                            <div className="font-semibold text-muted-foreground">Staying With</div>
-                            <div>{currentPerson.stayingWith}</div>
-
-                            <div className="font-semibold text-muted-foreground">Occupation</div>
-                            <div>{currentPerson.occupation || 'N/A'}</div>
-
-                            <div className="font-semibold text-muted-foreground">Organisation</div>
-                            <div>{currentPerson.organisation || 'N/A'}</div>
-
-                            <div className="font-semibold text-muted-foreground">Rent Details</div>
-                            <div>{currentPerson.rentDetails || 'N/A'}</div>
-
-                            <div className="font-semibold text-muted-foreground">Native Place</div>
-                            <div>{currentPerson.nativePlace || 'N/A'}</div>
-                            
-                            <div className="font-semibold text-muted-foreground">Contact Source</div>
-                            <div>{currentPerson.contactSource || 'N/A'}</div>
-
-                            <div className="font-semibold text-muted-foreground">Chanting Status</div>
-                            <div>{currentPerson.chantingStatus || 'N/A'}</div>
-
-                            <div className="font-semibold text-muted-foreground">From Other Camp</div>
-                            <div>{currentPerson.fromOtherCamp ? 'Yes' : 'No'}</div>
-                            
-                            <div className="font-semibold text-muted-foreground">Enabler</div>
-                            <div>{currentPerson.enablerInTouchWith || 'N/A'}</div>
-
-                            <div className="font-semibold text-muted-foreground">Folk Guide</div>
-                            <div>{currentPerson.folkGuide || 'N/A'}</div>
-                        </div>
-
-                        {hasCustomData && (
-                        <>
-                          <Separator className="my-4" />
-                          <div className="text-sm grid grid-cols-[120px_1fr] gap-x-2 gap-y-3">
-                             {customFields.map(field => {
-                                const value = currentPerson.customData?.[field.id];
-                                if (!value) return null;
-                                 if (field.type === 'textarea') {
-                                  return (
-                                    <React.Fragment key={field.id}>
-                                      <div className="font-semibold text-muted-foreground col-span-2">{field.label}</div>
-                                      <div className="col-span-2 whitespace-pre-wrap">{formatCustomValue(value, field.type)}</div>
-                                    </React.Fragment>
-                                  );
-                                }
-                                return (
-                                  <React.Fragment key={field.id}>
-                                    <div className="font-semibold text-muted-foreground">{field.label}</div>
-                                    <div>{formatCustomValue(value, field.type)}</div>
-                                  </React.Fragment>
-                                );
-                             })}
-                          </div>
-                        </>
-                      )}
+            <div className="md:border-l md:pl-8">
+                <div className="space-y-4">
+                    <div className="flex flex-col items-center text-center">
+                        <Avatar className="h-24 w-24 mb-3">
+                            <AvatarImage src={currentPerson.photoUrl} alt={fullName} data-ai-hint="person portrait" />
+                            <AvatarFallback>{fallback}</AvatarFallback>
+                        </Avatar>
+                        <h3 className="font-semibold text-lg text-foreground">{fullName}</h3>
+                        <p className="text-sm text-muted-foreground">
+                            {currentPerson.sgRating ? `Rating: ${currentPerson.sgRating}/10` : 'No rating'}
+                        </p>
                     </div>
-                </ScrollArea>
+
+                    <Separator />
+
+                    <div className="text-sm grid grid-cols-[120px_1fr] gap-x-2 gap-y-3">
+                        <div className="font-semibold text-muted-foreground">Age</div>
+                        <div>{currentPerson.age}</div>
+
+                        <div className="font-semibold text-muted-foreground">Staying With</div>
+                        <div>{currentPerson.stayingWith}</div>
+
+                        <div className="font-semibold text-muted-foreground">Occupation</div>
+                        <div>{currentPerson.occupation || 'N/A'}</div>
+
+                        <div className="font-semibold text-muted-foreground">Organisation</div>
+                        <div>{currentPerson.organisation || 'N/A'}</div>
+
+                        <div className="font-semibold text-muted-foreground">Rent Details</div>
+                        <div>{currentPerson.rentDetails || 'N/A'}</div>
+
+                        <div className="font-semibold text-muted-foreground">Native Place</div>
+                        <div>{currentPerson.nativePlace || 'N/A'}</div>
+                        
+                        <div className="font-semibold text-muted-foreground">Contact Source</div>
+                        <div>{currentPerson.contactSource || 'N/A'}</div>
+
+                        <div className="font-semibold text-muted-foreground">Chanting Status</div>
+                        <div>{currentPerson.chantingStatus || 'N/A'}</div>
+
+                        <div className="font-semibold text-muted-foreground">From Other Camp</div>
+                        <div>{currentPerson.fromOtherCamp ? 'Yes' : 'No'}</div>
+                        
+                        <div className="font-semibold text-muted-foreground">Enabler</div>
+                        <div>{currentPerson.enablerInTouchWith || 'N/A'}</div>
+
+                        <div className="font-semibold text-muted-foreground">Folk Guide</div>
+                        <div>{currentPerson.folkGuide || 'N/A'}</div>
+                    </div>
+
+                    {hasCustomData && (
+                    <>
+                      <Separator className="my-4" />
+                      <div className="text-sm grid grid-cols-[120px_1fr] gap-x-2 gap-y-3">
+                         {customFields.map(field => {
+                            const value = currentPerson.customData?.[field.id];
+                            if (!value) return null;
+                             if (field.type === 'textarea') {
+                              return (
+                                <React.Fragment key={field.id}>
+                                  <div className="font-semibold text-muted-foreground col-span-2">{field.label}</div>
+                                  <div className="col-span-2 whitespace-pre-wrap">{formatCustomValue(value, field.type)}</div>
+                                </React.Fragment>
+                              );
+                            }
+                            return (
+                              <React.Fragment key={field.id}>
+                                <div className="font-semibold text-muted-foreground">{field.label}</div>
+                                <div>{formatCustomValue(value, field.type)}</div>
+                              </React.Fragment>
+                            );
+                         })}
+                      </div>
+                    </>
+                  )}
+                </div>
             </div>
         </div>
       </DialogContent>
