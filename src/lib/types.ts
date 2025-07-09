@@ -65,10 +65,15 @@ export type Person = {
     sg?: boolean;
     ma?: boolean;
     frp?: boolean;
+    callerId: string;
+    callerName: string;
+    callerPhotoUrl: string;
   }[];
   lastSg?: boolean;
   lastMa?: boolean;
   lastFrp?: boolean;
+  assignedHelperId?: string;
+  assignedHelperName?: string;
 };
 
 export const userRoles = ['Admin', 'Folk Guide', 'Folk Enabler'] as const;
@@ -89,6 +94,7 @@ export type AppUser = {
   };
   lastAssignedEnablerIndex?: number;
   currentCallingEvent?: string;
+  photoUrl?: string;
 };
 
 export type Group = {

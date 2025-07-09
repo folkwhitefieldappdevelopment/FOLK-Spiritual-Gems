@@ -59,6 +59,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 // If role is missing or not an array, default to an empty array.
                 appUserData.role = [];
               }
+              
+              // Add photoUrl to appUser for easy access
+              if (user.photoURL) {
+                appUserData.photoUrl = user.photoURL;
+              }
 
               // User is in our DB, allow access.
               setUser(user);

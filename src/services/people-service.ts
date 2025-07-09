@@ -14,6 +14,7 @@ import {
   where,
   runTransaction,
   type DocumentSnapshot,
+  deleteField,
 } from 'firebase/firestore';
 import type { Person, AppUser } from '@/lib/types';
 
@@ -30,19 +31,41 @@ export const getPeople = async (appUser: AppUser | null): Promise<Person[]> => {
   if (!appUser) return [];
 
   const peopleCollection = collection(db, 'people');
-  let q;
-
+  
   if (appUser.role.includes('Admin')) {
-    q = query(peopleCollection);
-  } else if (appUser.role.includes('Folk Guide')) {
-    q = query(peopleCollection, where('folkGuideId', '==', appUser.id));
-  } else {
-    // Default for Folk Enabler and any other role
-    q = query(peopleCollection, where('enablerInTouchWith', '==', appUser.name));
+    const q = query(peopleCollection);
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(processPersonDoc);
   }
   
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(processPersonDoc);
+  if (appUser.role.includes('Folk Guide')) {
+    const q = query(peopleCollection, where('folkGuideId', '==', appUser.id));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(processPersonDoc);
+  }
+
+  // Folk Enabler: must check for permanent assignment AND temporary helper assignment
+  const permanentQuery = query(peopleCollection, where('enablerInTouchWith', '==', appUser.name));
+  const helperQuery = query(peopleCollection, where('assignedHelperId', '==', appUser.id));
+
+  const [permanentSnapshot, helperSnapshot] = await Promise.all([
+      getDocs(permanentQuery),
+      getDocs(helperQuery)
+  ]);
+
+  const peopleMap = new Map<string, Person>();
+
+  permanentSnapshot.docs.forEach(doc => {
+      peopleMap.set(doc.id, processPersonDoc(doc));
+  });
+
+  helperSnapshot.docs.forEach(doc => {
+      if (!peopleMap.has(doc.id)) {
+          peopleMap.set(doc.id, processPersonDoc(doc));
+      }
+  });
+  
+  return Array.from(peopleMap.values());
 };
 
 export const getPerson = async (id: string): Promise<Person | null> => {
@@ -246,4 +269,24 @@ export const importPeople = async (
     }
     
     await batch.commit();
-}
+};
+
+export const assignHelperToPeople = async (personIds: string[], helper: AppUser | null): Promise<void> => {
+  if (personIds.length === 0) return;
+  const batch = writeBatch(db);
+  personIds.forEach(id => {
+    const docRef = doc(db, 'people', id);
+    if (helper) {
+      batch.update(docRef, { 
+        assignedHelperId: helper.id,
+        assignedHelperName: helper.name 
+      });
+    } else {
+      batch.update(docRef, {
+        assignedHelperId: deleteField(),
+        assignedHelperName: deleteField()
+      });
+    }
+  });
+  await batch.commit();
+};

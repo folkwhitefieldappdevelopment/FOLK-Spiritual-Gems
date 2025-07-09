@@ -10,11 +10,12 @@ import {
   Trash2,
   Users,
   Loader2,
+  UserCheck,
 } from "lucide-react";
 import { read, utils, write } from "xlsx";
 import JSZip from "jszip";
 import { createInitialProgress } from "@/lib/data";
-import type { Person, Group } from "@/lib/types";
+import type { Person, Group, AppUser } from "@/lib/types";
 import { occupationStatuses } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -40,7 +41,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
   getPeople,
@@ -49,12 +49,14 @@ import {
   deletePerson,
   deletePeople,
   importPeople,
+  assignHelperToPeople,
 } from "@/services/people-service";
 import { getGroups, createGroup, addPeopleToGroup } from "@/services/groups-service";
 import { getEnablers, getContactSources, type EnablerOption } from "@/services/settings-service";
 import { AuthGuard } from "@/components/auth-guard";
 import { useAuth } from "@/contexts/auth-context";
 import { CreateUpdateGroupDialog } from "@/components/create-update-group-dialog";
+import { AssignHelperDialog } from "@/components/assign-helper-dialog";
 import { SortPopover, type SortDescriptor } from "@/components/sort-popover";
 import { FilterPopover, type FilterRule, type FilterableField } from "@/components/filter-popover";
 
@@ -75,6 +77,8 @@ export default function ContactsPage() {
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = React.useState(false);
+  const [isAssignHelperDialogOpen, setIsAssignHelperDialogOpen] = React.useState(false);
+
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(
     undefined
   );
@@ -84,38 +88,39 @@ export default function ContactsPage() {
   const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
 
-  React.useEffect(() => {
-    if (!appUser) {
-        setIsLoading(true);
-        return;
-    }
-    const fetchData = async () => {
-      setIsLoading(true);
-      setFetchError(null);
-      try {
-        const [peopleData, enablersData, sourcesData, groupsData] = await Promise.all([
-          getPeople(appUser),
-          getEnablers(appUser, 'filter'),
-          getContactSources(),
-          getGroups(),
-        ]);
-        setPeople(peopleData);
-        setEnablerOptions(enablersData);
-        setContactSourceOptions(sourcesData);
-        setGroups(groupsData);
-      } catch (error) {
-        console.error("Failed to load data:", error);
-        if (error instanceof Error) {
-            setFetchError(error);
-        } else {
-            setFetchError(new Error("An unknown error occurred while fetching data."));
-        }
-      } finally {
-        setIsLoading(false);
+  const canAssignHelper = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
+
+  const fetchPageData = React.useCallback(async () => {
+    if (!appUser) return;
+    setIsLoading(true);
+    setFetchError(null);
+    try {
+      const [peopleData, enablersData, sourcesData, groupsData] = await Promise.all([
+        getPeople(appUser),
+        getEnablers(appUser, 'filter'),
+        getContactSources(),
+        getGroups(),
+      ]);
+      setPeople(peopleData);
+      setEnablerOptions(enablersData);
+      setContactSourceOptions(sourcesData);
+      setGroups(groupsData);
+    } catch (error) {
+      console.error("Failed to load data:", error);
+      if (error instanceof Error) {
+          setFetchError(error);
+      } else {
+          setFetchError(new Error("An unknown error occurred while fetching data."));
       }
-    };
-    fetchData();
+    } finally {
+      setIsLoading(false);
+    }
   }, [appUser]);
+
+
+  React.useEffect(() => {
+    fetchPageData();
+  }, [fetchPageData]);
 
   const filterableFields: FilterableField[] = React.useMemo(() => [
     { value: 'fullName', label: 'Name', type: 'string' },
@@ -128,6 +133,7 @@ export default function ContactsPage() {
     { value: 'chantingStatus', label: 'Chanting Status', type: 'string' },
     { value: 'nativePlace', label: 'Native Place', type: 'string' },
     { value: 'fromOtherCamp', label: 'From Other Camp', type: 'boolean' },
+    { value: 'assignedHelperName', label: 'Assigned Helper', type: 'string' },
   ], [enablerOptions, contactSourceOptions]);
 
   const filteredPeople = React.useMemo(() => {
@@ -615,6 +621,26 @@ export default function ContactsPage() {
       });
     }
   };
+  
+  const handleAssignHelper = async (helper: AppUser | null) => {
+    if (selectedIds.size === 0) return;
+    try {
+      await assignHelperToPeople(Array.from(selectedIds), helper);
+      toast({
+        title: helper ? 'Helper Assigned' : 'Helper Unassigned',
+        description: `${selectedIds.size} contacts have been updated.`,
+      });
+      // Refetch data to show the change
+      await fetchPageData();
+      setSelectedIds(new Set());
+    } catch (error) {
+       toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not assign helper.",
+      });
+    }
+  }
 
 
   const isLoadingAction = isImporting || isExporting;
@@ -637,69 +663,78 @@ export default function ContactsPage() {
       <>
         <div className="mb-6 flex flex-col gap-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                {selectedIds.size > 0 ? (
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold">{selectedIds.size} selected</span>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm">
-                                <Users className="mr-2 h-4 w-4" />
-                                Add to Group
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                {groups.map((group) => (
-                                <DropdownMenuItem
-                                    key={group.id}
-                                    onSelect={() => handleAddToGroup(group.id)}
-                                >
-                                    {group.name}
-                                </DropdownMenuItem>
-                                ))}
-                                {groups.length > 0 && <DropdownMenuSeparator />}
-                                <DropdownMenuItem onSelect={() => setIsCreateGroupDialogOpen(true)}>
-                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                    Create New Group
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                <div className="flex items-center gap-2">
+                    {selectedIds.size > 0 ? (
+                        <>
+                            <span className="text-sm font-semibold">{selectedIds.size} selected</span>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" size="sm">
+                                    <Users className="mr-2 h-4 w-4" />
+                                    Add to Group
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    {groups.map((group) => (
+                                    <DropdownMenuItem
+                                        key={group.id}
+                                        onSelect={() => handleAddToGroup(group.id)}
+                                    >
+                                        {group.name}
+                                    </DropdownMenuItem>
+                                    ))}
+                                    {groups.length > 0 && <DropdownMenuSeparator />}
+                                    <DropdownMenuItem onSelect={() => setIsCreateGroupDialogOpen(true)}>
+                                        <PlusCircle className="mr-2 h-4 w-4" />
+                                        Create New Group
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
 
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="destructive" size="sm">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    This will permanently delete the selected {selectedIds.size} contacts. This action cannot be undone.
-                                </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleDeleteSelected} className="bg-destructive hover:bg-destructive/90">
+                            {canAssignHelper && (
+                              <Button variant="outline" size="sm" onClick={() => setIsAssignHelperDialogOpen(true)}>
+                                <UserCheck className="mr-2 h-4 w-4" />
+                                Assign Helper
+                              </Button>
+                            )}
+
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" size="sm">
+                                    <Trash2 className="mr-2 h-4 w-4" />
                                     Delete
-                                </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    </div>
-                ) : (
-                    <div className="flex items-center gap-2">
-                        <FilterPopover 
-                            filters={filters}
-                            setFilters={setFilters}
-                            filterableFields={filterableFields}
-                        />
-                        <SortPopover
-                            sortDescriptors={sortDescriptors}
-                            setSortDescriptors={setSortDescriptors}
-                        />
-                    </div>
-                )}
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will permanently delete the selected {selectedIds.size} contacts. This action cannot be undone.
+                                    </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleDeleteSelected} className="bg-destructive hover:bg-destructive/90">
+                                        Delete
+                                    </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </>
+                    ) : (
+                        <>
+                            <FilterPopover 
+                                filters={filters}
+                                setFilters={setFilters}
+                                filterableFields={filterableFields}
+                            />
+                            <SortPopover
+                                sortDescriptors={sortDescriptors}
+                                setSortDescriptors={setSortDescriptors}
+                            />
+                        </>
+                    )}
+                </div>
                 <div className="flex items-center gap-2">
                     <div className="flex items-center rounded-md bg-muted p-1">
                     <Button
@@ -812,6 +847,12 @@ export default function ContactsPage() {
             isOpen={isCreateGroupDialogOpen}
             setIsOpen={setIsCreateGroupDialogOpen}
             onSave={handleSaveGroupAndAddMembers}
+        />
+        <AssignHelperDialog
+          isOpen={isAssignHelperDialogOpen}
+          setIsOpen={setIsAssignHelperDialogOpen}
+          onSave={handleAssignHelper}
+          peopleCount={selectedIds.size}
         />
         <input
           type="file"

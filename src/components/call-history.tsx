@@ -6,6 +6,7 @@ import type { Person } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Clock, Calendar, CheckCircle2 } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 
 const safeDate = (timestamp: any): Date | null => {
     if (!timestamp) return null;
@@ -46,6 +47,16 @@ export function CallHistory({ person }: { person: Person }) {
                                             <Clock className="h-4 w-4 text-muted-foreground" />
                                             <span>{safeDate(log.calledAt)?.toLocaleString() ?? 'N/A'}</span>
                                         </p>
+                                        {log.callerName && (
+                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                <span>Called by:</span>
+                                                <Avatar className="h-5 w-5">
+                                                    <AvatarImage src={log.callerPhotoUrl} alt={log.callerName} />
+                                                    <AvatarFallback>{log.callerName.charAt(0)}</AvatarFallback>
+                                                </Avatar>
+                                                <span className="font-medium text-foreground">{log.callerName}</span>
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="pl-6">
                                         <p className="text-sm text-foreground">{log.remark || <span className="italic text-muted-foreground">No remark was left.</span>}</p>

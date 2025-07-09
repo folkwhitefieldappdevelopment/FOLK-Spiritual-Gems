@@ -35,7 +35,7 @@ import { SortPopover, type SortDescriptor } from '@/components/sort-popover';
 
 export default function CallingAssistantPage() {
   const { toast } = useToast();
-  const { appUser, updateCurrentAppUser } = useAuth();
+  const { appUser, user, updateCurrentAppUser } = useAuth();
 
   const [people, setPeople] = React.useState<Person[]>([]);
   const [peopleForSession, setPeopleForSession] = React.useState<Person[]>([]);
@@ -43,7 +43,7 @@ export default function CallingAssistantPage() {
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
   
   const [filters, setFilters] = React.useState<FilterRule[]>([]);
-  const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([{ field: 'createdAt', direction: 'desc' }]);
+  const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([{ field: 'lastCallAt', direction: 'asc' }]);
 
   const [isSessionDialogOpen, setIsSessionDialogOpen] = React.useState(false);
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(undefined);
@@ -107,6 +107,7 @@ export default function CallingAssistantPage() {
       { value: 'lastFrp', label: 'FRP Attended', type: 'boolean' },
       { value: 'chantingStatus', label: 'Chanting Status', type: 'string' },
       { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(s => ({ value: s, label: s })) },
+      { value: 'assignedHelperName', label: 'Assigned Helper', type: 'string' },
     ]
   }, [enablerOptions, contactSourceOptions]);
 
@@ -253,6 +254,8 @@ export default function CallingAssistantPage() {
     ma: boolean | undefined, 
     frp: boolean | undefined
   ) => {
+    if (!appUser || !user) return;
+    
     const callTime = new Date(); // Use a client-side timestamp for the history entry
     const currentEvent = currentCallingEvent;
     
@@ -261,6 +264,9 @@ export default function CallingAssistantPage() {
       calledAt: callTime,
       status: status,
       event: currentEvent,
+      callerId: appUser.id,
+      callerName: appUser.name,
+      callerPhotoUrl: user.photoURL || '',
     };
     if (sg !== undefined) callHistoryEntry.sg = sg;
     if (ma !== undefined) callHistoryEntry.ma = ma;
