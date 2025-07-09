@@ -60,7 +60,6 @@ export type Person = {
   callHistory?: { 
     remark: string; 
     calledAt: any; 
-    duration?: string;
     status?: CallStatus;
     event?: string;
     sg?: boolean;
