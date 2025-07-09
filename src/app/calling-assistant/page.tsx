@@ -91,32 +91,6 @@ export default function CallingAssistantPage() {
     fetchData();
   }, [appUser]);
 
-  React.useEffect(() => {
-    if (!isEventDialogOpen || !isStartingSessionFlow || filteredPeople.length === 0) {
-      setCallRangeNames({ from: '', to: '' });
-      return;
-    }
-
-    const fromInput = callRange.from.trim();
-    const toInput = callRange.to.trim();
-
-    const fromIndex = parseInt(fromInput, 10) - 1;
-    const toIndex = toInput === '' ? filteredPeople.length - 1 : parseInt(toInput, 10) - 1;
-
-    let fromName = '';
-    if (fromInput && !isNaN(fromIndex) && fromIndex >= 0 && fromIndex < filteredPeople.length) {
-      fromName = filteredPeople[fromIndex]?.fullName || '';
-    }
-
-    let toName = '';
-    if (!isNaN(toIndex) && toIndex >= 0 && toIndex < filteredPeople.length) {
-      toName = filteredPeople[toIndex]?.fullName || '';
-    }
-
-    setCallRangeNames({ from: fromName, to: toName });
-  }, [callRange, filteredPeople, isEventDialogOpen, isStartingSessionFlow]);
-
-
   const filterableFields: FilterableField[] = React.useMemo(() => {
     return [
       { value: 'fullName', label: 'Name', type: 'string' },
@@ -232,6 +206,31 @@ export default function CallingAssistantPage() {
       return 0;
     });
   }, [people, filters, sortDescriptors]);
+
+  React.useEffect(() => {
+    if (!isEventDialogOpen || !isStartingSessionFlow || filteredPeople.length === 0) {
+      setCallRangeNames({ from: '', to: '' });
+      return;
+    }
+
+    const fromInput = callRange.from.trim();
+    const toInput = callRange.to.trim();
+
+    const fromIndex = parseInt(fromInput, 10) - 1;
+    const toIndex = toInput === '' ? filteredPeople.length - 1 : parseInt(toInput, 10) - 1;
+
+    let fromName = '';
+    if (fromInput && !isNaN(fromIndex) && fromIndex >= 0 && fromIndex < filteredPeople.length) {
+      fromName = filteredPeople[fromIndex]?.fullName || '';
+    }
+
+    let toName = '';
+    if (!isNaN(toIndex) && toIndex >= 0 && toIndex < filteredPeople.length) {
+      toName = filteredPeople[toIndex]?.fullName || '';
+    }
+
+    setCallRangeNames({ from: fromName, to: toName });
+  }, [callRange, filteredPeople, isEventDialogOpen, isStartingSessionFlow]);
 
   const handleEditPerson = (person: Person) => {
     setEditingPerson(person);
