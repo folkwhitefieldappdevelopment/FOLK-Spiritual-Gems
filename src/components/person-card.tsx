@@ -1,7 +1,7 @@
 
 "use client";
 
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import { User, Briefcase, Tags } from "lucide-react";
 import type { Person, ProgressCategory, ProgressLevelAnswers, Group } from "@/lib/types";
@@ -23,6 +23,7 @@ type PersonCardProps = {
   isSelected: boolean;
   onSelectionChange: (personId: string, checked: boolean) => void;
   groups: Group[];
+  isSelectionActive: boolean;
 };
 
 const parseNumber = (str: string): number | null => {
@@ -106,8 +107,9 @@ const getProgressColor = (score: number): string => {
     return 'bg-red-500';
 };
 
-const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups }: PersonCardProps) => {
+const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, isSelectionActive }: PersonCardProps) => {
   const { isAdmin } = useAdmin();
+  const router = useRouter();
 
   let occupationDisplay = person.occupation;
   if ((person.occupation === 'Working' || person.occupation === 'Student') && person.organisation) {
@@ -119,25 +121,46 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups }: 
   const fallback = (
     `${nameParts[0]?.charAt(0) || ''}${nameParts.length > 1 ? nameParts[nameParts.length - 1]?.charAt(0) || '' : ''}`
   ).toUpperCase();
+  
+  const handleClick = () => {
+    if (isSelectionActive) {
+      onSelectionChange(person.id, !isSelected);
+    } else {
+      router.push(`/contacts/${person.id}`);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleClick();
+    }
+  }
+
 
   return (
-      <Card className={cn("flex flex-col h-full relative group/card", isSelected && "ring-2 ring-primary border-primary")}>
-        <div 
-          className="absolute top-3 right-3 z-10"
-          onClick={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-          }}
-        >
-          <Checkbox
-            checked={isSelected}
-            onCheckedChange={(checked) => onSelectionChange(person.id, !!checked)}
-            aria-label={`Select ${fullName}`}
-            className="h-5 w-5"
-          />
-        </div>
-        <Link href={`/contacts/${person.id}`} className="block transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg h-full">
-          <div className="flex flex-col h-full">
+      <Card
+        onClick={handleClick}
+        onKeyDown={handleKeyDown}
+        role="button"
+        tabIndex={0}
+        aria-label={`View or select ${fullName}`}
+        className={cn(
+          "flex flex-col h-full relative group/card transition-all hover:shadow-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg",
+          isSelected && "ring-2 ring-primary border-primary"
+        )}
+      >
+        {isSelectionActive && (
+           <div className="absolute top-3 right-3 z-10 pointer-events-none">
+             <Checkbox
+               checked={isSelected}
+               aria-hidden="true"
+               className="h-5 w-5"
+             />
+           </div>
+        )}
+        
+        <div className="flex flex-col h-full">
             <CardHeader className="flex flex-row items-center gap-4 p-4">
                 <Avatar className="h-16 w-16">
                 <AvatarImage
@@ -150,7 +173,7 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups }: 
                 </AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col">
-                    <CardTitle className="text-lg">{fullName}</CardTitle>
+                    <CardTitle className={cn("text-lg", !isSelectionActive && "group-hover:underline")}>{fullName}</CardTitle>
                     <CardDescription>{person.sgRating ? `Rating: ${person.sgRating}/10` : 'No rating'}</CardDescription>
                 </div>
             </CardHeader>
@@ -212,7 +235,6 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups }: 
                 )}
             </CardContent>
           </div>
-        </Link>
       </Card>
   );
 }

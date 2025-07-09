@@ -660,6 +660,7 @@ export default function ContactsPage() {
 
   const isLoadingAction = isImporting || isExporting;
   const loadingText = isImporting ? 'Importing...' : isExporting ? 'Exporting...' : '';
+  const isSelectionActive = selectedIds.size > 0;
 
   const renderContent = () => {
     if (isLoading) {
@@ -679,7 +680,7 @@ export default function ContactsPage() {
         <div className="mb-6 flex flex-col gap-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2 flex-wrap">
-                    {selectedIds.size > 0 ? (
+                    {isSelectionActive ? (
                         <>
                             <span className="text-sm font-semibold">{selectedIds.size} selected</span>
                             <DropdownMenu>
@@ -817,6 +818,7 @@ export default function ContactsPage() {
                     isSelected={selectedIds.has(person.id)}
                     onSelectionChange={handleSelectionChange}
                     groups={personGroups}
+                    isSelectionActive={isSelectionActive}
                   />
                 )
             })}
