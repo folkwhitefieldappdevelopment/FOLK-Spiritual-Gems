@@ -5,9 +5,9 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import type { Person, CallStatus, CustomField } from "@/lib/types";
+import type { Person, CallStatus, CustomField, Group } from "@/lib/types";
 import { callStatuses } from "@/lib/data";
-import { Phone, SkipForward, Square, CheckSquare, Loader2 } from "lucide-react";
+import { Phone, SkipForward, Square, CheckSquare, Loader2, Tags } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 import {
@@ -36,6 +36,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "./ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { Badge } from "./ui/badge";
 
 const callFormSchema = z.object({
   remark: z.string().trim().optional(),
@@ -61,6 +62,7 @@ type CallingSessionDialogProps = {
   people: Person[];
   currentEvent: string;
   customFields: CustomField[];
+  groups: Group[];
 };
 
 export function CallingSessionDialog({
@@ -69,7 +71,8 @@ export function CallingSessionDialog({
   onSaveRemark,
   people,
   currentEvent,
-  customFields
+  customFields,
+  groups
 }: CallingSessionDialogProps) {
   const { toast } = useToast();
   const [currentIndex, setCurrentIndex] = React.useState(0);
@@ -160,6 +163,12 @@ export function CallingSessionDialog({
     }
     return String(value);
   }
+
+  const personGroups = React.useMemo(() => {
+    if (!currentPerson || !groups) return [];
+    return groups.filter(g => g.peopleIds.includes(currentPerson.id));
+  }, [currentPerson, groups]);
+
 
   if (!isOpen) {
     return null;
@@ -398,6 +407,20 @@ export function CallingSessionDialog({
                             <div>{currentPerson.folkGuide || 'N/A'}</div>
                         </div>
 
+                        {personGroups.length > 0 && (
+                            <>
+                                <Separator className="my-4" />
+                                <div className="space-y-2">
+                                    <h4 className="text-sm font-semibold flex items-center gap-2"><Tags className="h-4 w-4 text-muted-foreground"/>Groups</h4>
+                                    <div className="flex flex-wrap gap-1">
+                                        {personGroups.map(group => (
+                                            <Badge key={group.id} variant="secondary">{group.name}</Badge>
+                                        ))}
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                        
                         {hasCustomData && (
                         <>
                           <Separator className="my-4" />

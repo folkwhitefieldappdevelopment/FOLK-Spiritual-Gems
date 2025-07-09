@@ -664,7 +664,7 @@ export default function ContactsPage() {
       <>
         <div className="mb-6 flex flex-col gap-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                     {selectedIds.size > 0 ? (
                         <>
                             <span className="text-sm font-semibold">{selectedIds.size} selected</span>
@@ -770,14 +770,18 @@ export default function ContactsPage() {
 
         {view === "card" ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredPeople.map((person) => (
-              <PersonCard
-                key={person.id}
-                person={person}
-                isSelected={selectedIds.has(person.id)}
-                onSelectionChange={handleSelectionChange}
-              />
-            ))}
+            {filteredPeople.map((person) => {
+                const personGroups = groups.filter(g => g.peopleIds.includes(person.id));
+                return (
+                  <PersonCard
+                    key={person.id}
+                    person={person}
+                    isSelected={selectedIds.has(person.id)}
+                    onSelectionChange={handleSelectionChange}
+                    groups={personGroups}
+                  />
+                )
+            })}
           </div>
         ) : (
           <PersonTable

@@ -3,13 +3,14 @@
 
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Edit, Trash2, Phone, Loader2 } from 'lucide-react';
-import type { Person, ProgressCategoryAnswers, ProgressLevelAnswers, CustomField } from '@/lib/types';
+import { ArrowLeft, Edit, Trash2, Phone, Loader2, Tags } from 'lucide-react';
+import type { Person, ProgressCategoryAnswers, ProgressLevelAnswers, CustomField, Group } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAdmin } from '@/contexts/admin-context';
 import { cn } from '@/lib/utils';
 import { getPerson, updatePerson, deletePerson } from '@/services/people-service';
 import { getCustomPersonFields } from '@/services/settings-service';
+import { getGroups } from '@/services/groups-service';
 import { createInitialProgress } from '@/lib/data';
 import { AuthGuard } from '@/components/auth-guard';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
@@ -41,6 +42,7 @@ import { CreateUpdatePersonDialog } from '@/components/create-update-person-dial
 import { ProgressTracker } from '@/components/progress-tracker';
 import { Separator } from '@/components/ui/separator';
 import { CallHistory } from '@/components/call-history';
+import { Badge } from '@/components/ui/badge';
 
 export default function PersonDetailPage() {
   const router = useRouter();
@@ -51,6 +53,7 @@ export default function PersonDetailPage() {
 
   const [person, setPerson] = React.useState<Person | null>(null);
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
+  const [allGroups, setAllGroups] = React.useState<Group[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
@@ -63,12 +66,14 @@ export default function PersonDetailPage() {
       setIsLoading(true);
       setFetchError(null);
       try {
-        const [personData, fieldsData] = await Promise.all([
+        const [personData, fieldsData, groupsData] = await Promise.all([
             getPerson(personId),
             getCustomPersonFields(),
+            getGroups(),
         ]);
         
         setCustomFields(fieldsData);
+        setAllGroups(groupsData);
 
         if (personData) {
           if (!personData.progress || !Array.isArray(personData.progress) || personData.progress.length === 0 || !personData.progress[0]?.answers || !Array.isArray(personData.progress[0].answers)) {
@@ -211,7 +216,8 @@ export default function PersonDetailPage() {
         </div>
       );
     }
-
+    
+    const personGroups = allGroups.filter(g => g.peopleIds.includes(person.id));
     const hasCustomData = customFields.some(field => person.customData && person.customData[field.id]);
     const fullName = person.fullName || '';
     const nameParts = fullName.split(' ');
@@ -309,6 +315,20 @@ export default function PersonDetailPage() {
                           <div className="font-semibold text-muted-foreground">Folk Guide</div>
                           <div>{person.folkGuide || 'N/A'}</div>
                       </div>
+
+                      {personGroups.length > 0 && (
+                        <>
+                            <Separator className="my-4" />
+                            <div className="w-full text-left space-y-2">
+                                <h4 className="font-semibold text-sm flex items-center gap-2"><Tags className="h-4 w-4 text-muted-foreground"/> In Groups</h4>
+                                <div className="flex flex-wrap gap-1">
+                                    {personGroups.map(group => (
+                                        <Badge key={group.id} variant="secondary">{group.name}</Badge>
+                                    ))}
+                                </div>
+                            </div>
+                        </>
+                      )}
 
                       {hasCustomData && (
                         <>

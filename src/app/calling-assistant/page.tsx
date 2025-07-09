@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { Headset, Loader2, Edit } from "lucide-react";
-import type { Person, CallStatus, CustomField } from "@/lib/types";
+import type { Person, CallStatus, CustomField, Group } from "@/lib/types";
 import { occupationStatuses } from "@/lib/types";
 import { callStatuses } from "@/lib/data";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import { AuthGuard } from "@/components/auth-guard";
 import { FirebaseConfigError } from "@/components/firebase-config-error";
 import { getPeople, updatePerson } from "@/services/people-service";
 import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
+import { getGroups } from "@/services/groups-service";
 import { updateUser } from "@/services/user-service";
 import { serverTimestamp, arrayUnion } from "firebase/firestore";
 import { useAuth } from "@/contexts/auth-context";
@@ -51,6 +52,7 @@ export default function CallingAssistantPage() {
   const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
+  const [groups, setGroups] = React.useState<Group[]>([]);
   const [currentCallingEvent, setCurrentCallingEvent] = React.useState("Loading event...");
 
   // State for the event editing dialog
@@ -69,16 +71,18 @@ export default function CallingAssistantPage() {
       setIsLoading(true);
       setFetchError(null);
       try {
-        const [peopleData, enablersData, sourcesData, customFieldsData] = await Promise.all([
+        const [peopleData, enablersData, sourcesData, customFieldsData, groupsData] = await Promise.all([
           getPeople(appUser),
           getEnablers(appUser, 'filter'),
           getContactSources(),
           getCustomPersonFields(),
+          getGroups(),
         ]);
         setPeople(peopleData);
         setEnablerOptions(enablersData);
         setContactSourceOptions(sourcesData);
         setCustomFields(customFieldsData);
+        setGroups(groupsData);
         setCurrentCallingEvent(appUser.currentCallingEvent || 'General Calling');
       } catch (error) {
         console.error("Failed to load data:", error);
@@ -521,6 +525,7 @@ export default function CallingAssistantPage() {
           onSaveRemark={handleSessionSave}
           currentEvent={currentCallingEvent}
           customFields={customFields}
+          groups={groups}
         />
 
         {editingPerson && (

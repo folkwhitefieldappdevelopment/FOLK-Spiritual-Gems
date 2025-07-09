@@ -3,8 +3,8 @@
 
 import Link from 'next/link';
 import * as React from 'react';
-import { User, Briefcase } from "lucide-react";
-import type { Person, ProgressCategoryAnswers, ProgressLevelAnswers } from "@/lib/types";
+import { User, Briefcase, Tags } from "lucide-react";
+import type { Person, ProgressCategoryAnswers, ProgressLevelAnswers, Group } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { checklistData } from '@/lib/data';
 import { useAdmin } from '@/contexts/admin-context';
@@ -17,11 +17,13 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from './ui/checkbox';
+import { Badge } from './ui/badge';
 
 type PersonCardProps = {
   person: Person;
   isSelected: boolean;
   onSelectionChange: (personId: string, checked: boolean) => void;
+  groups: Group[];
 };
 
 const calculateScore = (categoryProgress: ProgressCategoryAnswers): number => {
@@ -100,7 +102,7 @@ const getProgressColor = (score: number): string => {
     return 'bg-red-500';
 };
 
-const PersonCardComponent = ({ person, isSelected, onSelectionChange }: PersonCardProps) => {
+const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups }: PersonCardProps) => {
   const { isAdmin } = useAdmin();
 
   let occupationDisplay = person.occupation;
@@ -157,6 +159,18 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange }: PersonCa
                     <Briefcase className="mr-2 h-4 w-4" />
                     <span className="truncate">{occupationDisplay || 'N/A'}</span>
                 </div>
+                
+                {groups.length > 0 && (
+                    <div className="flex items-start text-sm text-muted-foreground">
+                        <Tags className="mr-2 h-4 w-4 mt-0.5 shrink-0" />
+                        <div className="flex flex-wrap gap-1">
+                            {groups.map(group => (
+                                <Badge key={group.id} variant="secondary" className="font-normal">{group.name}</Badge>
+                            ))}
+                        </div>
+                    </div>
+                )}
+                
                 {isAdmin && person.progress && person.progress.length > 0 && (
                 <div className="mt-4 pt-4 border-t space-y-2">
                     <h4 className="text-sm font-semibold text-foreground mb-2">
