@@ -760,6 +760,21 @@ export default function ContactsPage() {
                     )}
                 </div>
                 <div className="flex items-center gap-2">
+                     {filteredPeople.length > 0 && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                                if (selectedIds.size === filteredPeople.length) {
+                                    setSelectedIds(new Set());
+                                } else {
+                                    setSelectedIds(new Set(filteredPeople.map(p => p.id)));
+                                }
+                            }}
+                        >
+                            {selectedIds.size === filteredPeople.length ? 'Deselect All' : 'Select All'}
+                        </Button>
+                    )}
                     <div className="flex items-center rounded-md bg-muted p-1">
                     <Button
                         variant={view === "card" ? "secondary" : "ghost"}
