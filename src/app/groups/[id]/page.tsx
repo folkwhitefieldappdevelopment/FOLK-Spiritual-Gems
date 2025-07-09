@@ -18,7 +18,7 @@ import {
 import type { Person, Group, AppUser } from '@/lib/types';
 import { occupationStatuses } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { getGroup, updateGroup, addPeopleToGroup } from '@/services/groups-service';
+import { getGroup, updateGroup, addPeopleToGroup, getGroups } from '@/services/groups-service';
 import { getPeople, updatePerson, assignHelperToPeople } from '@/services/people-service';
 import { getEnablers, getContactSources, type EnablerOption } from '@/services/settings-service';
 import { AuthGuard } from '@/components/auth-guard';
@@ -365,5 +365,3 @@ export default function GroupDetailPage() {
     </AuthGuard>
   );
 }
-
-    
