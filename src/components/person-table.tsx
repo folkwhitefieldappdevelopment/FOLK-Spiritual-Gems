@@ -31,7 +31,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   Tooltip,
@@ -108,11 +107,10 @@ export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView =
               <TableHead className="min-w-[200px]">Name</TableHead>
               <TableHead className="hidden sm:table-cell">Phone</TableHead>
               <TableHead>Assignments</TableHead>
-              {isCallingAssistantView ? (
+              {isCallingAssistantView && (
                 <TableHead>Call Status</TableHead>
-              ) : (
-                <TableHead className="hidden md:table-cell">Last Called</TableHead>
               )}
+              <TableHead className="hidden md:table-cell">Last Called</TableHead>
               <TableHead>Last Remark</TableHead>
               <TableHead className="w-[50px] text-right">Actions</TableHead>
             </TableRow>
@@ -183,38 +181,38 @@ export function PersonTable({ people, onEdit, onDelete, isCallingAssistantView =
                   </div>
                 </TableCell>
                 
-                {isCallingAssistantView ? (
-                    <TableCell>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="flex items-center gap-2 truncate text-sm text-muted-foreground">
-                            <CheckCircle2 className="h-4 w-4 shrink-0" />
-                            <span className="truncate">{person.lastCallStatus || 'Not Called'}</span>
-                          </span>
-                        </TooltipTrigger>
-                        {person.lastCallStatus && <TooltipContent><p>{person.lastCallStatus}</p></TooltipContent>}
-                      </Tooltip>
-                    </TableCell>
-                ) : (
-                    <TableCell className="hidden md:table-cell">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="flex items-center gap-2 truncate text-sm text-muted-foreground">
-                              <Clock className="h-4 w-4 shrink-0" />
-                              {person.lastCallAt ? 
-                                    `${formatDistanceToNow(safeDate(person.lastCallAt)!, { addSuffix: true })}` 
-                                    : 'Never'
-                                }
-                            </span>
-                          </TooltipTrigger>
-                          {person.lastCallAt && (
-                            <TooltipContent>
-                                <p>{safeDate(person.lastCallAt)!.toLocaleString()}</p>
-                            </TooltipContent>
-                          )}
-                        </Tooltip>
-                    </TableCell>
+                {isCallingAssistantView && (
+                  <TableCell>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="flex items-center gap-2 truncate text-sm text-muted-foreground">
+                          <CheckCircle2 className="h-4 w-4 shrink-0" />
+                          <span className="truncate">{person.lastCallStatus || 'Not Called'}</span>
+                        </span>
+                      </TooltipTrigger>
+                      {person.lastCallStatus && <TooltipContent><p>{person.lastCallStatus}</p></TooltipContent>}
+                    </Tooltip>
+                  </TableCell>
                 )}
+                
+                <TableCell className="hidden md:table-cell">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="flex items-center gap-2 truncate text-sm text-muted-foreground">
+                          <Clock className="h-4 w-4 shrink-0" />
+                          {person.lastCallAt ? 
+                                `${formatDistanceToNow(safeDate(person.lastCallAt)!, { addSuffix: true })}` 
+                                : 'Never'
+                            }
+                        </span>
+                      </TooltipTrigger>
+                      {person.lastCallAt && (
+                        <TooltipContent>
+                            <p>{safeDate(person.lastCallAt)!.toLocaleString()}</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                </TableCell>
                 
                 <TableCell>
                   <Tooltip>
