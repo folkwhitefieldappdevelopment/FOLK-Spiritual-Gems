@@ -33,6 +33,13 @@ import {
 import { Label } from "@/components/ui/label";
 import { FilterPopover, type FilterRule, type FilterableField } from '@/components/filter-popover';
 import { SortPopover, type SortDescriptor } from '@/components/sort-popover';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export default function CallingAssistantPage() {
   const { toast } = useToast();
@@ -54,6 +61,7 @@ export default function CallingAssistantPage() {
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   const [groups, setGroups] = React.useState<Group[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = React.useState<string>('all');
   const [currentCallingEvent, setCurrentCallingEvent] = React.useState("Loading event...");
 
   // State for the event editing dialog
@@ -119,6 +127,15 @@ export default function CallingAssistantPage() {
 
   const filteredPeople = React.useMemo(() => {
     let tempPeople = [...people];
+
+    // Apply group filter
+    if (selectedGroupId && selectedGroupId !== 'all') {
+        const group = groups.find(g => g.id === selectedGroupId);
+        if (group) {
+            const memberIds = new Set(group.peopleIds);
+            tempPeople = tempPeople.filter(p => memberIds.has(p.id));
+        }
+    }
 
     // Apply search filter
     if (searchTerm.trim()) {
@@ -225,7 +242,7 @@ export default function CallingAssistantPage() {
       }
       return 0;
     });
-  }, [people, searchTerm, filters, sortDescriptors]);
+  }, [people, searchTerm, filters, sortDescriptors, groups, selectedGroupId]);
 
   React.useEffect(() => {
     if (!isEventDialogOpen || !isStartingSessionFlow || filteredPeople.length === 0) {
@@ -419,6 +436,19 @@ export default function CallingAssistantPage() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
+                    <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
+                        <SelectTrigger className="w-full sm:w-auto min-w-[180px]">
+                            <SelectValue placeholder="Filter by group..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Contacts</SelectItem>
+                            {groups.map((group) => (
+                                <SelectItem key={group.id} value={group.id}>
+                                    {group.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                     <FilterPopover 
                         filters={filters}
                         setFilters={setFilters}
