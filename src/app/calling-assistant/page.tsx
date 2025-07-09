@@ -70,6 +70,7 @@ export default function CallingAssistantPage() {
   const [editableEventName, setEditableEventName] = React.useState("");
   const [callRange, setCallRange] = React.useState({ from: '1', to: '' });
   const [callRangeNames, setCallRangeNames] = React.useState({ from: '', to: '' });
+  const [sessionStartIndex, setSessionStartIndex] = React.useState(0);
 
   React.useEffect(() => {
     if (!appUser) {
@@ -401,6 +402,7 @@ export default function CallingAssistantPage() {
         return;
       }
       
+      setSessionStartIndex(fromIndex - 1);
       setPeopleForSession(peopleToCall);
       setIsSessionDialogOpen(true);
     }
@@ -577,6 +579,8 @@ export default function CallingAssistantPage() {
           currentEvent={currentCallingEvent}
           customFields={customFields}
           groups={groups}
+          sessionStartIndex={sessionStartIndex}
+          totalPeopleCount={filteredPeople.length}
         />
 
         {editingPerson && (

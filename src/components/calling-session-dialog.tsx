@@ -64,6 +64,8 @@ type CallingSessionDialogProps = {
   currentEvent: string;
   customFields: CustomField[];
   groups: Group[];
+  sessionStartIndex: number;
+  totalPeopleCount: number;
 };
 
 export function CallingSessionDialog({
@@ -73,7 +75,9 @@ export function CallingSessionDialog({
   people,
   currentEvent,
   customFields,
-  groups
+  groups,
+  sessionStartIndex,
+  totalPeopleCount
 }: CallingSessionDialogProps) {
   const { toast } = useToast();
   const [currentIndex, setCurrentIndex] = React.useState(0);
@@ -191,7 +195,7 @@ export function CallingSessionDialog({
             Calling Session
           </DialogTitle>
           <DialogDescription>
-            {isInitializing ? 'Preparing session...' : `Contact ${currentIndex + 1} of ${people.length} for: `}
+            {isInitializing ? 'Preparing session...' : `Contact ${sessionStartIndex + currentIndex + 1} of ${totalPeopleCount} for: `}
             {!isInitializing && <span className="font-semibold text-primary">{currentEvent}</span>}
           </DialogDescription>
         </DialogHeader>
