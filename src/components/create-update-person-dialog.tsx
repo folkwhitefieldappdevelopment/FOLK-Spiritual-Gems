@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import type { Person, CustomField, AppUser } from "@/lib/types";
 import { occupationStatuses } from "@/lib/types";
-import { Camera, Upload, SwitchCamera } from "lucide-react";
+import { Camera, Upload, SwitchCamera, Loader2 } from "lucide-react";
 import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
 import { getFolkGuides } from "@/services/user-service";
 import { useAuth } from "@/contexts/auth-context";
@@ -80,7 +80,7 @@ type PersonFormValues = z.infer<ReturnType<typeof createPersonFormSchema>>;
 type CreateUpdatePersonDialogProps = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  onSave: (data: Omit<Person, "id" | "progress" | "createdAt">) => void;
+  onSave: (data: Omit<Person, "id" | "progress" | "createdAt">) => Promise<void>;
   person?: Person;
   allPeople: Person[];
 };
@@ -121,6 +121,7 @@ export function CreateUpdatePersonDialog({
 
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const [showCamera, setShowCamera] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [hasCameraPermission, setHasCameraPermission] = React.useState<
     boolean | null
   >(null);
@@ -137,34 +138,31 @@ export function CreateUpdatePersonDialog({
 
 
   React.useEffect(() => {
-    const loadOptions = async () => {
-        if (!appUser) return;
-        try {
-            const [enablers, sources, fields] = await Promise.all([
-              getEnablers(appUser, 'assignment'), 
-              getContactSources(),
-              getCustomPersonFields()
-            ]);
-            setEnablerOptions(enablers);
-            setContactSourceOptions(sources);
-            setCustomFields(fields);
-            if (isAdmin) {
-                const guides = await getFolkGuides();
-                setFolkGuides(guides);
-            }
-        } catch (error) {
-            console.error('Failed to load dropdown options for dialog', error);
-            toast({ variant: 'destructive', title: 'Could not load form options.' });
-        }
-    }
-
     if (isOpen) {
+      const loadOptions = async () => {
+          if (!appUser) return;
+          try {
+              const [enablers, sources, fields] = await Promise.all([
+                getEnablers(appUser, 'assignment'), 
+                getContactSources(),
+                getCustomPersonFields()
+              ]);
+              setEnablerOptions(enablers);
+              setContactSourceOptions(sources);
+              setCustomFields(fields);
+              if (isAdmin) {
+                  const guides = await getFolkGuides();
+                  setFolkGuides(guides);
+              }
+          } catch (error) {
+              console.error('Failed to load dropdown options for dialog', error);
+              toast({ variant: 'destructive', title: 'Could not load form options.' });
+          }
+      }
       loadOptions();
 
       if (person) {
-        // This logic handles migration from the old 'occupation' string field
         const isStandardOccupation = occupationStatuses.includes(person.occupation);
-
         form.reset({
           fullName: person.fullName,
           phone: person.phone,
@@ -206,6 +204,7 @@ export function CreateUpdatePersonDialog({
       setShowCamera(false);
       setHasCameraPermission(null);
       setCameraMode('user');
+      setIsSubmitting(false);
     }
   }, [person, form, isOpen, toast, appUser, isAdmin]);
 
@@ -215,7 +214,7 @@ export function CreateUpdatePersonDialog({
 
   React.useEffect(() => {
     if (!showCamera) {
-      return; // Do nothing if camera view is not active.
+      return;
     }
 
     let activeStream: MediaStream | null = null;
@@ -295,43 +294,44 @@ export function CreateUpdatePersonDialog({
     setCustomData(prev => ({ ...prev, [fieldId]: value }));
   };
 
-  const onSubmit = (data: PersonFormValues) => {
-    // Create the base object with all fields EXCEPT folk guide info
-    const saveData: Partial<Omit<Person, 'folkGuide' | 'folkGuideId'>> = {
-      ...data,
-      organisation: data.organisation || "",
-      rentDetails: data.rentDetails || "",
-      nativePlace: data.nativePlace || "",
-      contactSource: data.contactSource || "",
-      chantingStatus: data.chantingStatus || "",
-      enablerInTouchWith: data.enablerInTouchWith || "",
-      photoUrl:
-        photoPreview ||
-        person?.photoUrl ||
-        `https://placehold.co/100x100.png`,
-      customData: customData,
-    };
+  const onSubmit = async (data: PersonFormValues) => {
+    setIsSubmitting(true);
+    try {
+      const saveData: Partial<Omit<Person, 'folkGuide' | 'folkGuideId'>> = {
+        ...data,
+        organisation: data.organisation || "",
+        rentDetails: data.rentDetails || "",
+        nativePlace: data.nativePlace || "",
+        contactSource: data.contactSource || "",
+        chantingStatus: data.chantingStatus || "",
+        enablerInTouchWith: data.enablerInTouchWith || "",
+        photoUrl:
+          photoPreview ||
+          person?.photoUrl ||
+          `https://placehold.co/100x100.png`,
+        customData: customData,
+      };
 
-    // Cast to a type that allows adding folkGuide fields back
-    const finalData: Partial<Person> = saveData;
-    
-    // Only admins can modify the folk guide.
-    if (isAdmin) {
-        const selectedGuide = folkGuides.find(g => g.id === data.folkGuideId);
-        if (selectedGuide) {
-            finalData.folkGuideId = selectedGuide.id;
-            finalData.folkGuide = `${selectedGuide.name} (${selectedGuide.fgCode || 'N/A'})`;
-        } else {
-            // Admin explicitly unassigned the guide.
-            finalData.folkGuideId = '';
-            finalData.folkGuide = '';
-        }
+      const finalData: Partial<Person> = saveData;
+      
+      if (isAdmin) {
+          const selectedGuide = folkGuides.find(g => g.id === data.folkGuideId);
+          if (selectedGuide) {
+              finalData.folkGuideId = selectedGuide.id;
+              finalData.folkGuide = `${selectedGuide.name} (${selectedGuide.fgCode || 'N/A'})`;
+          } else {
+              finalData.folkGuideId = '';
+              finalData.folkGuide = '';
+          }
+      }
+      
+      await onSave(finalData as Omit<Person, "id" | "progress" | "createdAt">);
+      setIsOpen(false);
+    } catch(e) {
+      // Error is handled by onSave implementation
+    } finally {
+      setIsSubmitting(false);
     }
-
-    // `finalData` now only contains folk guide info if the user is an admin.
-    // For other users, these fields are omitted, so they won't be changed on update.
-    onSave(finalData as Omit<Person, "id" | "progress" | "createdAt">);
-    setIsOpen(false);
   };
 
   const renderCustomField = (field: CustomField) => {
@@ -771,8 +771,11 @@ export function CreateUpdatePersonDialog({
                 </div>
               </ScrollArea>
               <DialogFooter className="pt-4">
-                <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                <Button type="submit">Save changes</Button>
+                <Button type="button" variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting}>Cancel</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save changes
+                </Button>
               </DialogFooter>
             </form>
           </Form>

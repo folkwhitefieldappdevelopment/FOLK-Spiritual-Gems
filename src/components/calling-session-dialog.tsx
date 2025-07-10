@@ -379,6 +379,7 @@ export function CallingSessionDialog({
                                 form="call-form"
                                 disabled={form.formState.isSubmitting}
                             >
+                                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 <CheckSquare className="mr-2 h-4 w-4"/>
                                 Save & Next
                             </Button>

@@ -569,6 +569,7 @@ export default function ContactsPage() {
         title: "Error",
         description: errorMessage,
       });
+      throw error; // Re-throw to allow dialog to handle its own state.
     }
   }, [appUser, toast, editingPerson]);
   
@@ -874,7 +875,7 @@ export default function ContactsPage() {
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                        <DropdownMenuItem onClick={handleFileImport} disabled={isLoadingAction}>
+                        <DropdownMenuItem onSelect={() => fileInputRef.current?.click()} disabled={isLoadingAction}>
                         Import from Excel
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={handleExport} disabled={isLoadingAction}>
