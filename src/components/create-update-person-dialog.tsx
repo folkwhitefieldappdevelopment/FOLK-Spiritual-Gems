@@ -46,6 +46,7 @@ import { ScrollArea } from "./ui/scroll-area";
 import { Separator } from "./ui/separator";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
+import { StarRating } from "./star-rating";
 
 const createPersonFormSchema = (allPeople: Person[], currentPersonId?: string) => 
   z.object({
@@ -57,7 +58,7 @@ const createPersonFormSchema = (allPeople: Person[], currentPersonId?: string) =
     organisation: z.string().optional(),
     rentDetails: z.string().optional(),
     nativePlace: z.string().optional(),
-    sgRating: z.coerce.number().min(0).max(10).default(0),
+    sgRating: z.coerce.number().min(0).max(5).default(0),
     contactSource: z.string().optional(),
     chantingStatus: z.string().optional(),
     fromOtherCamp: z.boolean().default(false),
@@ -599,22 +600,13 @@ export function CreateUpdatePersonDialog({
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>SG Rating</FormLabel>
-                            <Select
-                                onValueChange={(value) => field.onChange(Number(value))}
-                                value={String(field.value)}
-                            >
-                                <FormControl>
-                                    <SelectTrigger>
-                                    <SelectValue placeholder="Select a rating" />
-                                    </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    <SelectItem value="0">Not Rated</SelectItem>
-                                    {Array.from({ length: 10 }, (_, i) => i + 1).map(rating => (
-                                        <SelectItem key={rating} value={String(rating)}>{rating}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <FormControl>
+                                <StarRating 
+                                    isEditing 
+                                    value={field.value} 
+                                    onValueChange={field.onChange}
+                                />
+                            </FormControl>
                             <FormMessage />
                         </FormItem>
                     )}
@@ -699,7 +691,7 @@ export function CreateUpdatePersonDialog({
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Assign a Folk Guide" />
-                              </SelectTrigger>
+                              </Trigger>
                             </FormControl>
                             <SelectContent>
                               <SelectItem value="__NONE__">Unassigned</SelectItem>

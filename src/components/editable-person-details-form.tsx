@@ -46,6 +46,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { StarRating } from "./star-rating";
 
 const createPersonFormSchema = (allPeople: Person[], currentPersonId?: string) => 
   z.object({
@@ -57,7 +58,7 @@ const createPersonFormSchema = (allPeople: Person[], currentPersonId?: string) =
     organisation: z.string().optional(),
     rentDetails: z.string().optional(),
     nativePlace: z.string().optional(),
-    sgRating: z.coerce.number().min(0).max(10).default(0),
+    sgRating: z.coerce.number().min(0).max(5).default(0),
     contactSource: z.string().optional(),
     chantingStatus: z.string().optional(),
     fromOtherCamp: z.boolean().default(false),
@@ -333,7 +334,7 @@ export function EditablePersonDetailsForm({
             <FormField control={form.control} name="occupation" render={({ field }) => (<FormItem><FormLabel>Occupation Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>{occupationStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
             <FormField control={form.control} name="organisation" render={({ field }) => (<FormItem><FormLabel>Organisation</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
           </div>
-          <FormField control={form.control} name="sgRating" render={({ field }) => (<FormItem><FormLabel>SG Rating</FormLabel><Select onValueChange={(value) => field.onChange(Number(value))} value={String(field.value)}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="0">Not Rated</SelectItem>{Array.from({ length: 10 }, (_, i) => i + 1).map(r => <SelectItem key={r} value={String(r)}>{r}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+          <FormField control={form.control} name="sgRating" render={({ field }) => (<FormItem><FormLabel>SG Rating</FormLabel><FormControl><StarRating isEditing value={field.value} onValueChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />
           <FormField control={form.control} name="contactSource" render={({ field }) => (<FormItem><FormLabel>Contact Source</FormLabel><Select onValueChange={(v) => field.onChange(v === '__NONE__' ? '' : v)} value={field.value || '__NONE__'}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="__NONE__">None</SelectItem>{contactSourceOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
           <FormField control={form.control} name="chantingStatus" render={({ field }) => (<FormItem><FormLabel>Chanting Status</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
           <FormField control={form.control} name="enablerInTouchWith" render={({ field }) => (<FormItem><FormLabel>Enabler</FormLabel><Select onValueChange={(v) => field.onChange(v === '__NONE__' ? '' : v)} value={field.value || '__NONE__'}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="__NONE__">None</SelectItem>{enablerOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
@@ -359,7 +360,7 @@ export function EditablePersonDetailsForm({
             <DialogContent className="p-0 border-0 max-w-lg bg-transparent shadow-none"><img src={person.photoUrl} alt={fullName} className="rounded-lg w-full h-auto object-contain" /></DialogContent>
             </Dialog>
             <h2 className="text-2xl font-bold">{fullName}</h2>
-            <p className="text-muted-foreground mt-1">{person.sgRating ? `Rating: ${person.sgRating}/10` : 'No rating'}</p>
+            <StarRating value={person.sgRating || 0} />
         </div>
 
       <div className="w-full text-left grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-3 text-sm">
@@ -376,7 +377,7 @@ export function EditablePersonDetailsForm({
         <div className="font-semibold text-muted-foreground">Native Place</div><div>{person.nativePlace || 'N/A'}</div>
         <div className="font-semibold text-muted-foreground">Contact Source</div><div>{person.contactSource || 'N/A'}</div>
         <div className="font-semibold text-muted-foreground">Chanting Status</div><div>{person.chantingStatus || 'N/A'}</div>
-        <div className="font-semibold text-muted-foreground">From Other Camp</div><div>{person.fromOtherCamp ? 'Yes' : 'No'}</div>
+        <div className="font-semibold text-muted-foreground">From other camp?</div><div>{person.fromOtherCamp ? 'Yes' : 'No'}</div>
         <div className="font-semibold text-muted-foreground">Enabler</div><div>{person.enablerInTouchWith || 'N/A'}</div>
         <div className="font-semibold text-muted-foreground">Folk Guide</div><div>{person.folkGuide || 'N/A'}</div>
       </div>
