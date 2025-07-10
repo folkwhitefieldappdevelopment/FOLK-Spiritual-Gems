@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import type { Person, CustomField, AppUser, Group } from "@/lib/types";
 import { occupationStatuses } from "@/lib/types";
-import { Camera, Upload, SwitchCamera, Phone, Tags } from "lucide-react";
+import { Camera, Upload, SwitchCamera, Phone, Tags, Star } from "lucide-react";
 import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
 import { getFolkGuides } from "@/services/user-service";
 import { useAuth } from "@/contexts/auth-context";
@@ -359,7 +359,10 @@ export function EditablePersonDetailsForm({
             <DialogContent className="p-0 border-0 max-w-lg bg-transparent shadow-none"><img src={person.photoUrl} alt={fullName} className="rounded-lg w-full h-auto object-contain" /></DialogContent>
             </Dialog>
             <h2 className="text-2xl font-bold">{fullName}</h2>
-            <p className="text-sm text-muted-foreground">Rating: {person.sgRating || 'N/A'}</p>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                <span>{person.sgRating || 0}/10</span>
+            </div>
         </div>
 
       <div className="w-full text-left grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-3 text-sm">
