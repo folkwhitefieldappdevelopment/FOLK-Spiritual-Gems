@@ -168,7 +168,7 @@ const CallingSessionDialogComponent = ({
   
   const handlePrevious = React.useCallback(() => {
     if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
+      setCurrentIndex(currentIndex + 1);
     }
   }, [currentIndex]);
   
@@ -295,7 +295,7 @@ const CallingSessionDialogComponent = ({
                 <Loader2 className="h-8 w-8 animate-spin" />
             </div>
         ) : (
-            <div className="grid md:grid-cols-2 gap-x-8 gap-y-4 p-6 min-h-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 p-6 min-h-0">
                 {/* Left Column: Form & Actions */}
                 <div className="flex flex-col">
                     {/* Scrollable content area */}
@@ -525,7 +525,7 @@ const CallingSessionDialogComponent = ({
                                 setIsNotesDirty(true);
                             }}
                             className="min-h-[120px] text-sm"
-                            placeholder="General notes about this contact's progress..."
+                            placeholder="Log progress, important updates, or any general notes here..."
                         />
                         <div className="flex justify-end">
                             <Button
