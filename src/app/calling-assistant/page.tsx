@@ -77,7 +77,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [selectedGroupId, setSelectedGroupId] = React.useState<string>('all');
-  const [currentCallingEvent, setCurrentCallingEvent] = React.useState(appUser?.currentCallingEvent || "Loading event...");
+  const currentCallingEvent = appUser?.currentCallingEvent || "Default Event";
   
   const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = React.useState(false);
   const [isAssignHelperDialogOpen, setIsAssignHelperDialogOpen] = React.useState(false);
@@ -90,12 +90,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   const [callRange, setCallRange] = React.useState({ from: '1', to: '' });
   const [callRangeNames, setCallRangeNames] = React.useState({ from: '', to: '' });
   const [sessionStartIndex, setSessionStartIndex] = React.useState(0);
-
-  React.useEffect(() => {
-    if (appUser?.currentCallingEvent) {
-      setCurrentCallingEvent(appUser.currentCallingEvent);
-    }
-  }, [appUser?.currentCallingEvent]);
 
   const fetchPageData = React.useCallback(async () => {
     if (!appUser) return;
@@ -318,13 +312,12 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     if (!appUser || !user) return;
     
     const callTime = new Date(); // Use a client-side timestamp for the history entry
-    const currentEvent = currentCallingEvent;
     
     const callHistoryEntry: any = {
       remark: remark,
       calledAt: callTime,
       status: status,
-      event: currentEvent,
+      event: currentCallingEvent,
       callerId: appUser.id,
       callerName: appUser.name,
       callerPhotoUrl: user.photoURL || '',
@@ -390,7 +383,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     if (editableEventName !== currentCallingEvent) {
       try {
         await updateUser(appUser.id, { currentCallingEvent: editableEventName });
-        setCurrentCallingEvent(editableEventName);
         updateCurrentAppUser({ currentCallingEvent: editableEventName });
         toast({ title: 'Calling Event Updated' });
       } catch (error) {
