@@ -32,7 +32,6 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { FilterPopover, type FilterRule, type FilterableField } from '@/components/filter-popover';
-import { SortPopover, type SortDescriptor } from '@/components/sort-popover';
 import {
   Select,
   SelectContent,
@@ -50,14 +49,16 @@ import {
 import { CreateUpdateGroupDialog } from '@/components/create-update-group-dialog';
 import { AssignHelperDialog } from '@/components/assign-helper-dialog';
 import { ColumnFilterState, applyColumnFilters } from "@/components/column-header-filter";
+import { SortPopover, type SortDescriptor } from "@/components/sort-popover";
 
-export default function CallingAssistantPage() {
+
+const CallingAssistantPageComponent = React.memo(function CallingAssistantPageComponent() {
   const { toast } = useToast();
   const { appUser, user, updateCurrentAppUser } = useAuth();
 
   const [people, setPeople] = React.useState<Person[]>([]);
   const [peopleForSession, setPeopleForSession] = React.useState<Person[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [isDataLoading, setIsDataLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
   
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -67,7 +68,9 @@ export default function CallingAssistantPage() {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFilterState>({});
 
   const [isSessionDialogOpen, setIsSessionDialogOpen] = React.useState(false);
-  const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(undefined);
+  const editingPersonRef = React.useRef<Person | undefined>(undefined);
+  const [isEditingDialogOpen, setIsEditingDialogOpen] = React.useState(false);
+
 
   const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
@@ -96,7 +99,7 @@ export default function CallingAssistantPage() {
 
   const fetchPageData = React.useCallback(async () => {
     if (!appUser) return;
-     setIsLoading(true);
+     setIsDataLoading(true);
       setFetchError(null);
       try {
         const [peopleData, enablersData, sourcesData, customFieldsData, groupsData] = await Promise.all([
@@ -119,7 +122,7 @@ export default function CallingAssistantPage() {
             setFetchError(new Error("An unknown error occurred while fetching data."));
         }
       } finally {
-        setIsLoading(false);
+        setIsDataLoading(false);
       }
   }, [appUser]);
 
@@ -300,7 +303,8 @@ export default function CallingAssistantPage() {
   }, [callRange, filteredPeople, isEventDialogOpen, isStartingSessionFlow]);
 
   const handleEditPerson = React.useCallback((person: Person) => {
-    setEditingPerson(person);
+    editingPersonRef.current = person;
+    setIsEditingDialogOpen(true);
   }, []);
   
   const handleSessionSave = React.useCallback((
@@ -501,16 +505,7 @@ export default function CallingAssistantPage() {
     }
   }, [selectedIds, toast, appUser]);
 
-
   const renderContent = () => {
-    if (isLoading) {
-      return (
-        <div className="flex min-h-[50vh] w-full items-center justify-center bg-background">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      );
-    }
-
     if (fetchError) {
       return <FirebaseConfigError error={fetchError} />;
     }
@@ -566,14 +561,18 @@ export default function CallingAssistantPage() {
                         </>
                     )}
                 </div>
-                 <Button size="sm" onClick={() => handleOpenEventDialog(true)} disabled={filteredPeople.length === 0 || isSelectionActive}>
+                 <Button size="sm" onClick={() => handleOpenEventDialog(true)} disabled={filteredPeople.length === 0 || isSelectionActive || isDataLoading}>
                     <Headset className="mr-2 h-4 w-4" />
-                    Start Calling Session ({filteredPeople.length})
+                    Start Calling Session ({isDataLoading ? '...' : filteredPeople.length})
                 </Button>
             </div>
         </div>
-
-        {filteredPeople.length === 0 ? (
+        
+        {isDataLoading ? (
+            <div className="flex min-h-[50vh] w-full items-center justify-center bg-background">
+                <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+        ) : filteredPeople.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <p>No contacts found.</p>
             <p className="text-sm">Try adjusting your search or filters.</p>
@@ -598,7 +597,7 @@ export default function CallingAssistantPage() {
   }
 
   return (
-    <AuthGuard>
+    <>
       <div className="flex min-h-screen w-full flex-col bg-background">
         <AppSidebar />
         <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
@@ -708,16 +707,25 @@ export default function CallingAssistantPage() {
           peopleCount={selectedIds.size}
         />
 
-        {editingPerson && (
+        {editingPersonRef.current && (
            <CreateUpdatePersonDialog
-              isOpen={!!editingPerson}
-              setIsOpen={() => setEditingPerson(undefined)}
+              isOpen={isEditingDialogOpen}
+              setIsOpen={setIsEditingDialogOpen}
               onSave={() => {}} // Note: The main save logic is not used here, dialog is for viewing/quick edits
-              person={editingPerson}
+              person={editingPersonRef.current}
               allPeople={people}
           />
         )}
       </div>
-    </AuthGuard>
+    </>
   );
+});
+
+
+export default function CallingAssistantPage() {
+    return (
+        <AuthGuard>
+            <CallingAssistantPageComponent />
+        </AuthGuard>
+    );
 }
