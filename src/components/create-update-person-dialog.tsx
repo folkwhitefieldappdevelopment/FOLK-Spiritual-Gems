@@ -48,7 +48,7 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { StarRating } from "./star-rating";
 
-const createPersonFormSchema = (allPeople: Person[], currentPersonId?: string) => 
+const createPersonFormSchema = (allPeople: Person[], currentPersonId?: string) => (
   z.object({
     fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
     phone: z.string().regex(/^[6-9]\d{9}$/, { message: "Please enter a valid 10-digit Indian mobile number." }),
@@ -73,7 +73,8 @@ const createPersonFormSchema = (allPeople: Person[], currentPersonId?: string) =
       message: "This phone number is already registered to another contact.",
       path: ["phone"],
     }
-  );
+  )
+);
 
 type PersonFormValues = z.infer<ReturnType<typeof createPersonFormSchema>>;
 
