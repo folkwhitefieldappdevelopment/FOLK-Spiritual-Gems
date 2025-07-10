@@ -156,8 +156,8 @@ export default function ContactsPage() {
         });
     }
 
-    // Apply advanced filters (for card view)
-    if (view === 'card' && filters.length > 0) {
+    // Apply advanced global filters
+    if (filters.length > 0) {
       tempPeople = tempPeople.filter(person => {
         return filters.every(filter => {
           const personValue = person[filter.field as keyof Person];
@@ -214,6 +214,7 @@ export default function ContactsPage() {
       });
     }
 
+    // Apply column filters (only for table view)
     if (view === 'table') {
       tempPeople = applyColumnFilters(tempPeople, columnFilters);
     }
@@ -757,18 +758,16 @@ export default function ContactsPage() {
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                             </div>
+                            <FilterPopover 
+                                filters={filters}
+                                setFilters={setFilters}
+                                filterableFields={filterableFields}
+                            />
                             {view === 'card' && (
-                              <>
-                                <FilterPopover 
-                                    filters={filters}
-                                    setFilters={setFilters}
-                                    filterableFields={filterableFields}
-                                />
                                 <SortPopover
                                     sortDescriptors={sortDescriptors}
                                     setSortDescriptors={setSortDescriptors}
                                 />
-                              </>
                             )}
                         </>
                     )}
@@ -933,3 +932,5 @@ export default function ContactsPage() {
     </AuthGuard>
   );
 }
+
+    

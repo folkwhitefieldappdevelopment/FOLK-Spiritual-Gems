@@ -169,7 +169,7 @@ export default function CallingAssistantPage() {
         });
     }
 
-    // Apply advanced filters
+    // Apply advanced global filters
     if (filters.length > 0) {
       tempPeople = tempPeople.filter(person => {
         return filters.every(filter => {
@@ -562,7 +562,7 @@ export default function CallingAssistantPage() {
                                     ))}
                                 </SelectContent>
                             </Select>
-                            
+                            <FilterPopover filters={filters} setFilters={setFilters} filterableFields={filterableFields} />
                         </>
                     )}
                 </div>
@@ -721,5 +721,7 @@ export default function CallingAssistantPage() {
     </AuthGuard>
   );
 }
+
+    
 
     

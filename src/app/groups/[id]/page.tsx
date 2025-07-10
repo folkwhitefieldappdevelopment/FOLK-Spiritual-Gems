@@ -183,10 +183,8 @@ export default function GroupDetailPage() {
       });
     }
     
-    // Apply column filters if view is table
-    if (view === 'table') {
-      tempPeople = applyColumnFilters(tempPeople, columnFilters);
-    }
+    // Apply column filters
+    tempPeople = applyColumnFilters(tempPeople, columnFilters);
 
 
     return tempPeople.sort((a, b) => {
@@ -210,11 +208,11 @@ export default function GroupDetailPage() {
       }
       return 0;
     });
-  }, [members, searchTerm, filters, sortDescriptors, columnFilters, view]);
+  }, [members, searchTerm, filters, sortDescriptors, columnFilters]);
 
   React.useEffect(() => {
     setSelectedIds(new Set());
-  }, [filters, sortDescriptors, searchTerm, columnFilters]);
+  }, [filters, sortDescriptors, searchTerm, columnFilters, view]);
 
   const handleEditPerson = (person: Person) => {
     setEditingPerson(person);
@@ -321,11 +319,9 @@ export default function GroupDetailPage() {
               ) : (
                 <>
                   <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by name or phone..." className="pl-10 w-full sm:w-64" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
-                   {view === 'card' && (
-                    <>
-                      <FilterPopover filters={filters} setFilters={setFilters} filterableFields={filterableFields} />
-                      <SortPopover sortDescriptors={sortDescriptors} setSortDescriptors={setSortDescriptors} />
-                    </>
+                  <FilterPopover filters={filters} setFilters={setFilters} filterableFields={filterableFields} />
+                  {view === 'card' && (
+                    <SortPopover sortDescriptors={sortDescriptors} setSortDescriptors={setSortDescriptors} />
                   )}
                 </>
               )}
@@ -389,3 +385,5 @@ export default function GroupDetailPage() {
     </AuthGuard>
   );
 }
+
+    
