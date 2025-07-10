@@ -82,6 +82,7 @@ export function CallingSessionDialog({
   const [isInitializing, setIsInitializing] = React.useState(false);
   const [currentPeople, setCurrentPeople] = React.useState<Person[]>(people);
   const [isEditingDetails, setIsEditingDetails] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
   
   const currentPerson = currentPeople[currentIndex];
 
@@ -95,6 +96,12 @@ export function CallingSessionDialog({
       frp: "",
     },
   });
+
+  const personGroups = React.useMemo(() => {
+    if (!currentPerson || !groups) return [];
+    return groups.filter(g => g.peopleIds.includes(currentPerson.id));
+  }, [currentPerson, groups]);
+
 
   React.useEffect(() => {
     if (isOpen) {
@@ -147,20 +154,28 @@ export function CallingSessionDialog({
     }
   }, [currentIndex]);
   
-  const onSubmit = React.useCallback((data: CallFormValues) => {
+  const onSubmit = React.useCallback(async (data: CallFormValues) => {
     if (!currentPerson) return;
     
+    setIsSubmitting(true);
     const sg = data.sg === 'yes' ? true : data.sg === 'no' ? false : undefined;
     const ma = data.ma === 'yes' ? true : data.ma === 'no' ? false : undefined;
     const frp = data.frp === 'yes' ? true : data.frp === 'no' ? false : undefined;
     const fullName = currentPerson.fullName || '';
 
-    onSaveRemark(currentPerson.id, data.remark || '', data.status as CallStatus, sg, ma, frp);
-    toast({
-        title: "Call Logged",
-        description: `Status for ${fullName} has been updated.`
-    });
-    handleNext();
+    try {
+        onSaveRemark(currentPerson.id, data.remark || '', data.status as CallStatus, sg, ma, frp);
+        toast({
+            title: "Call Logged",
+            description: `Status for ${fullName} has been updated.`
+        });
+        handleNext();
+    } catch (e) {
+        toast({ variant: 'destructive', title: "Error", description: 'Could not save the call log.' });
+    } finally {
+        setIsSubmitting(false);
+    }
+
   }, [currentPerson, onSaveRemark, toast, handleNext]);
 
   const handleCloseDialog = () => {
@@ -169,6 +184,7 @@ export function CallingSessionDialog({
 
   const handleSaveDetails = async (formData: Partial<Person>) => {
     if (!currentPerson) return;
+    setIsSubmitting(true);
     try {
         await updatePerson(currentPerson.id, formData);
         
@@ -179,6 +195,8 @@ export function CallingSessionDialog({
         setIsEditingDetails(false);
     } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not update contact details.' });
+    } finally {
+        setIsSubmitting(false);
     }
   };
 
@@ -187,11 +205,6 @@ export function CallingSessionDialog({
     return null;
   }
   
-  const personGroups = React.useMemo(() => {
-    if (!currentPerson || !groups) return [];
-    return groups.filter(g => g.peopleIds.includes(currentPerson.id));
-  }, [currentPerson, groups]);
-
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleCloseDialog()}>
@@ -377,9 +390,9 @@ export function CallingSessionDialog({
                             <Button
                                 type="submit"
                                 form="call-form"
-                                disabled={form.formState.isSubmitting}
+                                disabled={isSubmitting}
                             >
-                                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 <CheckSquare className="mr-2 h-4 w-4"/>
                                 Save & Next
                             </Button>
@@ -395,7 +408,8 @@ export function CallingSessionDialog({
                             <Button size="sm" variant="outline" onClick={() => setIsEditingDetails(false)}>
                                 <XCircle className="mr-2 h-4 w-4" />Cancel
                             </Button>
-                            <Button size="sm" type="submit" form="person-details-form">
+                            <Button size="sm" type="submit" form="person-details-form" disabled={isSubmitting}>
+                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 <Save className="mr-2 h-4 w-4" />Save
                             </Button>
                         </div>
