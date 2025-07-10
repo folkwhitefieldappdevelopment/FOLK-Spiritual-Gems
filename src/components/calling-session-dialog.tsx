@@ -124,17 +124,12 @@ const CallingSessionDialogComponent = ({
       frp: "",
     },
   });
-
-  React.useEffect(() => {
-    if (isOpen) {
-        setCurrentPeople(people); // Initialize or refresh the people list when dialog opens
-    }
-  }, [isOpen, people]);
   
   React.useEffect(() => {
     if (isOpen) {
         setIsInitializing(true);
         setCurrentIndex(initialIndex);
+        setCurrentPeople(people);
         setIsEditingDetails(false);
         
         const timer = setTimeout(() => {
@@ -143,7 +138,7 @@ const CallingSessionDialogComponent = ({
 
         return () => clearTimeout(timer);
     }
-  }, [isOpen, initialIndex]);
+  }, [isOpen, people, initialIndex]);
 
   React.useEffect(() => {
     if (!isInitializing && currentPerson) {
@@ -441,44 +436,46 @@ const CallingSessionDialogComponent = ({
                             />
                         </form>
                     </Form>
-                     <div className="flex items-center justify-between pt-4">
-                        <div className="flex items-center gap-2">
-                           <Button variant="secondary" onClick={handlePauseSession}>
-                                <Pause className="mr-2 h-4 w-4"/>
-                                Pause Session
-                            </Button>
-                           <Button variant="destructive" size="sm" onClick={handleEndAndClearSession}>
-                                <Trash2 className="mr-2 h-4 w-4"/>
-                                End & Clear Session
-                            </Button>
-                        </div>
-                         <div className="flex items-center gap-2">
-                             <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={handlePrevious}
-                                disabled={currentIndex === 0}
-                                aria-label="Previous Contact"
-                            >
-                                <ArrowLeft className="h-4 w-4" />
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={handleNext}
-                                aria-label="Next Contact (Skip)"
-                            >
-                                <ArrowRight className="h-4 w-4" />
-                            </Button>
-                            <Button
-                                type="submit"
-                                form="call-form"
-                                disabled={isSubmitting}
-                            >
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                <CheckSquare className="mr-2 h-4 w-4"/>
-                                Save & Next
-                            </Button>
+                     <div className="flex flex-col gap-4 pt-4">
+                        <div className="flex items-center justify-between">
+                             <div className="flex items-center gap-2">
+                                <Button variant="secondary" onClick={handlePauseSession}>
+                                    <Pause className="mr-2 h-4 w-4"/>
+                                    Pause Session
+                                </Button>
+                               <Button variant="destructive" size="sm" onClick={handleEndAndClearSession}>
+                                    <Trash2 className="mr-2 h-4 w-4"/>
+                                    End & Clear
+                                </Button>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={handlePrevious}
+                                    disabled={currentIndex === 0}
+                                    aria-label="Previous Contact"
+                                >
+                                    <ArrowLeft className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={handleNext}
+                                    aria-label="Next Contact (Skip)"
+                                >
+                                    <ArrowRight className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    form="call-form"
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    <CheckSquare className="mr-2 h-4 w-4"/>
+                                    Save & Next
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>
