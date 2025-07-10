@@ -347,22 +347,24 @@ export function EditablePersonDetailsForm({
     );
   }
 
+  const avatarSize = isInDialog ? 'h-24 w-24' : 'h-32 w-32';
+
   return (
     <div className="space-y-6">
        <div className="flex flex-col items-center text-center">
             <div className={cn("relative", isInDialog ? "mb-4" : "mb-8")}>
                 <Dialog>
                 <DialogTrigger asChild>
-                    <Avatar className={cn("cursor-pointer hover:opacity-80 transition-opacity", isInDialog ? "h-24 w-24" : "h-32 w-32")}>
-                        <AvatarImage src={person.photoUrl} alt={fullName} data-ai-hint="person portrait" />
-                        <AvatarFallback>{fallback}</AvatarFallback>
-                    </Avatar>
+                    <div className={cn("relative cursor-pointer hover:opacity-80 transition-opacity", avatarSize)}>
+                        <Avatar className="h-full w-full">
+                            <AvatarImage src={person.photoUrl} alt={fullName} data-ai-hint="person portrait" />
+                            <AvatarFallback>{fallback}</AvatarFallback>
+                        </Avatar>
+                        <StarRating value={person.sgRating || 0} avatarSizeClass={avatarSize} />
+                    </div>
                 </DialogTrigger>
                 <DialogContent className="p-0 border-0 max-w-lg bg-transparent shadow-none"><img src={person.photoUrl} alt={fullName} className="rounded-lg w-full h-auto object-contain" /></DialogContent>
                 </Dialog>
-                <div className="absolute inset-0">
-                  <StarRating value={person.sgRating || 0} />
-                </div>
             </div>
 
             <h2 className="text-2xl font-bold">{fullName}</h2>

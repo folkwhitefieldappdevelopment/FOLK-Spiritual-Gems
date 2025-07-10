@@ -8,11 +8,21 @@ import { cn } from '@/lib/utils';
 type StarRatingProps = {
   value: number;
   totalStars?: number;
+  avatarSizeClass: 'h-16 w-16' | 'h-20 w-20' | 'h-24 w-24' | 'h-32 w-32';
 };
 
-const StarRatingComponent = ({ value, totalStars = 5 }: StarRatingProps) => {
+const StarRatingComponent = ({ value, totalStars = 5, avatarSizeClass }: StarRatingProps) => {
   // Map the 0-10 rating to a 0-5 star scale.
   const ratingValue = value / (10 / totalStars);
+
+  const radiusMap = {
+    'h-16 w-16': '2.5rem', // 40px
+    'h-20 w-20': '3rem',   // 48px
+    'h-24 w-24': '3.5rem', // 56px
+    'h-32 w-32': '4.5rem', // 72px
+  };
+  
+  const radius = radiusMap[avatarSizeClass] || '2.5rem';
 
   return (
     <div
@@ -20,22 +30,18 @@ const StarRatingComponent = ({ value, totalStars = 5 }: StarRatingProps) => {
       aria-label={`Rating: ${ratingValue.toFixed(1)} out of ${totalStars}`}
     >
       {Array.from({ length: totalStars }).map((_, i) => {
-        // Position stars in a 120-degree arc at the bottom.
-        // Start from -60deg (bottom-left) to +60deg (bottom-right).
-        // 120deg / 4 gaps = 30deg per step.
-        const angle = -60 + i * 30;
+        // Use a 180-degree arc for a perfect semi-circle at the bottom.
+        // Start from -90deg (bottom-left) to +90deg (bottom-right).
+        // 180deg / 4 gaps = 45deg per step.
+        const angle = -90 + i * 45;
         const filled = i < ratingValue;
 
         return (
           <div
             key={i}
             className="absolute top-1/2 left-1/2"
-            // The transform magic:
-            // 1. rotate() positions the star on the circle's edge.
-            // 2. translate() moves it outwards. The card avatar is w-16 (4rem), so radius is 2rem.
-            // 3. rotate() back to keep the star upright.
             style={{
-              transform: `rotate(${angle}deg) translateY(2.5rem) rotate(${-angle}deg)`,
+              transform: `rotate(${angle}deg) translateY(${radius}) rotate(${-angle}deg)`,
             }}
           >
             <Star
