@@ -16,13 +16,13 @@ const StarRatingComponent = ({ value, totalStars = 5, avatarSizeClass }: StarRat
   const ratingValue = Math.round(value / (10 / totalStars));
 
   const radiusMap = {
-    'h-16 w-16': '2.0rem',
-    'h-20 w-20': '2.5rem',
-    'h-24 w-24': '3.0rem',
-    'h-32 w-32': '4.0rem',
+    'h-16 w-16': '2.3rem', // Increased from 2.0rem
+    'h-20 w-20': '2.8rem', // Increased from 2.5rem
+    'h-24 w-24': '3.4rem', // Increased from 3.0rem
+    'h-32 w-32': '4.5rem', // Increased from 4.0rem
   };
   
-  const radius = radiusMap[avatarSizeClass] || '2.0rem';
+  const radius = radiusMap[avatarSizeClass] || '2.3rem';
 
   return (
     <div
