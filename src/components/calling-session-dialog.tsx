@@ -497,8 +497,8 @@ const CallingSessionDialogComponent = ({
             )}
         </div>
 
-        <DialogFooter className="flex-shrink-0 p-6 pt-4 border-t flex flex-row items-center justify-between">
-           <div className="flex items-center gap-2">
+        <DialogFooter className="flex-shrink-0 p-6 pt-4 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+           <div className="flex items-center gap-2 justify-center sm:justify-start">
                 <Button variant="secondary" size="sm" onClick={handlePauseSession}>
                     <Pause className="mr-2 h-4 w-4"/> Pause
                 </Button>
@@ -506,7 +506,7 @@ const CallingSessionDialogComponent = ({
                     <Trash2 className="mr-2 h-4 w-4"/> End
                 </Button>
            </div>
-           <div className="flex items-center gap-2">
+           <div className="flex items-center gap-2 justify-center sm:justify-end">
                 <Button
                     variant="outline"
                     size="icon"
