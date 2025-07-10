@@ -68,6 +68,13 @@ export function ColumnHeaderFilter({
   }, [data, column.key]);
   
   const [selectedValues, setSelectedValues] = React.useState<Set<string>>(currentFilter?.values || new Set(uniqueValues));
+  const [searchValue, setSearchValue] = React.useState('');
+
+  const filteredUniqueValues = React.useMemo(() => {
+    if (!searchValue) return uniqueValues;
+    return uniqueValues.filter(v => v.toLowerCase().includes(searchValue.toLowerCase()));
+  }, [uniqueValues, searchValue]);
+
 
   React.useEffect(() => {
     setSelectedValues(currentFilter?.values || new Set(uniqueValues));
@@ -90,6 +97,7 @@ export function ColumnHeaderFilter({
         [column.key]: { values: selectedValues },
       }));
     }
+    setSearchValue('');
     setIsOpen(false);
   };
   
@@ -98,6 +106,7 @@ export function ColumnHeaderFilter({
     delete newFilters[column.key];
     setColumnFilters(newFilters);
     setSelectedValues(new Set(uniqueValues));
+    setSearchValue('');
     setIsOpen(false);
   };
   
@@ -122,7 +131,12 @@ export function ColumnHeaderFilter({
   const isFiltered = !!currentFilter;
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover open={isOpen} onOpenChange={(open) => {
+      setIsOpen(open);
+      if (!open) {
+        setSearchValue('');
+      }
+    }}>
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
@@ -153,7 +167,11 @@ export function ColumnHeaderFilter({
         </div>
         <Separator />
         <Command>
-          <CommandInput placeholder="Search values..." />
+          <CommandInput 
+            placeholder="Search values..."
+            value={searchValue}
+            onValueChange={setSearchValue}
+           />
           <CommandList>
             <CommandEmpty>No values found.</CommandEmpty>
             <CommandGroup>
@@ -162,11 +180,12 @@ export function ColumnHeaderFilter({
                 <span className="mx-1 text-muted-foreground">·</span>
                 <Button variant="link" className="p-0 h-auto" onClick={handleClearSelection}>Clear</Button>
               </div>
-              {uniqueValues.map(value => (
+              {filteredUniqueValues.map(value => (
                 <CommandItem
                   key={value}
                   onSelect={() => handleValueToggle(value)}
                   className="!pointer-events-auto !opacity-100"
+                  value={value}
                 >
                   <Checkbox
                     className="mr-2"
@@ -182,11 +201,13 @@ export function ColumnHeaderFilter({
         </Command>
         <Separator />
         <div className="p-2 flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
+            <Button variant="ghost" onClick={() => {
+              setIsOpen(false);
+              setSearchValue('');
+            }}>Cancel</Button>
             <Button onClick={handleApplyFilter}>OK</Button>
         </div>
       </PopoverContent>
     </Popover>
   );
 }
-
