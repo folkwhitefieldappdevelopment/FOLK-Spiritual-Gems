@@ -93,6 +93,10 @@ export const updateUser = async (id: string, userData: { [key: string]: any }): 
     }
   }
 
+  if (userData.pausedSession === null) {
+    userData.pausedSession = deleteField();
+  }
+
   await updateDoc(userDocRef, userData);
 };
 

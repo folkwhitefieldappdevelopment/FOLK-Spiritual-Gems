@@ -2,8 +2,8 @@
 "use client";
 
 import * as React from "react";
-import { Headset, Loader2, Edit, Search, Users, UserCheck, PlusCircle } from "lucide-react";
-import type { Person, CallStatus, CustomField, Group, AppUser } from "@/lib/types";
+import { Headset, Loader2, Edit, Search, Users, UserCheck, PlusCircle, Play, Pause } from "lucide-react";
+import type { Person, CallStatus, CustomField, Group, AppUser, PausedSession } from "@/lib/types";
 import { occupationStatuses } from "@/lib/types";
 import { callStatuses } from "@/lib/data";
 import { Button } from "@/components/ui/button";
@@ -86,10 +86,12 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
   const [isEventDialogOpen, setIsEventDialogOpen] = React.useState(false);
   const [isStartingSessionFlow, setIsStartingSessionFlow] = React.useState(false);
-  const [editableEventName, setEditableEventName] = React.useState("");
+  const [editableEventName, setEditableEventName] = React.useState(currentCallingEvent);
   const [callRange, setCallRange] = React.useState({ from: '1', to: '' });
   const [callRangeNames, setCallRangeNames] = React.useState({ from: '', to: '' });
   const [sessionStartIndex, setSessionStartIndex] = React.useState(0);
+
+  const pausedSession = appUser?.pausedSession;
 
   const fetchPageData = React.useCallback(async () => {
     if (!appUser) return;
@@ -497,6 +499,24 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     }
   }, [selectedIds, toast, appUser]);
 
+  const handleResumeSession = React.useCallback(() => {
+    if (!pausedSession) return;
+    
+    // Restore filters and sorting from paused session
+    setFilters(pausedSession.filters);
+    setSortDescriptors(pausedSession.sortDescriptors);
+    setSearchTerm(pausedSession.searchTerm);
+    setSelectedGroupId(pausedSession.selectedGroupId);
+    setColumnFilters(pausedSession.columnFilters);
+    
+    // Set people and open dialog
+    const peopleForPausedSession = people.filter(p => pausedSession.peopleIds.includes(p.id));
+    setPeopleForSession(peopleForPausedSession);
+    setSessionStartIndex(pausedSession.sessionStartIndex);
+    setIsSessionDialogOpen(true);
+
+  }, [pausedSession, people]);
+
   const renderContent = () => {
     if (fetchError) {
       return <FirebaseConfigError error={fetchError} />;
@@ -553,10 +573,18 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
                         </>
                     )}
                 </div>
-                 <Button size="sm" onClick={() => handleOpenEventDialog(true)} disabled={filteredPeople.length === 0 || isSelectionActive || isDataLoading}>
-                    <Headset className="mr-2 h-4 w-4" />
-                    Start Calling Session ({isDataLoading ? '...' : filteredPeople.length})
-                </Button>
+                 <div className="flex items-center gap-2">
+                    {pausedSession && (
+                        <Button size="sm" onClick={handleResumeSession} variant="outline">
+                            <Play className="mr-2 h-4 w-4" />
+                            Resume Session ({pausedSession.currentIndex + 1} / {pausedSession.peopleIds.length})
+                        </Button>
+                    )}
+                    <Button size="sm" onClick={() => handleOpenEventDialog(true)} disabled={filteredPeople.length === 0 || isSelectionActive || isDataLoading}>
+                        <Headset className="mr-2 h-4 w-4" />
+                        Start Calling Session ({isDataLoading ? '...' : filteredPeople.length})
+                    </Button>
+                 </div>
             </div>
         </div>
         
@@ -684,6 +712,13 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
           groups={groups}
           sessionStartIndex={sessionStartIndex}
           totalPeopleCount={filteredPeople.length}
+          initialIndex={pausedSession?.currentIndex}
+          // Pass all filter/sort states to be saved on pause
+          filters={filters}
+          sortDescriptors={sortDescriptors}
+          searchTerm={searchTerm}
+          selectedGroupId={selectedGroupId}
+          columnFilters={columnFilters}
         />
         
         <CreateUpdateGroupDialog

@@ -1,5 +1,7 @@
 
 import type { callStatuses } from './data';
+import type { FilterRule } from '@/components/filter-popover';
+import type { SortDescriptor } from '@/components/sort-popover';
 
 export const progressCategories = [
   'Association',
@@ -87,6 +89,19 @@ export type Person = {
 export const userRoles = ['Admin', 'Folk Guide', 'Folk Enabler'] as const;
 export type UserRole = (typeof userRoles)[number];
 
+export type PausedSession = {
+  peopleIds: string[];
+  currentIndex: number;
+  currentEvent: string;
+  sessionStartIndex: number;
+  totalPeopleCount: number;
+  filters: FilterRule[];
+  sortDescriptors: SortDescriptor[];
+  searchTerm: string;
+  selectedGroupId: string;
+  columnFilters: Record<string, any>;
+};
+
 export type AppUser = {
   id: string;
   name: string;
@@ -103,6 +118,7 @@ export type AppUser = {
   lastAssignedEnablerIndex?: number;
   currentCallingEvent?: string;
   photoUrl?: string;
+  pausedSession?: PausedSession;
 };
 
 export type Group = {

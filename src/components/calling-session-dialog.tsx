@@ -5,9 +5,9 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import type { Person, CallStatus, Group } from "@/lib/types";
+import type { Person, CallStatus, Group, CustomField, PausedSession } from "@/lib/types";
 import { callStatuses } from "@/lib/data";
-import { Phone, Square, CheckSquare, Loader2, Tags, ArrowLeft, ArrowRight, Edit, Save, XCircle } from "lucide-react";
+import { Phone, Square, CheckSquare, Loader2, Tags, ArrowLeft, ArrowRight, Edit, Save, XCircle, Pause, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 import {
@@ -37,7 +37,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "./ui/separator";
 import { updatePerson } from "@/services/people-service";
+import { updateUser } from "@/services/user-service";
 import { EditablePersonDetailsForm } from "./editable-person-details-form";
+import { useAuth } from "@/contexts/auth-context";
+import { ColumnFilterState } from "./column-header-filter";
+import { FilterRule } from "./filter-popover";
+import { SortDescriptor } from "./sort-popover";
 
 
 const callFormSchema = z.object({
@@ -63,23 +68,35 @@ type CallingSessionDialogProps = {
   ) => void;
   people: Person[];
   currentEvent: string;
+  customFields: CustomField[];
   groups: Group[];
   sessionStartIndex: number;
   totalPeopleCount: number;
+  initialIndex?: number;
+  // Filter states to be saved
+  filters: FilterRule[];
+  sortDescriptors: SortDescriptor[];
+  searchTerm: string;
+  selectedGroupId: string;
+  columnFilters: ColumnFilterState;
 };
 
-export const CallingSessionDialog = React.memo(function CallingSessionDialog({
+const CallingSessionDialogComponent = ({
   isOpen,
   onClose,
   onSaveRemark,
   people,
   currentEvent,
+  customFields,
   groups,
   sessionStartIndex,
-  totalPeopleCount
-}: CallingSessionDialogProps) {
+  totalPeopleCount,
+  initialIndex = 0,
+  ...filterStates
+}: CallingSessionDialogProps) => {
   const { toast } = useToast();
-  const [currentIndex, setCurrentIndex] = React.useState(0);
+  const { appUser, updateCurrentAppUser } = useAuth();
+  const [currentIndex, setCurrentIndex] = React.useState(initialIndex);
   const [isInitializing, setIsInitializing] = React.useState(false);
   const [currentPeople, setCurrentPeople] = React.useState<Person[]>(people);
   const [isEditingDetails, setIsEditingDetails] = React.useState(false);
@@ -117,7 +134,7 @@ export const CallingSessionDialog = React.memo(function CallingSessionDialog({
   React.useEffect(() => {
     if (isOpen) {
         setIsInitializing(true);
-        setCurrentIndex(0);
+        setCurrentIndex(initialIndex);
         setIsEditingDetails(false);
         
         const timer = setTimeout(() => {
@@ -126,7 +143,7 @@ export const CallingSessionDialog = React.memo(function CallingSessionDialog({
 
         return () => clearTimeout(timer);
     }
-  }, [isOpen]);
+  }, [isOpen, initialIndex]);
 
   React.useEffect(() => {
     if (!isInitializing && currentPerson) {
@@ -188,6 +205,42 @@ export const CallingSessionDialog = React.memo(function CallingSessionDialog({
   const handleCloseDialog = React.useCallback(() => {
     onClose();
   }, [onClose]);
+
+  const handlePauseSession = React.useCallback(async () => {
+    if (!appUser) return;
+    const pausedSessionData: PausedSession = {
+        peopleIds: currentPeople.map(p => p.id),
+        currentIndex,
+        currentEvent,
+        sessionStartIndex,
+        totalPeopleCount,
+        filters: filterStates.filters,
+        sortDescriptors: filterStates.sortDescriptors,
+        searchTerm: filterStates.searchTerm,
+        selectedGroupId: filterStates.selectedGroupId,
+        columnFilters: filterStates.columnFilters,
+    };
+    try {
+        await updateUser(appUser.id, { pausedSession: pausedSessionData });
+        updateCurrentAppUser({ pausedSession: pausedSessionData });
+        toast({ title: "Session Paused", description: "Your progress has been saved." });
+        onClose();
+    } catch (e) {
+        toast({ variant: 'destructive', title: "Error", description: 'Could not pause the session.' });
+    }
+  }, [appUser, currentPeople, currentIndex, currentEvent, sessionStartIndex, totalPeopleCount, filterStates, onClose, toast, updateCurrentAppUser]);
+
+  const handleEndAndClearSession = React.useCallback(async () => {
+    if (!appUser) return;
+    try {
+        await updateUser(appUser.id, { pausedSession: null }); // Use null to signify deletion
+        updateCurrentAppUser({ pausedSession: undefined });
+        toast({ title: "Session Ended", description: "Your paused session has been cleared." });
+        onClose();
+    } catch (e) {
+        toast({ variant: 'destructive', title: "Error", description: 'Could not end the session.' });
+    }
+  }, [appUser, onClose, toast, updateCurrentAppUser]);
 
   const handleSaveDetails = React.useCallback(async (formData: Partial<Person>) => {
     if (!currentPerson) return;
@@ -389,10 +442,16 @@ export const CallingSessionDialog = React.memo(function CallingSessionDialog({
                         </form>
                     </Form>
                      <div className="flex items-center justify-between pt-4">
-                        <Button variant="secondary" onClick={onClose}>
-                            <Square className="mr-2 h-4 w-4"/>
-                            End Session
-                        </Button>
+                        <div className="flex items-center gap-2">
+                           <Button variant="secondary" onClick={handlePauseSession}>
+                                <Pause className="mr-2 h-4 w-4"/>
+                                Pause Session
+                            </Button>
+                           <Button variant="destructive" size="sm" onClick={handleEndAndClearSession}>
+                                <Trash2 className="mr-2 h-4 w-4"/>
+                                End & Clear Session
+                            </Button>
+                        </div>
                          <div className="flex items-center gap-2">
                              <Button
                                 variant="outline"
@@ -484,4 +543,6 @@ export const CallingSessionDialog = React.memo(function CallingSessionDialog({
       </DialogContent>
     </Dialog>
   );
-});
+};
+
+export const CallingSessionDialog = React.memo(CallingSessionDialogComponent);
