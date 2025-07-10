@@ -46,7 +46,6 @@ import { ScrollArea } from "./ui/scroll-area";
 import { Separator } from "./ui/separator";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
-import { StarRating } from "./star-rating";
 
 const createPersonFormSchema = (allPeople: Person[], currentPersonId?: string) => (
   z.object({
@@ -58,7 +57,7 @@ const createPersonFormSchema = (allPeople: Person[], currentPersonId?: string) =
     organisation: z.string().optional(),
     rentDetails: z.string().optional(),
     nativePlace: z.string().optional(),
-    sgRating: z.coerce.number().min(0).max(5).default(0),
+    sgRating: z.coerce.number().min(0).max(10).optional(),
     contactSource: z.string().optional(),
     chantingStatus: z.string().optional(),
     fromOtherCamp: z.boolean().default(false),
@@ -173,7 +172,7 @@ export function CreateUpdatePersonDialog({
           organisation: person.organisation || (!isStandardOccupation ? person.occupation : ''),
           rentDetails: person.rentDetails,
           nativePlace: person.nativePlace,
-          sgRating: person.sgRating || 0,
+          sgRating: person.sgRating,
           contactSource: person.contactSource,
           chantingStatus: person.chantingStatus,
           fromOtherCamp: person.fromOtherCamp,
@@ -606,10 +605,12 @@ export function CreateUpdatePersonDialog({
                         <FormItem>
                             <FormLabel>SG Rating</FormLabel>
                             <FormControl>
-                                <StarRating 
-                                    isEditing 
-                                    value={field.value} 
-                                    onValueChange={field.onChange}
+                                <Input 
+                                    type="number"
+                                    min="0"
+                                    max="10"
+                                    {...field}
+                                    onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)}
                                 />
                             </FormControl>
                             <FormMessage />

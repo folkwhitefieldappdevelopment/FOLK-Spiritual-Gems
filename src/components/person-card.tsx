@@ -3,7 +3,7 @@
 
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
-import { User, Briefcase, Tags } from "lucide-react";
+import { User, Briefcase, Tags, Star } from "lucide-react";
 import type { Person, ProgressCategory, ProgressLevelAnswers, Group } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/contexts/auth-context';
@@ -17,7 +17,6 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from './ui/checkbox';
 import { Badge } from './ui/badge';
-import { StarRating } from './star-rating';
 
 type PersonCardProps = {
   person: Person;
@@ -184,7 +183,10 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
                 </Avatar>
                 <div className="flex flex-col">
                     <CardTitle className={cn("text-lg", !isSelectionActive && "group-hover:underline")}>{fullName}</CardTitle>
-                    <StarRating value={person.sgRating || 0} />
+                    <CardDescription className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                        <span>{person.sgRating || 0}/10</span>
+                    </CardDescription>
                 </div>
             </CardHeader>
             <CardContent className="flex-grow space-y-3 pt-0 p-4">
