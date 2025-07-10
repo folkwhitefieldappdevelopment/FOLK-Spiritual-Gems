@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -276,59 +277,28 @@ const CallingSessionDialogComponent = ({
     return null;
   }
   
-
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleCloseDialog()}>
       <DialogContent className="sm:max-w-4xl flex flex-col max-h-[90vh] p-0" onPointerDownOutside={(e) => e.preventDefault()}>
-        <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b flex flex-row items-center justify-between">
-          <div>
-            <DialogTitle>
-              Calling Session
-            </DialogTitle>
-            <DialogDescription>
-              {isInitializing ? 'Preparing session...' : `Contact ${sessionStartIndex + currentIndex + 1} of ${totalPeopleCount} for: `}
-              {!isInitializing && <span className="font-semibold text-primary">{currentEvent}</span>}
-            </DialogDescription>
-          </div>
-          {!isInitializing && (
-            <div className="flex items-center gap-2">
-                <Button variant="secondary" size="sm" onClick={handlePauseSession}>
-                    <Pause className="mr-2 h-4 w-4"/> Pause
-                </Button>
-                <Button variant="destructive" size="sm" onClick={handleEndAndClearSession}>
-                    <Trash2 className="mr-2 h-4 w-4"/> End
-                </Button>
-                <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={handlePrevious}
-                    disabled={currentIndex === 0}
-                    aria-label="Previous Contact"
-                >
-                    <ArrowLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={handleNext}
-                    aria-label="Next Contact (Skip)"
-                >
-                    <ArrowRight className="h-4 w-4" />
-                </Button>
-            </div>
-          )}
+        <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b">
+          <DialogTitle>
+            Calling Session
+          </DialogTitle>
+          <DialogDescription>
+            {isInitializing ? 'Preparing session...' : `Contact ${sessionStartIndex + currentIndex + 1} of ${totalPeopleCount} for: `}
+            {!isInitializing && <span className="font-semibold text-primary">{currentEvent}</span>}
+          </DialogDescription>
         </DialogHeader>
         
-        {isInitializing || !currentPerson ? (
-             <div className="flex-1 flex items-center justify-center p-6 min-h-[400px]">
-                <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-        ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 p-6 min-h-0 overflow-hidden">
-                {/* Left Column: Form & Actions */}
-                <div className="flex flex-col">
-                    {/* Scrollable content area */}
-                    <div className="flex-1 space-y-4 overflow-y-auto pr-2">
+        <div className="flex-1 min-h-0 overflow-y-auto">
+            {isInitializing || !currentPerson ? (
+                <div className="flex-1 flex items-center justify-center p-6 min-h-[400px]">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 p-6">
+                    {/* Left Column: Form */}
+                    <div className="space-y-4">
                         <div className="flex items-center justify-between rounded-lg border p-3">
                             <div className="flex items-center gap-2">
                                 <Phone className="h-5 w-5 text-primary" />
@@ -468,80 +438,105 @@ const CallingSessionDialogComponent = ({
                         </Form>
                     </div>
 
-                    {/* Action buttons footer */}
-                    <div className="flex-shrink-0 pt-4 mt-auto">
-                        <div className="flex justify-end">
-                             <Button
-                                type="submit"
-                                form="call-form"
-                                disabled={isSubmitting}
-                                className="w-full"
-                            >
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                <CheckSquare className="mr-2 h-4 w-4"/>
-                                Save & Next
+                    {/* Right Column: Person Details */}
+                    <div className="md:border-l md:pl-8 space-y-4">
+                      <div className="flex justify-end mb-4 -mt-2">
+                         {isEditingDetails ? (
+                            <div className="flex items-center gap-2">
+                                <Button size="sm" variant="outline" onClick={() => setIsEditingDetails(false)}>
+                                    <XCircle className="mr-2 h-4 w-4" />Cancel
+                                </Button>
+                                <Button size="sm" type="submit" form="person-details-form" disabled={isSubmitting}>
+                                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    <Save className="mr-2 h-4 w-4" />Save
+                                </Button>
+                            </div>
+                        ) : (
+                            <Button variant="outline" size="sm" onClick={() => setIsEditingDetails(true)}>
+                                <Edit className="mr-2 h-4 w-4" /> Edit Details
                             </Button>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Right Column: Person Details */}
-                <div className="md:border-l md:pl-8 space-y-4 overflow-y-auto pr-2">
-                  <div className="flex justify-end mb-4 -mt-2">
-                     {isEditingDetails ? (
-                        <div className="flex items-center gap-2">
-                            <Button size="sm" variant="outline" onClick={() => setIsEditingDetails(false)}>
-                                <XCircle className="mr-2 h-4 w-4" />Cancel
-                            </Button>
-                            <Button size="sm" type="submit" form="person-details-form" disabled={isSubmitting}>
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                <Save className="mr-2 h-4 w-4" />Save
-                            </Button>
-                        </div>
-                    ) : (
-                        <Button variant="outline" size="sm" onClick={() => setIsEditingDetails(true)}>
-                            <Edit className="mr-2 h-4 w-4" /> Edit Details
-                        </Button>
-                    )}
-                  </div>
-                   <EditablePersonDetailsForm 
-                      person={currentPerson} 
-                      isEditing={isEditingDetails} 
-                      onSave={handleSaveDetails}
-                      onCancel={() => setIsEditingDetails(false)}
-                      allPeople={currentPeople}
-                      groups={personGroups}
-                      isInDialog
-                    />
-
-                    <Separator />
-
-                    <div className="space-y-2">
-                        <Label htmlFor="progress-notes">Progress Notes</Label>
-                        <Textarea
-                            id="progress-notes"
-                            value={generalRemarks}
-                            onChange={(e) => {
-                                setGeneralRemarks(e.target.value);
-                                setIsNotesDirty(true);
-                            }}
-                            className="min-h-[120px] text-sm"
-                            placeholder="Log progress, important updates, or any general notes here..."
+                        )}
+                      </div>
+                       <EditablePersonDetailsForm 
+                          person={currentPerson} 
+                          isEditing={isEditingDetails} 
+                          onSave={handleSaveDetails}
+                          onCancel={() => setIsEditingDetails(false)}
+                          allPeople={currentPeople}
+                          groups={personGroups}
+                          isInDialog
                         />
-                        <div className="flex justify-end">
-                            <Button
-                                size="sm"
-                                onClick={handleSaveNotes}
-                                disabled={!isNotesDirty || isSavingNotes}
-                            >
-                                {isSavingNotes && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Save Notes
-                            </Button>
+
+                        <Separator />
+
+                        <div className="space-y-2">
+                            <Label htmlFor="progress-notes">Progress Notes</Label>
+                            <Textarea
+                                id="progress-notes"
+                                value={generalRemarks}
+                                onChange={(e) => {
+                                    setGeneralRemarks(e.target.value);
+                                    setIsNotesDirty(true);
+                                }}
+                                className="min-h-[120px] text-sm"
+                                placeholder="Log progress, important updates, or any general notes here..."
+                            />
+                            <div className="flex justify-end">
+                                <Button
+                                    size="sm"
+                                    onClick={handleSaveNotes}
+                                    disabled={!isNotesDirty || isSavingNotes}
+                                >
+                                    {isSavingNotes && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Save Notes
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        )}
+            )}
+        </div>
+
+        <DialogFooter className="flex-shrink-0 p-6 pt-4 border-t flex flex-row items-center justify-between">
+           <div className="flex items-center gap-2">
+                <Button variant="secondary" size="sm" onClick={handlePauseSession}>
+                    <Pause className="mr-2 h-4 w-4"/> Pause
+                </Button>
+                <Button variant="destructive" size="sm" onClick={handleEndAndClearSession}>
+                    <Trash2 className="mr-2 h-4 w-4"/> End
+                </Button>
+           </div>
+           <div className="flex items-center gap-2">
+                <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handlePrevious}
+                    disabled={currentIndex === 0 || isInitializing}
+                    aria-label="Previous Contact"
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleNext}
+                    disabled={isInitializing}
+                    aria-label="Next Contact (Skip)"
+                >
+                    <ArrowRight className="h-4 w-4" />
+                </Button>
+                <Button
+                    type="submit"
+                    form="call-form"
+                    disabled={isSubmitting || isInitializing}
+                    className="min-w-[140px]"
+                >
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <CheckSquare className="mr-2 h-4 w-4"/>
+                    Save & Next
+                </Button>
+           </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
