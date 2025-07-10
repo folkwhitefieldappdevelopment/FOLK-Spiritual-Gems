@@ -55,6 +55,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { ColumnFilterState, applyColumnFilters } from '@/components/column-header-filter';
 
 export default function GroupDetailPage() {
   const router = useRouter();
@@ -76,6 +77,7 @@ export default function GroupDetailPage() {
   const [filters, setFilters] = React.useState<FilterRule[]>([]);
   const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([{ field: 'createdAt', direction: 'desc' }]);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFilterState>({});
   
   const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
@@ -180,6 +182,12 @@ export default function GroupDetailPage() {
         });
       });
     }
+    
+    // Apply column filters if view is table
+    if (view === 'table') {
+      tempPeople = applyColumnFilters(tempPeople, columnFilters);
+    }
+
 
     return tempPeople.sort((a, b) => {
       for (const { field, direction } of sortDescriptors) {
@@ -202,11 +210,11 @@ export default function GroupDetailPage() {
       }
       return 0;
     });
-  }, [members, searchTerm, filters, sortDescriptors]);
+  }, [members, searchTerm, filters, sortDescriptors, columnFilters, view]);
 
   React.useEffect(() => {
     setSelectedIds(new Set());
-  }, [filters, sortDescriptors, searchTerm]);
+  }, [filters, sortDescriptors, searchTerm, columnFilters]);
 
   const handleEditPerson = (person: Person) => {
     setEditingPerson(person);
@@ -313,8 +321,12 @@ export default function GroupDetailPage() {
               ) : (
                 <>
                   <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by name or phone..." className="pl-10 w-full sm:w-64" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
-                  <FilterPopover filters={filters} setFilters={setFilters} filterableFields={filterableFields} />
-                  <SortPopover sortDescriptors={sortDescriptors} setSortDescriptors={setSortDescriptors} />
+                   {view === 'card' && (
+                    <>
+                      <FilterPopover filters={filters} setFilters={setFilters} filterableFields={filterableFields} />
+                      <SortPopover sortDescriptors={sortDescriptors} setSortDescriptors={setSortDescriptors} />
+                    </>
+                  )}
                 </>
               )}
                {filteredMembers.length > 0 && <Button variant="outline" size="sm" onClick={() => { if (selectedIds.size === filteredMembers.length) { setSelectedIds(new Set()); } else { setSelectedIds(new Set(filteredMembers.map(p => p.id))); } }}>{selectedIds.size === filteredMembers.length ? 'Deselect All' : 'Select All'}</Button>}
@@ -335,7 +347,18 @@ export default function GroupDetailPage() {
             {filteredMembers.map((person) => <PersonCard key={person.id} person={person} isSelected={selectedIds.has(person.id)} onSelectionChange={handleSelectionChange} groups={allGroups.filter(g => g.peopleIds.includes(person.id))} isSelectionActive={isSelectionActive} />)}
           </div>
         ) : (
-          <PersonTable people={filteredMembers} onEdit={handleEditPerson} onDelete={(id) => removeMembersFromGroup([id])} selectedIds={selectedIds} setSelectedIds={setSelectedIds} isSelectionActive={isSelectionActive}/>
+          <PersonTable 
+            people={filteredMembers} 
+            onEdit={handleEditPerson} 
+            onDelete={(id) => removeMembersFromGroup([id])} 
+            selectedIds={selectedIds} 
+            setSelectedIds={setSelectedIds} 
+            isSelectionActive={isSelectionActive}
+            sortDescriptors={sortDescriptors}
+            setSortDescriptors={setSortDescriptors}
+            columnFilters={columnFilters}
+            setColumnFilters={setColumnFilters}
+          />
         )}
       </>
     );

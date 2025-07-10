@@ -62,6 +62,7 @@ import { AssignHelperDialog } from "@/components/assign-helper-dialog";
 import { SortPopover, type SortDescriptor } from "@/components/sort-popover";
 import { FilterPopover, type FilterRule, type FilterableField } from "@/components/filter-popover";
 import { Input } from "@/components/ui/input";
+import { ColumnFilterState, applyColumnFilters } from "@/components/column-header-filter";
 
 export default function ContactsPage() {
   const { toast } = useToast();
@@ -78,6 +79,7 @@ export default function ContactsPage() {
   const [searchTerm, setSearchTerm] = React.useState("");
   const [filters, setFilters] = React.useState<FilterRule[]>([]);
   const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([{ field: 'createdAt', direction: 'desc' }]);
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFilterState>({});
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = React.useState(false);
@@ -154,8 +156,8 @@ export default function ContactsPage() {
         });
     }
 
-    // Apply advanced filters
-    if (filters.length > 0) {
+    // Apply advanced filters (for card view)
+    if (view === 'card' && filters.length > 0) {
       tempPeople = tempPeople.filter(person => {
         return filters.every(filter => {
           const personValue = person[filter.field as keyof Person];
@@ -212,6 +214,11 @@ export default function ContactsPage() {
       });
     }
 
+    if (view === 'table') {
+      tempPeople = applyColumnFilters(tempPeople, columnFilters);
+    }
+
+
     // Apply sorting
     return tempPeople.sort((a, b) => {
       for (const { field, direction } of sortDescriptors) {
@@ -242,11 +249,11 @@ export default function ContactsPage() {
       }
       return 0;
     });
-  }, [people, searchTerm, filters, sortDescriptors]);
+  }, [people, searchTerm, filters, sortDescriptors, view, columnFilters]);
   
   React.useEffect(() => {
     setSelectedIds(new Set());
-  }, [filters, sortDescriptors, searchTerm]);
+  }, [filters, sortDescriptors, searchTerm, view, columnFilters]);
 
   const handleSampleDownload = () => {
     const headers = [
@@ -750,30 +757,39 @@ export default function ContactsPage() {
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                             </div>
-                            <FilterPopover 
-                                filters={filters}
-                                setFilters={setFilters}
-                                filterableFields={filterableFields}
-                            />
-                            <SortPopover
-                                sortDescriptors={sortDescriptors}
-                                setSortDescriptors={setSortDescriptors}
-                            />
+                            {view === 'card' && (
+                              <>
+                                <FilterPopover 
+                                    filters={filters}
+                                    setFilters={setFilters}
+                                    filterableFields={filterableFields}
+                                />
+                                <SortPopover
+                                    sortDescriptors={sortDescriptors}
+                                    setSortDescriptors={setSortDescriptors}
+                                />
+                              </>
+                            )}
                         </>
                     )}
-                    {filteredPeople.length > 0 && (
-                        <Button
+                    {filteredPeople.length > 0 && !isSelectionActive && (
+                      <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                              setSelectedIds(new Set(filteredPeople.map(p => p.id)));
+                          }}
+                      >
+                          Select All
+                      </Button>
+                    )}
+                    {isSelectionActive && (
+                       <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => {
-                                if (selectedIds.size === filteredPeople.length) {
-                                    setSelectedIds(new Set());
-                                } else {
-                                    setSelectedIds(new Set(filteredPeople.map(p => p.id)));
-                                }
-                            }}
+                            onClick={() => setSelectedIds(new Set())}
                         >
-                            {selectedIds.size === filteredPeople.length ? 'Deselect All' : 'Select All'}
+                            Deselect All
                         </Button>
                     )}
                 </div>
@@ -833,6 +849,10 @@ export default function ContactsPage() {
             selectedIds={selectedIds}
             setSelectedIds={setSelectedIds}
             isSelectionActive={isSelectionActive}
+            sortDescriptors={sortDescriptors}
+            setSortDescriptors={setSortDescriptors}
+            columnFilters={columnFilters}
+            setColumnFilters={setColumnFilters}
           />
         )}
       </>

@@ -49,6 +49,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { CreateUpdateGroupDialog } from '@/components/create-update-group-dialog';
 import { AssignHelperDialog } from '@/components/assign-helper-dialog';
+import { ColumnFilterState, applyColumnFilters } from "@/components/column-header-filter";
 
 export default function CallingAssistantPage() {
   const { toast } = useToast();
@@ -63,6 +64,7 @@ export default function CallingAssistantPage() {
   const [filters, setFilters] = React.useState<FilterRule[]>([]);
   const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([{ field: 'lastCallAt', direction: 'asc' }]);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFilterState>({});
 
   const [isSessionDialogOpen, setIsSessionDialogOpen] = React.useState(false);
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(undefined);
@@ -79,7 +81,6 @@ export default function CallingAssistantPage() {
   const isSelectionActive = selectedIds.size > 0;
   const canAssignHelper = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
 
-  // State for the event editing dialog
   const [isEventDialogOpen, setIsEventDialogOpen] = React.useState(false);
   const [isStartingSessionFlow, setIsStartingSessionFlow] = React.useState(false);
   const [editableEventName, setEditableEventName] = React.useState("");
@@ -125,7 +126,7 @@ export default function CallingAssistantPage() {
   
   React.useEffect(() => {
     setSelectedIds(new Set());
-  }, [filters, sortDescriptors, searchTerm, selectedGroupId]);
+  }, [filters, sortDescriptors, searchTerm, selectedGroupId, columnFilters]);
 
   const filterableFields: FilterableField[] = React.useMemo(() => {
     return [
@@ -232,6 +233,9 @@ export default function CallingAssistantPage() {
       });
     }
 
+    // Apply column filters
+    tempPeople = applyColumnFilters(tempPeople, columnFilters);
+
     // Apply sorting
     return tempPeople.sort((a, b) => {
       for (const { field, direction } of sortDescriptors) {
@@ -262,7 +266,7 @@ export default function CallingAssistantPage() {
       }
       return 0;
     });
-  }, [people, searchTerm, filters, sortDescriptors, groups, selectedGroupId]);
+  }, [people, searchTerm, filters, sortDescriptors, groups, selectedGroupId, columnFilters]);
 
   React.useEffect(() => {
     if (!isEventDialogOpen || !isStartingSessionFlow || filteredPeople.length === 0) {
@@ -558,31 +562,8 @@ export default function CallingAssistantPage() {
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <FilterPopover 
-                                filters={filters}
-                                setFilters={setFilters}
-                                filterableFields={filterableFields}
-                            />
-                            <SortPopover
-                                sortDescriptors={sortDescriptors}
-                                setSortDescriptors={setSortDescriptors}
-                            />
+                            
                         </>
-                    )}
-                    {filteredPeople.length > 0 && (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                                if (selectedIds.size === filteredPeople.length) {
-                                    setSelectedIds(new Set());
-                                } else {
-                                    setSelectedIds(new Set(filteredPeople.map(p => p.id)));
-                                }
-                            }}
-                        >
-                            {selectedIds.size === filteredPeople.length ? 'Deselect All' : 'Select All'}
-                        </Button>
                     )}
                 </div>
                  <Button size="sm" onClick={() => handleOpenEventDialog(true)} disabled={filteredPeople.length === 0 || isSelectionActive}>
@@ -606,6 +587,10 @@ export default function CallingAssistantPage() {
             selectedIds={selectedIds}
             setSelectedIds={setSelectedIds}
             isSelectionActive={isSelectionActive}
+            sortDescriptors={sortDescriptors}
+            setSortDescriptors={setSortDescriptors}
+            columnFilters={columnFilters}
+            setColumnFilters={setColumnFilters}
           />
         )}
       </>
