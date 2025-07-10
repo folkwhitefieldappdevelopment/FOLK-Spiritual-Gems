@@ -130,8 +130,6 @@ export default function GroupDetailPage() {
   
   const filterableFields: FilterableField[] = React.useMemo(() => [
     // Same fields as contacts page
-    { value: 'fullName', label: 'Name', type: 'string' },
-    { value: 'phone', label: 'Phone', type: 'string' },
     { value: 'age', label: 'Age', type: 'number' },
     { value: 'sgRating', label: 'Rating', type: 'number' },
     { value: 'occupation', label: 'Occupation', type: 'enum', options: occupationStatuses.map(s => ({ value: s, label: s })) },
@@ -140,7 +138,6 @@ export default function GroupDetailPage() {
     { value: 'chantingStatus', label: 'Chanting Status', type: 'string' },
     { value: 'nativePlace', label: 'Native Place', type: 'string' },
     { value: 'fromOtherCamp', label: 'From Other Camp', type: 'boolean' },
-    { value: 'assignedHelperName', label: 'Assigned Helper', type: 'string' },
   ], [enablerOptions, contactSourceOptions]);
 
   const filteredMembers = React.useMemo(() => {

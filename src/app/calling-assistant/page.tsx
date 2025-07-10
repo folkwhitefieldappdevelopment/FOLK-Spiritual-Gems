@@ -130,8 +130,6 @@ export default function CallingAssistantPage() {
 
   const filterableFields: FilterableField[] = React.useMemo(() => {
     return [
-      { value: 'fullName', label: 'Name', type: 'string' },
-      { value: 'phone', label: 'Phone', type: 'string' },
       { value: 'nativePlace', label: 'Native Place', type: 'string' },
       { value: 'lastCallStatus', label: 'Call Status', type: 'enum', options: callStatuses.map(s => ({ value: s, label: s })) },
       { value: 'enablerInTouchWith', label: 'Enabler', type: 'enum', options: enablerOptions },
@@ -141,7 +139,6 @@ export default function CallingAssistantPage() {
       { value: 'lastFrp', label: 'FRP Attended', type: 'boolean' },
       { value: 'chantingStatus', label: 'Chanting Status', type: 'string' },
       { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(s => ({ value: s, label: s })) },
-      { value: 'assignedHelperName', label: 'Assigned Helper', type: 'string' },
     ]
   }, [enablerOptions, contactSourceOptions]);
 
