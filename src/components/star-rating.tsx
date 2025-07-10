@@ -11,7 +11,8 @@ type StarRatingProps = {
 };
 
 const StarRatingComponent = ({ value, totalStars = 5 }: StarRatingProps) => {
-  const ratingValue = value / (10 / totalStars); // Map 0-10 scale to 0-5 scale
+  // Map the 0-10 rating to a 0-5 star scale.
+  const ratingValue = value / (10 / totalStars);
 
   return (
     <div
@@ -19,13 +20,20 @@ const StarRatingComponent = ({ value, totalStars = 5 }: StarRatingProps) => {
       aria-label={`Rating: ${ratingValue.toFixed(1)} out of ${totalStars}`}
     >
       {Array.from({ length: totalStars }).map((_, i) => {
-        const angle = -60 + i * 30; // Spread 5 stars over a 120-degree arc at the bottom
+        // Position stars in a 120-degree arc at the bottom.
+        // -60 degrees to start from the bottom-left, up to +60 degrees at the bottom-right.
+        // 120 degrees / 4 gaps = 30 degrees per step.
+        const angle = -60 + i * 30;
         const filled = i < ratingValue;
 
         return (
           <div
             key={i}
             className="absolute top-1/2 left-1/2"
+            // The transform magic:
+            // 1. rotate() positions the star on the circle.
+            // 2. translate() moves it outwards from the center. The distance depends on the avatar size (h-16 -> 4rem radius).
+            // 3. rotate() back to keep the star upright.
             style={{
               transform: `rotate(${angle}deg) translate(4.5rem) rotate(${-angle}deg)`,
             }}

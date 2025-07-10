@@ -360,7 +360,7 @@ export function EditablePersonDetailsForm({
                 </DialogTrigger>
                 <DialogContent className="p-0 border-0 max-w-lg bg-transparent shadow-none"><img src={person.photoUrl} alt={fullName} className="rounded-lg w-full h-auto object-contain" /></DialogContent>
                 </Dialog>
-                <StarRating value={person.sgRating} />
+                <StarRating value={person.sgRating || 0} />
             </div>
 
             <h2 className="text-2xl font-bold">{fullName}</h2>

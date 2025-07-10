@@ -3,7 +3,7 @@
 
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
-import { User, Briefcase, Tags, Star } from "lucide-react";
+import { User, Briefcase, Tags } from "lucide-react";
 import type { Person, ProgressCategory, ProgressLevelAnswers, Group } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/contexts/auth-context';
@@ -17,6 +17,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from './ui/checkbox';
 import { Badge } from './ui/badge';
+import { StarRating } from './star-rating';
 
 type PersonCardProps = {
   person: Person;
@@ -171,21 +172,23 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
         
         <div className="flex flex-col h-full">
             <CardHeader className="flex flex-row items-center gap-4 p-4">
-                <Avatar className="h-16 w-16">
-                <AvatarImage
-                    src={person.photoUrl}
-                    alt={fullName}
-                    data-ai-hint="person portrait"
-                />
-                <AvatarFallback>
-                    {fallback}
-                </AvatarFallback>
-                </Avatar>
+                <div className="relative shrink-0">
+                    <Avatar className="h-16 w-16">
+                    <AvatarImage
+                        src={person.photoUrl}
+                        alt={fullName}
+                        data-ai-hint="person portrait"
+                    />
+                    <AvatarFallback>
+                        {fallback}
+                    </AvatarFallback>
+                    </Avatar>
+                    <StarRating value={person.sgRating || 0} />
+                </div>
                 <div className="flex flex-col">
                     <CardTitle className={cn("text-lg", !isSelectionActive && "group-hover:underline")}>{fullName}</CardTitle>
                     <CardDescription className="flex items-center gap-1 text-sm text-muted-foreground">
-                        <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
-                        <span>{person.sgRating || 0}/10</span>
+                        <span>{person.phone}</span>
                     </CardDescription>
                 </div>
             </CardHeader>
