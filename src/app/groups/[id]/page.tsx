@@ -129,7 +129,6 @@ export default function GroupDetailPage() {
   }, [fetchPageData]);
   
   const filterableFields: FilterableField[] = React.useMemo(() => [
-    // Same fields as contacts page
     { value: 'age', label: 'Age', type: 'number' },
     { value: 'sgRating', label: 'Rating', type: 'number' },
     { value: 'occupation', label: 'Occupation', type: 'enum', options: occupationStatuses.map(s => ({ value: s, label: s })) },
@@ -182,7 +181,6 @@ export default function GroupDetailPage() {
     
     // Apply column filters
     tempPeople = applyColumnFilters(tempPeople, columnFilters);
-
 
     return tempPeople.sort((a, b) => {
       for (const { field, direction } of sortDescriptors) {

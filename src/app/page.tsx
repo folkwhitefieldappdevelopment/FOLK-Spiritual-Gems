@@ -212,10 +212,7 @@ export default function ContactsPage() {
     }
 
     // Apply column filters (only for table view)
-    if (view === 'table') {
-      tempPeople = applyColumnFilters(tempPeople, columnFilters);
-    }
-
+    tempPeople = applyColumnFilters(tempPeople, columnFilters);
 
     // Apply sorting
     return tempPeople.sort((a, b) => {
@@ -247,7 +244,7 @@ export default function ContactsPage() {
       }
       return 0;
     });
-  }, [people, searchTerm, filters, sortDescriptors, view, columnFilters]);
+  }, [people, searchTerm, filters, sortDescriptors, columnFilters]);
   
   React.useEffect(() => {
     setSelectedIds(new Set());
