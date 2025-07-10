@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Separator } from "./ui/separator";
 import { updatePerson } from "@/services/people-service";
 import { EditablePersonDetailsForm } from "./editable-person-details-form";
@@ -67,7 +68,7 @@ type CallingSessionDialogProps = {
   totalPeopleCount: number;
 };
 
-export function CallingSessionDialog({
+export const CallingSessionDialog = React.memo(function CallingSessionDialog({
   isOpen,
   onClose,
   onSaveRemark,
@@ -83,8 +84,18 @@ export function CallingSessionDialog({
   const [currentPeople, setCurrentPeople] = React.useState<Person[]>(people);
   const [isEditingDetails, setIsEditingDetails] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  const [generalRemarks, setGeneralRemarks] = React.useState('');
+  const [isNotesDirty, setIsNotesDirty] = React.useState(false);
+  const [isSavingNotes, setIsSavingNotes] = React.useState(false);
   
   const currentPerson = currentPeople[currentIndex];
+
+  const personGroups = React.useMemo(() => {
+    if (!currentPerson || !groups) return [];
+    return groups.filter(g => g.peopleIds.includes(currentPerson.id));
+  }, [currentPerson, groups]);
+
 
   const form = useForm<CallFormValues>({
     resolver: zodResolver(callFormSchema),
@@ -96,12 +107,6 @@ export function CallingSessionDialog({
       frp: "",
     },
   });
-
-  const personGroups = React.useMemo(() => {
-    if (!currentPerson || !groups) return [];
-    return groups.filter(g => g.peopleIds.includes(currentPerson.id));
-  }, [currentPerson, groups]);
-
 
   React.useEffect(() => {
     if (isOpen) {
@@ -132,6 +137,8 @@ export function CallingSessionDialog({
             ma: typeof currentPerson.lastMa === 'boolean' ? (currentPerson.lastMa ? 'yes' : 'no') : '',
             frp: typeof currentPerson.lastFrp === 'boolean' ? (currentPerson.lastFrp ? 'yes' : 'no') : '',
         });
+        setGeneralRemarks(currentPerson.generalRemarks || '');
+        setIsNotesDirty(false);
         setIsEditingDetails(false);
     }
   }, [currentPerson, form, isInitializing]);
@@ -178,11 +185,11 @@ export function CallingSessionDialog({
 
   }, [currentPerson, onSaveRemark, toast, handleNext]);
 
-  const handleCloseDialog = () => {
+  const handleCloseDialog = React.useCallback(() => {
     onClose();
-  }
+  }, [onClose]);
 
-  const handleSaveDetails = async (formData: Partial<Person>) => {
+  const handleSaveDetails = React.useCallback(async (formData: Partial<Person>) => {
     if (!currentPerson) return;
     setIsSubmitting(true);
     try {
@@ -198,8 +205,25 @@ export function CallingSessionDialog({
     } finally {
         setIsSubmitting(false);
     }
-  };
+  }, [currentPerson, toast]);
+  
+  const handleSaveNotes = React.useCallback(async () => {
+    if (!currentPerson || !isNotesDirty) return;
+    setIsSavingNotes(true);
+    try {
+        await updatePerson(currentPerson.id, { generalRemarks: generalRemarks });
+        
+        const updatedPerson = { ...currentPerson, generalRemarks: generalRemarks };
+        setCurrentPeople(prev => prev.map(p => p.id === updatedPerson.id ? updatedPerson : p));
 
+        toast({ title: 'Progress Notes Saved' });
+        setIsNotesDirty(false);
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not save the progress notes.' });
+    } finally {
+        setIsSavingNotes(false);
+    }
+  }, [currentPerson, isNotesDirty, generalRemarks, toast]);
 
   if (!isOpen) {
     return null;
@@ -401,7 +425,7 @@ export function CallingSessionDialog({
                 </div>
 
                 {/* Right Column: Person Details */}
-                <div className="md:border-l md:pl-8">
+                <div className="md:border-l md:pl-8 space-y-4">
                   <div className="flex justify-end mb-4 -mt-2">
                      {isEditingDetails ? (
                         <div className="flex items-center gap-2">
@@ -428,10 +452,36 @@ export function CallingSessionDialog({
                       groups={personGroups}
                       isInDialog
                     />
+
+                    <Separator />
+
+                    <div className="space-y-2">
+                        <Label htmlFor="progress-notes">Progress Notes</Label>
+                        <Textarea
+                            id="progress-notes"
+                            value={generalRemarks}
+                            onChange={(e) => {
+                                setGeneralRemarks(e.target.value);
+                                setIsNotesDirty(true);
+                            }}
+                            className="min-h-[120px] text-sm"
+                            placeholder="General notes about this contact's progress..."
+                        />
+                        <div className="flex justify-end">
+                            <Button
+                                size="sm"
+                                onClick={handleSaveNotes}
+                                disabled={!isNotesDirty || isSavingNotes}
+                            >
+                                {isSavingNotes && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Save Notes
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             </div>
         )}
       </DialogContent>
     </Dialog>
   );
-}
+});
