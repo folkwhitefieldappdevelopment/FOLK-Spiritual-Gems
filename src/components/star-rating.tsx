@@ -18,8 +18,8 @@ const StarRatingComponent = ({ value, totalStars = 5, avatarSizeClass }: StarRat
   const radiusMap = {
     'h-16 w-16': '2.6rem', 
     'h-20 w-20': '3.1rem',
-    'h-24 w-24': '3.7rem',
-    'h-32 w-32': '4.9rem',
+    'h-24 w-24': '4.1rem',
+    'h-32 w-32': '5.2rem',
   };
   
   const radius = radiusMap[avatarSizeClass] || '2.6rem';
@@ -48,7 +48,7 @@ const StarRatingComponent = ({ value, totalStars = 5, avatarSizeClass }: StarRat
                 'h-5 w-5 transition-colors',
                 filled
                   ? 'text-yellow-400 fill-yellow-400'
-                  : 'text-gray-300 fill-gray-300'
+                  : 'text-gray-300/80 fill-gray-300/80'
               )}
             />
           </div>
