@@ -356,10 +356,14 @@ export function CreateUpdatePersonDialog({
 
   const currentPhoto = photoPreview || person?.photoUrl;
   const fullName = form.watch("fullName");
-  const nameParts = (fullName || ' ').split(' ');
-  const fallback = (
-    `${nameParts[0]?.charAt(0) || ''}${nameParts.length > 1 ? nameParts[nameParts.length - 1]?.charAt(0) || '' : ''}`
-  ).toUpperCase();
+  
+  let fallback = '?';
+  if (fullName) {
+      const nameParts = fullName.trim().split(' ');
+      const firstInitial = nameParts[0]?.charAt(0) || '';
+      const lastInitial = nameParts.length > 1 ? nameParts[nameParts.length - 1]?.charAt(0) : '';
+      fallback = `${firstInitial}${lastInitial}`.toUpperCase();
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
