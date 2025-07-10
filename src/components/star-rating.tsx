@@ -16,13 +16,13 @@ const StarRatingComponent = ({ value, totalStars = 5, avatarSizeClass }: StarRat
   const ratingValue = Math.round(value / (10 / totalStars));
 
   const radiusMap = {
-    'h-16 w-16': '2.2rem',
-    'h-20 w-20': '2.8rem',
-    'h-24 w-24': '3.4rem',
-    'h-32 w-32': '4.5rem',
+    'h-16 w-16': '2.0rem',
+    'h-20 w-20': '2.5rem',
+    'h-24 w-24': '3.0rem',
+    'h-32 w-32': '4.0rem',
   };
   
-  const radius = radiusMap[avatarSizeClass] || '2.2rem';
+  const radius = radiusMap[avatarSizeClass] || '2.0rem';
 
   return (
     <div
@@ -30,9 +30,8 @@ const StarRatingComponent = ({ value, totalStars = 5, avatarSizeClass }: StarRat
       aria-label={`Rating: ${ratingValue.toFixed(0)} out of ${totalStars}`}
     >
       {Array.from({ length: totalStars }).map((_, i) => {
-        // Use a 120-degree arc for a more pleasing semi-circle at the bottom.
-        // Start from -60deg (bottom-left) to +60deg (bottom-right).
-        // 120deg / 4 gaps = 30deg per step.
+        // Create a vertical arc from -60deg (top-right) to +60deg (bottom-right)
+        // 120deg total arc / 4 gaps = 30deg per step
         const angle = -60 + i * 30;
         const filled = i < ratingValue;
 

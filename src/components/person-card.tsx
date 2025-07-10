@@ -171,7 +171,7 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
         </div>
         
         <div className="flex flex-col h-full">
-             <div className="relative w-full flex justify-center pt-8 pb-4">
+            <div className="relative w-full flex justify-center pt-8 pb-4">
                 <div className="relative h-20 w-20">
                     <Avatar className="h-20 w-20">
                         <AvatarImage
