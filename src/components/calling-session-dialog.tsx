@@ -168,7 +168,7 @@ const CallingSessionDialogComponent = ({
   
   const handlePrevious = React.useCallback(() => {
     if (currentIndex > 0) {
-      setCurrentIndex(currentIndex + 1);
+      setCurrentIndex(currentIndex - 1);
     }
   }, [currentIndex]);
   
@@ -280,14 +280,43 @@ const CallingSessionDialogComponent = ({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleCloseDialog()}>
       <DialogContent className="sm:max-w-4xl flex flex-col max-h-[90vh] p-0" onPointerDownOutside={(e) => e.preventDefault()}>
-        <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b">
-          <DialogTitle>
-            Calling Session
-          </DialogTitle>
-          <DialogDescription>
-            {isInitializing ? 'Preparing session...' : `Contact ${sessionStartIndex + currentIndex + 1} of ${totalPeopleCount} for: `}
-            {!isInitializing && <span className="font-semibold text-primary">{currentEvent}</span>}
-          </DialogDescription>
+        <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b flex flex-row items-center justify-between">
+          <div>
+            <DialogTitle>
+              Calling Session
+            </DialogTitle>
+            <DialogDescription>
+              {isInitializing ? 'Preparing session...' : `Contact ${sessionStartIndex + currentIndex + 1} of ${totalPeopleCount} for: `}
+              {!isInitializing && <span className="font-semibold text-primary">{currentEvent}</span>}
+            </DialogDescription>
+          </div>
+          {!isInitializing && (
+            <div className="flex items-center gap-2">
+                <Button variant="secondary" size="sm" onClick={handlePauseSession}>
+                    <Pause className="mr-2 h-4 w-4"/> Pause
+                </Button>
+                <Button variant="destructive" size="sm" onClick={handleEndAndClearSession}>
+                    <Trash2 className="mr-2 h-4 w-4"/> End
+                </Button>
+                <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handlePrevious}
+                    disabled={currentIndex === 0}
+                    aria-label="Previous Contact"
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleNext}
+                    aria-label="Next Contact (Skip)"
+                >
+                    <ArrowRight className="h-4 w-4" />
+                </Button>
+            </div>
+          )}
         </DialogHeader>
         
         {isInitializing || !currentPerson ? (
@@ -295,7 +324,7 @@ const CallingSessionDialogComponent = ({
                 <Loader2 className="h-8 w-8 animate-spin" />
             </div>
         ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 p-6 min-h-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 p-6 min-h-0 overflow-hidden">
                 {/* Left Column: Form & Actions */}
                 <div className="flex flex-col">
                     {/* Scrollable content area */}
@@ -441,45 +470,17 @@ const CallingSessionDialogComponent = ({
 
                     {/* Action buttons footer */}
                     <div className="flex-shrink-0 pt-4 mt-auto">
-                        <div className="flex items-center justify-between">
-                             <div className="flex items-center gap-2">
-                                <Button variant="secondary" onClick={handlePauseSession}>
-                                    <Pause className="mr-2 h-4 w-4"/>
-                                    Pause Session
-                                </Button>
-                               <Button variant="destructive" size="sm" onClick={handleEndAndClearSession}>
-                                    <Trash2 className="mr-2 h-4 w-4"/>
-                                    End & Clear
-                               </Button>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={handlePrevious}
-                                    disabled={currentIndex === 0}
-                                    aria-label="Previous Contact"
-                                >
-                                    <ArrowLeft className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={handleNext}
-                                    aria-label="Next Contact (Skip)"
-                                >
-                                    <ArrowRight className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                    type="submit"
-                                    form="call-form"
-                                    disabled={isSubmitting}
-                                >
-                                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    <CheckSquare className="mr-2 h-4 w-4"/>
-                                    Save & Next
-                                </Button>
-                            </div>
+                        <div className="flex justify-end">
+                             <Button
+                                type="submit"
+                                form="call-form"
+                                disabled={isSubmitting}
+                                className="w-full"
+                            >
+                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                <CheckSquare className="mr-2 h-4 w-4"/>
+                                Save & Next
+                            </Button>
                         </div>
                     </div>
                 </div>
