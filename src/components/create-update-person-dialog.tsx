@@ -742,7 +742,7 @@ export function CreateUpdatePersonDialog({
                         </FormControl>
                         <div className="space-y-1 leading-none">
                           <FormLabel>
-                            From another camp?
+                            From other camp?
                           </FormLabel>
                           <FormDescription>
                             Check this if the contact has come from another spiritual group or camp.
