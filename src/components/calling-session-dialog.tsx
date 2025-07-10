@@ -5,9 +5,9 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import type { Person, CallStatus, CustomField, Group } from "@/lib/types";
+import type { Person, CallStatus, Group } from "@/lib/types";
 import { callStatuses } from "@/lib/data";
-import { Phone, Square, CheckSquare, Loader2, Tags, ArrowLeft, ArrowRight } from "lucide-react";
+import { Phone, Square, CheckSquare, Loader2, Tags, ArrowLeft, ArrowRight, Edit, Save, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 import {
@@ -35,9 +35,9 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "./ui/separator";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { Badge } from "./ui/badge";
-import { ScrollArea } from "./ui/scroll-area";
+import { updatePerson } from "@/services/people-service";
+import { EditablePersonDetailsForm } from "./editable-person-details-form";
+
 
 const callFormSchema = z.object({
   remark: z.string().trim().optional(),
@@ -62,7 +62,6 @@ type CallingSessionDialogProps = {
   ) => void;
   people: Person[];
   currentEvent: string;
-  customFields: CustomField[];
   groups: Group[];
   sessionStartIndex: number;
   totalPeopleCount: number;
@@ -74,7 +73,6 @@ export function CallingSessionDialog({
   onSaveRemark,
   people,
   currentEvent,
-  customFields,
   groups,
   sessionStartIndex,
   totalPeopleCount
@@ -82,7 +80,10 @@ export function CallingSessionDialog({
   const { toast } = useToast();
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [isInitializing, setIsInitializing] = React.useState(false);
-  const currentPerson = people[currentIndex];
+  const [currentPeople, setCurrentPeople] = React.useState<Person[]>(people);
+  const [isEditingDetails, setIsEditingDetails] = React.useState(false);
+  
+  const currentPerson = currentPeople[currentIndex];
 
   const form = useForm<CallFormValues>({
     resolver: zodResolver(callFormSchema),
@@ -94,11 +95,18 @@ export function CallingSessionDialog({
       frp: "",
     },
   });
+
+  React.useEffect(() => {
+    if (isOpen) {
+        setCurrentPeople(people); // Initialize or refresh the people list when dialog opens
+    }
+  }, [isOpen, people]);
   
   React.useEffect(() => {
     if (isOpen) {
         setIsInitializing(true);
         setCurrentIndex(0);
+        setIsEditingDetails(false);
         
         const timer = setTimeout(() => {
           setIsInitializing(false);
@@ -117,11 +125,12 @@ export function CallingSessionDialog({
             ma: typeof currentPerson.lastMa === 'boolean' ? (currentPerson.lastMa ? 'yes' : 'no') : '',
             frp: typeof currentPerson.lastFrp === 'boolean' ? (currentPerson.lastFrp ? 'yes' : 'no') : '',
         });
+        setIsEditingDetails(false);
     }
   }, [currentPerson, form, isInitializing]);
   
-  const handleNext = () => {
-    if (currentIndex < people.length - 1) {
+  const handleNext = React.useCallback(() => {
+    if (currentIndex < currentPeople.length - 1) {
         setCurrentIndex(currentIndex + 1);
     } else {
         toast({
@@ -130,15 +139,15 @@ export function CallingSessionDialog({
         });
         onClose();
     }
-  }
-
-  const handlePrevious = () => {
+  }, [currentIndex, currentPeople.length, toast, onClose]);
+  
+  const handlePrevious = React.useCallback(() => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
     }
-  };
+  }, [currentIndex]);
   
-  const onSubmit = (data: CallFormValues) => {
+  const onSubmit = React.useCallback((data: CallFormValues) => {
     if (!currentPerson) return;
     
     const sg = data.sg === 'yes' ? true : data.sg === 'no' ? false : undefined;
@@ -152,41 +161,36 @@ export function CallingSessionDialog({
         description: `Status for ${fullName} has been updated.`
     });
     handleNext();
-  };
+  }, [currentPerson, onSaveRemark, toast, handleNext]);
 
   const handleCloseDialog = () => {
     onClose();
   }
 
-  const formatCustomValue = (value: any, type: CustomField['type']) => {
-    if (value === null || typeof value === 'undefined' || value === '') return 'N/A';
-    if (type === 'boolean') return value ? 'Yes' : 'No';
-    if (type === 'date') {
-      try {
-        return new Date(value).toLocaleDateString();
-      } catch {
-        return 'Invalid Date';
-      }
-    }
-    return String(value);
-  }
+  const handleSaveDetails = async (formData: Partial<Person>) => {
+    if (!currentPerson) return;
+    try {
+        await updatePerson(currentPerson.id, formData);
+        
+        const updatedPerson = { ...currentPerson, ...formData };
+        setCurrentPeople(prev => prev.map(p => p.id === updatedPerson.id ? updatedPerson : p));
 
-  const personGroups = React.useMemo(() => {
-    if (!currentPerson || !groups) return [];
-    return groups.filter(g => g.peopleIds.includes(currentPerson.id));
-  }, [currentPerson, groups]);
+        toast({ title: 'Details Updated', description: "The contact's details have been saved." });
+        setIsEditingDetails(false);
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not update contact details.' });
+    }
+  };
 
 
   if (!isOpen) {
     return null;
   }
   
-  const fullName = currentPerson?.fullName || '';
-  const nameParts = fullName.split(' ');
-  const fallback = (
-    `${nameParts[0]?.charAt(0) || ''}${nameParts.length > 1 ? nameParts[nameParts.length - 1]?.charAt(0) || '' : ''}`
-  ).toUpperCase();
-  const hasCustomData = currentPerson && customFields.some(field => currentPerson.customData && currentPerson.customData[field.id]);
+  const personGroups = React.useMemo(() => {
+    if (!currentPerson || !groups) return [];
+    return groups.filter(g => g.peopleIds.includes(currentPerson.id));
+  }, [currentPerson, groups]);
 
 
   return (
@@ -384,105 +388,31 @@ export function CallingSessionDialog({
 
                 {/* Right Column: Person Details */}
                 <div className="md:border-l md:pl-8">
-                    <div className="space-y-4">
-                        <div className="flex flex-col items-center text-center">
-                            <Avatar className="h-24 w-24 mb-3">
-                                <AvatarImage src={currentPerson.photoUrl} alt={fullName} data-ai-hint="person portrait" />
-                                <AvatarFallback>{fallback}</AvatarFallback>
-                            </Avatar>
-                            <h3 className="font-semibold text-lg text-foreground">{fullName}</h3>
-                            <p className="text-sm text-muted-foreground">
-                                {currentPerson.sgRating ? `Rating: ${currentPerson.sgRating}/10` : 'No rating'}
-                            </p>
+                  <div className="flex justify-end mb-4 -mt-2">
+                     {isEditingDetails ? (
+                        <div className="flex items-center gap-2">
+                            <Button size="sm" variant="outline" onClick={() => setIsEditingDetails(false)}>
+                                <XCircle className="mr-2 h-4 w-4" />Cancel
+                            </Button>
+                            <Button size="sm" type="submit" form="person-details-form">
+                                <Save className="mr-2 h-4 w-4" />Save
+                            </Button>
                         </div>
-
-                        <Separator />
-
-                        <div className="text-sm grid grid-cols-[120px_1fr] gap-x-2 gap-y-3">
-                            <div className="font-semibold text-muted-foreground">Age</div>
-                            <div>{currentPerson.age}</div>
-
-                            <div className="font-semibold text-muted-foreground">Staying With</div>
-                            <div>{currentPerson.stayingWith}</div>
-
-                            <div className="font-semibold text-muted-foreground">Occupation</div>
-                            <div>{currentPerson.occupation || 'N/A'}</div>
-
-                            <div className="font-semibold text-muted-foreground">Organisation</div>
-                            <div>{currentPerson.organisation || 'N/A'}</div>
-
-                            <div className="font-semibold text-muted-foreground">Rent Details</div>
-                            <div>{currentPerson.rentDetails || 'N/A'}</div>
-
-                            <div className="font-semibold text-muted-foreground">Native Place</div>
-                            <div>{currentPerson.nativePlace || 'N/A'}</div>
-                            
-                            <div className="font-semibold text-muted-foreground">Contact Source</div>
-                            <div>{currentPerson.contactSource || 'N/A'}</div>
-
-                            <div className="font-semibold text-muted-foreground">Chanting Status</div>
-                            <div>{currentPerson.chantingStatus || 'N/A'}</div>
-
-                            <div className="font-semibold text-muted-foreground">From Other Camp</div>
-                            <div>{currentPerson.fromOtherCamp ? 'Yes' : 'No'}</div>
-                            
-                            <div className="font-semibold text-muted-foreground">Enabler</div>
-                            <div>{currentPerson.enablerInTouchWith || 'N/A'}</div>
-
-                            <div className="font-semibold text-muted-foreground">Folk Guide</div>
-                            <div>{currentPerson.folkGuide || 'N/A'}</div>
-                        </div>
-
-                        <Separator />
-                        <div className="space-y-2">
-                            <h4 className="text-sm font-semibold text-foreground">Progress Notes</h4>
-                            <ScrollArea className="h-24 w-full rounded-md border p-3 text-sm">
-                                <p className="whitespace-pre-wrap">
-                                    {currentPerson.generalRemarks || <span className="text-muted-foreground italic">No progress notes recorded yet.</span>}
-                                </p>
-                            </ScrollArea>
-                        </div>
-
-                        {personGroups.length > 0 && (
-                            <>
-                                <Separator className="my-4" />
-                                <div className="space-y-2">
-                                    <h4 className="text-sm font-semibold flex items-center gap-2"><Tags className="h-4 w-4 text-muted-foreground"/>Groups</h4>
-                                    <div className="flex flex-wrap gap-1">
-                                        {personGroups.map(group => (
-                                            <Badge key={group.id} variant="secondary">{group.name}</Badge>
-                                        ))}
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                        
-                        {hasCustomData && (
-                        <>
-                          <Separator className="my-4" />
-                          <div className="text-sm grid grid-cols-[120px_1fr] gap-x-2 gap-y-3">
-                             {customFields.map(field => {
-                                const value = currentPerson.customData?.[field.id];
-                                if (!value) return null;
-                                 if (field.type === 'textarea') {
-                                  return (
-                                    <React.Fragment key={field.id}>
-                                      <div className="font-semibold text-muted-foreground col-span-2">{field.label}</div>
-                                      <div className="col-span-2 whitespace-pre-wrap">{formatCustomValue(value, field.type)}</div>
-                                    </React.Fragment>
-                                  );
-                                }
-                                return (
-                                  <React.Fragment key={field.id}>
-                                    <div className="font-semibold text-muted-foreground">{field.label}</div>
-                                    <div>{formatCustomValue(value, field.type)}</div>
-                                  </React.Fragment>
-                                );
-                             })}
-                          </div>
-                        </>
-                      )}
-                    </div>
+                    ) : (
+                        <Button variant="outline" size="sm" onClick={() => setIsEditingDetails(true)}>
+                            <Edit className="mr-2 h-4 w-4" /> Edit Details
+                        </Button>
+                    )}
+                  </div>
+                   <EditablePersonDetailsForm 
+                      person={currentPerson} 
+                      isEditing={isEditingDetails} 
+                      onSave={handleSaveDetails}
+                      onCancel={() => setIsEditingDetails(false)}
+                      allPeople={currentPeople}
+                      groups={personGroups}
+                      isInDialog
+                    />
                 </div>
             </div>
         )}

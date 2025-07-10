@@ -3,8 +3,8 @@
 
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Edit, Trash2, Phone, Loader2, Tags } from 'lucide-react';
-import type { Person, ProgressLevelAnswers, CustomField, Group, ProgressCategory } from '@/lib/types';
+import { ArrowLeft, Edit, Trash2, Phone, Loader2, Tags, Save, XCircle } from 'lucide-react';
+import type { Person, ProgressLevelAnswers, CustomField, Group, ProgressCategory, AppUser } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAdmin } from '@/contexts/admin-context';
 import { useAuth } from '@/contexts/auth-context';
@@ -39,12 +39,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { CreateUpdatePersonDialog } from '@/components/create-update-person-dialog';
 import { ProgressTracker } from '@/components/progress-tracker';
 import { Separator } from '@/components/ui/separator';
 import { CallHistory } from '@/components/call-history';
 import { GeneralRemarksCard } from '@/components/general-remarks-card';
 import { Badge } from '@/components/ui/badge';
+import { EditablePersonDetailsForm } from '@/components/editable-person-details-form';
 
 export default function PersonDetailPage() {
   const router = useRouter();
@@ -55,12 +55,10 @@ export default function PersonDetailPage() {
   const { isAdmin } = useAdmin();
 
   const [person, setPerson] = React.useState<Person | null>(null);
-  const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   const [allGroups, setAllGroups] = React.useState<Group[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
-  const [allPeople, setAllPeople] = React.useState<Person[]>([]);
+  const [isEditing, setIsEditing] = React.useState(false);
   
   const canEditGoals = React.useMemo(() => {
     return isAdmin || appUser?.role.includes('Folk Guide');
@@ -73,13 +71,11 @@ export default function PersonDetailPage() {
       setIsLoading(true);
       setFetchError(null);
       try {
-        const [personData, fieldsData, groupsData] = await Promise.all([
+        const [personData, groupsData] = await Promise.all([
             getPerson(personId),
-            getCustomPersonFields(),
             getGroups(appUser),
         ]);
         
-        setCustomFields(fieldsData);
         setAllGroups(groupsData);
 
         if (personData) {
@@ -110,22 +106,15 @@ export default function PersonDetailPage() {
     fetchPerson();
   }, [personId, router, toast, appUser]);
 
-  const handleSavePersonDialog = async (personData: Omit<Person, 'id' | 'progress'>) => {
+  const handleSavePerson = async (formData: Partial<Person>) => {
     if (!person) return;
     try {
-      const updatedPersonData = { ...person, ...personData };
-      await updatePerson(personId, personData);
-      setPerson(updatedPersonData);
-      toast({
-        title: 'Person Updated',
-        description: "The person's details have been saved.",
-      });
+      await updatePerson(person.id, formData);
+      setPerson(prev => prev ? { ...prev, ...formData } : null);
+      toast({ title: 'Person Updated', description: "The person's details have been saved." });
+      setIsEditing(false);
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Could not update person.',
-      });
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not update person.' });
     }
   };
 
@@ -187,20 +176,7 @@ export default function PersonDetailPage() {
       setPerson(person); 
     }
   };
-
-  const formatCustomValue = (value: any, type: CustomField['type']) => {
-    if (value === null || typeof value === 'undefined' || value === '') return 'N/A';
-    if (type === 'boolean') return value ? 'Yes' : 'No';
-    if (type === 'date') {
-      try {
-        return new Date(value).toLocaleDateString();
-      } catch {
-        return 'Invalid Date';
-      }
-    }
-    return String(value);
-  }
-
+  
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -227,12 +203,6 @@ export default function PersonDetailPage() {
     }
     
     const personGroups = allGroups.filter(g => g.peopleIds.includes(person.id));
-    const hasCustomData = customFields.some(field => person.customData && person.customData[field.id]);
-    const fullName = person.fullName || '';
-    const nameParts = fullName.split(' ');
-    const fallback = (
-      `${nameParts[0]?.charAt(0) || ''}${nameParts.length > 1 ? nameParts[nameParts.length - 1]?.charAt(0) || '' : ''}`
-    ).toUpperCase();
 
     return (
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
@@ -240,131 +210,15 @@ export default function PersonDetailPage() {
               <div className={cn("flex flex-col lg:flex-row gap-6", !isAdmin && "lg:flex-col")}>
                 <div className={cn(isAdmin ? "lg:w-1/3" : "w-full")}>
                   <Card>
-                    <CardContent className="pt-6 text-center flex flex-col items-center">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Avatar className="h-32 w-32 mb-4 cursor-pointer hover:opacity-80 transition-opacity">
-                            <AvatarImage
-                              src={person.photoUrl}
-                              alt={fullName}
-                              data-ai-hint="person portrait"
-                            />
-                            <AvatarFallback>
-                              {fallback}
-                            </AvatarFallback>
-                          </Avatar>
-                        </DialogTrigger>
-                        <DialogContent className="p-0 border-0 max-w-lg bg-transparent shadow-none">
-                          <DialogHeader>
-                            <DialogTitle className="sr-only">Profile photo for {fullName}</DialogTitle>
-                          </DialogHeader>
-                          <img
-                            src={person.photoUrl}
-                            alt={fullName}
-                            className="rounded-lg w-full h-auto object-contain"
-                          />
-                        </DialogContent>
-                      </Dialog>
-                      <h2 className="text-2xl font-bold">
-                        {fullName}
-                      </h2>
-                      <p className="text-muted-foreground mt-1">
-                          {person.sgRating ? `Rating: ${person.sgRating}/10` : 'No rating'}
-                      </p>
-
-                      <div className="mt-6 w-full text-left grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-3 text-sm">
-                          <div className="font-semibold text-muted-foreground">Phone</div>
-                          <div className="flex items-center gap-x-3">
-                            <a href={`tel:${person.phone}`} className="flex items-center gap-2 text-primary hover:underline">
-                              <Phone className="h-4 w-4" />
-                              {person.phone}
-                            </a>
-                            <a href={`https://wa.me/91${person.phone.replace(/\s+/g, '')}`} target="_blank" rel="noopener noreferrer" aria-label="Open WhatsApp chat">
-                                <svg
-                                    role="img"
-                                    viewBox="0 0 24 24"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-5 w-5 fill-current text-green-600 hover:opacity-80 transition-opacity"
-                                >
-                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.204-1.634a11.86 11.86 0 005.794 1.504h.004c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-                                </svg>
-                            </a>
-                          </div>
-
-                          <div className="font-semibold text-muted-foreground">Age</div>
-                          <div>{person.age}</div>
-
-                          <div className="font-semibold text-muted-foreground">Staying With</div>
-                          <div>{person.stayingWith}</div>
-
-                          <div className="font-semibold text-muted-foreground">Occupation Status</div>
-                          <div>{person.occupation || 'N/A'}</div>
-
-                          <div className="font-semibold text-muted-foreground">Organisation Name</div>
-                          <div>{person.organisation || 'N/A'}</div>
-
-                          <div className="font-semibold text-muted-foreground">Rent Details</div>
-                          <div>{person.rentDetails || 'N/A'}</div>
-
-                          <div className="font-semibold text-muted-foreground">Native Place</div>
-                          <div>{person.nativePlace || 'N/A'}</div>
-
-                          <div className="font-semibold text-muted-foreground">Contact Source</div>
-                          <div>{person.contactSource || 'N/A'}</div>
-
-                          <div className="font-semibold text-muted-foreground">Chanting Status</div>
-                          <div>{person.chantingStatus || 'N/A'}</div>
-
-                          <div className="font-semibold text-muted-foreground">From Other Camp</div>
-                          <div>{person.fromOtherCamp ? 'Yes' : 'No'}</div>
-                          
-                          <div className="font-semibold text-muted-foreground">Enabler</div>
-                          <div>{person.enablerInTouchWith || 'N/A'}</div>
-
-                          <div className="font-semibold text-muted-foreground">Folk Guide</div>
-                          <div>{person.folkGuide || 'N/A'}</div>
-                      </div>
-
-                      {personGroups.length > 0 && (
-                        <>
-                            <Separator className="my-4" />
-                            <div className="w-full text-left space-y-2">
-                                <h4 className="font-semibold text-sm flex items-center gap-2"><Tags className="h-4 w-4 text-muted-foreground"/> In Groups</h4>
-                                <div className="flex flex-wrap gap-1">
-                                    {personGroups.map(group => (
-                                        <Badge key={group.id} variant="secondary">{group.name}</Badge>
-                                    ))}
-                                </div>
-                            </div>
-                        </>
-                      )}
-
-                      {hasCustomData && (
-                        <>
-                          <Separator className="my-4" />
-                          <div className="w-full text-left grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-3 text-sm">
-                             {customFields.map(field => {
-                                const value = person.customData?.[field.id];
-                                if (!value) return null;
-                                 if (field.type === 'textarea') {
-                                  return (
-                                    <React.Fragment key={field.id}>
-                                      <div className="font-semibold text-muted-foreground col-span-2">{field.label}</div>
-                                      <div className="col-span-2 whitespace-pre-wrap">{formatCustomValue(value, field.type)}</div>
-                                    </React.Fragment>
-                                  );
-                                }
-                                return (
-                                  <React.Fragment key={field.id}>
-                                    <div className="font-semibold text-muted-foreground">{field.label}</div>
-                                    <div>{formatCustomValue(value, field.type)}</div>
-                                  </React.Fragment>
-                                );
-                             })}
-                          </div>
-                        </>
-                      )}
-
+                    <CardContent className="pt-6">
+                       <EditablePersonDetailsForm 
+                          person={person} 
+                          isEditing={isEditing} 
+                          onSave={handleSavePerson}
+                          onCancel={() => setIsEditing(false)}
+                          allPeople={[]} // Not needed here as we are not creating
+                          groups={personGroups}
+                        />
                     </CardContent>
                   </Card>
                 </div>
@@ -382,7 +236,7 @@ export default function PersonDetailPage() {
                 <GeneralRemarksCard
                   personId={person.id}
                   initialRemarks={person.generalRemarks || ''}
-                  personName={fullName}
+                  personName={person.fullName}
                 />
                 <CallHistory person={person} />
               </div>
@@ -412,10 +266,23 @@ export default function PersonDetailPage() {
                         <ArrowLeft className="h-4 w-4 mr-0 sm:mr-2" />
                         <span className="hidden sm:inline">Back</span>
                     </Button>
-                    <Button size="sm" className="w-9 sm:w-auto" onClick={() => setIsEditDialogOpen(true)}>
-                        <Edit className="h-4 w-4 mr-0 sm:mr-2" />
-                        <span className="hidden sm:inline">Edit</span>
-                    </Button>
+                    {isEditing ? (
+                        <>
+                           <Button size="sm" variant="outline" onClick={() => setIsEditing(false)}>
+                                <XCircle className="h-4 w-4 mr-0 sm:mr-2" />
+                                <span className="hidden sm:inline">Cancel</span>
+                            </Button>
+                             <Button size="sm" type="submit" form="person-details-form">
+                                <Save className="h-4 w-4 mr-0 sm:mr-2" />
+                                <span className="hidden sm:inline">Save</span>
+                            </Button>
+                        </>
+                    ) : (
+                         <Button size="sm" className="w-9 sm:w-auto" onClick={() => setIsEditing(true)}>
+                            <Edit className="h-4 w-4 mr-0 sm:mr-2" />
+                            <span className="hidden sm:inline">Edit</span>
+                        </Button>
+                    )}
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
                         <Button variant="destructive" size="sm" className="w-9 sm:w-auto">
@@ -447,13 +314,6 @@ export default function PersonDetailPage() {
             )}
             {renderContent()}
         </div>
-        <CreateUpdatePersonDialog
-          isOpen={isEditDialogOpen}
-          setIsOpen={setIsEditDialogOpen}
-          onSave={(data) => handleSavePersonDialog(data)}
-          person={person}
-          allPeople={allPeople}
-        />
       </div>
     </AuthGuard>
   );
