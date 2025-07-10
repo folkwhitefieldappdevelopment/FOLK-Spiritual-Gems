@@ -20,7 +20,7 @@ import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -210,7 +210,28 @@ export default function PersonDetailPage() {
               <div className={cn("flex flex-col lg:flex-row gap-6", !isAdmin && "lg:flex-col")}>
                 <div className={cn(isAdmin ? "lg:w-1/3" : "w-full")}>
                   <Card>
-                    <CardContent className="pt-6">
+                    <CardHeader className="flex flex-row items-center justify-between">
+                       <div className="space-y-1.5">
+                            <h2 className="text-2xl font-bold leading-none">Contact Profile</h2>
+                       </div>
+                       <div className="flex items-center gap-2">
+                        {isEditing ? (
+                            <>
+                            <Button size="sm" variant="outline" onClick={() => setIsEditing(false)}>
+                                <XCircle className="h-4 w-4 mr-2" />Cancel
+                            </Button>
+                                <Button size="sm" type="submit" form="person-details-form">
+                                <Save className="h-4 w-4 mr-2" />Save
+                            </Button>
+                            </>
+                        ) : (
+                            <Button size="sm" onClick={() => setIsEditing(true)}>
+                                <Edit className="h-4 w-4 mr-2" />Edit
+                            </Button>
+                        )}
+                       </div>
+                    </CardHeader>
+                    <CardContent>
                        <EditablePersonDetailsForm 
                           person={person} 
                           isEditing={isEditing} 
@@ -266,23 +287,6 @@ export default function PersonDetailPage() {
                         <ArrowLeft className="h-4 w-4 mr-0 sm:mr-2" />
                         <span className="hidden sm:inline">Back</span>
                     </Button>
-                    {isEditing ? (
-                        <>
-                           <Button size="sm" variant="outline" onClick={() => setIsEditing(false)}>
-                                <XCircle className="h-4 w-4 mr-0 sm:mr-2" />
-                                <span className="hidden sm:inline">Cancel</span>
-                            </Button>
-                             <Button size="sm" type="submit" form="person-details-form">
-                                <Save className="h-4 w-4 mr-0 sm:mr-2" />
-                                <span className="hidden sm:inline">Save</span>
-                            </Button>
-                        </>
-                    ) : (
-                         <Button size="sm" className="w-9 sm:w-auto" onClick={() => setIsEditing(true)}>
-                            <Edit className="h-4 w-4 mr-0 sm:mr-2" />
-                            <span className="hidden sm:inline">Edit</span>
-                        </Button>
-                    )}
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
                         <Button variant="destructive" size="sm" className="w-9 sm:w-auto">
