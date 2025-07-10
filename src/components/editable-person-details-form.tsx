@@ -363,7 +363,12 @@ export function EditablePersonDetailsForm({
                         <StarRating value={person.sgRating || 0} avatarSizeClass={avatarSize} />
                     </div>
                 </DialogTrigger>
-                <DialogContent className="p-0 border-0 max-w-lg bg-transparent shadow-none"><img src={person.photoUrl} alt={fullName} className="rounded-lg w-full h-auto object-contain" /></DialogContent>
+                <DialogContent className="p-0 border-0 max-w-lg bg-transparent shadow-none">
+                  <DialogHeader>
+                    <DialogTitle className="sr-only">{`Profile picture of ${fullName}`}</DialogTitle>
+                  </DialogHeader>
+                  <img src={person.photoUrl} alt={fullName} className="rounded-lg w-full h-auto object-contain" />
+                </DialogContent>
                 </Dialog>
             </div>
 
