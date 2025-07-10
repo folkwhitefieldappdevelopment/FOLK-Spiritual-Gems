@@ -21,8 +21,8 @@ const StarRatingComponent = ({ value, totalStars = 5 }: StarRatingProps) => {
     >
       {Array.from({ length: totalStars }).map((_, i) => {
         // Position stars in a 120-degree arc at the bottom.
-        // -60 degrees to start from the bottom-left, up to +60 degrees at the bottom-right.
-        // 120 degrees / 4 gaps = 30 degrees per step.
+        // Start from -60deg (bottom-left) to +60deg (bottom-right).
+        // 120deg / 4 gaps = 30deg per step.
         const angle = -60 + i * 30;
         const filled = i < ratingValue;
 
@@ -31,11 +31,11 @@ const StarRatingComponent = ({ value, totalStars = 5 }: StarRatingProps) => {
             key={i}
             className="absolute top-1/2 left-1/2"
             // The transform magic:
-            // 1. rotate() positions the star on the circle.
-            // 2. translate() moves it outwards from the center. The distance depends on the avatar size (h-16 -> 4rem radius).
+            // 1. rotate() positions the star on the circle's edge.
+            // 2. translate() moves it outwards. The card avatar is w-16 (4rem), so radius is 2rem.
             // 3. rotate() back to keep the star upright.
             style={{
-              transform: `rotate(${angle}deg) translate(4.5rem) rotate(${-angle}deg)`,
+              transform: `rotate(${angle}deg) translateY(2.5rem) rotate(${-angle}deg)`,
             }}
           >
             <Star
