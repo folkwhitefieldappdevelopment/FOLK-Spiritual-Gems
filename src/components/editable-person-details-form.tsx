@@ -334,7 +334,7 @@ export function EditablePersonDetailsForm({
             <FormField control={form.control} name="occupation" render={({ field }) => (<FormItem><FormLabel>Occupation Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>{occupationStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
             <FormField control={form.control} name="organisation" render={({ field }) => (<FormItem><FormLabel>Organisation</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
           </div>
-          <FormField control={form.control} name="sgRating" render={({ field }) => (<FormItem><FormLabel>SG Rating</FormLabel><FormControl><Input type="number" min="0" max="10" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} /></FormControl><FormMessage /></FormItem>)} />
+          <FormField control={form.control} name="sgRating" render={({ field }) => (<FormItem><FormLabel>SG Rating (0-10)</FormLabel><FormControl><Input type="number" min="0" max="10" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} /></FormControl><FormMessage /></FormItem>)} />
           <FormField control={form.control} name="contactSource" render={({ field }) => (<FormItem><FormLabel>Contact Source</FormLabel><Select onValueChange={(v) => field.onChange(v === '__NONE__' ? '' : v)} value={field.value || '__NONE__'}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="__NONE__">None</SelectItem>{contactSourceOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
           <FormField control={form.control} name="chantingStatus" render={({ field }) => (<FormItem><FormLabel>Chanting Status</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
           <FormField control={form.control} name="enablerInTouchWith" render={({ field }) => (<FormItem><FormLabel>Enabler</FormLabel><Select onValueChange={(v) => field.onChange(v === '__NONE__' ? '' : v)} value={field.value || '__NONE__'}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="__NONE__">None</SelectItem>{enablerOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
@@ -360,7 +360,7 @@ export function EditablePersonDetailsForm({
                 </DialogTrigger>
                 <DialogContent className="p-0 border-0 max-w-lg bg-transparent shadow-none"><img src={person.photoUrl} alt={fullName} className="rounded-lg w-full h-auto object-contain" /></DialogContent>
                 </Dialog>
-                <StarRating value={person.sgRating} totalStars={5} />
+                <StarRating value={person.sgRating} />
             </div>
 
             <h2 className="text-2xl font-bold">{fullName}</h2>
