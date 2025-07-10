@@ -16,10 +16,10 @@ const StarRatingComponent = ({ value, totalStars = 5, avatarSizeClass }: StarRat
   const ratingValue = value / (10 / totalStars);
 
   const radiusMap = {
-    'h-16 w-16': '2.5rem', // 40px
-    'h-20 w-20': '3rem',   // 48px
-    'h-24 w-24': '3.5rem', // 56px
-    'h-32 w-32': '4.5rem', // 72px
+    'h-16 w-16': '2.5rem',
+    'h-20 w-20': '3rem',
+    'h-24 w-24': '3.5rem',
+    'h-32 w-32': '4.5rem',
   };
   
   const radius = radiusMap[avatarSizeClass] || '2.5rem';
@@ -41,7 +41,7 @@ const StarRatingComponent = ({ value, totalStars = 5, avatarSizeClass }: StarRat
             key={i}
             className="absolute top-1/2 left-1/2"
             style={{
-              transform: `rotate(${angle}deg) translateY(${radius}) rotate(${-angle}deg)`,
+              transform: `rotate(${angle}deg) translate(${radius}) rotate(${-angle}deg)`,
             }}
           >
             <Star
