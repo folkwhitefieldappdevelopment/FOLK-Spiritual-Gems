@@ -48,17 +48,17 @@ export default function GroupsPage() {
     fetchGroups();
   }, [appUser]);
 
-  const handleCreateGroup = () => {
+  const handleCreateGroup = React.useCallback(() => {
     setEditingGroup(undefined);
     setIsDialogOpen(true);
-  };
+  }, []);
 
-  const handleEditGroup = (group: Group) => {
+  const handleEditGroup = React.useCallback((group: Group) => {
     setEditingGroup(group);
     setIsDialogOpen(true);
-  };
+  }, []);
 
-  const handleDeleteGroup = async (groupId: string) => {
+  const handleDeleteGroup = React.useCallback(async (groupId: string) => {
     try {
       await deleteGroup(groupId);
       setGroups((prev) => prev.filter((g) => g.id !== groupId));
@@ -66,9 +66,9 @@ export default function GroupsPage() {
     } catch (error) {
        toast({ variant: "destructive", title: "Error", description: "Could not delete group." });
     }
-  };
+  }, [toast]);
 
-  const handleSaveGroup = async (
+  const handleSaveGroup = React.useCallback(async (
     groupData: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy">
   ) => {
     if (!appUser) return;
@@ -102,7 +102,7 @@ export default function GroupsPage() {
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: "Could not save group." });
     }
-  };
+  }, [appUser, editingGroup, toast]);
   
   const renderContent = () => {
     if (isLoading) {

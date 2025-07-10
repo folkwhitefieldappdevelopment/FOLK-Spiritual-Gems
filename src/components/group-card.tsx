@@ -1,6 +1,7 @@
 
 "use client";
 import Link from "next/link";
+import * as React from 'react';
 import { Users, MoreHorizontal, Edit, Trash2, Globe, Lock } from "lucide-react";
 import type { Group } from "@/lib/types";
 
@@ -38,7 +39,7 @@ type GroupCardProps = {
   onDelete: () => void;
 };
 
-export function GroupCard({ group, onEdit, onDelete }: GroupCardProps) {
+const GroupCardComponent = ({ group, onEdit, onDelete }: GroupCardProps) => {
   const handleAction = (e: React.MouseEvent, action: () => void) => {
     e.preventDefault();
     action();
@@ -133,3 +134,5 @@ export function GroupCard({ group, onEdit, onDelete }: GroupCardProps) {
     </Link>
   );
 }
+
+export const GroupCard = React.memo(GroupCardComponent);

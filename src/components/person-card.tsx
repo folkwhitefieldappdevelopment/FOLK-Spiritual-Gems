@@ -122,20 +122,20 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
     `${nameParts[0]?.charAt(0) || ''}${nameParts.length > 1 ? nameParts[nameParts.length - 1]?.charAt(0) || '' : ''}`
   ).toUpperCase();
   
-  const handleClick = () => {
+  const handleClick = React.useCallback(() => {
     if (isSelectionActive) {
       onSelectionChange(person.id, !isSelected);
     } else {
       router.push(`/contacts/${person.id}`);
     }
-  };
+  }, [isSelectionActive, onSelectionChange, person.id, isSelected, router]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleKeyDown = React.useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         handleClick();
     }
-  }
+  }, [handleClick]);
 
 
   return (

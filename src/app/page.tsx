@@ -129,14 +129,14 @@ export default function ContactsPage() {
   }, [fetchPageData]);
 
   const filterableFields: FilterableField[] = React.useMemo(() => [
-    { value: 'age', label: 'Age', type: 'number' },
-    { value: 'sgRating', label: 'Rating', type: 'number' },
     { value: 'occupation', label: 'Occupation', type: 'enum', options: occupationStatuses.map(s => ({ value: s, label: s })) },
     { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(s => ({ value: s, label: s })) },
     { value: 'enablerInTouchWith', label: 'Enabler', type: 'enum', options: enablerOptions },
     { value: 'chantingStatus', label: 'Chanting Status', type: 'string' },
     { value: 'nativePlace', label: 'Native Place', type: 'string' },
     { value: 'fromOtherCamp', label: 'From Other Camp', type: 'boolean' },
+    { value: 'age', label: 'Age', type: 'number' },
+    { value: 'sgRating', label: 'Rating', type: 'number' },
   ], [enablerOptions, contactSourceOptions]);
 
   const filteredPeople = React.useMemo(() => {
@@ -250,7 +250,7 @@ export default function ContactsPage() {
     setSelectedIds(new Set());
   }, [filters, sortDescriptors, searchTerm, view, columnFilters]);
 
-  const handleSampleDownload = () => {
+  const handleSampleDownload = React.useCallback(() => {
     const headers = [
       "fullName", "phone", "photoUrl", "age", "stayingWith",
       "occupation", "organisation", "rentDetails", "nativePlace", "sgRating",
@@ -287,9 +287,9 @@ export default function ContactsPage() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(link.href);
-  };
+  }, []);
 
-  const handleExport = async () => {
+  const handleExport = React.useCallback(async () => {
     if (filteredPeople.length === 0) {
       toast({
         variant: "destructive",
@@ -381,9 +381,9 @@ export default function ContactsPage() {
     } finally {
       setIsExporting(false);
     }
-  };
+  }, [filteredPeople, toast]);
 
-  const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileImport = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !appUser) return;
 
@@ -486,19 +486,19 @@ export default function ContactsPage() {
       }
     };
     reader.readAsArrayBuffer(file);
-  };
+  }, [appUser, people, toast]);
 
-  const handleAddPerson = () => {
+  const handleAddPerson = React.useCallback(() => {
     setEditingPerson(undefined);
     setIsDialogOpen(true);
-  };
+  }, []);
 
-  const handleEditPerson = (person: Person) => {
+  const handleEditPerson = React.useCallback((person: Person) => {
     setEditingPerson(person);
     setIsDialogOpen(true);
-  };
+  }, []);
 
-  const handleDeletePerson = async (personId: string) => {
+  const handleDeletePerson = React.useCallback(async (personId: string) => {
     try {
       await deletePerson(personId);
       setPeople((prev) => prev.filter((p) => p.id !== personId));
@@ -513,9 +513,9 @@ export default function ContactsPage() {
         description: "Could not delete person.",
       });
     }
-  };
+  }, [toast]);
 
-  const handleDeleteSelected = async () => {
+  const handleDeleteSelected = React.useCallback(async () => {
     try {
       await deletePeople(Array.from(selectedIds));
       setPeople((prev) => prev.filter((p) => !selectedIds.has(p.id)));
@@ -531,10 +531,10 @@ export default function ContactsPage() {
         description: "Could not delete the selected contacts.",
       });
     }
-  };
+  }, [selectedIds, toast]);
 
 
-  const handleSavePerson = async (personData: Omit<Person, "id" | "progress" | "createdAt">) => {
+  const handleSavePerson = React.useCallback(async (personData: Omit<Person, "id" | "progress" | "createdAt">) => {
     if (!appUser) return;
     try {
       if (editingPerson) {
@@ -570,7 +570,7 @@ export default function ContactsPage() {
         description: errorMessage,
       });
     }
-  };
+  }, [appUser, toast, editingPerson]);
   
   const handleSelectionChange = React.useCallback((personId: string, checked: boolean) => {
     setSelectedIds(prev => {
@@ -584,7 +584,7 @@ export default function ContactsPage() {
     });
   }, []);
 
-  const handleAddToGroup = async (groupId: string) => {
+  const handleAddToGroup = React.useCallback(async (groupId: string) => {
     if (selectedIds.size === 0) return;
     try {
       await addPeopleToGroup(groupId, Array.from(selectedIds));
@@ -603,9 +603,9 @@ export default function ContactsPage() {
         description: "Could not add contacts to the group.",
       });
     }
-  };
+  }, [selectedIds, toast, appUser]);
 
-  const handleSaveGroupAndAddMembers = async (groupData: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy">) => {
+  const handleSaveGroupAndAddMembers = React.useCallback(async (groupData: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy">) => {
     if (!appUser) return;
     try {
       const newGroupData: Omit<Group, 'id' | 'createdBy'> = {
@@ -639,9 +639,9 @@ export default function ContactsPage() {
         description: "Could not create or add members to the new group.",
       });
     }
-  };
+  }, [selectedIds, appUser, toast]);
   
-  const handleAssignHelper = async (helper: AppUser | null) => {
+  const handleAssignHelper = React.useCallback(async (helper: AppUser | null) => {
     if (selectedIds.size === 0) return;
     try {
       await assignHelperToPeople(Array.from(selectedIds), helper);
@@ -659,7 +659,7 @@ export default function ContactsPage() {
         description: "Could not assign helper.",
       });
     }
-  }
+  }, [selectedIds, toast, fetchPageData]);
 
 
   const isLoadingAction = isImporting || isExporting;
@@ -874,7 +874,7 @@ export default function ContactsPage() {
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => fileInputRef.current?.click()} disabled={isLoadingAction}>
+                        <DropdownMenuItem onClick={handleFileImport} disabled={isLoadingAction}>
                         Import from Excel
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={handleExport} disabled={isLoadingAction}>
@@ -926,5 +926,3 @@ export default function ContactsPage() {
     </AuthGuard>
   );
 }
-
-    

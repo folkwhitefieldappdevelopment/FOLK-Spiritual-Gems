@@ -18,8 +18,8 @@ import {
 import type { Person, Group, AppUser } from '@/lib/types';
 import { occupationStatuses } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { getGroup, updateGroup, addPeopleToGroup, getGroups } from '@/services/groups-service';
-import { getPeople, updatePerson, assignHelperToPeople } from '@/services/people-service';
+import { getGroup, updateGroup, addPeopleToGroup, getGroups, removePeopleFromGroup } from '@/services/groups-service';
+import { getPeople, updatePerson, assignHelperToPeople, deletePeople } from '@/services/people-service';
 import { getEnablers, getContactSources, type EnablerOption } from '@/services/settings-service';
 import { AuthGuard } from '@/components/auth-guard';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
@@ -129,14 +129,14 @@ export default function GroupDetailPage() {
   }, [fetchPageData]);
   
   const filterableFields: FilterableField[] = React.useMemo(() => [
-    { value: 'age', label: 'Age', type: 'number' },
-    { value: 'sgRating', label: 'Rating', type: 'number' },
     { value: 'occupation', label: 'Occupation', type: 'enum', options: occupationStatuses.map(s => ({ value: s, label: s })) },
     { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(s => ({ value: s, label: s })) },
     { value: 'enablerInTouchWith', label: 'Enabler', type: 'enum', options: enablerOptions },
     { value: 'chantingStatus', label: 'Chanting Status', type: 'string' },
     { value: 'nativePlace', label: 'Native Place', type: 'string' },
     { value: 'fromOtherCamp', label: 'From Other Camp', type: 'boolean' },
+    { value: 'age', label: 'Age', type: 'number' },
+    { value: 'sgRating', label: 'Rating', type: 'number' },
   ], [enablerOptions, contactSourceOptions]);
 
   const filteredMembers = React.useMemo(() => {
@@ -209,22 +209,27 @@ export default function GroupDetailPage() {
     setSelectedIds(new Set());
   }, [filters, sortDescriptors, searchTerm, columnFilters, view]);
 
-  const handleEditPerson = (person: Person) => {
+  const handleEditPerson = React.useCallback((person: Person) => {
     setEditingPerson(person);
-  };
+  }, []);
   
-  const removeMembersFromGroup = async (idsToRemove: string[]) => {
+  const handleRemoveMembers = React.useCallback(async (idsToRemove: string[]) => {
     if (!group) return;
-    const updatedPeopleIds = group.peopleIds.filter(id => !idsToRemove.includes(id));
-    await handleSaveMembers(updatedPeopleIds);
-    toast({
-      title: 'Members Removed',
-      description: `${idsToRemove.length} contact(s) have been removed from this group.`,
-    });
-    setSelectedIds(new Set());
-  };
+    try {
+      await removePeopleFromGroup(group.id, idsToRemove);
+      setMembers(prev => prev.filter(m => !idsToRemove.includes(m.id)));
+      setGroup(prev => prev ? { ...prev, peopleIds: prev.peopleIds.filter(id => !idsToRemove.includes(id)), memberCount: prev.memberCount - idsToRemove.length } : null);
+      toast({
+        title: 'Members Removed',
+        description: `${idsToRemove.length} contact(s) have been removed from this group.`,
+      });
+      setSelectedIds(new Set());
+    } catch(e) {
+      toast({ variant: 'destructive', title: 'Error removing members' });
+    }
+  }, [group, toast]);
   
-  const handleSavePersonDialog = async (personData: Omit<Person, 'id' | 'progress'>) => {
+  const handleSavePersonDialog = React.useCallback(async (personData: Omit<Person, 'id' | 'progress'>) => {
     if (!editingPerson) return;
     try {
       await updatePerson(editingPerson.id, personData);
@@ -236,9 +241,9 @@ export default function GroupDetailPage() {
     } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not update person details.'});
     }
-  };
+  }, [editingPerson, allPeople, members, toast]);
   
-  const handleSaveMembers = async (memberIds: string[]) => {
+  const handleSaveMembers = React.useCallback(async (memberIds: string[]) => {
     if (!group) return;
     try {
       const updatedGroupData = { peopleIds: memberIds, memberCount: memberIds.length };
@@ -249,7 +254,7 @@ export default function GroupDetailPage() {
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not update group members.'});
     }
-  };
+  }, [group, groupId, allPeople, toast]);
   
   const handleSelectionChange = React.useCallback((personId: string, checked: boolean) => {
     setSelectedIds(prev => {
@@ -260,7 +265,7 @@ export default function GroupDetailPage() {
     });
   }, []);
 
-  const handleAddToGroup = async (targetGroupId: string) => {
+  const handleAddToGroup = React.useCallback(async (targetGroupId: string) => {
     if (selectedIds.size === 0) return;
     try {
       await addPeopleToGroup(targetGroupId, Array.from(selectedIds));
@@ -269,9 +274,9 @@ export default function GroupDetailPage() {
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not add contacts to the group.'});
     }
-  };
+  }, [selectedIds, toast]);
 
-  const handleAssignHelper = async (helper: AppUser | null) => {
+  const handleAssignHelper = React.useCallback(async (helper: AppUser | null) => {
     if (selectedIds.size === 0) return;
     try {
       await assignHelperToPeople(Array.from(selectedIds), helper);
@@ -279,9 +284,9 @@ export default function GroupDetailPage() {
       fetchPageData(); // Refetch to show changes
       setSelectedIds(new Set());
     } catch (error) {
-       toast({ variant: 'destructive', title: 'Error', description: 'Could not assign helper.' });
+       toast({ variant: "destructive", title: "Error", description: "Could not assign helper." });
     }
-  }
+  }, [selectedIds, toast, fetchPageData]);
 
   const renderContent = () => {
     if (isLoading) return <div className="flex min-h-[50vh] w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -307,7 +312,7 @@ export default function GroupDetailPage() {
                     <AlertDialogTrigger asChild><Button variant="destructive" size="sm"><Trash2 className="mr-2 h-4 w-4" /> Remove from Group</Button></AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will remove the selected {selectedIds.size} contacts from this group. It will not delete them from the app.</AlertDialogDescription></AlertDialogHeader>
-                      <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => removeMembersFromGroup(Array.from(selectedIds))} className="bg-destructive hover:bg-destructive/90">Remove</AlertDialogAction></AlertDialogFooter>
+                      <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleRemoveMembers(Array.from(selectedIds))} className="bg-destructive hover:bg-destructive/90">Remove</AlertDialogAction></AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
                 </>
@@ -341,7 +346,7 @@ export default function GroupDetailPage() {
           <PersonTable 
             people={filteredMembers} 
             onEdit={handleEditPerson} 
-            onDelete={(id) => removeMembersFromGroup([id])} 
+            onDelete={(id) => handleRemoveMembers([id])} 
             selectedIds={selectedIds} 
             setSelectedIds={setSelectedIds} 
             isSelectionActive={isSelectionActive}
@@ -373,12 +378,10 @@ export default function GroupDetailPage() {
               </main>
           </div>
         
-        {editingPerson && <CreateUpdatePersonDialog isOpen={!!editingPerson} setIsOpen={() => setEditingPerson(undefined)} onSave={(data) => handleSavePersonDialog(data)} person={editingPerson} allPeople={allPeople} />}
+        {editingPerson && <CreateUpdatePersonDialog isOpen={!!editingPerson} setIsOpen={() => setEditingPerson(undefined)} onSave={handleSavePersonDialog} person={editingPerson} allPeople={allPeople} />}
         {group && <ManageGroupMembersDialog isOpen={isManageMembersDialogOpen} setIsOpen={setIsManageMembersDialogOpen} onSave={handleSaveMembers} group={group} allPeople={allPeople} />}
         {isAssignHelperDialogOpen && <AssignHelperDialog isOpen={isAssignHelperDialogOpen} setIsOpen={setIsAssignHelperDialogOpen} onSave={handleAssignHelper} peopleCount={selectedIds.size} />}
       </div>
     </AuthGuard>
   );
 }
-
-    
