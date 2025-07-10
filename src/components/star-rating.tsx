@@ -13,27 +13,27 @@ type StarRatingProps = {
 
 const StarRatingComponent = ({ value, totalStars = 5, avatarSizeClass }: StarRatingProps) => {
   // Map the 0-10 rating to a 0-5 star scale.
-  const ratingValue = value / (10 / totalStars);
+  const ratingValue = Math.round(value / (10 / totalStars));
 
   const radiusMap = {
-    'h-16 w-16': '2.5rem',
-    'h-20 w-20': '3rem',
-    'h-24 w-24': '3.5rem',
+    'h-16 w-16': '2.2rem',
+    'h-20 w-20': '2.8rem',
+    'h-24 w-24': '3.4rem',
     'h-32 w-32': '4.5rem',
   };
   
-  const radius = radiusMap[avatarSizeClass] || '2.5rem';
+  const radius = radiusMap[avatarSizeClass] || '2.2rem';
 
   return (
     <div
       className="absolute inset-0 w-full h-full pointer-events-none"
-      aria-label={`Rating: ${ratingValue.toFixed(1)} out of ${totalStars}`}
+      aria-label={`Rating: ${ratingValue.toFixed(0)} out of ${totalStars}`}
     >
       {Array.from({ length: totalStars }).map((_, i) => {
-        // Use a 180-degree arc for a perfect semi-circle at the bottom.
-        // Start from -90deg (bottom-left) to +90deg (bottom-right).
-        // 180deg / 4 gaps = 45deg per step.
-        const angle = -90 + i * 45;
+        // Use a 120-degree arc for a more pleasing semi-circle at the bottom.
+        // Start from -60deg (bottom-left) to +60deg (bottom-right).
+        // 120deg / 4 gaps = 30deg per step.
+        const angle = -60 + i * 30;
         const filled = i < ratingValue;
 
         return (
