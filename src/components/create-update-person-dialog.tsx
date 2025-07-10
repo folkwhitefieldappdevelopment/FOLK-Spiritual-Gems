@@ -11,7 +11,6 @@ import { Camera, Upload, SwitchCamera, Loader2 } from "lucide-react";
 import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
 import { getFolkGuides } from "@/services/user-service";
 import { useAuth } from "@/contexts/auth-context";
-import { useAdmin } from "@/contexts/admin-context";
 
 import {
   Dialog,
@@ -96,7 +95,7 @@ export function CreateUpdatePersonDialog({
 }: CreateUpdatePersonDialogProps) {
   const { toast } = useToast();
   const { appUser } = useAuth();
-  const { isAdmin } = useAdmin();
+  const isAdmin = appUser?.role.includes('Admin');
   const personFormSchema = createPersonFormSchema(allPeople, person?.id);
   
   const form = useForm<PersonFormValues>({

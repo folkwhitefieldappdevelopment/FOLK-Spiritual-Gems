@@ -11,7 +11,6 @@ import { Camera, Upload, SwitchCamera, Phone, Tags } from "lucide-react";
 import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
 import { getFolkGuides } from "@/services/user-service";
 import { useAuth } from "@/contexts/auth-context";
-import { useAdmin } from "@/contexts/admin-context";
 
 import {
   Form,
@@ -100,7 +99,7 @@ export function EditablePersonDetailsForm({
 }: EditablePersonDetailsFormProps) {
   const { toast } = useToast();
   const { appUser } = useAuth();
-  const { isAdmin } = useAdmin();
+  const isAdmin = appUser?.role.includes('Admin');
   const personFormSchema = createPersonFormSchema(allPeople, person?.id);
   
   const form = useForm<PersonFormValues>({

@@ -6,7 +6,7 @@ import * as React from 'react';
 import { User, Briefcase, Tags } from "lucide-react";
 import type { Person, ProgressCategory, ProgressLevelAnswers, Group } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { useAdmin } from '@/contexts/admin-context';
+import { useAuth } from '@/contexts/auth-context';
 import {
   Card,
   CardContent,
@@ -108,8 +108,10 @@ const getProgressColor = (score: number): string => {
 };
 
 const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, isSelectionActive }: PersonCardProps) => {
-  const { isAdmin } = useAdmin();
+  const { appUser } = useAuth();
   const router = useRouter();
+
+  const isAdmin = appUser?.role.includes('Admin');
 
   let occupationDisplay = person.occupation;
   if ((person.occupation === 'Working' || person.occupation === 'Student') && person.organisation) {

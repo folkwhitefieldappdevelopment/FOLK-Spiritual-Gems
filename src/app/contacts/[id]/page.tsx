@@ -6,7 +6,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Edit, Trash2, Phone, Loader2, Tags, Save, XCircle } from 'lucide-react';
 import type { Person, ProgressLevelAnswers, CustomField, Group, ProgressCategory, AppUser } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { useAdmin } from '@/contexts/admin-context';
 import { useAuth } from '@/contexts/auth-context';
 import { cn } from '@/lib/utils';
 import { getPerson, updatePerson, deletePerson } from '@/services/people-service';
@@ -46,13 +45,12 @@ import { GeneralRemarksCard } from '@/components/general-remarks-card';
 import { Badge } from '@/components/ui/badge';
 import { EditablePersonDetailsForm } from '@/components/editable-person-details-form';
 
-export default function PersonDetailPage() {
+const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent() {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
   const personId = params.id as string;
   const { appUser } = useAuth();
-  const { isAdmin } = useAdmin();
 
   const [person, setPerson] = React.useState<Person | null>(null);
   const [allGroups, setAllGroups] = React.useState<Group[]>([]);
@@ -61,8 +59,10 @@ export default function PersonDetailPage() {
   const [isEditing, setIsEditing] = React.useState(false);
   
   const canEditGoals = React.useMemo(() => {
-    return isAdmin || appUser?.role.includes('Folk Guide');
-  }, [isAdmin, appUser]);
+    return appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
+  }, [appUser]);
+  
+  const isSuperAdmin = React.useMemo(() => appUser?.role.includes('Admin'), [appUser]);
 
   React.useEffect(() => {
     if (!personId || !appUser) return;
@@ -135,7 +135,7 @@ export default function PersonDetailPage() {
     }
   };
 
-  const handleProgressChange = async (
+  const handleProgressChange = React.useCallback(async (
     catIndex: number,
     itemIndex: number,
     levelIndex: number,
@@ -175,7 +175,7 @@ export default function PersonDetailPage() {
       // Revert if API call fails
       setPerson(person); 
     }
-  };
+  }, [person, personId, toast, canEditGoals]);
   
   const renderContent = () => {
     if (isLoading) {
@@ -207,8 +207,8 @@ export default function PersonDetailPage() {
     return (
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
             <div className="mx-auto max-w-7xl space-y-6">
-              <div className={cn("flex flex-col lg:flex-row gap-6", !isAdmin && "lg:flex-col")}>
-                <div className={cn(isAdmin ? "lg:w-1/3" : "w-full")}>
+              <div className={cn("flex flex-col lg:flex-row gap-6", !isSuperAdmin && "lg:flex-col")}>
+                <div className={cn(isSuperAdmin ? "lg:w-1/3" : "w-full")}>
                   <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
                        <div className="space-y-1.5">
@@ -243,7 +243,7 @@ export default function PersonDetailPage() {
                     </CardContent>
                   </Card>
                 </div>
-                {isAdmin && (
+                {isSuperAdmin && (
                   <div className="lg:w-2/3">
                     <ProgressTracker 
                       progress={person.progress}
@@ -268,57 +268,63 @@ export default function PersonDetailPage() {
   
 
   return (
-    <AuthGuard>
-      <div className="flex min-h-screen w-full flex-col bg-background">
-        <AppSidebar />
-        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
-            {person && !fetchError && (
-                <PageHeader
-                    title="Contact Details"
-                    description={`Viewing profile for ${person.fullName || ''}`}
-                >
-                    <div className="flex items-center gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-9 sm:w-auto"
-                        onClick={() => router.push('/')}
-                    >
-                        <ArrowLeft className="h-4 w-4 mr-0 sm:mr-2" />
-                        <span className="hidden sm:inline">Back</span>
-                    </Button>
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm" className="w-9 sm:w-auto">
-                            <Trash2 className="h-4 w-4 mr-0 sm:mr-2" />
-                            <span className="hidden sm:inline">Delete</span>
-                        </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete{' '}
-                            {person.fullName || 'this contact'}.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                            onClick={handleDeletePerson}
-                            className="bg-destructive hover:bg-destructive/90"
-                            >
-                            Delete
-                            </AlertDialogAction>
-                        </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                    </div>
-                </PageHeader>
-            )}
-            {renderContent()}
-        </div>
+    <div className="flex min-h-screen w-full flex-col bg-background">
+      <AppSidebar />
+      <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+          {person && !fetchError && (
+              <PageHeader
+                  title="Contact Details"
+                  description={`Viewing profile for ${person.fullName || ''}`}
+              >
+                  <div className="flex items-center gap-2">
+                  <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-9 sm:w-auto"
+                      onClick={() => router.push('/')}
+                  >
+                      <ArrowLeft className="h-4 w-4 mr-0 sm:mr-2" />
+                      <span className="hidden sm:inline">Back</span>
+                  </Button>
+                  <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm" className="w-9 sm:w-auto">
+                          <Trash2 className="h-4 w-4 mr-0 sm:mr-2" />
+                          <span className="hidden sm:inline">Delete</span>
+                      </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                      <AlertDialogHeader>
+                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                          This action cannot be undone. This will permanently delete{' '}
+                          {person.fullName || 'this contact'}.
+                          </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                          onClick={handleDeletePerson}
+                          className="bg-destructive hover:bg-destructive/90"
+                          >
+                          Delete
+                          </AlertDialogAction>
+                      </AlertDialogFooter>
+                      </AlertDialogContent>
+                  </AlertDialog>
+                  </div>
+              </PageHeader>
+          )}
+          {renderContent()}
       </div>
-    </AuthGuard>
+    </div>
   );
+});
+
+export default function PersonDetailPage() {
+  return (
+    <AuthGuard>
+      <PersonDetailPageComponent />
+    </AuthGuard>
+  )
 }
