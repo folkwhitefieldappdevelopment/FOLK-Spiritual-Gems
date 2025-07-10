@@ -695,9 +695,10 @@ export function CreateUpdatePersonDialog({
                             value={field.value || '__NONE__'}
                           >
                             <FormControl>
-                              <SelectTrigger>
+                            <SelectTrigger>
                                 <SelectValue placeholder="Assign a Folk Guide" />
-                              </Trigger>
+                            </SelectTrigger>
+
                             </FormControl>
                             <SelectContent>
                               <SelectItem value="__NONE__">Unassigned</SelectItem>
