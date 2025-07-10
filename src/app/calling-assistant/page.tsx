@@ -74,7 +74,7 @@ export default function CallingAssistantPage() {
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [selectedGroupId, setSelectedGroupId] = React.useState<string>('all');
-  const [currentCallingEvent, setCurrentCallingEvent] = React.useState("Loading event...");
+  const [currentCallingEvent, setCurrentCallingEvent] = React.useState(appUser?.currentCallingEvent || "Loading event...");
   
   const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = React.useState(false);
   const [isAssignHelperDialogOpen, setIsAssignHelperDialogOpen] = React.useState(false);
@@ -87,6 +87,12 @@ export default function CallingAssistantPage() {
   const [callRange, setCallRange] = React.useState({ from: '1', to: '' });
   const [callRangeNames, setCallRangeNames] = React.useState({ from: '', to: '' });
   const [sessionStartIndex, setSessionStartIndex] = React.useState(0);
+
+  React.useEffect(() => {
+    if (appUser?.currentCallingEvent) {
+      setCurrentCallingEvent(appUser.currentCallingEvent);
+    }
+  }, [appUser?.currentCallingEvent]);
 
   const fetchPageData = React.useCallback(async () => {
     if (!appUser) return;
@@ -105,9 +111,6 @@ export default function CallingAssistantPage() {
         setContactSourceOptions(sourcesData);
         setCustomFields(customFieldsData);
         setGroups(groupsData);
-        if (appUser.currentCallingEvent) {
-            setCurrentCallingEvent(appUser.currentCallingEvent);
-        }
       } catch (error) {
         console.error("Failed to load data:", error);
         if (error instanceof Error) {
@@ -296,11 +299,11 @@ export default function CallingAssistantPage() {
     };
   }, [callRange, filteredPeople, isEventDialogOpen, isStartingSessionFlow]);
 
-  const handleEditPerson = (person: Person) => {
+  const handleEditPerson = React.useCallback((person: Person) => {
     setEditingPerson(person);
-  };
+  }, []);
   
-  const handleSessionSave = (
+  const handleSessionSave = React.useCallback((
     personId: string, 
     remark: string, 
     status: CallStatus, 
@@ -356,24 +359,24 @@ export default function CallingAssistantPage() {
         }
         return p;
     }));
-  };
+  }, [appUser, user, currentCallingEvent]);
   
-  const handleDeletePerson = () => {
+  const handleDeletePerson = React.useCallback(() => {
     // This view is for calling, not deleting. Deleting can be done from main contacts page.
     toast({
         title: "Action Disabled",
         description: "Please go to the main Contacts page to delete a contact.",
     });
-  };
+  }, [toast]);
 
-  const handleOpenEventDialog = (isStartingFlow: boolean) => {
+  const handleOpenEventDialog = React.useCallback((isStartingFlow: boolean) => {
     setEditableEventName(currentCallingEvent);
     setCallRange({ from: '1', to: String(filteredPeople.length) });
     setIsStartingSessionFlow(isStartingFlow);
     setIsEventDialogOpen(true);
-  };
+  }, [currentCallingEvent, filteredPeople.length]);
 
-  const handleSaveEventAndContinue = async () => {
+  const handleSaveEventAndContinue = React.useCallback(async () => {
     if (!appUser) return;
     if (!editableEventName.trim()) {
       toast({ variant: 'destructive', title: 'Event name cannot be empty.' });
@@ -428,9 +431,9 @@ export default function CallingAssistantPage() {
     }
     
     setIsEventDialogOpen(false);
-  };
+  }, [appUser, editableEventName, currentCallingEvent, isStartingSessionFlow, callRange, filteredPeople, toast, updateCurrentAppUser]);
   
-  const handleAddToGroup = async (targetGroupId: string) => {
+  const handleAddToGroup = React.useCallback(async (targetGroupId: string) => {
     if (selectedIds.size === 0 || !appUser) return;
     try {
         await addPeopleToGroup(targetGroupId, Array.from(selectedIds));
@@ -441,9 +444,9 @@ export default function CallingAssistantPage() {
     } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not add contacts to the group.' });
     }
-  };
+  }, [selectedIds, appUser, toast]);
 
-  const handleSaveGroupAndAddMembers = async (groupData: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy">) => {
+  const handleSaveGroupAndAddMembers = React.useCallback(async (groupData: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy">) => {
     if (!appUser) return;
     try {
         const newGroupData: Omit<Group, 'id' | 'createdBy'> = {
@@ -477,9 +480,9 @@ export default function CallingAssistantPage() {
             description: "Could not create or add members to the new group.",
         });
     }
-  };
+  }, [selectedIds, appUser, toast]);
 
-  const handleAssignHelper = async (helper: AppUser | null) => {
+  const handleAssignHelper = React.useCallback(async (helper: AppUser | null) => {
     if (selectedIds.size === 0) return;
     try {
         await assignHelperToPeople(Array.from(selectedIds), helper);
@@ -496,7 +499,7 @@ export default function CallingAssistantPage() {
     } catch (error) {
         toast({ variant: "destructive", title: "Error", description: "Could not assign helper." });
     }
-  };
+  }, [selectedIds, toast, appUser]);
 
 
   const renderContent = () => {
@@ -718,5 +721,3 @@ export default function CallingAssistantPage() {
     </AuthGuard>
   );
 }
-
-    
