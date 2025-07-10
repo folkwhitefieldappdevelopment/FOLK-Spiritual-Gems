@@ -18,6 +18,17 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -502,9 +513,27 @@ const CallingSessionDialogComponent = ({
                 <Button variant="secondary" size="sm" onClick={handlePauseSession}>
                     <Pause className="mr-2 h-4 w-4"/> Pause
                 </Button>
-                <Button variant="destructive" size="sm" onClick={handleEndAndClearSession}>
-                    <Trash2 className="mr-2 h-4 w-4"/> End
-                </Button>
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm">
+                            <Trash2 className="mr-2 h-4 w-4"/> End & Clear
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure you want to end the session?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action cannot be undone. This will clear your paused session progress, and you will not be able to resume.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleEndAndClearSession} className="bg-destructive hover:bg-destructive/90">
+                                End Session
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
            </div>
            <div className="flex items-center gap-2 justify-center sm:justify-end">
                 <Button
