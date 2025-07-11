@@ -3,7 +3,7 @@
 
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
-import { User, Briefcase, Tags, Star } from "lucide-react";
+import { User, Briefcase, Tags } from "lucide-react";
 import type { Person, ProgressCategory, ProgressLevelAnswers, Group } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/contexts/auth-context';
@@ -25,12 +25,6 @@ type PersonCardProps = {
   onSelectionChange: (personId: string, checked: boolean) => void;
   groups: Group[];
   isSelectionActive: boolean;
-};
-
-const parseNumber = (str: string): number | null => {
-  if (!str) return null;
-  const match = str.match(/\d+/);
-  return match ? parseInt(match[0], 10) : null;
 };
 
 const calculateScore = (categoryProgress: ProgressCategory): number => {
@@ -172,7 +166,7 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
         
         <div className="flex flex-col h-full">
             <div className="flex flex-col items-center pt-8 pb-4">
-                <Avatar className="h-20 w-20 mb-3">
+                <Avatar className="h-20 w-20">
                     <AvatarImage
                         src={person.photoUrl}
                         alt={fullName}
@@ -182,7 +176,9 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
                         {fallback}
                     </AvatarFallback>
                 </Avatar>
-                <StarRating value={(person.sgRating || 0)} />
+                <div className="mt-3">
+                    <StarRating value={(person.sgRating || 0)} />
+                </div>
             </div>
             <CardHeader className="text-center p-4 pt-0">
                 <CardTitle className={cn("text-lg", !isSelectionActive && "group-hover:underline")}>{fullName}</CardTitle>

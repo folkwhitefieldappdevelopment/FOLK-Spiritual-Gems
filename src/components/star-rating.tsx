@@ -9,19 +9,21 @@ type StarRatingProps = {
   value: number;
   totalStars?: number;
   size?: number;
+  className?: string;
 };
 
 const StarRatingComponent = ({
   value,
   totalStars = 5,
   size = 16,
+  className,
 }: StarRatingProps) => {
 
   const displayValue = Math.min(totalStars, Math.max(0, value));
 
   return (
     <div
-      className='flex items-center'
+      className={cn('flex items-center', className)}
       aria-label={`Rating: ${displayValue} out of ${totalStars} stars`}
     >
       {Array.from({ length: totalStars }).map((_, i) => {
