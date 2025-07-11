@@ -46,6 +46,7 @@ import { ScrollArea } from "./ui/scroll-area";
 import { Separator } from "./ui/separator";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
+import { Slider } from "./ui/slider";
 
 const createPersonFormSchema = (allPeople: Person[], currentPersonId?: string) => (
   z.object({
@@ -57,7 +58,7 @@ const createPersonFormSchema = (allPeople: Person[], currentPersonId?: string) =
     organisation: z.string().optional(),
     rentDetails: z.string().optional(),
     nativePlace: z.string().optional(),
-    sgRating: z.coerce.number().min(0).max(10).optional(),
+    sgRating: z.coerce.number().min(0).max(5).optional(),
     contactSource: z.string().optional(),
     chantingStatus: z.string().optional(),
     fromOtherCamp: z.boolean().default(false),
@@ -603,14 +604,14 @@ export function CreateUpdatePersonDialog({
                     name="sgRating"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>SG Rating</FormLabel>
+                            <FormLabel>SG Rating ({Number(field.value || 0).toFixed(1)})</FormLabel>
                             <FormControl>
-                                <Input 
-                                    type="number"
-                                    min="0"
-                                    max="10"
-                                    {...field}
-                                    onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)}
+                                <Slider
+                                    value={[field.value || 0]}
+                                    onValueChange={(value) => field.onChange(value[0])}
+                                    min={0}
+                                    max={5}
+                                    step={0.5}
                                 />
                             </FormControl>
                             <FormMessage />
