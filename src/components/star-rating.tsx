@@ -15,45 +15,51 @@ const StarRatingComponent = ({ value, totalStars = 5, avatarSizeClass }: StarRat
   // Map the 0-10 rating to a 0-5 star scale.
   const ratingValue = Math.round(value / (10 / totalStars));
 
-  const radiusMap = {
-    'h-16 w-16': '2.6rem', 
-    'h-20 w-20': '3.1rem',
-    'h-24 w-24': '3.1rem',
-    'h-32 w-32': '2.6rem',
+  const sizeStyles = {
+    'h-16 w-16': { starSize: 'h-4 w-4', swooshHeight: 'h-8', bottomOffset: '-bottom-3' },
+    'h-20 w-20': { starSize: 'h-5 w-5', swooshHeight: 'h-10', bottomOffset: '-bottom-4' },
+    'h-24 w-24': { starSize: 'h-6 w-6', swooshHeight: 'h-12', bottomOffset: '-bottom-5' },
+    'h-32 w-32': { starSize: 'h-7 w-7', swooshHeight: 'h-14', bottomOffset: '-bottom-6' },
   };
-  
-  const radius = radiusMap[avatarSizeClass] || '2.6rem';
 
+  const styles = sizeStyles[avatarSizeClass] || sizeStyles['h-20 w-20'];
+  
   return (
     <div
-      className="absolute inset-0 w-full h-full pointer-events-none"
-      aria-label={`Rating: ${ratingValue.toFixed(0)} out of ${totalStars}`}
+      className={cn(
+        "absolute left-1/2 -translate-x-1/2 w-[140%] flex items-center justify-center",
+        styles.bottomOffset
+      )}
+      aria-label={`Rating: ${ratingValue} out of ${totalStars} stars`}
     >
-      {Array.from({ length: totalStars }).map((_, i) => {
-        // Create a vertical arc from -60deg (top-right) to +60deg (bottom-right)
-        // 120deg total arc / 4 gaps = 30deg per step
-        const angle = -60 + i * 30;
-        const filled = i < ratingValue;
+      {/* Decorative swoosh background */}
+      <div className={cn(
+        "absolute w-full bg-slate-200/80 dark:bg-slate-700/50 rounded-[50%_50%_0_0/100%_100%_0_0]",
+        styles.swooshHeight
+      )} />
 
-        return (
-          <div
-            key={i}
-            className="absolute top-1/2 left-1/2"
-            style={{
-              transform: `rotate(${angle}deg) translate(${radius}) rotate(${-angle}deg)`,
-            }}
-          >
+      {/* Stars container */}
+      <div className="relative flex items-end justify-center gap-1.5 h-full">
+        {Array.from({ length: totalStars }).map((_, i) => {
+          const filled = i < ratingValue;
+          const isCenter = i === 2; // Middle star (3rd star)
+
+          return (
             <Star
+              key={i}
               className={cn(
-                'h-5 w-5 transition-colors',
+                styles.starSize,
+                'transition-colors',
+                isCenter ? '-translate-y-1' : '', // Nudge middle star up a bit
                 filled
-                  ? 'text-yellow-400 fill-yellow-400'
-                  : 'text-gray-300/80 fill-gray-300/80'
+                  ? 'text-yellow-400 fill-yellow-400 stroke-yellow-600'
+                  : 'text-gray-400/80 fill-gray-400/80 stroke-gray-500'
               )}
+              strokeWidth={1.5}
             />
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 };
