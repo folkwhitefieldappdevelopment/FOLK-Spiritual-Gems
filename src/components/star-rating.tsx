@@ -44,12 +44,12 @@ const StarRatingComponent = ({
         aria-label={`Rating: ${value} out of ${totalStars} stars`}
       >
         <div
-          className="absolute w-[140px] h-[140px] bottom-[-75px] left-1/2 
+          className="absolute w-[140px] h-[70px] bottom-[-85px] left-1/2 
                      -translate-x-1/2 rounded-full
                      bg-gray-200/60 dark:bg-gray-800/60"
         />
         
-        <div className="absolute w-full h-full bottom-[-10px]">
+        <div className="absolute w-full h-full bottom-[-15px]">
           {starArcData.map(({ transform, key }) => {
               const isFilled = key < value;
               return (
