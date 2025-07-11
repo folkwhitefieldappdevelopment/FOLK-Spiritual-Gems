@@ -14,14 +14,16 @@ export function AuthGuard({ children, adminOnly = false }: { children: React.Rea
   const { toast } = useToast();
 
   React.useEffect(() => {
-    if (loading) return; // Don't do anything while loading.
+    // This effect handles redirection logic.
+    if (loading) return;
 
     if (!user) {
       router.replace('/login');
       return;
     }
 
-    if (adminOnly && !appUser?.role?.includes('Admin')) {
+    // Redirect if the user is not an admin but the page is admin-only.
+    if (adminOnly && appUser && !appUser.role?.includes('Admin')) {
       toast({
         variant: 'destructive',
         title: 'Access Denied',
@@ -34,15 +36,26 @@ export function AuthGuard({ children, adminOnly = false }: { children: React.Rea
   if (error) {
     return <FirebaseConfigError error={error} />;
   }
-
-  // Show a spinner while loading, if user is not logged in, or if an admin page is being accessed by a non-admin
-  if (loading || !user || (adminOnly && !appUser?.role?.includes('Admin'))) {
+  
+  // While loading or if there's no user, show a spinner.
+  if (loading || !user) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
+  
+  // If the page is admin-only and the user is loaded but is NOT an admin,
+  // show a spinner to prevent flashing content while the redirect effect runs.
+  if (adminOnly && appUser && !appUser.role?.includes('Admin')) {
+     return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
+  // If all checks pass, render the children.
   return <>{children}</>;
 }
