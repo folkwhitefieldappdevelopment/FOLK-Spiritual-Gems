@@ -8,50 +8,46 @@ import { cn } from '@/lib/utils';
 type StarRatingProps = {
   value: number;
   totalStars?: number;
-  size?: number;
   className?: string;
 };
 
 const StarRatingComponent = ({
   value,
   totalStars = 5,
-  size = 16,
   className,
 }: StarRatingProps) => {
 
   const displayValue = Math.min(totalStars, Math.max(0, value));
 
+  const starArcData = [
+    { transform: 'translate(-50%, -50%) rotate(-40deg) translate(40px) rotate(40deg)', key: 0 },
+    { transform: 'translate(-50%, -50%) rotate(-20deg) translate(40px) rotate(20deg)', key: 1 },
+    { transform: 'translate(-50%, -50%) rotate(0deg) translate(40px) rotate(0deg)', key: 2 },
+    { transform: 'translate(-50%, -50%) rotate(20deg) translate(40px) rotate(20deg)', key: 3 },
+    { transform: 'translate(-50%, -50%) rotate(40deg) translate(40px) rotate(40deg)', key: 4 },
+  ];
+
   return (
     <div
-      className={cn('flex items-center', className)}
+      className={cn('absolute inset-0 w-full h-full pointer-events-none', className)}
       aria-label={`Rating: ${displayValue} out of ${totalStars} stars`}
     >
-      {Array.from({ length: totalStars }).map((_, i) => {
-        const starValue = i + 1;
-        const fillPercentage = Math.max(0, Math.min(1, displayValue - i)) * 100;
-
-        return (
-          <div key={i} className="relative" style={{ width: size, height: size }}>
-            {/* Background (empty) star */}
-            <Star
-              className="absolute inset-0 text-gray-300 fill-gray-300 dark:text-gray-600 dark:fill-gray-600"
-              style={{ width: size, height: size }}
-              strokeWidth={1.5}
-            />
-            {/* Filled star with clip-path */}
-            <div
-              className="absolute inset-0 overflow-hidden"
-              style={{ clipPath: `inset(0 ${100 - fillPercentage}% 0 0)` }}
-            >
-              <Star
-                className="absolute inset-0 text-yellow-400 fill-yellow-400 stroke-yellow-500"
-                style={{ width: size, height: size }}
-                strokeWidth={1.5}
-              />
-            </div>
-          </div>
-        );
-      })}
+        <div className="absolute bottom-[-14px] left-1/2 -translate-x-1/2 w-[110px] h-[55px] rounded-t-full bg-gray-200/80 dark:bg-gray-700/50" />
+      
+        {starArcData.map(({ transform, key }) => {
+            const isFilled = key < displayValue;
+            return (
+                 <Star
+                    key={key}
+                    className={cn(
+                        'absolute top-1/2 left-1/2 w-5 h-5 transition-colors',
+                         isFilled ? 'text-yellow-400 fill-yellow-400 stroke-yellow-600' : 'text-gray-400 fill-gray-400 stroke-gray-500'
+                    )}
+                    style={{ transform }}
+                    strokeWidth={1}
+                />
+            )
+        })}
     </div>
   );
 };
