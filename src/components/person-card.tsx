@@ -17,6 +17,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from './ui/checkbox';
 import { Separator } from './ui/separator';
 import { StarRating } from './star-rating';
+import { Progress } from './ui/progress';
+
 
 type PersonCardProps = {
   person: Person;
@@ -149,24 +151,23 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
         
         <div className="flex flex-col h-full items-center text-center p-4 pt-8">
             <div className="flex flex-col items-center mb-2 w-full">
-                <Avatar className="h-24 w-24 mb-4">
-                    <AvatarImage
-                        src={person.photoUrl}
-                        alt={fullName}
-                        data-ai-hint="person portrait"
-                    />
-                    <AvatarFallback>
-                        {fallback}
-                    </AvatarFallback>
-                </Avatar>
-                <StarRating value={person.sgRating || 0} size={16} />
+                <div className="relative mb-2">
+                    <Avatar className="h-24 w-24">
+                        <AvatarImage
+                            src={person.photoUrl}
+                            alt={fullName}
+                            data-ai-hint="person portrait"
+                        />
+                        <AvatarFallback>
+                            {fallback}
+                        </AvatarFallback>
+                    </Avatar>
+                </div>
+                 <StarRating value={person.sgRating || 0} />
             </div>
             
              <CardHeader className="p-0 pt-2">
                 <CardTitle className={cn("text-lg", !isSelectionActive && "group-hover:underline")}>{fullName}</CardTitle>
-                <CardDescription className="flex items-center justify-center gap-1 text-sm text-muted-foreground">
-                    <span>{person.phone}</span>
-                </CardDescription>
             </CardHeader>
 
             <CardContent className="flex-grow space-y-3 pt-4 px-0 pb-0 w-full text-left">
