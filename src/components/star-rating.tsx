@@ -6,60 +6,88 @@ import { Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type StarRatingProps = {
-  value: number;
-  totalStars?: number;
-  avatarSizeClass: 'h-16 w-16' | 'h-20 w-20' | 'h-24 w-24' | 'h-32 w-32';
+  value: number; // The rating value (0-10 scale)
+  totalStars?: number; // Total stars to display (e.g., 5)
+  size?: number; // Size of the stars in pixels
+  isEditable?: boolean; // Toggles interactive mode
+  onValueChange?: (value: number) => void; // Callback for when the rating changes
 };
 
-const StarRatingComponent = ({ value, totalStars = 5, avatarSizeClass }: StarRatingProps) => {
-  // Map the 0-10 rating to a 0-5 star scale.
-  const ratingValue = Math.round(value / (10 / totalStars));
+const StarRatingComponent = ({
+  value,
+  totalStars = 5,
+  size = 24,
+  isEditable = false,
+  onValueChange,
+}: StarRatingProps) => {
+  const [hoverValue, setHoverValue] = React.useState<number | null>(null);
 
-  const sizeStyles = {
-    'h-16 w-16': { starSize: 'h-4 w-4', swooshHeight: 'h-8', bottomOffset: '-bottom-4' },
-    'h-20 w-20': { starSize: 'h-5 w-5', swooshHeight: 'h-10', bottomOffset: '-bottom-5' },
-    'h-24 w-24': { starSize: 'h-6 w-6', swooshHeight: 'h-12', bottomOffset: '-bottom-6' },
-    'h-32 w-32': { starSize: 'h-7 w-7', swooshHeight: 'h-14', bottomOffset: '-bottom-7' },
+  // Convert the 0-10 scale from the database to a 0-5 star scale for display/interaction
+  const displayValue = value / 2;
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isEditable) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const starIndex = Math.floor(x / size);
+    const starProgress = (x % size) / size;
+    // Snap to halves
+    const newHoverValue = starIndex + (starProgress < 0.5 ? 0.5 : 1);
+    setHoverValue(newHoverValue);
   };
 
-  const styles = sizeStyles[avatarSizeClass] || sizeStyles['h-20 w-20'];
-  
+  const handleMouseLeave = () => {
+    if (!isEditable) return;
+    setHoverValue(null);
+  };
+
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isEditable || !onValueChange) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const starIndex = Math.floor(x / size);
+    const starProgress = (x % size) / size;
+    const newRating = starIndex + (starProgress < 0.5 ? 0.5 : 1);
+    onValueChange(newRating * 2); // Convert back to 0-10 scale for saving
+  };
+
   return (
     <div
       className={cn(
-        "absolute left-1/2 -translate-x-1/2 w-[140%] flex items-center justify-center",
-        styles.bottomOffset
+        'flex items-center',
+        isEditable && 'cursor-pointer'
       )}
-      aria-label={`Rating: ${ratingValue} out of ${totalStars} stars`}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      onClick={handleClick}
+      aria-label={`Rating: ${displayValue} out of ${totalStars} stars`}
     >
-      {/* Decorative swoosh background */}
-      <div className={cn(
-        "absolute w-full bg-slate-200/80 dark:bg-slate-700/50 rounded-[50%_50%_0_0/100%_100%_0_0]",
-        styles.swooshHeight
-      )} />
+      {Array.from({ length: totalStars }).map((_, i) => {
+        const starValue = i + 1;
+        const fillPercentage = Math.max(0, Math.min(1, (hoverValue ?? displayValue) - i)) * 100;
 
-      {/* Stars container */}
-      <div className="relative flex items-end justify-center gap-1.5 h-full">
-        {Array.from({ length: totalStars }).map((_, i) => {
-          const filled = i < ratingValue;
-          const isCenter = i === 2; // Middle star (3rd star)
-
-          return (
+        return (
+          <div key={i} className="relative" style={{ width: size, height: size }}>
+            {/* Background (empty) star */}
             <Star
-              key={i}
-              className={cn(
-                styles.starSize,
-                'transition-colors',
-                isCenter ? '-translate-y-1' : '', // Nudge middle star up a bit
-                filled
-                  ? 'text-yellow-400 fill-yellow-400 stroke-yellow-600'
-                  : 'text-gray-400/80 fill-gray-400/80 stroke-gray-500'
-              )}
+              className="absolute inset-0 text-gray-300 fill-gray-300 dark:text-gray-600 dark:fill-gray-600"
+              style={{ width: size, height: size }}
               strokeWidth={1.5}
             />
-          );
-        })}
-      </div>
+            {/* Filled star with clip-path */}
+            <div
+              className="absolute inset-0 overflow-hidden"
+              style={{ clipPath: `inset(0 ${100 - fillPercentage}% 0 0)` }}
+            >
+              <Star
+                className="absolute inset-0 text-yellow-400 fill-yellow-400 stroke-yellow-500"
+                style={{ width: size, height: size }}
+                strokeWidth={1.5}
+              />
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };

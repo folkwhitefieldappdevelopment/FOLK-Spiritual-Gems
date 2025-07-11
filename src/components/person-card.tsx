@@ -171,19 +171,19 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
         </div>
         
         <div className="flex flex-col h-full">
-            <div className="relative w-full flex justify-center pt-8 pb-6">
-                <div className="relative h-20 w-20">
-                    <Avatar className="h-20 w-20">
-                        <AvatarImage
-                            src={person.photoUrl}
-                            alt={fullName}
-                            data-ai-hint="person portrait"
-                        />
-                        <AvatarFallback>
-                            {fallback}
-                        </AvatarFallback>
-                    </Avatar>
-                    <StarRating value={person.sgRating || 0} avatarSizeClass='h-20 w-20' />
+            <div className="relative w-full flex justify-center pt-8 pb-10">
+                <Avatar className="h-20 w-20">
+                    <AvatarImage
+                        src={person.photoUrl}
+                        alt={fullName}
+                        data-ai-hint="person portrait"
+                    />
+                    <AvatarFallback>
+                        {fallback}
+                    </AvatarFallback>
+                </Avatar>
+                <div className="absolute bottom-4">
+                  <StarRating value={person.sgRating || 0} size={16} />
                 </div>
             </div>
             <CardHeader className="text-center p-4 pt-0">
