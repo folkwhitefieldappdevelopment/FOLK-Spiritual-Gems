@@ -6,7 +6,6 @@ import * as React from 'react';
 import { User, Briefcase, Tag } from "lucide-react";
 import type { Person, Group, ProgressCategory as TProgressCategory } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { useAuth } from '@/contexts/auth-context';
 import {
   Card,
   CardContent,
@@ -17,6 +16,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from './ui/checkbox';
 import { Separator } from './ui/separator';
+import { StarRating } from './star-rating';
 
 type PersonCardProps = {
   person: Person;
@@ -77,7 +77,6 @@ const getCategoryStatus = (category: TProgressCategory): 'completed' | 'in-progr
 
 
 const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, isSelectionActive }: PersonCardProps) => {
-  const { appUser } = useAuth();
   const router = useRouter();
 
   let occupationDisplay = person.occupation;
@@ -149,7 +148,7 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
         </div>
         
         <div className="flex flex-col h-full items-center text-center p-4 pt-8">
-            <div className="flex flex-col items-center mb-4 w-full">
+            <div className="flex flex-col items-center mb-2 w-full">
                 <Avatar className="h-24 w-24 mb-4">
                     <AvatarImage
                         src={person.photoUrl}
@@ -160,9 +159,10 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
                         {fallback}
                     </AvatarFallback>
                 </Avatar>
+                <StarRating value={person.sgRating || 0} size={16} />
             </div>
             
-             <CardHeader className="p-0">
+             <CardHeader className="p-0 pt-2">
                 <CardTitle className={cn("text-lg", !isSelectionActive && "group-hover:underline")}>{fullName}</CardTitle>
                 <CardDescription className="flex items-center justify-center gap-1 text-sm text-muted-foreground">
                     <span>{person.phone}</span>
