@@ -342,13 +342,11 @@ export function EditablePersonDetailsForm({
                 <FormItem>
                     <FormLabel>SG Rating (0-5)</FormLabel>
                     <FormControl>
-                        <Input 
-                            type="number"
-                            min="0"
-                            max="5"
-                            step="0.1"
-                            {...field}
-                            onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                        <StarRating
+                          value={field.value || 0}
+                          onValueChange={field.onChange}
+                          isEditable
+                          size={24}
                         />
                     </FormControl>
                     <FormMessage />
@@ -402,7 +400,7 @@ export function EditablePersonDetailsForm({
         </div>
         <div className="font-semibold text-muted-foreground">Age</div><div>{person.age}</div>
         <div className="font-semibold text-muted-foreground">Occupation</div><div>{person.occupation || 'N/A'}</div>
-        <div className="font-semibold text-muted-foreground">Rating</div><div>{typeof rating === 'number' ? `${rating.toFixed(1)} / 5.0` : 'N/A'}</div>
+        <div className="font-semibold text-muted-foreground">Rating</div><div><StarRating value={rating} /></div>
         <div className="font-semibold text-muted-foreground">Organisation</div><div>{person.organisation || 'N/A'}</div>
       </div>
       
