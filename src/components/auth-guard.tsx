@@ -12,17 +12,19 @@ export function AuthGuard({ children, adminOnly = false }: { children: React.Rea
   const { user, appUser, loading, error } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+  const [hasRedirected, setHasRedirected] = React.useState(false);
 
   React.useEffect(() => {
-    // This effect handles redirection logic.
-    if (loading) return;
+    if (loading || hasRedirected) return;
 
+    // Condition 1: Not logged in
     if (!user) {
       router.replace('/login');
+      setHasRedirected(true);
       return;
     }
 
-    // Redirect if the user is not an admin but the page is admin-only.
+    // Condition 2: Admin page, but user is not an admin
     if (adminOnly && appUser && !appUser.role?.includes('Admin')) {
       toast({
         variant: 'destructive',
@@ -30,15 +32,21 @@ export function AuthGuard({ children, adminOnly = false }: { children: React.Rea
         description: 'You do not have permission to view this page.'
       });
       router.replace('/dashboard');
+      setHasRedirected(true);
+      return;
     }
-  }, [user, appUser, loading, router, adminOnly, toast]);
-
+    
+  }, [user, appUser, loading, router, adminOnly, toast, hasRedirected]);
+  
+  // Handle critical Firebase configuration error first
   if (error) {
     return <FirebaseConfigError error={error} />;
   }
-  
-  // While loading or if there's no user, show a spinner.
-  if (loading || !user) {
+
+  // Show a loading spinner while auth state is being determined OR
+  // if a redirection is about to happen. This prevents content flashing.
+  const isBlocked = !user || (adminOnly && appUser && !appUser.role?.includes('Admin'));
+  if (loading || isBlocked) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -46,16 +54,6 @@ export function AuthGuard({ children, adminOnly = false }: { children: React.Rea
     );
   }
   
-  // If the page is admin-only and the user is loaded but is NOT an admin,
-  // show a spinner to prevent flashing content while the redirect effect runs.
-  if (adminOnly && appUser && !appUser.role?.includes('Admin')) {
-     return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
-  // If all checks pass, render the children.
+  // If all checks pass, render the protected content.
   return <>{children}</>;
 }
