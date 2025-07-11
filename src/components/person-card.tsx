@@ -3,7 +3,7 @@
 
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
-import { User, Briefcase, Tags } from "lucide-react";
+import { User, Briefcase, Tags, Zap } from "lucide-react";
 import type { Person, Group } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/contexts/auth-context';
@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from './ui/checkbox';
 import { Badge } from './ui/badge';
 import { StarRating } from './star-rating';
+import { Progress } from './ui/progress';
 
 type PersonCardProps = {
   person: Person;
@@ -25,6 +26,12 @@ type PersonCardProps = {
   onSelectionChange: (personId: string, checked: boolean) => void;
   groups: Group[];
   isSelectionActive: boolean;
+};
+
+const parseNumber = (str: string): number | null => {
+  if (!str) return null;
+  const match = str.match(/\d+/);
+  return match ? parseInt(match[0], 10) : null;
 };
 
 const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, isSelectionActive }: PersonCardProps) => {
@@ -58,6 +65,42 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
         handleClick();
     }
   }, [handleClick]);
+  
+  const progressPercentage = React.useMemo(() => {
+    if (!person.progress || person.progress.length === 0) return 0;
+
+    let totalGoals = 0;
+    let completedGoals = 0;
+
+    person.progress.forEach(category => {
+      category.items.forEach(item => {
+        const goalValue = (item.levels?.[0] || "").trim(); // L1 Goal
+        const achievedValue = (item.answers?.l1 || "").trim();
+
+        if (goalValue && goalValue !== '-') {
+          totalGoals++;
+          
+          if (achievedValue && achievedValue !== '-') {
+            const goalNumber = parseNumber(goalValue);
+            if (goalNumber !== null) { // Numeric goal
+              const achievedNumber = parseNumber(achievedValue);
+              if (achievedNumber !== null && achievedNumber >= goalNumber) {
+                completedGoals++;
+              }
+            } else if (goalValue.toLowerCase() === 'yes') { // Yes/No goal
+              if (achievedValue.toLowerCase() === 'yes') {
+                completedGoals++;
+              }
+            } else { // Text goal
+                completedGoals++;
+            }
+          }
+        }
+      });
+    });
+
+    return totalGoals > 0 ? (completedGoals / totalGoals) * 100 : 0;
+  }, [person.progress]);
 
 
   return (
@@ -89,18 +132,19 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
         </div>
         
         <div className="flex flex-col h-full items-center text-center p-4 pt-8">
-            <Avatar className="h-24 w-24 mb-2">
-                <AvatarImage
-                    src={person.photoUrl}
-                    alt={fullName}
-                    data-ai-hint="person portrait"
-                />
-                <AvatarFallback>
-                    {fallback}
-                </AvatarFallback>
-            </Avatar>
-            
-            <StarRating value={Number(person.sgRating) || 0} className="mb-4" />
+            <div className="flex flex-col items-center mb-4 pb-4">
+              <Avatar className="h-24 w-24 mb-2">
+                  <AvatarImage
+                      src={person.photoUrl}
+                      alt={fullName}
+                      data-ai-hint="person portrait"
+                  />
+                  <AvatarFallback>
+                      {fallback}
+                  </AvatarFallback>
+              </Avatar>
+              <StarRating value={Number(person.sgRating) || 0} />
+            </div>
             
              <CardHeader className="p-0">
                 <CardTitle className={cn("text-lg", !isSelectionActive && "group-hover:underline")}>{fullName}</CardTitle>
@@ -118,6 +162,19 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
                     <Briefcase className="mr-2 h-4 w-4" />
                     <span className="truncate">{occupationDisplay || 'N/A'}</span>
                 </div>
+
+                {person.progress && (
+                  <div className="flex items-start text-sm text-muted-foreground pt-1">
+                    <Zap className="mr-2 h-4 w-4 mt-0.5 shrink-0" />
+                    <div className="w-full">
+                      <div className="flex justify-between items-center mb-1">
+                          <span>L1 Progress</span>
+                          <span className="font-semibold">{progressPercentage.toFixed(0)}%</span>
+                      </div>
+                      <Progress value={progressPercentage} className="h-2" />
+                    </div>
+                  </div>
+                )}
                 
                 {groups.length > 0 && (
                     <div className="flex items-start text-sm text-muted-foreground">
