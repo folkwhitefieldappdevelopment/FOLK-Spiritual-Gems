@@ -3,8 +3,8 @@
 
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
-import { User, Briefcase, Zap } from "lucide-react";
-import type { Person, Group } from "@/lib/types";
+import { User, Briefcase, Tag } from "lucide-react";
+import type { Person, Group, ProgressCategory as TProgressCategory } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/contexts/auth-context';
 import {
@@ -16,8 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from './ui/checkbox';
-import { StarRating } from './star-rating';
-import { Progress } from './ui/progress';
+import { Separator } from './ui/separator';
 
 type PersonCardProps = {
   person: Person;
@@ -32,6 +31,50 @@ const parseNumber = (str: string): number | null => {
   const match = str.match(/\d+/);
   return match ? parseInt(match[0], 10) : null;
 };
+
+const getCategoryStatus = (category: TProgressCategory): 'completed' | 'in-progress' | 'not-started' => {
+  if (!category || !Array.isArray(category.items)) {
+    return 'not-started';
+  }
+
+  let totalGoals = 0;
+  let completedGoals = 0;
+  let hasAnyProgress = false;
+
+  category.items.forEach(item => {
+    const goalValue = (item.levels?.[0] || "").trim(); // L1 Goal
+    const achievedValue = (item.answers?.l1 || "").trim();
+
+    if (goalValue && goalValue !== '-') {
+      totalGoals++;
+
+      if (achievedValue && achievedValue !== '-') {
+        hasAnyProgress = true;
+        const goalNumber = parseNumber(goalValue);
+        
+        if (goalNumber !== null) { // Numeric goal
+          const achievedNumber = parseNumber(achievedValue);
+          if (achievedNumber !== null && achievedNumber >= goalNumber) {
+            completedGoals++;
+          }
+        } else if (goalValue.toLowerCase() === 'yes') { // Yes/No goal
+          if (achievedValue.toLowerCase() === 'yes') {
+            completedGoals++;
+          }
+        } else { // Any other text goal counts if something is entered
+            completedGoals++;
+        }
+      }
+    }
+  });
+
+  if (totalGoals === 0) return 'not-started';
+  if (completedGoals === totalGoals) return 'completed';
+  if (completedGoals > 0 || hasAnyProgress) return 'in-progress';
+  
+  return 'not-started';
+}
+
 
 const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, isSelectionActive }: PersonCardProps) => {
   const { appUser } = useAuth();
@@ -62,46 +105,21 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
         handleClick();
     }
   }, [handleClick]);
-  
-  const progressPercentage = React.useMemo(() => {
-    if (!person.progress || !Array.isArray(person.progress) || person.progress.length === 0) return 0;
 
-    let totalGoals = 0;
-    let completedGoals = 0;
-
-    person.progress.forEach(category => {
-      if (category.items && Array.isArray(category.items)) {
-        category.items.forEach(item => {
-          const goalValue = (item.levels?.[0] || "").trim(); // L1 Goal
-          const achievedValue = (item.answers?.l1 || "").trim();
-
-          if (goalValue && goalValue !== '-') {
-            totalGoals++;
-            
-            if (achievedValue && achievedValue !== '-') {
-              const goalNumber = parseNumber(goalValue);
-              if (goalNumber !== null) { // Numeric goal
-                const achievedNumber = parseNumber(achievedValue);
-                if (achievedNumber !== null && achievedNumber >= goalNumber) {
-                  completedGoals++;
-                }
-              } else if (goalValue.toLowerCase() === 'yes') { // Yes/No goal
-                if (achievedValue.toLowerCase() === 'yes') {
-                  completedGoals++;
-                }
-              } else { // Text goal
-                  completedGoals++;
-              }
-            }
-          }
-        });
-      }
-    });
-
-    return totalGoals > 0 ? (completedGoals / totalGoals) * 100 : 0;
+  const progressStatuses = React.useMemo(() => {
+    if (!person.progress || !Array.isArray(person.progress)) return [];
+    return person.progress.map(category => ({
+        name: category.name,
+        status: getCategoryStatus(category)
+    }));
   }, [person.progress]);
 
-
+  const statusColorMap = {
+    'completed': 'bg-green-500',
+    'in-progress': 'bg-orange-500',
+    'not-started': 'bg-gray-400'
+  };
+  
   return (
       <Card
         onClick={handleClick}
@@ -131,18 +149,17 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
         </div>
         
         <div className="flex flex-col h-full items-center text-center p-4 pt-8">
-            <div className="flex flex-col items-center mb-4">
-              <Avatar className="h-24 w-24 mb-2">
-                  <AvatarImage
-                      src={person.photoUrl}
-                      alt={fullName}
-                      data-ai-hint="person portrait"
-                  />
-                  <AvatarFallback>
-                      {fallback}
-                  </AvatarFallback>
-              </Avatar>
-              <StarRating value={Number(person.sgRating) || 0} />
+            <div className="flex flex-col items-center mb-4 w-full">
+                <Avatar className="h-24 w-24 mb-4">
+                    <AvatarImage
+                        src={person.photoUrl}
+                        alt={fullName}
+                        data-ai-hint="person portrait"
+                    />
+                    <AvatarFallback>
+                        {fallback}
+                    </AvatarFallback>
+                </Avatar>
             </div>
             
              <CardHeader className="p-0">
@@ -161,18 +178,32 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
                     <Briefcase className="mr-2 h-4 w-4" />
                     <span className="truncate">{occupationDisplay || 'N/A'}</span>
                 </div>
-
-                {person.progress && (
-                  <div className="flex items-start text-sm text-muted-foreground pt-1">
-                    <Zap className="mr-2 h-4 w-4 mt-0.5 shrink-0" />
-                    <div className="w-full">
-                      <div className="flex justify-between items-center mb-1">
-                          <span>L1 Progress</span>
-                          <span className="font-semibold">{progressPercentage.toFixed(0)}%</span>
-                      </div>
-                      <Progress value={progressPercentage} className="h-2" />
+                 {groups.length > 0 && (
+                    <div className="flex items-start text-sm text-muted-foreground">
+                        <Tag className="mr-2 h-4 w-4 mt-0.5" />
+                        <div className="flex flex-wrap gap-1">
+                            {groups.map(g => (
+                                <span key={g.id} className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded-full">{g.name}</span>
+                            ))}
+                        </div>
                     </div>
-                  </div>
+                )}
+                
+                {person.progress && (
+                    <>
+                        <Separator className="my-4" />
+                        <div className="space-y-2">
+                           <h4 className="font-semibold text-sm text-foreground">Progress Overview</h4>
+                           <div className="space-y-1.5 text-sm text-muted-foreground">
+                               {progressStatuses.map(p => (
+                                   <div key={p.name} className="flex items-center gap-2">
+                                       <div className={cn("h-2.5 w-2.5 rounded-full", statusColorMap[p.status])} />
+                                       <span>{p.name}</span>
+                                   </div>
+                               ))}
+                           </div>
+                        </div>
+                    </>
                 )}
             </CardContent>
           </div>
