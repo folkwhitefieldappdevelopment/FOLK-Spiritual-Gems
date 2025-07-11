@@ -384,7 +384,7 @@ export default function SettingsPage() {
               ) : (
                 <div className="mx-auto max-w-4xl space-y-8">
                   <div>
-                        <div className="flex justify-end mb-4">
+                      <div className="flex justify-end mb-4">
                           <Button onClick={() => openDialog('add', 'source')}>
                           <PlusCircle className="mr-2 h-4 w-4" /> Add Contact Source
                           </Button>
