@@ -403,25 +403,25 @@ export default function SettingsPage() {
               )}
             </main>
           </div>
-        </div>
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{getDialogTitle()}</DialogTitle>
-            <DialogDescription>
-            {itemType === 'customField' 
-              ? 'Define a new custom field for your contacts.'
-              : 'Enter the name for the item below.'
-            }
-          </DialogDescription>
-        </DialogHeader>
-        {renderDialogContent()}
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleSave}>Save</Button>
-        </DialogFooter>
-      </DialogContent>
-      </Dialog>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{getDialogTitle()}</DialogTitle>
+                <DialogDescription>
+                {itemType === 'customField' 
+                  ? 'Define a new custom field for your contacts.'
+                  : 'Enter the name for the item below.'
+                }
+              </DialogDescription>
+            </DialogHeader>
+            {renderDialogContent()}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleSave}>Save</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </AuthGuard>
   );
 }
