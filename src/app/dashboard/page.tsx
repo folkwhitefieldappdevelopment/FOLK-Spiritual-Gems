@@ -306,49 +306,49 @@ export default function DashboardPage() {
           <Card className="lg:col-span-3">
             <CardHeader>
               <CardTitle>Daily Activity Report</CardTitle>
-              <CardDescription asChild>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <span>Calls and confirmations per enabler over the selected period.</span>
-                   <Popover>
-                    <PopoverTrigger asChild>
-                    <Button
-                        id="date"
-                        variant={"outline"}
-                        className={cn(
-                        "w-full sm:w-[300px] justify-start text-left font-normal",
-                        !dateRange && "text-muted-foreground"
-                        )}
-                    >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dateRange?.from ? (
-                        dateRange.to ? (
-                            <>
-                            {format(dateRange.from, "LLL dd, y")} -{" "}
-                            {format(dateRange.to, "LLL dd, y")}
-                            </>
-                        ) : (
-                            format(dateRange.from, "LLL dd, y")
-                        )
-                        ) : (
-                        <span>Pick a date range</span>
-                        )}
-                    </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="end">
-                    <Calendar
-                        initialFocus
-                        mode="range"
-                        defaultMonth={dateRange?.from}
-                        selected={dateRange}
-                        onSelect={setDateRange}
-                        numberOfMonths={2}
-                    />
-                    </PopoverContent>
-                </Popover>
-                </div>
+              <CardDescription>
+                Calls and confirmations per enabler over the selected period.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-8">
+              <div className="flex justify-end">
+                <Popover>
+                  <PopoverTrigger asChild>
+                  <Button
+                      id="date"
+                      variant={"outline"}
+                      className={cn(
+                      "w-full sm:w-[300px] justify-start text-left font-normal",
+                      !dateRange && "text-muted-foreground"
+                      )}
+                  >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateRange?.from ? (
+                      dateRange.to ? (
+                          <>
+                          {format(dateRange.from, "LLL dd, y")} -{" "}
+                          {format(dateRange.to, "LLL dd, y")}
+                          </>
+                      ) : (
+                          format(dateRange.from, "LLL dd, y")
+                      )
+                      ) : (
+                      <span>Pick a date range</span>
+                      )}
+                  </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                      initialFocus
+                      mode="range"
+                      defaultMonth={dateRange?.from}
+                      selected={dateRange}
+                      onSelect={setDateRange}
+                      numberOfMonths={2}
+                  />
+                  </PopoverContent>
+                </Popover>
+              </div>
               <div>
                 <h3 className="text-md font-semibold mb-2">Daily Calls per Enabler</h3>
                 <ChartContainer config={{}} className="h-[300px] w-full">
