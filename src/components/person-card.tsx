@@ -150,7 +150,6 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
         <div 
             className="absolute top-3 right-3 z-10" 
             onClick={(e) => {
-                // This stops the click on the checkbox area from triggering the card's main onClick handler.
                 e.stopPropagation();
             }}
         >
@@ -166,8 +165,8 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
         
         <div className="flex flex-col h-full">
             <div className="flex flex-col items-center pt-8 pb-4">
-                <div className="relative mb-4">
-                    <Avatar className="h-20 w-20">
+                <div className="relative mb-6 pb-6">
+                    <Avatar className="h-24 w-24">
                         <AvatarImage
                             src={person.photoUrl}
                             alt={fullName}
@@ -179,7 +178,7 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
                     </Avatar>
                     <StarRating value={(person.sgRating || 0)} />
                 </div>
-                 <CardHeader className="text-center p-4 pt-0">
+                 <CardHeader className="text-center p-0">
                     <CardTitle className={cn("text-lg", !isSelectionActive && "group-hover:underline")}>{fullName}</CardTitle>
                     <CardDescription className="flex items-center justify-center gap-1 text-sm text-muted-foreground">
                         <span>{person.phone}</span>
