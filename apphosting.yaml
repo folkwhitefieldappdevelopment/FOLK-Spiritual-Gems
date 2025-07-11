@@ -8,3 +8,5 @@ runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
   maxInstances: 1
+  # Sets the memory of each instance.
+  memoryMiB: 1024
