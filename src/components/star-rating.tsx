@@ -8,50 +8,81 @@ import { cn } from '@/lib/utils';
 type StarRatingProps = {
   value: number;
   totalStars?: number;
+  size?: number;
   className?: string;
+  isEditable?: boolean;
+  onValueChange?: (value: number) => void;
 };
 
 const StarRatingComponent = ({
   value,
   totalStars = 5,
+  size = 20,
   className,
+  isEditable = false,
+  onValueChange,
 }: StarRatingProps) => {
+  const [hoverValue, setHoverValue] = React.useState<number | null>(null);
 
-  const starArcData = [
-    { transform: 'translate(18px, 12px) rotate(45deg)', key: 0 },
-    { transform: 'translate(38px, 22px) rotate(22.5deg)', key: 1 },
-    { transform: 'translate(60px, 25px) rotate(0deg)', key: 2 },
-    { transform: 'translate(82px, 22px) rotate(-22.5deg)', key: 3 },
-    { transform: 'translate(102px, 12px) rotate(-45deg)', key: 4 },
-  ];
-    
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isEditable) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const starWidth = rect.width / totalStars;
+    const hoverStar = x / starWidth;
+    setHoverValue(hoverStar);
+  };
+
+  const handleMouseLeave = () => {
+    if (!isEditable) return;
+    setHoverValue(null);
+  };
+
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isEditable || !onValueChange) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const starWidth = rect.width / totalStars;
+    const clickedValue = parseFloat((x / starWidth).toFixed(2));
+    onValueChange(Math.max(0, Math.min(totalStars, clickedValue)));
+  };
+
+  const displayValue = hoverValue !== null && isEditable ? hoverValue : value;
+
   return (
     <div
-      className={cn('absolute inset-x-0 top-[-15px] w-full h-full pointer-events-none', className)}
-      aria-label={`Rating: ${value} out of ${totalStars} stars`}
+      className={cn('flex items-center gap-1', isEditable && 'cursor-pointer', className)}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      onClick={handleClick}
+      aria-label={`Rating: ${value.toFixed(1)} out of ${totalStars} stars`}
     >
-      <div
-        className="absolute w-[120px] h-[24px] top-[-20px] left-1/2 
-                   -translate-x-1/2 rounded-full
-                   bg-gray-200/60 dark:bg-gray-800/60"
-      />
-      
-      <div className="absolute w-full h-full top-[-15px]">
-        {starArcData.map(({ transform, key }) => {
-            const isFilled = key < value;
-            return (
+      {[...Array(totalStars)].map((_, i) => {
+        const starValue = i + 1;
+        const fillPercentage = Math.max(0, Math.min(1, displayValue - i)) * 100;
+
+        return (
+          <div key={i} className="relative" style={{ width: size, height: size }}>
             <Star
-                key={key}
-                className={cn(
-                'absolute w-5 h-5 transition-colors',
-                isFilled ? 'text-yellow-400 fill-yellow-400 stroke-yellow-500' : 'text-gray-400 fill-gray-400 stroke-gray-500'
-                )}
-                style={{ transform: `translate(-50%, -50%) ${transform}` }}
-                strokeWidth={1.5}
+              className="absolute inset-0 text-gray-300 dark:text-gray-600"
+              fill="currentColor"
+              style={{ width: size, height: size }}
+              strokeWidth={1.5}
             />
-            );
-        })}
-      </div>
+            <div
+              className="absolute inset-0 overflow-hidden"
+              style={{ width: `${fillPercentage}%` }}
+            >
+              <Star
+                className="absolute inset-0 text-yellow-400 dark:text-yellow-500"
+                fill="currentColor"
+                style={{ width: size, height: size }}
+                strokeWidth={1.5}
+              />
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };

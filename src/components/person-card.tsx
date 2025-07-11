@@ -88,27 +88,28 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
              />
         </div>
         
-        <div className="flex flex-col h-full items-center pt-8">
-            <div className="relative mb-6 pt-6">
-                <Avatar className="h-24 w-24">
-                    <AvatarImage
-                        src={person.photoUrl}
-                        alt={fullName}
-                        data-ai-hint="person portrait"
-                    />
-                    <AvatarFallback>
-                        {fallback}
-                    </AvatarFallback>
-                </Avatar>
-                <StarRating value={Number(person.sgRating) || 0} />
-            </div>
-             <CardHeader className="text-center p-0 pt-0">
+        <div className="flex flex-col h-full items-center text-center p-4 pt-8">
+            <Avatar className="h-24 w-24 mb-2">
+                <AvatarImage
+                    src={person.photoUrl}
+                    alt={fullName}
+                    data-ai-hint="person portrait"
+                />
+                <AvatarFallback>
+                    {fallback}
+                </AvatarFallback>
+            </Avatar>
+            
+            <StarRating value={Number(person.sgRating) || 0} className="mb-4" />
+            
+             <CardHeader className="p-0">
                 <CardTitle className={cn("text-lg", !isSelectionActive && "group-hover:underline")}>{fullName}</CardTitle>
                 <CardDescription className="flex items-center justify-center gap-1 text-sm text-muted-foreground">
                     <span>{person.phone}</span>
                 </CardDescription>
             </CardHeader>
-            <CardContent className="flex-grow space-y-3 pt-4 p-4 w-full">
+
+            <CardContent className="flex-grow space-y-3 pt-4 px-0 pb-0 w-full text-left">
                 <div className="flex items-center text-sm text-muted-foreground">
                   <User className="mr-2 h-4 w-4" />
                   <span className="truncate">{person.age} years old</span>
