@@ -516,13 +516,25 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     setSelectedGroupId(pausedSession.selectedGroupId);
     setColumnFilters(pausedSession.columnFilters);
     
-    // Set people and open dialog
-    const peopleForPausedSession = people.filter(p => pausedSession.peopleIds.includes(p.id));
+    const peopleMap = new Map(people.map(p => [p.id, p]));
+    const peopleForPausedSession = pausedSession.peopleIds
+        .map(id => peopleMap.get(id))
+        .filter((p): p is Person => !!p);
+
+    if (peopleForPausedSession.length !== pausedSession.peopleIds.length) {
+        toast({
+            variant: 'destructive',
+            title: 'Could not resume session',
+            description: 'Some contacts in the paused session no longer exist or are inaccessible.'
+        });
+        return;
+    }
+
     setPeopleForSession(peopleForPausedSession);
     setSessionStartIndex(pausedSession.sessionStartIndex);
     setIsSessionDialogOpen(true);
 
-  }, [pausedSession, people]);
+  }, [pausedSession, people, toast]);
 
   const renderContent = () => {
     if (fetchError) {
@@ -745,7 +757,11 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
            <CreateUpdatePersonDialog
               isOpen={isEditingDialogOpen}
               setIsOpen={setIsEditingDialogOpen}
-              onSave={() => {}} // Note: The main save logic is not used here, dialog is for viewing/quick edits
+              onSave={async (data) => {
+                await updatePerson(editingPersonRef.current!.id, data);
+                // Also update the main people list to reflect changes immediately
+                setPeople(prev => prev.map(p => p.id === editingPersonRef.current!.id ? {...p, ...data} : p));
+              }}
               person={editingPersonRef.current}
               allPeople={people}
           />
