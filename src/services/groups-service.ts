@@ -122,3 +122,25 @@ export const addPeopleToGroup = async (groupId: string, peopleIds: string[]): Pr
     }
   });
 };
+
+export const removePeopleFromGroup = async (groupId: string, peopleIdsToRemove: string[]): Promise<void> => {
+  const groupRef = doc(db, 'groups', groupId);
+
+  await runTransaction(db, async (transaction) => {
+    const groupDoc = await transaction.get(groupRef);
+    if (!groupDoc.exists()) {
+      throw new Error("Group not found.");
+    }
+
+    const currentPeopleIds: string[] = groupDoc.data().peopleIds || [];
+    const idsToRemoveSet = new Set(peopleIdsToRemove);
+    const newPeopleIds = currentPeopleIds.filter(id => !idsToRemoveSet.has(id));
+
+    if (newPeopleIds.length < currentPeopleIds.length) {
+      transaction.update(groupRef, {
+        peopleIds: newPeopleIds,
+        memberCount: newPeopleIds.length
+      });
+    }
+  });
+};
