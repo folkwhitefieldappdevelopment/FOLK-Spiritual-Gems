@@ -179,13 +179,13 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
                     </Avatar>
                     <StarRating value={(person.sgRating || 0)} />
                 </div>
+                 <CardHeader className="text-center p-4 pt-0">
+                    <CardTitle className={cn("text-lg", !isSelectionActive && "group-hover:underline")}>{fullName}</CardTitle>
+                    <CardDescription className="flex items-center justify-center gap-1 text-sm text-muted-foreground">
+                        <span>{person.phone}</span>
+                    </CardDescription>
+                </CardHeader>
             </div>
-            <CardHeader className="text-center p-4 pt-0">
-                <CardTitle className={cn("text-lg", !isSelectionActive && "group-hover:underline")}>{fullName}</CardTitle>
-                <CardDescription className="flex items-center justify-center gap-1 text-sm text-muted-foreground">
-                    <span>{person.phone}</span>
-                </CardDescription>
-            </CardHeader>
             <CardContent className="flex-grow space-y-3 pt-0 p-4">
                 <div className="flex items-center text-sm text-muted-foreground">
                   <User className="mr-2 h-4 w-4" />
