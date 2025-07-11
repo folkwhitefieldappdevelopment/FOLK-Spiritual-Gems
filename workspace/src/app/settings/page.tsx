@@ -48,7 +48,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import type { CustomField, CustomFieldType } from '@/lib/types';
 import { customFieldTypes } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-//import { AdminModeToggle } from '@/components/admin-mode-toggle';
 
 type DialogMode = 'add' | 'edit';
 type ItemType = 'enabler' | 'source' | 'customField';
@@ -398,19 +397,19 @@ export default function SettingsPage() {
                 ) : fetchError ? (
                    <FirebaseConfigError error={fetchError} />
                 ) : (
-                  <div className="mx-auto max-w-4xl space-y-8">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Admin Mode</CardTitle>
-                        <CardDescription>
-                          Unlock administrative privileges to edit protected fields and access all features.
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <AdminModeToggle />
-                      </CardContent>
-                    </Card>
-                    <div>
+                  // <div className="mx-auto max-w-4xl space-y-8">
+                  //   <Card>
+                  //     <CardHeader>
+                  //       <CardTitle>Admin Mode</CardTitle>
+                  //       <CardDescription>
+                  //         Unlock administrative privileges to edit protected fields and access all features.
+                  //       </CardDescription>
+                  //     </CardHeader>
+                  //     <CardContent>
+                  //       <AdminModeToggle />
+                  //     </CardContent>
+                  //   </Card>
+                  //   <div>
                         <div className="flex justify-end mb-4">
                             <Button onClick={() => openDialog('add', 'enabler')}>
                             <PlusCircle className="mr-2 h-4 w-4" /> Add Enabler

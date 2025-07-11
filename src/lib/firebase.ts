@@ -32,7 +32,9 @@ try {
     throw new Error("Firebase configuration is missing or incomplete. Please check your .env.local file.");
   }
   app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-  db = getFirestore(app);
+  // Connect to a specific database if the ID is provided in environment variables,
+  // otherwise connect to the default database.
+  db = getFirestore(app, process.env.NEXT_PUBLIC_FIREBASE_DATABASE_ID);
   auth = getAuth(app);
 } catch (error) {
   console.error("Firebase Initialization Error:", error);
