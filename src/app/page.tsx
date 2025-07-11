@@ -58,7 +58,7 @@ import { getEnablers, getContactSources, type EnablerOption } from "@/services/s
 import { AuthGuard } from "@/components/auth-guard";
 import { useAuth } from "@/contexts/auth-context";
 import { CreateUpdateGroupDialog } from "@/components/create-update-group-dialog";
-import { AssignCoEnablerDialog } from "@/components/assign-co-enabler-dialog";
+import { AssignCoEnablerDialog } from "@/components/assign-helper-dialog";
 import { SortPopover, type SortDescriptor } from "@/components/sort-popover";
 import { FilterPopover, type FilterRule, type FilterableField } from "@/components/filter-popover";
 import { Input } from "@/components/ui/input";

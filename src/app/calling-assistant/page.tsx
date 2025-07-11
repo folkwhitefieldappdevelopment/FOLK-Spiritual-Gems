@@ -47,7 +47,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { CreateUpdateGroupDialog } from '@/components/create-update-group-dialog';
-import { AssignCoEnablerDialog } from '@/components/assign-co-enabler-dialog';
+import { AssignCoEnablerDialog } from '@/components/assign-helper-dialog';
 import { ColumnFilterState, applyColumnFilters } from "@/components/column-header-filter";
 import { SortPopover, type SortDescriptor } from "@/components/sort-popover";
 

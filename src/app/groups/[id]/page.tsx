@@ -33,7 +33,7 @@ import { PersonTable } from '@/components/person-table';
 import { PersonCard } from '@/components/person-card';
 import { CreateUpdatePersonDialog } from '@/components/create-update-person-dialog';
 import { ManageGroupMembersDialog } from '@/components/manage-group-members-dialog';
-import { AssignCoEnablerDialog } from '@/components/assign-co-enabler-dialog';
+import { AssignCoEnablerDialog } from '@/components/assign-helper-dialog';
 import { CreateUpdateGroupDialog } from '@/components/create-update-group-dialog';
 import { FilterPopover, type FilterRule, type FilterableField } from '@/components/filter-popover';
 import { SortPopover, type SortDescriptor } from '@/components/sort-popover';
