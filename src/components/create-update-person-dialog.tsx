@@ -298,14 +298,9 @@ export function CreateUpdatePersonDialog({
   const onSubmit = async (data: PersonFormValues) => {
     setIsSubmitting(true);
     try {
-      const saveData: Partial<Omit<Person, 'folkGuide' | 'folkGuideId'>> = {
+      const saveData = {
         ...data,
-        organisation: data.organisation || "",
-        rentDetails: data.rentDetails || "",
-        nativePlace: data.nativePlace || "",
-        contactSource: data.contactSource || "",
-        chantingStatus: data.chantingStatus || "",
-        enablerInTouchWith: data.enablerInTouchWith || "",
+        sgRating: Number(data.sgRating || 0),
         photoUrl:
           photoPreview ||
           person?.photoUrl ||

@@ -256,8 +256,9 @@ export function EditablePersonDetailsForm({
   };
 
   const onSubmit = (data: PersonFormValues) => {
-    const saveData: Partial<Omit<Person, 'folkGuide' | 'folkGuideId'>> = {
+    const saveData = {
       ...data,
+      sgRating: Number(data.sgRating || 0),
       photoUrl: photoPreview || person?.photoUrl || `https://placehold.co/100x100.png`,
       customData: customData,
     };
