@@ -20,6 +20,7 @@ import { occupationStatuses } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { getGroup, updateGroup, addPeopleToGroup, getGroups, removePeopleFromGroup } from '@/services/groups-service';
 import { getPeople, updatePerson, assignCoEnablerToPeople, deletePeople } from '@/services/people-service';
+import { getFolkGuides } from '@/services/user-service';
 import { getEnablers, getContactSources, type EnablerOption } from '@/services/settings-service';
 import { AuthGuard } from '@/components/auth-guard';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
@@ -81,6 +82,7 @@ export default function GroupDetailPage() {
   
   const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
+  const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
   const canAssignCoEnabler = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
   
   const [isManageMembersDialogOpen, setIsManageMembersDialogOpen] = React.useState(false);
@@ -94,18 +96,20 @@ export default function GroupDetailPage() {
     setIsLoading(true);
     setFetchError(null);
     try {
-      const [groupData, peopleData, allGroupsData, enablersData, sourcesData] = await Promise.all([
+      const [groupData, peopleData, allGroupsData, enablersData, sourcesData, guidesData] = await Promise.all([
         getGroup(groupId),
         getPeople(appUser),
         getGroups(appUser),
         getEnablers(appUser, 'filter'),
         getContactSources(),
+        getFolkGuides(),
       ]);
 
       setAllPeople(peopleData);
       setAllGroups(allGroupsData);
       setEnablerOptions(enablersData);
       setContactSourceOptions(sourcesData);
+      setFolkGuides(guidesData);
 
       if (groupData) {
         setGroup(groupData);
@@ -133,11 +137,14 @@ export default function GroupDetailPage() {
     { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(s => ({ value: s, label: s })) },
     { value: 'enablerInTouchWith', label: 'Enabler', type: 'enum', options: enablerOptions },
     { value: 'chantingStatus', label: 'Chanting Status', type: 'string' },
+    { value: 'stayingWith', label: 'Staying At', type: 'enum', options: [{value: "PG / Hostel", label: "PG / Hostel"}, {value: "Flat", label: "Flat"}, {value: "Family", label: "Family"}] },
+    { value: 'organisation', label: 'Organisation', type: 'string' },
+    { value: 'folkGuide', label: 'Folk Guide', type: 'enum', options: folkGuides.map(g => ({ value: g.name, label: `${g.name} (${g.fgCode || 'N/A'})` })) },
     { value: 'nativePlace', label: 'Native Place', type: 'string' },
     { value: 'fromOtherCamp', label: 'From Other Camp', type: 'boolean' },
     { value: 'age', label: 'Age', type: 'number' },
     { value: 'sgRating', label: 'Rating', type: 'number' },
-  ], [enablerOptions, contactSourceOptions]);
+  ], [enablerOptions, contactSourceOptions, folkGuides]);
 
   const filteredMembers = React.useMemo(() => {
     let tempPeople = [...members];

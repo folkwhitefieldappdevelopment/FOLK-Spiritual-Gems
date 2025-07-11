@@ -17,6 +17,7 @@ import { CallingSessionDialog } from "@/components/calling-session-dialog";
 import { AuthGuard } from "@/components/auth-guard";
 import { FirebaseConfigError } from "@/components/firebase-config-error";
 import { getPeople, updatePerson, assignCoEnablerToPeople } from "@/services/people-service";
+import { getFolkGuides } from "@/services/user-service";
 import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
 import { getGroups, createGroup, addPeopleToGroup } from "@/services/groups-service";
 import { updateUser } from "@/services/user-service";
@@ -74,6 +75,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
   const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
+  const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [selectedGroupId, setSelectedGroupId] = React.useState<string>('all');
@@ -98,18 +100,20 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
      setIsDataLoading(true);
       setFetchError(null);
       try {
-        const [peopleData, enablersData, sourcesData, customFieldsData, groupsData] = await Promise.all([
+        const [peopleData, enablersData, sourcesData, customFieldsData, groupsData, guidesData] = await Promise.all([
           getPeople(appUser),
           getEnablers(appUser, 'filter'),
           getContactSources(),
           getCustomPersonFields(),
           getGroups(appUser),
+          getFolkGuides(),
         ]);
         setPeople(peopleData);
         setEnablerOptions(enablersData);
         setContactSourceOptions(sourcesData);
         setCustomFields(customFieldsData);
         setGroups(groupsData);
+        setFolkGuides(guidesData);
       } catch (error) {
         console.error("Failed to load data:", error);
         if (error instanceof Error) {
@@ -141,8 +145,11 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       { value: 'lastFrp', label: 'FRP Attended', type: 'boolean' },
       { value: 'chantingStatus', label: 'Chanting Status', type: 'string' },
       { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(s => ({ value: s, label: s })) },
+      { value: 'stayingWith', label: 'Staying At', type: 'enum', options: [{value: "PG / Hostel", label: "PG / Hostel"}, {value: "Flat", label: "Flat"}, {value: "Family", label: "Family"}] },
+      { value: 'organisation', label: 'Organisation', type: 'string' },
+      { value: 'folkGuide', label: 'Folk Guide', type: 'enum', options: folkGuides.map(g => ({ value: g.name, label: `${g.name} (${g.fgCode || 'N/A'})` })) },
     ]
-  }, [enablerOptions, contactSourceOptions]);
+  }, [enablerOptions, contactSourceOptions, folkGuides]);
 
 
   const filteredPeople = React.useMemo(() => {

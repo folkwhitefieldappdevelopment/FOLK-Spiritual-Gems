@@ -54,6 +54,7 @@ import {
   assignCoEnablerToPeople,
 } from "@/services/people-service";
 import { getGroups, createGroup, addPeopleToGroup } from "@/services/groups-service";
+import { getFolkGuides } from "@/services/user-service";
 import { getEnablers, getContactSources, type EnablerOption } from "@/services/settings-service";
 import { AuthGuard } from "@/components/auth-guard";
 import { useAuth } from "@/contexts/auth-context";
@@ -93,6 +94,7 @@ export default function ContactsPage() {
 
   const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
+  const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
 
   const canAssignCoEnabler = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
 
@@ -101,16 +103,18 @@ export default function ContactsPage() {
     setIsLoading(true);
     setFetchError(null);
     try {
-      const [peopleData, enablersData, sourcesData, groupsData] = await Promise.all([
+      const [peopleData, enablersData, sourcesData, groupsData, guidesData] = await Promise.all([
         getPeople(appUser),
         getEnablers(appUser, 'filter'),
         getContactSources(),
         getGroups(appUser),
+        getFolkGuides(),
       ]);
       setPeople(peopleData);
       setEnablerOptions(enablersData);
       setContactSourceOptions(sourcesData);
       setGroups(groupsData);
+      setFolkGuides(guidesData);
     } catch (error) {
       console.error("Failed to load data:", error);
       if (error instanceof Error) {
@@ -133,11 +137,14 @@ export default function ContactsPage() {
     { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(s => ({ value: s, label: s })) },
     { value: 'enablerInTouchWith', label: 'Enabler', type: 'enum', options: enablerOptions },
     { value: 'chantingStatus', label: 'Chanting Status', type: 'string' },
+    { value: 'stayingWith', label: 'Staying At', type: 'enum', options: [{value: "PG / Hostel", label: "PG / Hostel"}, {value: "Flat", label: "Flat"}, {value: "Family", label: "Family"}] },
+    { value: 'organisation', label: 'Organisation', type: 'string' },
+    { value: 'folkGuide', label: 'Folk Guide', type: 'enum', options: folkGuides.map(g => ({ value: g.name, label: `${g.name} (${g.fgCode || 'N/A'})` })) },
     { value: 'nativePlace', label: 'Native Place', type: 'string' },
     { value: 'fromOtherCamp', label: 'From Other Camp', type: 'boolean' },
     { value: 'age', label: 'Age', type: 'number' },
     { value: 'sgRating', label: 'Rating', type: 'number' },
-  ], [enablerOptions, contactSourceOptions]);
+  ], [enablerOptions, contactSourceOptions, folkGuides]);
 
   const filteredPeople = React.useMemo(() => {
     let tempPeople = [...people];
