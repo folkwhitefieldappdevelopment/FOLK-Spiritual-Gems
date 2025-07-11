@@ -47,7 +47,8 @@ const StarRatingComponent = ({
     onValueChange(Math.max(0, Math.min(totalStars, clickedValue)));
   };
 
-  const displayValue = hoverValue !== null && isEditable ? hoverValue : value;
+  const numericValue = Number(value) || 0;
+  const displayValue = hoverValue !== null && isEditable ? hoverValue : numericValue;
 
   return (
     <div
@@ -55,7 +56,7 @@ const StarRatingComponent = ({
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       onClick={handleClick}
-      aria-label={`Rating: ${value.toFixed(1)} out of ${totalStars} stars`}
+      aria-label={`Rating: ${numericValue.toFixed(1)} out of ${totalStars} stars`}
     >
       {[...Array(totalStars)].map((_, i) => {
         const starValue = i + 1;
