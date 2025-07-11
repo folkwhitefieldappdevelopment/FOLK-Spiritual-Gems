@@ -44,7 +44,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { StarRating } from "./star-rating";
 
@@ -354,21 +353,21 @@ export function EditablePersonDetailsForm({
        <div className="flex flex-col items-center text-center">
             <div className={cn("relative", isInDialog ? "mb-4" : "mb-8")}>
                 <Dialog>
-                <DialogTrigger asChild>
-                    <div className={cn("relative cursor-pointer hover:opacity-80 transition-opacity", avatarSize)}>
-                        <Avatar className="h-full w-full">
-                            <AvatarImage src={person.photoUrl} alt={fullName} data-ai-hint="person portrait" />
-                            <AvatarFallback>{fallback}</AvatarFallback>
-                        </Avatar>
-                        <StarRating value={person.sgRating || 0} avatarSizeClass={avatarSize} />
-                    </div>
-                </DialogTrigger>
-                <DialogContent className="p-0 border-0 max-w-lg bg-transparent shadow-none">
-                  <DialogHeader>
-                    <DialogTitle className="sr-only">{`Profile picture of ${fullName}`}</DialogTitle>
-                  </DialogHeader>
-                  <img src={person.photoUrl} alt={fullName} className="rounded-lg w-full h-auto object-contain" />
-                </DialogContent>
+                    <DialogTrigger asChild>
+                        <div className={cn("relative cursor-pointer hover:opacity-80 transition-opacity", avatarSize)}>
+                            <Avatar className="h-full w-full">
+                                <AvatarImage src={person.photoUrl} alt={fullName} data-ai-hint="person portrait" />
+                                <AvatarFallback>{fallback}</AvatarFallback>
+                            </Avatar>
+                            <StarRating value={person.sgRating || 0} avatarSizeClass={avatarSize} />
+                        </div>
+                    </DialogTrigger>
+                    <DialogContent className="p-0 border-0 max-w-lg bg-transparent shadow-none">
+                      <DialogHeader>
+                        <DialogTitle className="sr-only">{`Profile picture of ${fullName}`}</DialogTitle>
+                      </DialogHeader>
+                      <img src={person.photoUrl} alt={fullName} className="rounded-lg w-full h-auto object-contain" />
+                    </DialogContent>
                 </Dialog>
             </div>
 
@@ -382,9 +381,16 @@ export function EditablePersonDetailsForm({
           <a href={`https://wa.me/91${person.phone.replace(/\s+/g, '')}`} target="_blank" rel="noopener noreferrer" aria-label="Open WhatsApp chat"><svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 fill-current text-green-600 hover:opacity-80 transition-opacity"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.204-1.634a11.86 11.86 0 005.794 1.504h.004c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg></a>
         </div>
         <div className="font-semibold text-muted-foreground">Age</div><div>{person.age}</div>
-        <div className="font-semibold text-muted-foreground">Staying With</div><div>{person.stayingWith}</div>
         <div className="font-semibold text-muted-foreground">Occupation</div><div>{person.occupation || 'N/A'}</div>
         <div className="font-semibold text-muted-foreground">Organisation</div><div>{person.organisation || 'N/A'}</div>
+      </div>
+      
+      {groups.length > 0 && (<div className="w-full text-left space-y-2 pt-4"><h4 className="font-semibold text-sm flex items-center gap-2"><Tags className="h-4 w-4 text-muted-foreground"/> In Groups</h4><div className="flex flex-wrap gap-1">{groups.map(g => (<Badge key={g.id} variant="secondary">{g.name}</Badge>))}</div></div>)}
+      
+      <Separator className="my-4" />
+      
+      <div className="w-full text-left grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-3 text-sm">
+        <div className="font-semibold text-muted-foreground">Staying With</div><div>{person.stayingWith}</div>
         <div className="font-semibold text-muted-foreground">Rent Details</div><div>{person.rentDetails || 'N/A'}</div>
         <div className="font-semibold text-muted-foreground">Native Place</div><div>{person.nativePlace || 'N/A'}</div>
         <div className="font-semibold text-muted-foreground">Contact Source</div><div>{person.contactSource || 'N/A'}</div>
@@ -393,7 +399,7 @@ export function EditablePersonDetailsForm({
         <div className="font-semibold text-muted-foreground">Enabler</div><div>{person.enablerInTouchWith || 'N/A'}</div>
         <div className="font-semibold text-muted-foreground">Folk Guide</div><div>{person.folkGuide || 'N/A'}</div>
       </div>
-      {groups.length > 0 && (<><Separator className="my-4" /><div className="w-full text-left space-y-2"><h4 className="font-semibold text-sm flex items-center gap-2"><Tags className="h-4 w-4 text-muted-foreground"/> In Groups</h4><div className="flex flex-wrap gap-1">{groups.map(g => (<Badge key={g.id} variant="secondary">{g.name}</Badge>))}</div></div></>)}
+      
       {hasCustomData && (<><Separator className="my-4" /><div className="w-full text-left grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-3 text-sm">{customFields.map(f => {const v = person.customData?.[f.id];if (!v) return null;if (f.type === 'textarea') return <React.Fragment key={f.id}><div className="font-semibold text-muted-foreground col-span-2">{f.label}</div><div className="col-span-2 whitespace-pre-wrap">{String(v)}</div></React.Fragment>;return <React.Fragment key={f.id}><div className="font-semibold text-muted-foreground">{f.label}</div><div>{String(v)}</div></React.Fragment>;})}</div></>)}
     </div>
   );
