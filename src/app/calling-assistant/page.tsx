@@ -14,7 +14,6 @@ import { PageHeader } from "@/components/page-header";
 import { PersonTable } from "@/components/person-table";
 import { CreateUpdatePersonDialog } from "@/components/create-update-person-dialog";
 import { CallingSessionDialog } from "@/components/calling-session-dialog";
-import { AuthGuard } from "@/components/auth-guard";
 import { FirebaseConfigError } from "@/components/firebase-config-error";
 import { getPeople, updatePerson, assignCoEnablerToPeople } from "@/services/people-service";
 import { getFolkGuides } from "@/services/user-service";
@@ -636,146 +635,142 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   }
 
   return (
-    <>
-      <div className="flex min-h-screen w-full flex-col bg-background">
-        <AppSidebar />
-        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
-            <PageHeader
-              title="Calling Assistant"
-              description={
-                <span className="flex items-center gap-1">
-                  A focused view to call contacts for:
-                  <strong className="text-foreground ml-1">{currentCallingEvent}</strong>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleOpenEventDialog(false)}>
-                    <Edit className="h-3 w-3" />
-                  </Button>
-                </span>
-              }
-            />
-            <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
-              {renderContent()}
-            </main>
-        </div>
-        
-        <Dialog open={isEventDialogOpen} onOpenChange={setIsEventDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{isStartingSessionFlow ? 'Confirm Calling Event' : 'Edit Calling Event'}</DialogTitle>
-              <DialogDescription>
-                {isStartingSessionFlow
-                  ? 'Confirm the event and optionally specify a range of contacts to call.'
-                  : 'Update the name of the current calling event.'}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div>
-                <Label htmlFor="eventName">Event Name</Label>
-                <Input
-                  id="eventName"
-                  value={editableEventName}
-                  onChange={(e) => setEditableEventName(e.target.value)}
-                  className="mt-1"
-                  placeholder="e.g., Spiritual Camp - July 2024"
-                />
-              </div>
-              {isStartingSessionFlow && (
-                <div className="space-y-2">
-                  <Label>Calling Range</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                        type="number"
-                        placeholder="From"
-                        value={callRange.from}
-                        onChange={(e) => setCallRange(prev => ({...prev, from: e.target.value}))}
-                        min="1"
-                        max={filteredPeople.length}
-                    />
-                    <span className="text-muted-foreground">to</span>
-                    <Input
-                        type="number"
-                        placeholder="To"
-                        value={callRange.to}
-                        onChange={(e) => setCallRange(prev => ({...prev, to: e.target.value}))}
-                        min="1"
-                        max={filteredPeople.length}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                      Select a range from your filtered list of {filteredPeople.length} contacts.
-                  </p>
-                  {callRangeNames.from && (
-                    <div className="text-xs text-muted-foreground mt-2 border-l-2 border-primary pl-2 space-y-1">
-                        <p>From: <strong className="text-foreground">{callRange.from}. {callRangeNames.from}</strong></p>
-                        {callRangeNames.to && <p>To: <strong className="text-foreground">{callRange.to || filteredPeople.length}. {callRangeNames.to}</strong></p>}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsEventDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleSaveEventAndContinue}>
-                {isStartingSessionFlow ? 'Start Session' : 'Save'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <CallingSessionDialog
-          isOpen={isSessionDialogOpen}
-          onClose={() => setIsSessionDialogOpen(false)}
-          people={peopleForSession}
-          onSaveRemark={handleSessionSave}
-          currentEvent={currentCallingEvent}
-          customFields={customFields}
-          groups={groups}
-          sessionStartIndex={sessionStartIndex}
-          totalPeopleCount={filteredPeople.length}
-          initialIndex={pausedSession?.currentIndex}
-          // Pass all filter/sort states to be saved on pause
-          filters={filters}
-          sortDescriptors={sortDescriptors}
-          searchTerm={searchTerm}
-          selectedGroupId={selectedGroupId}
-          columnFilters={columnFilters}
-        />
-        
-        <CreateUpdateGroupDialog
-            isOpen={isCreateGroupDialogOpen}
-            setIsOpen={setIsCreateGroupDialogOpen}
-            onSave={handleSaveGroupAndAddMembers}
-        />
-        
-        <AssignCoEnablerDialog
-          isOpen={isAssignCoEnablerDialogOpen}
-          setIsOpen={setIsAssignCoEnablerDialogOpen}
-          onSave={handleAssignCoEnabler}
-          peopleCount={selectedIds.size}
-        />
-
-        {editingPersonRef.current && (
-           <CreateUpdatePersonDialog
-              isOpen={isEditingDialogOpen}
-              setIsOpen={setIsEditingDialogOpen}
-              onSave={async (data) => {
-                await updatePerson(editingPersonRef.current!.id, data);
-                // Also update the main people list to reflect changes immediately
-                setPeople(prev => prev.map(p => p.id === editingPersonRef.current!.id ? {...p, ...data} : p));
-              }}
-              person={editingPersonRef.current}
-              allPeople={people}
+    <div className="flex min-h-screen w-full flex-col bg-background">
+      <AppSidebar />
+      <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+          <PageHeader
+            title="Calling Assistant"
+            description={
+              <span className="flex items-center gap-1">
+                A focused view to call contacts for:
+                <strong className="text-foreground ml-1">{currentCallingEvent}</strong>
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleOpenEventDialog(false)}>
+                  <Edit className="h-3 w-3" />
+                </Button>
+              </span>
+            }
           />
-        )}
+          <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
+            {renderContent()}
+          </main>
       </div>
-    </>
+      
+      <Dialog open={isEventDialogOpen} onOpenChange={setIsEventDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{isStartingSessionFlow ? 'Confirm Calling Event' : 'Edit Calling Event'}</DialogTitle>
+            <DialogDescription>
+              {isStartingSessionFlow
+                ? 'Confirm the event and optionally specify a range of contacts to call.'
+                : 'Update the name of the current calling event.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="eventName">Event Name</Label>
+              <Input
+                id="eventName"
+                value={editableEventName}
+                onChange={(e) => setEditableEventName(e.target.value)}
+                className="mt-1"
+                placeholder="e.g., Spiritual Camp - July 2024"
+              />
+            </div>
+            {isStartingSessionFlow && (
+              <div className="space-y-2">
+                <Label>Calling Range</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                      type="number"
+                      placeholder="From"
+                      value={callRange.from}
+                      onChange={(e) => setCallRange(prev => ({...prev, from: e.target.value}))}
+                      min="1"
+                      max={filteredPeople.length}
+                  />
+                  <span className="text-muted-foreground">to</span>
+                  <Input
+                      type="number"
+                      placeholder="To"
+                      value={callRange.to}
+                      onChange={(e) => setCallRange(prev => ({...prev, to: e.target.value}))}
+                      min="1"
+                      max={filteredPeople.length}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                    Select a range from your filtered list of {filteredPeople.length} contacts.
+                </p>
+                {callRangeNames.from && (
+                  <div className="text-xs text-muted-foreground mt-2 border-l-2 border-primary pl-2 space-y-1">
+                      <p>From: <strong className="text-foreground">{callRange.from}. {callRangeNames.from}</strong></p>
+                      {callRangeNames.to && <p>To: <strong className="text-foreground">{callRange.to || filteredPeople.length}. {callRangeNames.to}</strong></p>}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEventDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveEventAndContinue}>
+              {isStartingSessionFlow ? 'Start Session' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <CallingSessionDialog
+        isOpen={isSessionDialogOpen}
+        onClose={() => setIsSessionDialogOpen(false)}
+        people={peopleForSession}
+        onSaveRemark={handleSessionSave}
+        currentEvent={currentCallingEvent}
+        customFields={customFields}
+        groups={groups}
+        sessionStartIndex={sessionStartIndex}
+        totalPeopleCount={filteredPeople.length}
+        initialIndex={pausedSession?.currentIndex}
+        // Pass all filter/sort states to be saved on pause
+        filters={filters}
+        sortDescriptors={sortDescriptors}
+        searchTerm={searchTerm}
+        selectedGroupId={selectedGroupId}
+        columnFilters={columnFilters}
+      />
+      
+      <CreateUpdateGroupDialog
+          isOpen={isCreateGroupDialogOpen}
+          setIsOpen={setIsCreateGroupDialogOpen}
+          onSave={handleSaveGroupAndAddMembers}
+      />
+      
+      <AssignCoEnablerDialog
+        isOpen={isAssignCoEnablerDialogOpen}
+        setIsOpen={setIsAssignCoEnablerDialogOpen}
+        onSave={handleAssignCoEnabler}
+        peopleCount={selectedIds.size}
+      />
+
+      {editingPersonRef.current && (
+         <CreateUpdatePersonDialog
+            isOpen={isEditingDialogOpen}
+            setIsOpen={setIsEditingDialogOpen}
+            onSave={async (data) => {
+              await updatePerson(editingPersonRef.current!.id, data);
+              // Also update the main people list to reflect changes immediately
+              setPeople(prev => prev.map(p => p.id === editingPersonRef.current!.id ? {...p, ...data} : p));
+            }}
+            person={editingPersonRef.current}
+            allPeople={people}
+        />
+      )}
+    </div>
   );
 });
 
 
 export default function CallingAssistantPage() {
     return (
-        <AuthGuard>
-            <CallingAssistantPageComponent />
-        </AuthGuard>
+        <CallingAssistantPageComponent />
     );
 }

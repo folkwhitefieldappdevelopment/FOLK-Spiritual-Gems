@@ -22,7 +22,6 @@ import { getGroup, updateGroup, addPeopleToGroup, getGroups, removePeopleFromGro
 import { getPeople, updatePerson, assignCoEnablerToPeople, deletePeople } from '@/services/people-service';
 import { getFolkGuides } from '@/services/user-service';
 import { getEnablers, getContactSources, type EnablerOption } from '@/services/settings-service';
-import { AuthGuard } from '@/components/auth-guard';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 import { useAuth } from '@/contexts/auth-context';
 
@@ -368,27 +367,25 @@ export default function GroupDetailPage() {
   };
   
   return (
-    <AuthGuard>
-      <div className="flex min-h-screen w-full flex-col bg-background">
-          <AppSidebar />
-          <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
-              {group && !fetchError && (
-                  <PageHeader title={group.name} description={group.description || 'No description for this group.'}>
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" className="w-9 sm:w-auto" onClick={() => router.push('/groups')}><ArrowLeft className="h-4 w-4 mr-0 sm:mr-2" /><span className="hidden sm:inline">Back to Groups</span></Button>
-                        <Button size="sm" className="w-9 sm:w-auto" onClick={() => setIsManageMembersDialogOpen(true)}><UserPlus className="h-4 w-4 mr-0 sm:mr-2" /><span className="hidden sm:inline">Manage Members</span></Button>
-                      </div>
-                  </PageHeader>
-              )}
-              <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
-                {renderContent()}
-              </main>
-          </div>
-        
-        {editingPerson && <CreateUpdatePersonDialog isOpen={!!editingPerson} setIsOpen={() => setEditingPerson(undefined)} onSave={handleSavePersonDialog} person={editingPerson} allPeople={allPeople} />}
-        {group && <ManageGroupMembersDialog isOpen={isManageMembersDialogOpen} setIsOpen={setIsManageMembersDialogOpen} onSave={handleSaveMembers} group={group} allPeople={allPeople} />}
-        {isAssignCoEnablerDialogOpen && <AssignCoEnablerDialog isOpen={isAssignCoEnablerDialogOpen} setIsOpen={setIsAssignCoEnablerDialogOpen} onSave={handleAssignCoEnabler} peopleCount={selectedIds.size} />}
-      </div>
-    </AuthGuard>
+    <div className="flex min-h-screen w-full flex-col bg-background">
+        <AppSidebar />
+        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+            {group && !fetchError && (
+                <PageHeader title={group.name} description={group.description || 'No description for this group.'}>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" className="w-9 sm:w-auto" onClick={() => router.push('/groups')}><ArrowLeft className="h-4 w-4 mr-0 sm:mr-2" /><span className="hidden sm:inline">Back to Groups</span></Button>
+                      <Button size="sm" className="w-9 sm:w-auto" onClick={() => setIsManageMembersDialogOpen(true)}><UserPlus className="h-4 w-4 mr-0 sm:mr-2" /><span className="hidden sm:inline">Manage Members</span></Button>
+                    </div>
+                </PageHeader>
+            )}
+            <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
+              {renderContent()}
+            </main>
+        </div>
+      
+      {editingPerson && <CreateUpdatePersonDialog isOpen={!!editingPerson} setIsOpen={() => setEditingPerson(undefined)} onSave={handleSavePersonDialog} person={editingPerson} allPeople={allPeople} />}
+      {group && <ManageGroupMembersDialog isOpen={isManageMembersDialogOpen} setIsOpen={setIsManageMembersDialogOpen} onSave={handleSaveMembers} group={group} allPeople={allPeople} />}
+      {isAssignCoEnablerDialogOpen && <AssignCoEnablerDialog isOpen={isAssignCoEnablerDialogOpen} setIsOpen={setIsAssignCoEnablerDialogOpen} onSave={handleAssignCoEnabler} peopleCount={selectedIds.size} />}
+    </div>
   );
 }

@@ -12,7 +12,6 @@ import { getPerson, updatePerson, deletePerson } from '@/services/people-service
 import { getCustomPersonFields } from '@/services/settings-service';
 import { getGroups } from '@/services/groups-service';
 import { createInitialProgress } from '@/lib/data';
-import { AuthGuard } from '@/components/auth-guard';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 
 import { AppSidebar } from '@/components/app-sidebar';
@@ -323,8 +322,6 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
 
 export default function PersonDetailPage() {
   return (
-    <AuthGuard>
-      <PersonDetailPageComponent />
-    </AuthGuard>
+    <PersonDetailPageComponent />
   )
 }

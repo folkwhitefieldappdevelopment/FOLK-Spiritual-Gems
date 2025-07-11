@@ -8,7 +8,6 @@ import { deleteField } from 'firebase/firestore';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
-import { AuthGuard } from '@/components/auth-guard';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -244,183 +243,181 @@ export default function UserManagementPage() {
   const canCreateUsers = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
 
   return (
-    <AuthGuard>
-      <div className="flex min-h-screen w-full flex-col bg-background">
-        <AppSidebar />
-        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
-            <PageHeader
-              title="User Management"
-              description="Create and manage application users."
-            >
-              {canCreateUsers && (
-                <Button size="sm" onClick={handleOpenCreateDialog}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Create User
-                </Button>
-              )}
-            </PageHeader>
-            <main className="flex-1 p-4 sm:p-6 sm:pt-0">
-              <div className="mx-auto max-w-4xl space-y-6">
-                <Card>
-                  <CardHeader>
-                      <CardTitle>Existing Users</CardTitle>
-                      <CardDescription>
-                        View and search all users in the system. Found {filteredUsers.length} users.
-                      </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                      <div className="flex flex-col sm:flex-row gap-4 mb-4">
-                          <div className="relative flex-1">
-                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                              <Input
-                                  placeholder="Search by name or email..."
-                                  className="pl-10 w-full"
-                                  value={searchTerm}
-                                  onChange={(e) => setSearchTerm(e.target.value)}
-                              />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value === 'all' ? '' : value)}>
-                                <SelectTrigger className="w-full sm:w-[200px]">
-                                    <SelectValue placeholder="Filter by role" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Roles</SelectItem>
-                                    {userRoles.map(role => <SelectItem key={role} value={role}>{role}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                            <Button variant="outline" size="icon" onClick={fetchUsersAndGuides} disabled={isLoadingUsers}>
-                                <RefreshCw className={isLoadingUsers ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
-                            </Button>
-                          </div>
-                      </div>
+    <div className="flex min-h-screen w-full flex-col bg-background">
+      <AppSidebar />
+      <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+          <PageHeader
+            title="User Management"
+            description="Create and manage application users."
+          >
+            {canCreateUsers && (
+              <Button size="sm" onClick={handleOpenCreateDialog}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Create User
+              </Button>
+            )}
+          </PageHeader>
+          <main className="flex-1 p-4 sm:p-6 sm:pt-0">
+            <div className="mx-auto max-w-4xl space-y-6">
+              <Card>
+                <CardHeader>
+                    <CardTitle>Existing Users</CardTitle>
+                    <CardDescription>
+                      View and search all users in the system. Found {filteredUsers.length} users.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Search by name or email..."
+                                className="pl-10 w-full"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value === 'all' ? '' : value)}>
+                              <SelectTrigger className="w-full sm:w-[200px]">
+                                  <SelectValue placeholder="Filter by role" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                  <SelectItem value="all">All Roles</SelectItem>
+                                  {userRoles.map(role => <SelectItem key={role} value={role}>{role}</SelectItem>)}
+                              </SelectContent>
+                          </Select>
+                          <Button variant="outline" size="icon" onClick={fetchUsersAndGuides} disabled={isLoadingUsers}>
+                              <RefreshCw className={isLoadingUsers ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
+                          </Button>
+                        </div>
+                    </div>
 
-                      <div className="border rounded-md">
-                          {isLoadingUsers ? (
-                              <div className="text-center p-8">
-                                  <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                              </div>
-                          ) : fetchError ? (
-                              <div className="text-center p-8 text-destructive">{fetchError}</div>
-                          ) : filteredUsers.length > 0 ? (
-                              <Table>
-                                  <TableHeader>
-                                      <TableRow>
-                                          <TableHead className="min-w-[200px]">Name</TableHead>
-                                          <TableHead className="hidden sm:table-cell">Phone</TableHead>
-                                          <TableHead>Details</TableHead>
-                                          <TableHead className="hidden md:table-cell">Created</TableHead>
-                                          <TableHead className="text-right w-[80px]">Actions</TableHead>
+                    <div className="border rounded-md">
+                        {isLoadingUsers ? (
+                            <div className="text-center p-8">
+                                <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                            </div>
+                        ) : fetchError ? (
+                            <div className="text-center p-8 text-destructive">{fetchError}</div>
+                        ) : filteredUsers.length > 0 ? (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="min-w-[200px]">Name</TableHead>
+                                        <TableHead className="hidden sm:table-cell">Phone</TableHead>
+                                        <TableHead>Details</TableHead>
+                                        <TableHead className="hidden md:table-cell">Created</TableHead>
+                                        <TableHead className="text-right w-[80px]">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredUsers.map(user => {
+                                      const isSelf = user.id === appUser?.id;
+                                      const isManagedByGuide = appUser?.role.includes('Folk Guide') && user.reportsTo?.guideId === appUser?.id;
+                                      const isAdmin = appUser?.role.includes('Admin');
+
+                                      const canEdit = isAdmin || isManagedByGuide;
+                                      const canDelete = !isSelf && (isAdmin || isManagedByGuide);
+
+                                      return (
+                                      <TableRow key={user.id}>
+                                        <TableCell>
+                                          <div className="flex items-center gap-3">
+                                            <Avatar>
+                                              <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                              <p className="font-medium">{user.name}</p>
+                                              <p className="text-xs text-muted-foreground">{user.email}</p>
+                                            </div>
+                                          </div>
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground hidden sm:table-cell">{user.phone}</TableCell>
+                                        <TableCell>
+                                          <div className="flex flex-col gap-1">
+                                            <div className="flex flex-wrap gap-1">
+                                                {user.role?.map(r => <Badge key={r} variant="secondary">{r}</Badge>)}
+                                            </div>
+                                            {user.fgCode && <Badge variant="outline">FG Code: {user.fgCode}</Badge>}
+                                          </div>
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground text-sm hidden md:table-cell">
+                                          {safeDate(user.createdAt) ? format(safeDate(user.createdAt)!, 'PP') : 'N/A'}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                          <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                              <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!canEdit && !canDelete}>
+                                                <MoreHorizontal className="h-4 w-4" />
+                                              </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                              {canEdit && (
+                                                  <DropdownMenuItem onSelect={() => handleEditUser(user)}>
+                                                      <Edit className="mr-2 h-4 w-4" />
+                                                      Edit
+                                                  </DropdownMenuItem>
+                                              )}
+                                              {canDelete && (
+                                                  <DropdownMenuItem onSelect={() => setUserToDelete(user)} className="text-destructive focus:text-destructive">
+                                                      <Trash2 className="mr-2 h-4 w-4" />
+                                                      Delete
+                                                  </DropdownMenuItem>
+                                              )}
+                                            </DropdownMenuContent>
+                                          </DropdownMenu>
+                                        </TableCell>
                                       </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                      {filteredUsers.map(user => {
-                                        const isSelf = user.id === appUser?.id;
-                                        const isManagedByGuide = appUser?.role.includes('Folk Guide') && user.reportsTo?.guideId === appUser?.id;
-                                        const isAdmin = appUser?.role.includes('Admin');
+                                      );
+                                    })}
+                                </TableBody>
+                            </Table>
+                        ) : (
+                            <div className="text-center p-8 text-muted-foreground">No users found for the current filters.</div>
+                        )}
+                    </div>
+                </CardContent>
+              </Card>
 
-                                        const canEdit = isAdmin || isManagedByGuide;
-                                        const canDelete = !isSelf && (isAdmin || isManagedByGuide);
-
-                                        return (
-                                        <TableRow key={user.id}>
-                                          <TableCell>
-                                            <div className="flex items-center gap-3">
-                                              <Avatar>
-                                                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                                              </Avatar>
-                                              <div>
-                                                <p className="font-medium">{user.name}</p>
-                                                <p className="text-xs text-muted-foreground">{user.email}</p>
-                                              </div>
-                                            </div>
-                                          </TableCell>
-                                          <TableCell className="text-muted-foreground hidden sm:table-cell">{user.phone}</TableCell>
-                                          <TableCell>
-                                            <div className="flex flex-col gap-1">
-                                              <div className="flex flex-wrap gap-1">
-                                                  {user.role?.map(r => <Badge key={r} variant="secondary">{r}</Badge>)}
-                                              </div>
-                                              {user.fgCode && <Badge variant="outline">FG Code: {user.fgCode}</Badge>}
-                                            </div>
-                                          </TableCell>
-                                          <TableCell className="text-muted-foreground text-sm hidden md:table-cell">
-                                            {safeDate(user.createdAt) ? format(safeDate(user.createdAt)!, 'PP') : 'N/A'}
-                                          </TableCell>
-                                          <TableCell className="text-right">
-                                            <DropdownMenu>
-                                              <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!canEdit && !canDelete}>
-                                                  <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                              </DropdownMenuTrigger>
-                                              <DropdownMenuContent align="end">
-                                                {canEdit && (
-                                                    <DropdownMenuItem onSelect={() => handleEditUser(user)}>
-                                                        <Edit className="mr-2 h-4 w-4" />
-                                                        Edit
-                                                    </DropdownMenuItem>
-                                                )}
-                                                {canDelete && (
-                                                    <DropdownMenuItem onSelect={() => setUserToDelete(user)} className="text-destructive focus:text-destructive">
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Delete
-                                                    </DropdownMenuItem>
-                                                )}
-                                              </DropdownMenuContent>
-                                            </DropdownMenu>
-                                          </TableCell>
-                                        </TableRow>
-                                        );
-                                      })}
-                                  </TableBody>
-                              </Table>
-                          ) : (
-                              <div className="text-center p-8 text-muted-foreground">No users found for the current filters.</div>
-                          )}
-                      </div>
-                  </CardContent>
-                </Card>
-
-                <Alert variant="destructive">
-                  <ShieldAlert className="h-4 w-4" />
-                  <AlertTitle>Important Note on User Deletion</AlertTitle>
-                  <AlertDescription>
-                    This page manages user records in the application database. Deleting a user here only removes their record from this app, not their login credentials from Firebase Authentication.
-                  </AlertDescription>
-                </Alert>
-              </div>
-            </main>
-        </div>
+              <Alert variant="destructive">
+                <ShieldAlert className="h-4 w-4" />
+                <AlertTitle>Important Note on User Deletion</AlertTitle>
+                <AlertDescription>
+                  This page manages user records in the application database. Deleting a user here only removes their record from this app, not their login credentials from Firebase Authentication.
+                </AlertDescription>
+              </Alert>
+            </div>
+          </main>
       </div>
-      <CreateUserDialog
-        isOpen={isFormDialogOpen}
-        setIsOpen={setIsFormDialogOpen}
-        onSave={handleSaveUser}
-        user={editingUser}
-        folkGuides={folkGuides}
-      />
-      {userToDelete && (
-        <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
-          <AlertDialogContent>
-              <AlertDialogHeader>
-              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-              <AlertDialogDescription>
-                  This will remove the user record for {userToDelete.name} from the application database. It will NOT remove their login credentials, so they will still be able to sign in. This action cannot be undone.
-              </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setUserToDelete(null)}>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                  onClick={handleDeleteConfirmed}
-                  className="bg-destructive hover:bg-destructive/90"
-              >
-                  Delete User Record
-              </AlertDialogAction>
-              </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
-    </AuthGuard>
+    </div>
+    <CreateUserDialog
+      isOpen={isFormDialogOpen}
+      setIsOpen={setIsFormDialogOpen}
+      onSave={handleSaveUser}
+      user={editingUser}
+      folkGuides={folkGuides}
+    />
+    {userToDelete && (
+      <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+                This will remove the user record for {userToDelete.name} from the application database. It will NOT remove their login credentials, so they will still be able to sign in. This action cannot be undone.
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setUserToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+                onClick={handleDeleteConfirmed}
+                className="bg-destructive hover:bg-destructive/90"
+            >
+                Delete User Record
+            </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    )}
   );
 }

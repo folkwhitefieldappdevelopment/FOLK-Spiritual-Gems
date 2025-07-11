@@ -8,7 +8,6 @@ import { getUsers, getEnablersForGuide } from '@/services/user-service';
 import { useToast } from '@/hooks/use-toast';
 import { subWeeks, startOfWeek, isAfter, format, eachDayOfInterval, startOfDay, endOfDay, isWithinInterval, addDays } from 'date-fns';
 import { Users, UserPlus, Briefcase, Loader2, Calendar as CalendarIcon } from 'lucide-react';
-import { AuthGuard } from '@/components/auth-guard';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 import { useAuth } from '@/contexts/auth-context';
 import { cn } from '@/lib/utils';
@@ -494,19 +493,17 @@ export default function DashboardPage() {
   }
 
   return (
-    <AuthGuard>
-       <div className="flex min-h-screen w-full flex-col bg-background">
-        <AppSidebar />
-         <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
-          <PageHeader
-            title="FOLK SPIRITUAL GEMS"
-            description="An overview of your contacts and their progress."
-          />
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
-            {renderContent()}
-          </main>
-        </div>
+    <div className="flex min-h-screen w-full flex-col bg-background">
+      <AppSidebar />
+        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+        <PageHeader
+          title="FOLK SPIRITUAL GEMS"
+          description="An overview of your contacts and their progress."
+        />
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
+          {renderContent()}
+        </main>
       </div>
-    </AuthGuard>
+    </div>
   );
 }

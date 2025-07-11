@@ -4,7 +4,6 @@
 import * as React from 'react';
 import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { AuthGuard } from '@/components/auth-guard';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 import { useAuth } from '@/contexts/auth-context';
 
@@ -366,62 +365,60 @@ export default function SettingsPage() {
   }
 
   return (
-    <AuthGuard>
-      <div className="flex min-h-screen w-full flex-col bg-background">
-        <AppSidebar />
-        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
-            <PageHeader
-              title="Settings"
-              description="Manage options for dropdown menus and custom fields across the application."
-            />
-            <main className="flex-1 p-4 sm:p-6 sm:pt-0">
-              {isLoading ? (
-                <div className="flex min-h-[50vh] w-full items-center justify-center bg-background">
-                  <Loader2 className="h-8 w-8 animate-spin" />
+    <div className="flex min-h-screen w-full flex-col bg-background">
+      <AppSidebar />
+      <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+          <PageHeader
+            title="Settings"
+            description="Manage options for dropdown menus and custom fields across the application."
+          />
+          <main className="flex-1 p-4 sm:p-6 sm:pt-0">
+            {isLoading ? (
+              <div className="flex min-h-[50vh] w-full items-center justify-center bg-background">
+                <Loader2 className="h-8 w-8 animate-spin" />
+              </div>
+            ) : fetchError ? (
+                <FirebaseConfigError error={fetchError} />
+            ) : (
+              <div className="mx-auto max-w-4xl space-y-8">
+                <div>
+                    <div className="flex justify-end mb-4">
+                        <Button onClick={() => openDialog('add', 'source')}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Add Contact Source
+                        </Button>
+                    </div>
+                    {renderList('source', sources)}
                 </div>
-              ) : fetchError ? (
-                  <FirebaseConfigError error={fetchError} />
-              ) : (
-                <div className="mx-auto max-w-4xl space-y-8">
-                  <div>
-                      <div className="flex justify-end mb-4">
-                          <Button onClick={() => openDialog('add', 'source')}>
-                          <PlusCircle className="mr-2 h-4 w-4" /> Add Contact Source
-                          </Button>
-                      </div>
-                      {renderList('source', sources)}
-                  </div>
-                  <div>
-                      <div className="flex justify-end mb-4">
-                          <Button onClick={() => openDialog('add', 'customField')}>
-                          <PlusCircle className="mr-2 h-4 w-4" /> Add Custom Field
-                          </Button>
-                      </div>
-                      {renderCustomFieldsList()}
-                  </div>
+                <div>
+                    <div className="flex justify-end mb-4">
+                        <Button onClick={() => openDialog('add', 'customField')}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Add Custom Field
+                        </Button>
+                    </div>
+                    {renderCustomFieldsList()}
                 </div>
-              )}
-            </main>
-          </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{getDialogTitle()}</DialogTitle>
-                <DialogDescription>
-                {itemType === 'customField' 
-                  ? 'Define a new custom field for your contacts.'
-                  : 'Enter the name for the item below.'
-                }
-              </DialogDescription>
-            </DialogHeader>
-            {renderDialogContent()}
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleSave}>Save</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </AuthGuard>
+              </div>
+            )}
+          </main>
+        </div>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{getDialogTitle()}</DialogTitle>
+              <DialogDescription>
+              {itemType === 'customField' 
+                ? 'Define a new custom field for your contacts.'
+                : 'Enter the name for the item below.'
+              }
+            </DialogDescription>
+          </DialogHeader>
+          {renderDialogContent()}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSave}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

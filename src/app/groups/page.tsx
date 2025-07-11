@@ -5,7 +5,6 @@ import { PlusCircle, Loader2 } from "lucide-react";
 import type { Group } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { getGroups, createGroup, updateGroup, deleteGroup } from "@/services/groups-service";
-import { AuthGuard } from "@/components/auth-guard";
 import { FirebaseConfigError } from "@/components/firebase-config-error";
 import { useAuth } from "@/contexts/auth-context";
 
@@ -141,30 +140,28 @@ export default function GroupsPage() {
   }
 
   return (
-    <AuthGuard>
-      <div className="flex min-h-screen w-full flex-col bg-background">
-        <AppSidebar />
-        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
-          <PageHeader
-            title="Groups"
-            description={`Manage your created groups. You have ${groups.length} groups.`}
-          >
-            <Button size="sm" onClick={handleCreateGroup}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Create Group
-            </Button>
-          </PageHeader>
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
-            {renderContent()}
-          </main>
-        </div>
-        <CreateUpdateGroupDialog
-          isOpen={isDialogOpen}
-          setIsOpen={setIsDialogOpen}
-          onSave={handleSaveGroup}
-          group={editingGroup}
-        />
+    <div className="flex min-h-screen w-full flex-col bg-background">
+      <AppSidebar />
+      <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+        <PageHeader
+          title="Groups"
+          description={`Manage your created groups. You have ${groups.length} groups.`}
+        >
+          <Button size="sm" onClick={handleCreateGroup}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Create Group
+          </Button>
+        </PageHeader>
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
+          {renderContent()}
+        </main>
       </div>
-    </AuthGuard>
+      <CreateUpdateGroupDialog
+        isOpen={isDialogOpen}
+        setIsOpen={setIsDialogOpen}
+        onSave={handleSaveGroup}
+        group={editingGroup}
+      />
+    </div>
   );
 }
