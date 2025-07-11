@@ -45,6 +45,7 @@ import { Separator } from "./ui/separator";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { occupationStatuses } from "@/lib/types";
+import { Slider } from "./ui/slider";
 
 
 const createPersonFormSchema = (allPeople, currentPersonId) => (
@@ -57,7 +58,7 @@ const createPersonFormSchema = (allPeople, currentPersonId) => (
     organisation: z.string().optional(),
     rentDetails: z.string().optional(),
     nativePlace: z.string().optional(),
-    sgRating: z.coerce.number().min(0).max(10).optional(),
+    sgRating: z.coerce.number().min(0).max(5).optional(),
     contactSource: z.string().optional(),
     chantingStatus: z.string().optional(),
     fromOtherCamp: z.boolean().default(false),
@@ -295,6 +296,7 @@ export function CreateUpdatePersonDialog({
         contactSource: data.contactSource || "",
         chantingStatus: data.chantingStatus || "",
         enablerInTouchWith: data.enablerInTouchWith || "",
+        sgRating: Number(data.sgRating || 0),
         photoUrl:
           photoPreview ||
           person?.photoUrl ||
@@ -593,14 +595,14 @@ export function CreateUpdatePersonDialog({
                     name="sgRating"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>SG Rating</FormLabel>
-                            <FormControl>
-                                <Input 
-                                    type="number"
-                                    min="0"
-                                    max="10"
-                                    {...field}
-                                    onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)}
+                            <FormLabel>SG Rating ({Number(field.value || 0).toFixed(1)})</FormLabel>
+                             <FormControl>
+                                <Slider
+                                    value={[field.value || 0]}
+                                    onValueChange={(value) => field.onChange(value[0])}
+                                    min={0}
+                                    max={5}
+                                    step={0.5}
                                 />
                             </FormControl>
                             <FormMessage />
