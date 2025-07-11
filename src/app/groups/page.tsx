@@ -13,8 +13,9 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { GroupCard } from "@/components/group-card";
 import { CreateUpdateGroupDialog } from "@/components/create-update-group-dialog";
+import { AuthGuard } from "@/components/auth-guard";
 
-export default function GroupsPage() {
+function GroupsPageComponent() {
   const { toast } = useToast();
   const { appUser } = useAuth();
   const [groups, setGroups] = React.useState<Group[]>([]);
@@ -164,4 +165,12 @@ export default function GroupsPage() {
       />
     </div>
   );
+}
+
+export default function GroupsPage() {
+    return (
+        <AuthGuard>
+            <GroupsPageComponent />
+        </AuthGuard>
+    )
 }

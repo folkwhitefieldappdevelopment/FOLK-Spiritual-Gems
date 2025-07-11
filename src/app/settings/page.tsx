@@ -44,11 +44,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import type { CustomField, CustomFieldType } from '@/lib/types';
 import { customFieldTypes } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AuthGuard } from '@/components/auth-guard';
 
 type DialogMode = 'add' | 'edit';
 type ItemType = 'source' | 'customField';
 
-export default function SettingsPage() {
+function SettingsPageComponent() {
   const { toast } = useToast();
   const { appUser } = useAuth();
   const [isLoading, setIsLoading] = React.useState(true);
@@ -421,4 +422,12 @@ export default function SettingsPage() {
       </Dialog>
     </div>
   );
+}
+
+export default function SettingsPage() {
+    return (
+        <AuthGuard>
+            <SettingsPageComponent />
+        </AuthGuard>
+    )
 }

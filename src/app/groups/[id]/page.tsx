@@ -56,8 +56,9 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { ColumnFilterState, applyColumnFilters } from '@/components/column-header-filter';
+import { AuthGuard } from '@/components/auth-guard';
 
-export default function GroupDetailPage() {
+function GroupDetailPageComponent() {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
@@ -128,8 +129,10 @@ export default function GroupDetailPage() {
   }, [groupId, appUser, router, toast]);
 
   React.useEffect(() => {
-    fetchPageData();
-  }, [fetchPageData]);
+    if (appUser) {
+      fetchPageData();
+    }
+  }, [appUser, fetchPageData]);
   
   const filterableFields: FilterableField[] = React.useMemo(() => [
     { value: 'occupation', label: 'Occupation', type: 'enum', options: occupationStatuses.map(s => ({ value: s, label: s })) },
@@ -388,4 +391,12 @@ export default function GroupDetailPage() {
       {isAssignCoEnablerDialogOpen && <AssignCoEnablerDialog isOpen={isAssignCoEnablerDialogOpen} setIsOpen={setIsAssignCoEnablerDialogOpen} onSave={handleAssignCoEnabler} peopleCount={selectedIds.size} />}
     </div>
   );
+}
+
+export default function GroupDetailPage() {
+    return (
+        <AuthGuard>
+            <GroupDetailPageComponent />
+        </AuthGuard>
+    )
 }

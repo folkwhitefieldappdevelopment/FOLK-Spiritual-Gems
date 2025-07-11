@@ -1,5 +1,5 @@
 
-"use client";
+'use client';
 
 import * as React from "react";
 import { Headset, Loader2, Edit, Search, Users, UserCheck, PlusCircle, Play, Pause } from "lucide-react";
@@ -50,6 +50,7 @@ import { CreateUpdateGroupDialog } from '@/components/create-update-group-dialog
 import { AssignCoEnablerDialog } from '@/components/assign-helper-dialog';
 import { ColumnFilterState, applyColumnFilters } from "@/components/column-header-filter";
 import { SortPopover, type SortDescriptor } from "@/components/sort-popover";
+import { AuthGuard } from "@/components/auth-guard";
 
 
 const CallingAssistantPageComponent = React.memo(function CallingAssistantPageComponent() {
@@ -126,8 +127,10 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   }, [appUser]);
 
   React.useEffect(() => {
-    fetchPageData();
-  }, [fetchPageData]);
+    if (appUser) {
+      fetchPageData();
+    }
+  }, [appUser, fetchPageData]);
   
   React.useEffect(() => {
     setSelectedIds(new Set());
@@ -540,6 +543,14 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       return <FirebaseConfigError error={fetchError} />;
     }
 
+    if (isDataLoading) {
+        return (
+            <div className="flex min-h-[50vh] w-full items-center justify-center bg-background">
+                <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+        );
+    }
+
     return (
       <>
         <div className="mb-6 flex flex-col gap-4">
@@ -606,11 +617,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
             </div>
         </div>
         
-        {isDataLoading ? (
-            <div className="flex min-h-[50vh] w-full items-center justify-center bg-background">
-                <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-        ) : filteredPeople.length === 0 ? (
+        {filteredPeople.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <p>No contacts found.</p>
             <p className="text-sm">Try adjusting your search or filters.</p>
@@ -771,6 +778,8 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
 export default function CallingAssistantPage() {
     return (
-        <CallingAssistantPageComponent />
+        <AuthGuard>
+            <CallingAssistantPageComponent />
+        </AuthGuard>
     );
 }

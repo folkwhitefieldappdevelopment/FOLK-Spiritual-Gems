@@ -63,6 +63,7 @@ import { SortPopover, type SortDescriptor } from "@/components/sort-popover";
 import { FilterPopover, type FilterRule, type FilterableField } from "@/components/filter-popover";
 import { Input } from "@/components/ui/input";
 import { ColumnFilterState, applyColumnFilters } from "@/components/column-header-filter";
+import { AuthGuard } from "@/components/auth-guard";
 
 export default function ContactsPage() {
   const { toast } = useToast();
@@ -128,8 +129,10 @@ export default function ContactsPage() {
 
 
   React.useEffect(() => {
-    fetchPageData();
-  }, [fetchPageData]);
+    if (appUser) {
+        fetchPageData();
+    }
+  }, [appUser, fetchPageData]);
 
   const filterableFields: FilterableField[] = React.useMemo(() => [
     { value: 'occupation', label: 'Occupation', type: 'enum', options: occupationStatuses.map(s => ({ value: s, label: s })) },
@@ -860,74 +863,76 @@ export default function ContactsPage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-background">
-      <AppSidebar />
-      <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
-          <PageHeader
-              title="FOLK SPIRITUAL GEMS"
-              description="Your central hub for managing contacts and activities."
-          >
-              <div className="flex items-center gap-2">
-                  <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
-                          {isLoadingAction ? (
-                          <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
-                      ) : (
-                          <Upload className="h-4 w-4 sm:mr-2" />
-                      )}
-                      <span className="hidden sm:inline">{isLoadingAction ? loadingText : 'Import/Export'}</span>
-                      </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                      <DropdownMenuItem onSelect={() => fileInputRef.current?.click()} disabled={isLoadingAction}>
-                      Import from Excel
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleExport} disabled={isLoadingAction}>
-                      Export to Excel
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleSampleDownload} disabled={isLoadingAction}>
-                      Download Sample Excel
-                      </DropdownMenuItem>
-                  </DropdownMenuContent>
-                  </DropdownMenu>
+    <AuthGuard>
+      <div className="flex min-h-screen w-full flex-col bg-background">
+        <AppSidebar />
+        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+            <PageHeader
+                title="FOLK SPIRITUAL GEMS"
+                description="Your central hub for managing contacts and activities."
+            >
+                <div className="flex items-center gap-2">
+                    <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
+                            {isLoadingAction ? (
+                            <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
+                        ) : (
+                            <Upload className="h-4 w-4 sm:mr-2" />
+                        )}
+                        <span className="hidden sm:inline">{isLoadingAction ? loadingText : 'Import/Export'}</span>
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuItem onSelect={() => fileInputRef.current?.click()} disabled={isLoadingAction}>
+                        Import from Excel
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleExport} disabled={isLoadingAction}>
+                        Export to Excel
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleSampleDownload} disabled={isLoadingAction}>
+                        Download Sample Excel
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                    </DropdownMenu>
 
-                  <Button size="sm" onClick={handleAddPerson} className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
-                  <PlusCircle className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Add Person</span>
-                  </Button>
-              </div>
-          </PageHeader>
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
-            {renderContent()}
-          </main>
+                    <Button size="sm" onClick={handleAddPerson} className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
+                    <PlusCircle className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Add Person</span>
+                    </Button>
+                </div>
+            </PageHeader>
+            <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
+              {renderContent()}
+            </main>
+        </div>
+        <CreateUpdatePersonDialog
+          isOpen={isDialogOpen}
+          setIsOpen={setIsDialogOpen}
+          onSave={handleSavePerson}
+          person={editingPerson}
+          allPeople={people}
+        />
+        <CreateUpdateGroupDialog
+            isOpen={isCreateGroupDialogOpen}
+            setIsOpen={setIsCreateGroupDialogOpen}
+            onSave={handleSaveGroupAndAddMembers}
+        />
+        <AssignCoEnablerDialog
+          isOpen={isAssignCoEnablerDialogOpen}
+          setIsOpen={setIsAssignCoEnablerDialogOpen}
+          onSave={handleAssignCoEnabler}
+          peopleCount={selectedIds.size}
+        />
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileImport}
+          className="hidden"
+          accept=".xlsx, .xls, .csv"
+        />
       </div>
-      <CreateUpdatePersonDialog
-        isOpen={isDialogOpen}
-        setIsOpen={setIsDialogOpen}
-        onSave={handleSavePerson}
-        person={editingPerson}
-        allPeople={people}
-      />
-      <CreateUpdateGroupDialog
-          isOpen={isCreateGroupDialogOpen}
-          setIsOpen={setIsCreateGroupDialogOpen}
-          onSave={handleSaveGroupAndAddMembers}
-      />
-      <AssignCoEnablerDialog
-        isOpen={isAssignCoEnablerDialogOpen}
-        setIsOpen={setIsAssignCoEnablerDialogOpen}
-        onSave={handleAssignCoEnabler}
-        peopleCount={selectedIds.size}
-      />
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileImport}
-        className="hidden"
-        accept=".xlsx, .xls, .csv"
-      />
-    </div>
+    </AuthGuard>
   );
 }

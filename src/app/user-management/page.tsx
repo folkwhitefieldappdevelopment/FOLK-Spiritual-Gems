@@ -45,8 +45,9 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
+import { AuthGuard } from '@/components/auth-guard';
 
-export default function UserManagementPage() {
+function UserManagementPageComponent() {
   const { toast } = useToast();
   const { appUser } = useAuth();
   const router = useRouter();
@@ -62,18 +63,6 @@ export default function UserManagementPage() {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [roleFilter, setRoleFilter] = React.useState('');
 
-  React.useEffect(() => {
-    // Redirect if the user is not an Admin or a Folk Guide
-    if (appUser && !appUser.role.includes('Admin') && !appUser.role.includes('Folk Guide')) {
-      toast({
-        variant: 'destructive',
-        title: 'Access Denied',
-        description: 'You do not have permission to view this page.'
-      });
-      router.replace('/dashboard');
-    }
-  }, [appUser, router, toast]);
-  
   const fetchUsersAndGuides = React.useCallback(async () => {
     if (!appUser) return;
 
@@ -423,4 +412,10 @@ export default function UserManagementPage() {
   );
 }
 
-    
+export default function UserManagementPage() {
+    return (
+        <AuthGuard adminOnly>
+            <UserManagementPageComponent />
+        </AuthGuard>
+    )
+}

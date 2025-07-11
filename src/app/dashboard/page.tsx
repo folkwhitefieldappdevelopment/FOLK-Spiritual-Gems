@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/chart';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart, Cell, Line, LineChart, Tooltip, Legend } from 'recharts';
 import { CallReport } from '@/components/call-report';
+import { AuthGuard } from '@/components/auth-guard';
 
 const CHART_COLORS = [
   'hsl(var(--chart-1))',
@@ -40,7 +41,7 @@ const CHART_COLORS = [
   'hsl(32.9 83.3% 57.8%)',
 ];
 
-export default function DashboardPage() {
+function DashboardPageComponent() {
   const { appUser } = useAuth();
   const [people, setPeople] = React.useState<Person[]>([]);
   const [relatedUsers, setRelatedUsers] = React.useState<AppUser[]>([]);
@@ -506,4 +507,12 @@ export default function DashboardPage() {
       </div>
     </div>
   );
+}
+
+export default function DashboardPage() {
+    return (
+        <AuthGuard>
+            <DashboardPageComponent />
+        </AuthGuard>
+    )
 }
