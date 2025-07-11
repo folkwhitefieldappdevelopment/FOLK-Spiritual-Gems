@@ -4,62 +4,51 @@
 import * as React from 'react';
 import { useTheme } from 'next-themes';
 import { Sun, Moon, Laptop } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
+import { Button } from './ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
 
 export function ThemeSwitcher() {
-  const { theme, setTheme } = useTheme();
-  
-  // To avoid hydration mismatch, we need to make sure the component is mounted on the client
-  // before we render the RadioGroup with the correct default value.
-  const [mounted, setMounted] = React.useState(false);
-  React.useEffect(() => setMounted(true), []);
-
-  if (!mounted) {
-    return null; // or a skeleton loader
-  }
+  const { setTheme } = useTheme();
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Theme</CardTitle>
-        <CardDescription>
-          Select the display theme for the application.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <RadioGroup
-          value={theme}
-          onValueChange={setTheme}
-          className="grid grid-cols-1 sm:grid-cols-3 gap-4"
-        >
-          <Label
-            htmlFor="light-theme"
-            className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
-          >
-            <RadioGroupItem value="light" id="light-theme" className="sr-only" />
-            <Sun className="h-6 w-6 mb-2" />
-            Light
-          </Label>
-          <Label
-            htmlFor="dark-theme"
-            className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
-          >
-            <RadioGroupItem value="dark" id="dark-theme" className="sr-only" />
-            <Moon className="h-6 w-6 mb-2" />
-            Dark
-          </Label>
-          <Label
-            htmlFor="system-theme"
-            className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
-          >
-            <RadioGroupItem value="system" id="system-theme" className="sr-only" />
-            <Laptop className="h-6 w-6 mb-2" />
-            System
-          </Label>
-        </RadioGroup>
-      </CardContent>
-    </Card>
+    <DropdownMenu>
+        <Tooltip delayDuration={0}>
+            <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 md:h-8 md:w-8 text-muted-foreground hover:text-foreground">
+                        <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                        <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                        <span className="sr-only">Toggle theme</span>
+                    </Button>
+                </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="right">Theme</TooltipContent>
+        </Tooltip>
+        <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setTheme('light')}>
+                <Sun className="mr-2 h-4 w-4" />
+                Light
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTheme('dark')}>
+                <Moon className="mr-2 h-4 w-4" />
+                Dark
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTheme('system')}>
+                <Laptop className="mr-2 h-4 w-4" />
+                System
+            </DropdownMenuItem>
+        </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

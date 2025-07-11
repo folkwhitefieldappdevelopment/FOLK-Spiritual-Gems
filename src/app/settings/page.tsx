@@ -44,7 +44,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import type { CustomField, CustomFieldType } from '@/lib/types';
 import { customFieldTypes } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ThemeSwitcher } from '@/components/theme-switcher';
 
 type DialogMode = 'add' | 'edit';
 type ItemType = 'source' | 'customField';
@@ -376,7 +375,6 @@ export default function SettingsPage() {
                   <FirebaseConfigError error={fetchError} />
               ) : (
                 <div className="mx-auto max-w-4xl space-y-8">
-                  <ThemeSwitcher />
                   <div>
                         <div className="flex justify-end mb-4">
                           <Button onClick={() => openDialog('add', 'source')}>

@@ -11,6 +11,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { ThemeSwitcher } from "./theme-switcher";
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -69,6 +70,7 @@ export function AppSidebar() {
           })}
         </nav>
         <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
+          <ThemeSwitcher />
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
               <Link
