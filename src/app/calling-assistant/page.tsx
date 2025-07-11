@@ -103,8 +103,8 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
         const [peopleData, enablersData, sourcesData, customFieldsData, groupsData, guidesData] = await Promise.all([
           getPeople(appUser),
           getEnablers(appUser, 'filter'),
-          getContactSources(),
-          getCustomPersonFields(),
+          getContactSources(appUser),
+          getCustomPersonFields(appUser),
           getGroups(appUser),
           getFolkGuides(),
         ]);

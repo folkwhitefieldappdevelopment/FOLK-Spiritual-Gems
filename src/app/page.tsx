@@ -106,7 +106,7 @@ export default function ContactsPage() {
       const [peopleData, enablersData, sourcesData, groupsData, guidesData] = await Promise.all([
         getPeople(appUser),
         getEnablers(appUser, 'filter'),
-        getContactSources(),
+        getContactSources(appUser),
         getGroups(appUser),
         getFolkGuides(),
       ]);

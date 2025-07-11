@@ -101,7 +101,7 @@ export default function GroupDetailPage() {
         getPeople(appUser),
         getGroups(appUser),
         getEnablers(appUser, 'filter'),
-        getContactSources(),
+        getContactSources(appUser),
         getFolkGuides(),
       ]);
 
