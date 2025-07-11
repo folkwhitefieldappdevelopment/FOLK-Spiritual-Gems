@@ -390,7 +390,7 @@ export default function UserManagementPage() {
             </div>
           </main>
       </div>
-    </div>
+    
     <CreateUserDialog
       isOpen={isFormDialogOpen}
       setIsOpen={setIsFormDialogOpen}
@@ -419,5 +419,8 @@ export default function UserManagementPage() {
         </AlertDialogContent>
       </AlertDialog>
     )}
+  </div>
   );
 }
+
+    
