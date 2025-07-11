@@ -401,7 +401,7 @@ export function EditablePersonDetailsForm({
         </div>
         <div className="font-semibold text-muted-foreground">Age</div><div>{person.age}</div>
         <div className="font-semibold text-muted-foreground">Occupation</div><div>{person.occupation || 'N/A'}</div>
-        <div className="font-semibold text-muted-foreground">Rating</div><div>{person.sgRating?.toFixed(1) || 'N/A'} / 5.0</div>
+        <div className="font-semibold text-muted-foreground">Rating</div><div>{person.sgRating != null ? Number(person.sgRating).toFixed(1) : 'N/A'} / 5.0</div>
         <div className="font-semibold text-muted-foreground">Organisation</div><div>{person.organisation || 'N/A'}</div>
       </div>
       
