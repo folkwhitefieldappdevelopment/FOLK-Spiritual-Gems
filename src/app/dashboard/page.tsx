@@ -6,11 +6,16 @@ import type { Person, AppUser } from '@/lib/types';
 import { getPeople } from '@/services/people-service';
 import { getUsers, getEnablersForGuide } from '@/services/user-service';
 import { useToast } from '@/hooks/use-toast';
-import { subWeeks, startOfWeek, isAfter, format } from 'date-fns';
-import { Users, UserPlus, Briefcase, Loader2 } from 'lucide-react';
+import { subWeeks, startOfWeek, isAfter, format, eachDayOfInterval, startOfDay, endOfDay, isWithinInterval, addDays } from 'date-fns';
+import { Users, UserPlus, Briefcase, Loader2, Calendar as CalendarIcon } from 'lucide-react';
 import { AuthGuard } from '@/components/auth-guard';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 import { useAuth } from '@/contexts/auth-context';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import type { DateRange } from 'react-day-picker';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -20,7 +25,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart, Cell, Line, LineChart, Tooltip } from 'recharts';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart, Cell, Line, LineChart, Tooltip, Legend } from 'recharts';
 import { CallReport } from '@/components/call-report';
 
 const CHART_COLORS = [
@@ -29,6 +34,11 @@ const CHART_COLORS = [
   'hsl(var(--chart-3))',
   'hsl(var(--chart-4))',
   'hsl(var(--chart-5))',
+  'hsl(210 40% 96.1%)',
+  'hsl(142.1 76.2% 36.3%)',
+  'hsl(346.8 77.2% 49.8%)',
+  'hsl(262.1 83.3% 57.8%)',
+  'hsl(32.9 83.3% 57.8%)',
 ];
 
 export default function DashboardPage() {
@@ -37,6 +47,10 @@ export default function DashboardPage() {
   const [relatedUsers, setRelatedUsers] = React.useState<AppUser[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
+    from: addDays(new Date(), -7),
+    to: new Date(),
+  });
 
   React.useEffect(() => {
     if (!appUser) {
@@ -188,6 +202,58 @@ export default function DashboardPage() {
       enablersByGuideData: enablersByGuideChartData,
     };
   }, [people, relatedUsers, appUser]);
+
+  const { dailyCallsData, dailyConfirmationsData, enablerKeys } = React.useMemo(() => {
+    if (!dateRange?.from || !people.length || !relatedUsers.length) {
+      return { dailyCallsData: [], dailyConfirmationsData: [], enablerKeys: [] };
+    }
+  
+    const from = startOfDay(dateRange.from);
+    const to = endOfDay(dateRange.to || dateRange.from);
+    
+    const enablers = relatedUsers.filter(u => u.role.includes('Folk Enabler') || u.role.includes('Folk Guide'));
+    const enablerNames = enablers.map(e => e.name);
+  
+    const callsInRange = people.flatMap(person => 
+      (person.callHistory || [])
+        .filter(call => {
+          if (!call.calledAt) return false;
+          const callDate = call.calledAt?.toDate ? call.calledAt.toDate() : new Date(call.calledAt);
+          return isWithinInterval(callDate, { start: from, end: to });
+        })
+        .map(call => ({
+          ...call,
+          enabler: person.enablerInTouchWith || 'Unassigned',
+          date: format(safeDate(call.calledAt)!, 'yyyy-MM-dd')
+        }))
+    ).filter(call => enablerNames.includes(call.enabler));
+  
+    const dateInterval = eachDayOfInterval({ start: from, end: to });
+    const dateMap = new Map<string, { date: string; [key: string]: number }>();
+    dateInterval.forEach(d => {
+      const formattedDate = format(d, 'yyyy-MM-dd');
+      const entry: { date: string; [key: string]: number } = { date: formattedDate };
+      enablerNames.forEach(name => entry[name] = 0);
+      dateMap.set(formattedDate, entry);
+    });
+  
+    const confirmationsDateMap = new Map(JSON.parse(JSON.stringify(Array.from(dateMap))));
+  
+    callsInRange.forEach(call => {
+      if (dateMap.has(call.date) && enablerNames.includes(call.enabler)) {
+        dateMap.get(call.date)![call.enabler]++;
+      }
+      if (confirmationsDateMap.has(call.date) && enablerNames.includes(call.enabler) && call.status === 'A1 - Coming') {
+        confirmationsDateMap.get(call.date)![call.enabler]++;
+      }
+    });
+
+    return { 
+      dailyCallsData: Array.from(dateMap.values()),
+      dailyConfirmationsData: Array.from(confirmationsDateMap.values()),
+      enablerKeys: enablerNames,
+    };
+  }, [dateRange, people, relatedUsers]);
   
   const renderContent = () => {
      if (isLoading) {
@@ -235,6 +301,85 @@ export default function DashboardPage() {
                   <div className="text-2xl font-bold">{enablerCount}</div>
                   <p className="text-xs text-muted-foreground">{enablerCountDescription}</p>
               </CardContent>
+          </Card>
+          
+          <Card className="lg:col-span-3">
+            <CardHeader>
+              <CardTitle>Daily Activity Report</CardTitle>
+              <CardDescription>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <span>Calls and confirmations per enabler over the selected period.</span>
+                   <Popover>
+                    <PopoverTrigger asChild>
+                    <Button
+                        id="date"
+                        variant={"outline"}
+                        className={cn(
+                        "w-full sm:w-[300px] justify-start text-left font-normal",
+                        !dateRange && "text-muted-foreground"
+                        )}
+                    >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateRange?.from ? (
+                        dateRange.to ? (
+                            <>
+                            {format(dateRange.from, "LLL dd, y")} -{" "}
+                            {format(dateRange.to, "LLL dd, y")}
+                            </>
+                        ) : (
+                            format(dateRange.from, "LLL dd, y")
+                        )
+                        ) : (
+                        <span>Pick a date range</span>
+                        )}
+                    </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                        initialFocus
+                        mode="range"
+                        defaultMonth={dateRange?.from}
+                        selected={dateRange}
+                        onSelect={setDateRange}
+                        numberOfMonths={2}
+                    />
+                    </PopoverContent>
+                </Popover>
+                </div>
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-8">
+              <div>
+                <h3 className="text-md font-semibold mb-2">Daily Calls per Enabler</h3>
+                <ChartContainer config={{}} className="h-[300px] w-full">
+                  <LineChart data={dailyCallsData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tickFormatter={(value) => format(new Date(value), 'MMM d')} />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip content={<ChartTooltipContent />} />
+                    <Legend />
+                    {enablerKeys.map((key, i) => (
+                      <Line key={key} type="monotone" dataKey={key} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={false} />
+                    ))}
+                  </LineChart>
+                </ChartContainer>
+              </div>
+               <div>
+                <h3 className="text-md font-semibold mb-2">Daily Confirmations (A1) per Enabler</h3>
+                <ChartContainer config={{}} className="h-[300px] w-full">
+                  <LineChart data={dailyConfirmationsData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tickFormatter={(value) => format(new Date(value), 'MMM d')} />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip content={<ChartTooltipContent />} />
+                    <Legend />
+                    {enablerKeys.map((key, i) => (
+                      <Line key={key} type="monotone" dataKey={key} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={false} />
+                    ))}
+                  </LineChart>
+                </ChartContainer>
+              </div>
+            </CardContent>
           </Card>
           
           <Card className="lg:col-span-3">
