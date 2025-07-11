@@ -44,6 +44,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog';
 import { StarRating } from "./star-rating";
 
@@ -363,10 +364,10 @@ export function EditablePersonDetailsForm({
                         </div>
                     </DialogTrigger>
                     <DialogContent className="p-0 border-0 max-w-lg bg-transparent shadow-none">
-                      <DialogHeader>
-                        <DialogTitle className="sr-only">{`Profile picture of ${fullName}`}</DialogTitle>
-                      </DialogHeader>
-                      <img src={person.photoUrl} alt={fullName} className="rounded-lg w-full h-auto object-contain" />
+                        <DialogHeader>
+                          <DialogTitle className="sr-only">{`Profile picture of ${fullName}`}</DialogTitle>
+                        </DialogHeader>
+                        <img src={person.photoUrl} alt={fullName} className="rounded-lg w-full h-auto object-contain" />
                     </DialogContent>
                 </Dialog>
             </div>
