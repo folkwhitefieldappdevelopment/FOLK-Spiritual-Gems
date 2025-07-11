@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import type { Person, CustomField, AppUser, Group } from "@/lib/types";
 import { occupationStatuses } from "@/lib/types";
-import { Camera, Upload, SwitchCamera, Phone, Tags, Star } from "lucide-react";
+import { Camera, Upload, SwitchCamera, Phone, Tags } from "lucide-react";
 import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
 import { getFolkGuides } from "@/services/user-service";
 import { useAuth } from "@/contexts/auth-context";
@@ -369,11 +369,12 @@ export function EditablePersonDetailsForm({
   }
 
   const avatarSize = isInDialog ? 'h-24 w-24' : 'h-32 w-32';
+  const rating = Number(person.sgRating);
 
   return (
     <div className="space-y-6">
        <div className="flex flex-col items-center text-center">
-            <div className={cn("relative", isInDialog ? "mb-4" : "mb-8")}>
+            <div className={cn("relative", isInDialog ? "mb-4" : "mb-4 pb-4")}>
                 <Dialog>
                     <DialogTrigger asChild>
                          <Avatar className={cn("cursor-pointer hover:opacity-80 transition-opacity", avatarSize)}>
@@ -401,7 +402,7 @@ export function EditablePersonDetailsForm({
         </div>
         <div className="font-semibold text-muted-foreground">Age</div><div>{person.age}</div>
         <div className="font-semibold text-muted-foreground">Occupation</div><div>{person.occupation || 'N/A'}</div>
-        <div className="font-semibold text-muted-foreground">Rating</div><div>{person.sgRating != null ? Number(person.sgRating).toFixed(1) : 'N/A'} / 5.0</div>
+        <div className="font-semibold text-muted-foreground">Rating</div><div>{typeof rating === 'number' ? `${rating.toFixed(1)} / 5.0` : 'N/A'}</div>
         <div className="font-semibold text-muted-foreground">Organisation</div><div>{person.organisation || 'N/A'}</div>
       </div>
       

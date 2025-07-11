@@ -4,7 +4,7 @@
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import { User, Briefcase, Tags } from "lucide-react";
-import type { Person, ProgressCategory, ProgressLevelAnswers, Group } from "@/lib/types";
+import type { Person, Group } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/contexts/auth-context';
 import {
@@ -25,81 +25,6 @@ type PersonCardProps = {
   onSelectionChange: (personId: string, checked: boolean) => void;
   groups: Group[];
   isSelectionActive: boolean;
-};
-
-const calculateScore = (categoryProgress: ProgressCategory): number => {
-  if (!categoryProgress || !categoryProgress.items) return -Infinity;
-
-  const parseNumber = (str: string): number | null => {
-    if (!str) return null;
-    const match = str.match(/\d+/);
-    return match ? parseInt(match[0], 10) : null;
-  };
-
-  // Special handling for Chanting. Score from 0 to 100.
-  if (categoryProgress.name === 'Chanting') {
-    const chantingItem = categoryProgress.items.find(item => item.question.includes('Chanting'));
-    if (chantingItem) {
-        const answerObj = chantingItem.answers;
-        if (answerObj) {
-            const rounds = Math.max(0, ...Object.values(answerObj).map(a => parseNumber(a) || 0));
-            return (rounds / 16) * 100;
-        }
-    }
-  }
-
-  let totalGoals = 0;
-  let score = 0;
-  let hasAnyInput = false;
-
-  categoryProgress.items.forEach((item) => {
-    item.levels.forEach((goal, levelIndex) => {
-      const goalStr = (goal || "").trim();
-      if (goalStr && goalStr !== '-') {
-        totalGoals++;
-        
-        const answerObj = item.answers;
-        const levelKey = `l${levelIndex + 1}` as keyof ProgressLevelAnswers;
-        const answer = answerObj ? answerObj[levelKey] || '' : '';
-        const normAnswer = answer.trim().toLowerCase();
-        const normGoal = goalStr.toLowerCase();
-
-        if (normAnswer && normAnswer !== '-') {
-          hasAnyInput = true;
-        }
-
-        if (normGoal === 'yes') {
-          if (normAnswer === 'yes') {
-            score++;
-          } else if (normAnswer === 'no') {
-            score--; // Negative score for 'No'
-          }
-        } else {
-          const goalNum = parseNumber(normGoal);
-          const answerNum = parseNumber(normAnswer);
-
-          if (goalNum !== null && answerNum !== null) {
-            score += Math.min(1, answerNum / goalNum);
-          } else if (normAnswer && normAnswer !== '-') {
-            score++;
-          }
-        }
-      }
-    });
-  });
-
-  if (!hasAnyInput) return -Infinity;
-  if (totalGoals === 0) return -Infinity;
-  
-  return (score / totalGoals) * 100;
-};
-
-const getProgressColor = (score: number): string => {
-    if (score === -Infinity) return 'bg-gray-400';
-    if (score >= 75) return 'bg-green-500';
-    if (score >= 25) return 'bg-yellow-400';
-    if (score > -25) return 'bg-orange-400';
-    return 'bg-red-500';
 };
 
 const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, isSelectionActive }: PersonCardProps) => {
@@ -176,7 +101,7 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
                             {fallback}
                         </AvatarFallback>
                     </Avatar>
-                    <StarRating value={(person.sgRating || 0)} />
+                    <StarRating value={Number(person.sgRating) || 0} />
                 </div>
                  <CardHeader className="text-center p-0">
                     <CardTitle className={cn("text-lg", !isSelectionActive && "group-hover:underline")}>{fullName}</CardTitle>
@@ -204,42 +129,6 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
                             ))}
                         </div>
                     </div>
-                )}
-                
-                {isAdmin && person.progress && person.progress.length > 0 && (
-                <div className="mt-4 pt-4 border-t space-y-2">
-                    <h4 className="text-sm font-semibold text-foreground mb-2">
-                    Progress Overview
-                    </h4>
-                    <div className="space-y-1.5">
-                        {person.progress.map((category) => {
-                            const score = calculateScore(category);
-                            const progressColor = getProgressColor(score);
-                            const hasProgress = score > -Infinity;
-                            
-                            return (
-                            <div key={category.name} className="flex items-center text-sm">
-                                <span
-                                className={cn(
-                                    "h-2.5 w-2.5 rounded-full mr-2 shrink-0",
-                                    progressColor
-                                )}
-                                />
-                                <span
-                                className={cn(
-                                    "truncate",
-                                    hasProgress
-                                    ? "text-foreground"
-                                    : "text-muted-foreground"
-                                )}
-                                >
-                                {category.name}
-                                </span>
-                            </div>
-                            );
-                        })}
-                    </div>
-                </div>
                 )}
             </CardContent>
           </div>
