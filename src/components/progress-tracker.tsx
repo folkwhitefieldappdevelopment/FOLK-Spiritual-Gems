@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from './ui/select';
 import { Button } from './ui/button';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 
 const parseNumber = (str: string): number | null => {
   if (!str) return null;
@@ -98,7 +99,7 @@ export function ProgressTracker({
   onProgressChange,
   isEditable,
 }: ProgressTrackerProps) {
-  const [maxVisibleLevel, setMaxVisibleLevel] = React.useState(1);
+  const [currentLevel, setCurrentLevel] = React.useState(1);
 
   if (!progress || progress.length === 0) {
     return (
@@ -179,23 +180,39 @@ export function ProgressTracker({
     );
   };
 
-  const totalColumns = 1 + maxVisibleLevel * 3;
+  const totalColumns = 4; // Category + Goal + Achieved + Remarks
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Progress Checklist</CardTitle>
-        <div className="flex items-center gap-2">
-            {maxVisibleLevel > 1 && (
-                <Button variant="outline" size="sm" onClick={() => setMaxVisibleLevel(l => l - 1)}>
-                    Hide L{maxVisibleLevel}
-                </Button>
-            )}
-            {maxVisibleLevel < 3 && (
-                <Button size="sm" onClick={() => setMaxVisibleLevel(l => l + 1)}>
-                    Show L{maxVisibleLevel + 1}
-                </Button>
-            )}
+        <div className="flex items-center gap-4">
+            <Button 
+                variant="outline" 
+                size="icon" 
+                className="h-8 w-8"
+                onClick={() => setCurrentLevel(l => Math.max(1, l - 1))}
+                disabled={currentLevel === 1}
+                aria-label="Previous Level"
+            >
+                <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div className="text-center font-semibold text-foreground text-lg w-24">
+                L-{currentLevel}
+                <p className="font-normal text-xs text-muted-foreground">
+                    (4 months)
+                </p>
+            </div>
+            <Button 
+                variant="outline" 
+                size="icon" 
+                className="h-8 w-8"
+                onClick={() => setCurrentLevel(l => Math.min(3, l + 1))}
+                disabled={currentLevel === 3}
+                aria-label="Next Level"
+            >
+                <ArrowRight className="h-4 w-4" />
+            </Button>
         </div>
       </CardHeader>
       <CardContent className="p-0">
@@ -203,52 +220,12 @@ export function ProgressTracker({
             <table className="w-full caption-bottom text-sm border-collapse">
             <TableHeader className="sticky top-0 z-30 bg-muted">
                 <TableRow>
-                <TableHead rowSpan={2} className="w-[300px] font-bold text-foreground align-bottom sticky left-0 z-40 bg-muted py-2 pr-2 pl-4 border-b border-r">
-                    Category
-                </TableHead>
-                <TableHead colSpan={3} className="text-center font-bold text-foreground border-l border-b p-2">
-                    L-1
-                    <p className="font-normal text-xs text-muted-foreground">
-                    4 months
-                    </p>
-                </TableHead>
-                {maxVisibleLevel >= 2 && (
-                    <TableHead colSpan={3} className="text-center font-bold text-foreground border-l border-b p-2">
-                        L-2
-                        <p className="font-normal text-xs text-muted-foreground">
-                        4 months
-                        </p>
+                    <TableHead className="w-[300px] min-w-[300px] font-bold text-foreground align-bottom sticky left-0 z-40 bg-muted py-2 pr-2 pl-4 border-b border-r">
+                        Category
                     </TableHead>
-                )}
-                {maxVisibleLevel >= 3 && (
-                    <TableHead colSpan={3} className="text-center font-bold text-foreground border-l border-b p-2">
-                        L-3
-                        <p className="font-normal text-xs text-muted-foreground">
-                        4 months
-                        </p>
-                    </TableHead>
-                )}
-                </TableRow>
-                <TableRow>
-                <TableHead className="text-center text-xs font-semibold border-l border-b p-1">Goal</TableHead>
-                <TableHead className="text-center text-xs font-semibold border-b p-1">Achieved</TableHead>
-                <TableHead className="text-center text-xs font-semibold border-b p-1">Remarks</TableHead>
-
-                {maxVisibleLevel >= 2 && (
-                    <>
-                        <TableHead className="text-center text-xs font-semibold border-l border-b p-1">Goal</TableHead>
-                        <TableHead className="text-center text-xs font-semibold border-b p-1">Achieved</TableHead>
-                        <TableHead className="text-center text-xs font-semibold border-b p-1">Remarks</TableHead>
-                    </>
-                )}
-                
-                {maxVisibleLevel >= 3 && (
-                    <>
-                        <TableHead className="text-center text-xs font-semibold border-l border-b p-1">Goal</TableHead>
-                        <TableHead className="text-center text-xs font-semibold border-b p-1">Achieved</TableHead>
-                        <TableHead className="text-center text-xs font-semibold border-b p-1">Remarks</TableHead>
-                    </>
-                )}
+                    <TableHead className="w-[120px] text-center text-xs font-semibold border-l border-b p-1">Goal</TableHead>
+                    <TableHead className="w-[120px] text-center text-xs font-semibold border-b p-1">Achieved</TableHead>
+                    <TableHead className="w-[120px] text-center text-xs font-semibold border-b p-1">Remarks</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -259,34 +236,30 @@ export function ProgressTracker({
                         {category.name}
                     </TableCell>
                     </TableRow>
-                    {category.items.map((item, itemIndex) => (
-                    <TableRow key={item.question}>
-                        <TableCell className="font-medium text-sm text-muted-foreground align-top sticky left-0 z-20 bg-card py-2 pr-2 pl-4 border-b border-r">
-                        {item.link ? (
-                            <Link
-                            href={item.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="underline text-blue-600 hover:text-blue-800"
-                            >
-                            {item.question}
-                            </Link>
-                        ) : (
-                            item.question
-                        )}
-                        </TableCell>
-                        {item.levels.map((goal, levelIndex) => {
-                        if (levelIndex >= maxVisibleLevel) {
-                          return null;
-                        }
-
+                    {category.items.map((item, itemIndex) => {
+                        const levelIndex = currentLevel - 1;
+                        const goal = item.levels[levelIndex];
                         const levelKey = `l${levelIndex + 1}` as keyof ProgressLevelAnswers;
                         const remarkKey = `l${levelIndex + 1}_remark` as keyof ProgressLevelAnswers;
                         const currentValue = item.answers?.[levelKey] || '';
                         const currentRemark = item.answers?.[remarkKey] || '';
                         
                         return (
-                            <React.Fragment key={levelIndex}>
+                        <TableRow key={item.question}>
+                            <TableCell className="font-medium text-sm text-muted-foreground align-top sticky left-0 z-20 bg-card py-2 pr-2 pl-4 border-b border-r">
+                            {item.link ? (
+                                <Link
+                                href={item.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline text-blue-600 hover:text-blue-800"
+                                >
+                                {item.question}
+                                </Link>
+                            ) : (
+                                item.question
+                            )}
+                            </TableCell>
                             <TableCell className="text-center text-xs p-1 border-l bg-muted/20 align-top border-b">
                                 {isEditable ? (
                                     <Input
@@ -319,11 +292,9 @@ export function ProgressTracker({
                                     className="w-full h-full p-1 text-xs text-center bg-transparent border-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0"
                                 />
                             </TableCell>
-                            </React.Fragment>
+                        </TableRow>
                         )
-                        })}
-                    </TableRow>
-                    ))}
+                    })}
                 </React.Fragment>
                 ))}
             </TableBody>

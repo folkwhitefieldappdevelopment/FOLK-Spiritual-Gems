@@ -18,8 +18,8 @@ const StarRatingComponent = ({ value, totalStars = 5, avatarSizeClass }: StarRat
   const radiusMap = {
     'h-16 w-16': '2.6rem', 
     'h-20 w-20': '3.1rem',
-    'h-24 w-24': '4.1rem',
-    'h-32 w-32': '5.2rem',
+    'h-24 w-24': '3.1rem',
+    'h-32 w-32': '2.6rem',
   };
   
   const radius = radiusMap[avatarSizeClass] || '2.6rem';
