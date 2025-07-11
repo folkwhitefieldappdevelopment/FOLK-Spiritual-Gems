@@ -171,8 +171,8 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
         </div>
         
         <div className="flex flex-col h-full">
-            <div className="relative w-full flex justify-center pt-8 pb-10">
-                <Avatar className="h-20 w-20">
+            <div className="flex flex-col items-center pt-8 pb-4">
+                <Avatar className="h-20 w-20 mb-3">
                     <AvatarImage
                         src={person.photoUrl}
                         alt={fullName}
@@ -182,9 +182,7 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
                         {fallback}
                     </AvatarFallback>
                 </Avatar>
-                <div className="absolute bottom-4">
-                  <StarRating value={person.sgRating || 0} />
-                </div>
+                <StarRating value={(person.sgRating || 0)} />
             </div>
             <CardHeader className="text-center p-4 pt-0">
                 <CardTitle className={cn("text-lg", !isSelectionActive && "group-hover:underline")}>{fullName}</CardTitle>
