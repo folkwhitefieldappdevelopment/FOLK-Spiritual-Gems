@@ -266,7 +266,7 @@ export default function ContactsPage() {
       organisation: "Acme Inc.",
       rentDetails: "7000/month",
       nativePlace: "Mumbai",
-      sgRating: 8,
+      sgRating: 4,
       contactSource: "Govinda Temple",
       chantingStatus: "4 rounds",
       fromOtherCamp: false,
@@ -413,8 +413,8 @@ export default function ContactsPage() {
             const age = parseInt(String(row.age), 10);
             const isValidAge = !isNaN(age) && age >= 16 && age <= 40;
             const stayingWith = ["PG / Hostel", "Flat", "Family"].includes(row.stayingWith) ? row.stayingWith : "Family";
-            const rating = parseInt(String(row.sgRating), 10);
-            const isValidRating = !isNaN(rating) && rating >= 0 && rating <= 10;
+            const rating = parseFloat(String(row.sgRating));
+            const isValidRating = !isNaN(rating) && rating >= 0 && rating <= 5;
             const phone = String(row.phone).replace(/\s+/g, '');
             const occupation = ["Working", "Student", "Searching for job"].includes(row.occupation) ? row.occupation : "Working";
             const photoUrlValue = String(row.photoUrl || '').trim();

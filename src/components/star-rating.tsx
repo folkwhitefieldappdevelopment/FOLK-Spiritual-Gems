@@ -6,65 +6,27 @@ import { Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type StarRatingProps = {
-  value: number; // The rating value (0-10 scale)
-  totalStars?: number; // Total stars to display (e.g., 5)
-  size?: number; // Size of the stars in pixels
-  isEditable?: boolean; // Toggles interactive mode
-  onValueChange?: (value: number) => void; // Callback for when the rating changes
+  value: number;
+  totalStars?: number;
+  size?: number;
 };
 
 const StarRatingComponent = ({
   value,
   totalStars = 5,
-  size = 24,
-  isEditable = false,
-  onValueChange,
+  size = 16,
 }: StarRatingProps) => {
-  const [hoverValue, setHoverValue] = React.useState<number | null>(null);
 
-  // Convert the 0-10 scale from the database to a 0-5 star scale for display/interaction
-  const displayValue = value / 2;
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isEditable) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const starIndex = Math.floor(x / size);
-    const starProgress = (x % size) / size;
-    // Snap to halves
-    const newHoverValue = starIndex + (starProgress < 0.5 ? 0.5 : 1);
-    setHoverValue(newHoverValue);
-  };
-
-  const handleMouseLeave = () => {
-    if (!isEditable) return;
-    setHoverValue(null);
-  };
-
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isEditable || !onValueChange) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const starIndex = Math.floor(x / size);
-    const starProgress = (x % size) / size;
-    const newRating = starIndex + (starProgress < 0.5 ? 0.5 : 1);
-    onValueChange(newRating * 2); // Convert back to 0-10 scale for saving
-  };
+  const displayValue = Math.min(totalStars, Math.max(0, value));
 
   return (
     <div
-      className={cn(
-        'flex items-center',
-        isEditable && 'cursor-pointer'
-      )}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      onClick={handleClick}
+      className='flex items-center'
       aria-label={`Rating: ${displayValue} out of ${totalStars} stars`}
     >
       {Array.from({ length: totalStars }).map((_, i) => {
         const starValue = i + 1;
-        const fillPercentage = Math.max(0, Math.min(1, (hoverValue ?? displayValue) - i)) * 100;
+        const fillPercentage = Math.max(0, Math.min(1, displayValue - i)) * 100;
 
         return (
           <div key={i} className="relative" style={{ width: size, height: size }}>

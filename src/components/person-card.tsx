@@ -3,7 +3,7 @@
 
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
-import { User, Briefcase, Tags } from "lucide-react";
+import { User, Briefcase, Tags, Star } from "lucide-react";
 import type { Person, ProgressCategory, ProgressLevelAnswers, Group } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/contexts/auth-context';
@@ -183,7 +183,7 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
                     </AvatarFallback>
                 </Avatar>
                 <div className="absolute bottom-4">
-                  <StarRating value={person.sgRating || 0} size={16} />
+                  <StarRating value={person.sgRating || 0} />
                 </div>
             </div>
             <CardHeader className="text-center p-4 pt-0">

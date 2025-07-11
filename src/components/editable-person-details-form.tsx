@@ -58,7 +58,7 @@ const createPersonFormSchema = (allPeople: Person[], currentPersonId?: string) =
     organisation: z.string().optional(),
     rentDetails: z.string().optional(),
     nativePlace: z.string().optional(),
-    sgRating: z.coerce.number().min(0).max(10).optional(),
+    sgRating: z.coerce.number().min(0).max(5).optional(),
     contactSource: z.string().optional(),
     chantingStatus: z.string().optional(),
     fromOtherCamp: z.boolean().default(false),
@@ -340,13 +340,15 @@ export function EditablePersonDetailsForm({
             name="sgRating"
             render={({ field }) => (
                 <FormItem>
-                    <FormLabel>SG Rating (0-5 Stars)</FormLabel>
+                    <FormLabel>SG Rating (0-5)</FormLabel>
                     <FormControl>
-                        <StarRating
-                            isEditable
-                            value={field.value ?? 0}
-                            onValueChange={field.onChange}
-                            size={28}
+                        <Input 
+                            type="number"
+                            min="0"
+                            max="5"
+                            step="0.1"
+                            {...field}
+                            onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
                         />
                     </FormControl>
                     <FormMessage />
@@ -389,10 +391,6 @@ export function EditablePersonDetailsForm({
             </div>
 
             <h2 className="text-2xl font-bold">{fullName}</h2>
-            <div className="flex items-center gap-2">
-                <StarRating value={person.sgRating || 0} size={20} />
-                <span className="text-sm text-muted-foreground">({(person.sgRating / 2).toFixed(1)} / 5.0)</span>
-            </div>
         </div>
 
       <div className="w-full text-left grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-3 text-sm">
@@ -403,6 +401,7 @@ export function EditablePersonDetailsForm({
         </div>
         <div className="font-semibold text-muted-foreground">Age</div><div>{person.age}</div>
         <div className="font-semibold text-muted-foreground">Occupation</div><div>{person.occupation || 'N/A'}</div>
+        <div className="font-semibold text-muted-foreground">Rating</div><div>{person.sgRating?.toFixed(1) || 'N/A'} / 5.0</div>
         <div className="font-semibold text-muted-foreground">Organisation</div><div>{person.organisation || 'N/A'}</div>
       </div>
       
