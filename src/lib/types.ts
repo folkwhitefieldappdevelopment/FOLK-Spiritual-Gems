@@ -82,8 +82,8 @@ export type Person = {
   lastSg?: boolean;
   lastMa?: boolean;
   lastFrp?: boolean;
-  assignedHelperId?: string;
-  assignedHelperName?: string;
+  coEnablerId?: string;
+  coEnablerName?: string;
 };
 
 export const userRoles = ['Admin', 'Folk Guide', 'Folk Enabler'] as const;

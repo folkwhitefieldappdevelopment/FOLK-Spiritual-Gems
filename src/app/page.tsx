@@ -51,14 +51,14 @@ import {
   deletePerson,
   deletePeople,
   importPeople,
-  assignHelperToPeople,
+  assignCoEnablerToPeople,
 } from "@/services/people-service";
 import { getGroups, createGroup, addPeopleToGroup } from "@/services/groups-service";
 import { getEnablers, getContactSources, type EnablerOption } from "@/services/settings-service";
 import { AuthGuard } from "@/components/auth-guard";
 import { useAuth } from "@/contexts/auth-context";
 import { CreateUpdateGroupDialog } from "@/components/create-update-group-dialog";
-import { AssignHelperDialog } from "@/components/assign-helper-dialog";
+import { AssignCoEnablerDialog } from "@/components/assign-co-enabler-dialog";
 import { SortPopover, type SortDescriptor } from "@/components/sort-popover";
 import { FilterPopover, type FilterRule, type FilterableField } from "@/components/filter-popover";
 import { Input } from "@/components/ui/input";
@@ -83,7 +83,7 @@ export default function ContactsPage() {
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = React.useState(false);
-  const [isAssignHelperDialogOpen, setIsAssignHelperDialogOpen] = React.useState(false);
+  const [isAssignCoEnablerDialogOpen, setIsAssignCoEnablerDialogOpen] = React.useState(false);
 
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(
     undefined
@@ -94,7 +94,7 @@ export default function ContactsPage() {
   const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
 
-  const canAssignHelper = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
+  const canAssignCoEnabler = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
 
   const fetchPageData = React.useCallback(async () => {
     if (!appUser) return;
@@ -642,12 +642,12 @@ export default function ContactsPage() {
     }
   }, [selectedIds, appUser, toast]);
   
-  const handleAssignHelper = React.useCallback(async (helper: AppUser | null) => {
+  const handleAssignCoEnabler = React.useCallback(async (coEnabler: AppUser | null) => {
     if (selectedIds.size === 0) return;
     try {
-      await assignHelperToPeople(Array.from(selectedIds), helper);
+      await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler);
       toast({
-        title: helper ? 'Helper Assigned' : 'Helper Unassigned',
+        title: coEnabler ? 'Co-Enabler Assigned' : 'Co-Enabler Unassigned',
         description: `${selectedIds.size} contacts have been updated.`,
       });
       // Refetch data to show the change
@@ -657,7 +657,7 @@ export default function ContactsPage() {
        toast({
         variant: "destructive",
         title: "Error",
-        description: "Could not assign helper.",
+        description: "Could not assign co-enabler.",
       });
     }
   }, [selectedIds, toast, fetchPageData]);
@@ -712,10 +712,10 @@ export default function ContactsPage() {
                                 </DropdownMenuContent>
                             </DropdownMenu>
 
-                            {canAssignHelper && (
-                              <Button variant="outline" size="sm" onClick={() => setIsAssignHelperDialogOpen(true)}>
+                            {canAssignCoEnabler && (
+                              <Button variant="outline" size="sm" onClick={() => setIsAssignCoEnablerDialogOpen(true)}>
                                 <UserCheck className="mr-2 h-4 w-4" />
-                                Assign Helper
+                                Assign Co-Enabler
                               </Button>
                             )}
 
@@ -910,10 +910,10 @@ export default function ContactsPage() {
             setIsOpen={setIsCreateGroupDialogOpen}
             onSave={handleSaveGroupAndAddMembers}
         />
-        <AssignHelperDialog
-          isOpen={isAssignHelperDialogOpen}
-          setIsOpen={setIsAssignHelperDialogOpen}
-          onSave={handleAssignHelper}
+        <AssignCoEnablerDialog
+          isOpen={isAssignCoEnablerDialogOpen}
+          setIsOpen={setIsAssignCoEnablerDialogOpen}
+          onSave={handleAssignCoEnabler}
           peopleCount={selectedIds.size}
         />
         <input

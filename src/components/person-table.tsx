@@ -230,9 +230,9 @@ export function PersonTable({
                      return (
                       <div className="flex flex-col gap-1 text-xs items-start">
                         <div className="font-semibold">{person.enablerInTouchWith || <span className="text-muted-foreground/60">Unassigned</span>}</div>
-                        {person.assignedHelperName && (
+                        {person.coEnablerName && (
                           <div className="inline-block whitespace-normal rounded-full border bg-secondary px-2.5 py-1 text-xs font-normal text-secondary-foreground max-w-[150px]">
-                            <span className="font-semibold">Helper:</span> {person.assignedHelperName}
+                            <span className="font-semibold">Co-Enabler:</span> {person.coEnablerName}
                           </div>
                         )}
                       </div>

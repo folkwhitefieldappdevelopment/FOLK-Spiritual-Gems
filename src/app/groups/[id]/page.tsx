@@ -19,7 +19,7 @@ import type { Person, Group, AppUser } from '@/lib/types';
 import { occupationStatuses } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { getGroup, updateGroup, addPeopleToGroup, getGroups, removePeopleFromGroup } from '@/services/groups-service';
-import { getPeople, updatePerson, assignHelperToPeople, deletePeople } from '@/services/people-service';
+import { getPeople, updatePerson, assignCoEnablerToPeople, deletePeople } from '@/services/people-service';
 import { getEnablers, getContactSources, type EnablerOption } from '@/services/settings-service';
 import { AuthGuard } from '@/components/auth-guard';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
@@ -33,7 +33,7 @@ import { PersonTable } from '@/components/person-table';
 import { PersonCard } from '@/components/person-card';
 import { CreateUpdatePersonDialog } from '@/components/create-update-person-dialog';
 import { ManageGroupMembersDialog } from '@/components/manage-group-members-dialog';
-import { AssignHelperDialog } from '@/components/assign-helper-dialog';
+import { AssignCoEnablerDialog } from '@/components/assign-co-enabler-dialog';
 import { CreateUpdateGroupDialog } from '@/components/create-update-group-dialog';
 import { FilterPopover, type FilterRule, type FilterableField } from '@/components/filter-popover';
 import { SortPopover, type SortDescriptor } from '@/components/sort-popover';
@@ -81,11 +81,11 @@ export default function GroupDetailPage() {
   
   const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
-  const canAssignHelper = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
+  const canAssignCoEnabler = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
   
   const [isManageMembersDialogOpen, setIsManageMembersDialogOpen] = React.useState(false);
   const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = React.useState(false);
-  const [isAssignHelperDialogOpen, setIsAssignHelperDialogOpen] = React.useState(false);
+  const [isAssignCoEnablerDialogOpen, setIsAssignCoEnablerDialogOpen] = React.useState(false);
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(undefined);
   const isSelectionActive = selectedIds.size > 0;
 
@@ -276,15 +276,15 @@ export default function GroupDetailPage() {
     }
   }, [selectedIds, toast]);
 
-  const handleAssignHelper = React.useCallback(async (helper: AppUser | null) => {
+  const handleAssignCoEnabler = React.useCallback(async (coEnabler: AppUser | null) => {
     if (selectedIds.size === 0) return;
     try {
-      await assignHelperToPeople(Array.from(selectedIds), helper);
-      toast({ title: helper ? 'Helper Assigned' : 'Helper Unassigned', description: `${selectedIds.size} contacts have been updated.` });
+      await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler);
+      toast({ title: coEnabler ? 'Co-Enabler Assigned' : 'Co-Enabler Unassigned', description: `${selectedIds.size} contacts have been updated.` });
       fetchPageData(); // Refetch to show changes
       setSelectedIds(new Set());
     } catch (error) {
-       toast({ variant: "destructive", title: "Error", description: "Could not assign helper." });
+       toast({ variant: "destructive", title: "Error", description: "Could not assign co-enabler." });
     }
   }, [selectedIds, toast, fetchPageData]);
 
@@ -307,7 +307,7 @@ export default function GroupDetailPage() {
                       {allGroups.filter(g => g.id !== groupId).map((g) => <DropdownMenuItem key={g.id} onSelect={() => handleAddToGroup(g.id)}>{g.name}</DropdownMenuItem>)}
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  {canAssignHelper && <Button variant="outline" size="sm" onClick={() => setIsAssignHelperDialogOpen(true)}><UserCheck className="mr-2 h-4 w-4" /> Assign Helper</Button>}
+                  {canAssignCoEnabler && <Button variant="outline" size="sm" onClick={() => setIsAssignCoEnablerDialogOpen(true)}><UserCheck className="mr-2 h-4 w-4" /> Assign Co-Enabler</Button>}
                   <AlertDialog>
                     <AlertDialogTrigger asChild><Button variant="destructive" size="sm"><Trash2 className="mr-2 h-4 w-4" /> Remove from Group</Button></AlertDialogTrigger>
                     <AlertDialogContent>
@@ -380,7 +380,7 @@ export default function GroupDetailPage() {
         
         {editingPerson && <CreateUpdatePersonDialog isOpen={!!editingPerson} setIsOpen={() => setEditingPerson(undefined)} onSave={handleSavePersonDialog} person={editingPerson} allPeople={allPeople} />}
         {group && <ManageGroupMembersDialog isOpen={isManageMembersDialogOpen} setIsOpen={setIsManageMembersDialogOpen} onSave={handleSaveMembers} group={group} allPeople={allPeople} />}
-        {isAssignHelperDialogOpen && <AssignHelperDialog isOpen={isAssignHelperDialogOpen} setIsOpen={setIsAssignHelperDialogOpen} onSave={handleAssignHelper} peopleCount={selectedIds.size} />}
+        {isAssignCoEnablerDialogOpen && <AssignCoEnablerDialog isOpen={isAssignCoEnablerDialogOpen} setIsOpen={setIsAssignCoEnablerDialogOpen} onSave={handleAssignCoEnabler} peopleCount={selectedIds.size} />}
       </div>
     </AuthGuard>
   );

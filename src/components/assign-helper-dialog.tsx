@@ -24,57 +24,57 @@ import {
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-type AssignHelperDialogProps = {
+type AssignCoEnablerDialogProps = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  onSave: (helper: AppUser | null) => void;
+  onSave: (coEnabler: AppUser | null) => void;
   peopleCount: number;
 };
 
-export function AssignHelperDialog({
+export function AssignCoEnablerDialog({
   isOpen,
   setIsOpen,
   onSave,
   peopleCount,
-}: AssignHelperDialogProps) {
+}: AssignCoEnablerDialogProps) {
   const { appUser } = useAuth();
   const { toast } = useToast();
-  const [helpers, setHelpers] = React.useState<AppUser[]>([]);
+  const [coEnablers, setCoEnablers] = React.useState<AppUser[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [selectedHelperId, setSelectedHelperId] = React.useState<string>("");
+  const [selectedCoEnablerId, setSelectedCoEnablerId] = React.useState<string>("");
 
   React.useEffect(() => {
     if (!isOpen || !appUser) return;
     
-    const fetchHelpers = async () => {
+    const fetchCoEnablers = async () => {
         setIsLoading(true);
         try {
-            let availableHelpers: AppUser[] = [];
+            let availableCoEnablers: AppUser[] = [];
             if (appUser.role.includes('Admin')) {
                 const allUsers = await getUsers();
-                availableHelpers = allUsers.filter(u => u.role.includes('Folk Enabler'));
+                availableCoEnablers = allUsers.filter(u => u.role.includes('Folk Enabler'));
             } else if (appUser.role.includes('Folk Guide')) {
-                availableHelpers = await getEnablersForGuide(appUser.id);
+                availableCoEnablers = await getEnablersForGuide(appUser.id);
             }
-            setHelpers(availableHelpers.sort((a,b) => a.name.localeCompare(b.name)));
+            setCoEnablers(availableCoEnablers.sort((a,b) => a.name.localeCompare(b.name)));
         } catch (error) {
-            console.error("Failed to fetch helpers", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not load list of helpers.'});
+            console.error("Failed to fetch co-enablers", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not load list of co-enablers.'});
         } finally {
             setIsLoading(false);
         }
     };
     
-    fetchHelpers();
+    fetchCoEnablers();
   }, [isOpen, appUser, toast]);
 
   const handleSave = () => {
-    if (selectedHelperId === '__UNASSIGN__') {
+    if (selectedCoEnablerId === '__UNASSIGN__') {
         onSave(null);
     } else {
-        const selectedHelper = helpers.find(h => h.id === selectedHelperId);
-        if (selectedHelper) {
-            onSave(selectedHelper);
+        const selectedCoEnabler = coEnablers.find(h => h.id === selectedCoEnablerId);
+        if (selectedCoEnabler) {
+            onSave(selectedCoEnabler);
         }
     }
     setIsOpen(false);
@@ -83,7 +83,7 @@ export function AssignHelperDialog({
   // Reset state when closing
   React.useEffect(() => {
     if (!isOpen) {
-        setSelectedHelperId("");
+        setSelectedCoEnablerId("");
     }
   }, [isOpen])
 
@@ -91,9 +91,9 @@ export function AssignHelperDialog({
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Assign Calling Helper</DialogTitle>
+          <DialogTitle>Assign Co-Enabler</DialogTitle>
           <DialogDescription>
-            Temporarily assign the {peopleCount} selected contacts to a helper for calling.
+            Temporarily assign the {peopleCount} selected contacts to a co-enabler for calling.
             This does not change their permanent enabler.
           </DialogDescription>
         </DialogHeader>
@@ -103,15 +103,15 @@ export function AssignHelperDialog({
                     <Loader2 className="h-6 w-6 animate-spin" />
                 </div>
             ) : (
-                <Select value={selectedHelperId} onValueChange={setSelectedHelperId}>
+                <Select value={selectedCoEnablerId} onValueChange={setSelectedCoEnablerId}>
                     <SelectTrigger>
-                        <SelectValue placeholder="Select a helper..." />
+                        <SelectValue placeholder="Select a co-enabler..." />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="__UNASSIGN__">Unassign Helper</SelectItem>
-                        {helpers.map(helper => (
-                            <SelectItem key={helper.id} value={helper.id}>
-                                {helper.name}
+                        <SelectItem value="__UNASSIGN__">Unassign Co-Enabler</SelectItem>
+                        {coEnablers.map(coEnabler => (
+                            <SelectItem key={coEnabler.id} value={coEnabler.id}>
+                                {coEnabler.name}
                             </SelectItem>
                         ))}
                     </SelectContent>
@@ -122,7 +122,7 @@ export function AssignHelperDialog({
           <Button variant="outline" onClick={() => setIsOpen(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={isLoading || !selectedHelperId}>Save</Button>
+          <Button onClick={handleSave} disabled={isLoading || !selectedCoEnablerId}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

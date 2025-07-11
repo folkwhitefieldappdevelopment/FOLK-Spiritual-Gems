@@ -44,13 +44,13 @@ export const getPeople = async (appUser: AppUser | null): Promise<Person[]> => {
     return snapshot.docs.map(processPersonDoc);
   }
 
-  // Folk Enabler: must check for permanent assignment AND temporary helper assignment
+  // Folk Enabler: must check for permanent assignment AND temporary co-enabler assignment
   const permanentQuery = query(peopleCollection, where('enablerInTouchWith', '==', appUser.name));
-  const helperQuery = query(peopleCollection, where('assignedHelperId', '==', appUser.id));
+  const coEnablerQuery = query(peopleCollection, where('coEnablerId', '==', appUser.id));
 
-  const [permanentSnapshot, helperSnapshot] = await Promise.all([
+  const [permanentSnapshot, coEnablerSnapshot] = await Promise.all([
       getDocs(permanentQuery),
-      getDocs(helperQuery)
+      getDocs(coEnablerQuery)
   ]);
 
   const peopleMap = new Map<string, Person>();
@@ -59,7 +59,7 @@ export const getPeople = async (appUser: AppUser | null): Promise<Person[]> => {
       peopleMap.set(doc.id, processPersonDoc(doc));
   });
 
-  helperSnapshot.docs.forEach(doc => {
+  coEnablerSnapshot.docs.forEach(doc => {
       if (!peopleMap.has(doc.id)) {
           peopleMap.set(doc.id, processPersonDoc(doc));
       }
@@ -301,20 +301,20 @@ export const importPeople = async (
     await batch.commit();
 };
 
-export const assignHelperToPeople = async (personIds: string[], helper: AppUser | null): Promise<void> => {
+export const assignCoEnablerToPeople = async (personIds: string[], coEnabler: AppUser | null): Promise<void> => {
   if (personIds.length === 0) return;
   const batch = writeBatch(db);
   personIds.forEach(id => {
     const docRef = doc(db, 'people', id);
-    if (helper) {
+    if (coEnabler) {
       batch.update(docRef, { 
-        assignedHelperId: helper.id,
-        assignedHelperName: helper.name 
+        coEnablerId: coEnabler.id,
+        coEnablerName: coEnabler.name 
       });
     } else {
       batch.update(docRef, {
-        assignedHelperId: deleteField(),
-        assignedHelperName: deleteField()
+        coEnablerId: deleteField(),
+        coEnablerName: deleteField()
       });
     }
   });

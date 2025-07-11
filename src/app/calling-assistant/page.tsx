@@ -16,7 +16,7 @@ import { CreateUpdatePersonDialog } from "@/components/create-update-person-dial
 import { CallingSessionDialog } from "@/components/calling-session-dialog";
 import { AuthGuard } from "@/components/auth-guard";
 import { FirebaseConfigError } from "@/components/firebase-config-error";
-import { getPeople, updatePerson, assignHelperToPeople } from "@/services/people-service";
+import { getPeople, updatePerson, assignCoEnablerToPeople } from "@/services/people-service";
 import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
 import { getGroups, createGroup, addPeopleToGroup } from "@/services/groups-service";
 import { updateUser } from "@/services/user-service";
@@ -47,7 +47,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { CreateUpdateGroupDialog } from '@/components/create-update-group-dialog';
-import { AssignHelperDialog } from '@/components/assign-helper-dialog';
+import { AssignCoEnablerDialog } from '@/components/assign-co-enabler-dialog';
 import { ColumnFilterState, applyColumnFilters } from "@/components/column-header-filter";
 import { SortPopover, type SortDescriptor } from "@/components/sort-popover";
 
@@ -80,9 +80,9 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   const currentCallingEvent = appUser?.currentCallingEvent || "Default Event";
   
   const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = React.useState(false);
-  const [isAssignHelperDialogOpen, setIsAssignHelperDialogOpen] = React.useState(false);
+  const [isAssignCoEnablerDialogOpen, setIsAssignCoEnablerDialogOpen] = React.useState(false);
   const isSelectionActive = selectedIds.size > 0;
-  const canAssignHelper = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
+  const canAssignCoEnabler = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
 
   const [isEventDialogOpen, setIsEventDialogOpen] = React.useState(false);
   const [isStartingSessionFlow, setIsStartingSessionFlow] = React.useState(false);
@@ -480,12 +480,12 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     }
   }, [selectedIds, appUser, toast]);
 
-  const handleAssignHelper = React.useCallback(async (helper: AppUser | null) => {
+  const handleAssignCoEnabler = React.useCallback(async (coEnabler: AppUser | null) => {
     if (selectedIds.size === 0) return;
     try {
-        await assignHelperToPeople(Array.from(selectedIds), helper);
+        await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler);
         toast({
-            title: helper ? 'Helper Assigned' : 'Helper Unassigned',
+            title: coEnabler ? 'Co-Enabler Assigned' : 'Co-Enabler Unassigned',
             description: `${selectedIds.size} contacts have been updated.`,
         });
         // Refetch all people data to show the change
@@ -495,7 +495,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
         }
         setSelectedIds(new Set());
     } catch (error) {
-        toast({ variant: "destructive", title: "Error", description: "Could not assign helper." });
+        toast({ variant: "destructive", title: "Error", description: "Could not assign co-enabler." });
     }
   }, [selectedIds, toast, appUser]);
 
@@ -543,7 +543,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
-                            {canAssignHelper && <Button variant="outline" size="sm" onClick={() => setIsAssignHelperDialogOpen(true)}><UserCheck className="mr-2 h-4 w-4" />Assign Helper</Button>}
+                            {canAssignCoEnabler && <Button variant="outline" size="sm" onClick={() => setIsAssignCoEnablerDialogOpen(true)}><UserCheck className="mr-2 h-4 w-4" />Assign Co-Enabler</Button>}
                         </>
                     ) : (
                         <>
@@ -727,10 +727,10 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
             onSave={handleSaveGroupAndAddMembers}
         />
         
-        <AssignHelperDialog
-          isOpen={isAssignHelperDialogOpen}
-          setIsOpen={setIsAssignHelperDialogOpen}
-          onSave={handleAssignHelper}
+        <AssignCoEnablerDialog
+          isOpen={isAssignCoEnablerDialogOpen}
+          setIsOpen={setIsAssignCoEnablerDialogOpen}
+          onSave={handleAssignCoEnabler}
           peopleCount={selectedIds.size}
         />
 
