@@ -306,7 +306,7 @@ export default function DashboardPage() {
           <Card className="lg:col-span-3">
             <CardHeader>
               <CardTitle>Daily Activity Report</CardTitle>
-              <CardDescription>
+              <CardDescription asChild>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <span>Calls and confirmations per enabler over the selected period.</span>
                    <Popover>
