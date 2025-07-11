@@ -47,6 +47,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { StarRating } from "./star-rating";
+import { Slider } from "./ui/slider";
 
 const createPersonFormSchema = (allPeople: Person[], currentPersonId?: string) => 
   z.object({
@@ -340,13 +341,14 @@ export function EditablePersonDetailsForm({
             name="sgRating"
             render={({ field }) => (
                 <FormItem>
-                    <FormLabel>SG Rating (0-5)</FormLabel>
+                    <FormLabel>SG Rating ({Number(field.value || 0).toFixed(1)})</FormLabel>
                     <FormControl>
-                        <StarRating
-                          value={field.value || 0}
-                          onValueChange={field.onChange}
-                          isEditable
-                          size={24}
+                        <Slider
+                            value={[field.value || 0]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                            min={0}
+                            max={5}
+                            step={0.5}
                         />
                     </FormControl>
                     <FormMessage />
