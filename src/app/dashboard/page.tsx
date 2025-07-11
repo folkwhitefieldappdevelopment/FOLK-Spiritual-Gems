@@ -19,10 +19,8 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
 } from '@/components/ui/chart';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart, Cell, Line, LineChart, Tooltip, Legend } from 'recharts';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart, Cell, Line, LineChart, Tooltip } from 'recharts';
 import { CallReport } from '@/components/call-report';
 
 const CHART_COLORS = [
@@ -205,9 +203,9 @@ export default function DashboardPage() {
     }
     
     return (
-      <div className="space-y-6">
+       <div className="space-y-6">
         <CallReport people={people} relatedUsers={relatedUsers} />
-        <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+         <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
@@ -312,7 +310,6 @@ export default function DashboardPage() {
                 <ChartContainer config={{}} className="h-[300px] w-full">
                   <PieChart>
                     <Tooltip content={<ChartTooltipContent nameKey="name" />} />
-                    <Legend content={<ChartLegendContent />} />
                     <Pie data={contactsByChantingStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} labelLine={false} label={({ percent }) => `${(percent * 100).toFixed(0)}%`}>
                       {contactsByChantingStatus.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
@@ -342,7 +339,7 @@ export default function DashboardPage() {
                           <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                       ))}
                     </Bar>
-                  </BarChart>
+                </BarChart>
               </ChartContainer>
             </CardContent>
           </Card>
@@ -353,9 +350,9 @@ export default function DashboardPage() {
 
   return (
     <AuthGuard>
-      <div className="flex min-h-screen w-full flex-col bg-background">
+       <div className="flex min-h-screen w-full flex-col bg-background">
         <AppSidebar />
-        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+         <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
           <PageHeader
             title="FOLK SPIRITUAL GEMS"
             description="An overview of your contacts and their progress."
