@@ -4,8 +4,8 @@
 import * as React from 'react';
 import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { AuthGuard } from '@/components/auth-guard';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
+import { useAuth } from '@/contexts/auth-context';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -33,13 +33,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  getEnablers,
   getContactSources,
-  addEnabler,
   addContactSource,
-  updateEnabler,
   updateContactSource,
-  deleteEnabler,
   deleteContactSource,
   getCustomPersonFields,
   saveCustomPersonFields,
@@ -50,41 +46,39 @@ import { customFieldTypes } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type DialogMode = 'add' | 'edit';
-type ItemType = 'enabler' | 'source' | 'customField';
+type ItemType = 'source' | 'customField';
 
 export default function SettingsPage() {
   const { toast } = useToast();
+  const { appUser } = useAuth();
   const [isLoading, setIsLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
 
-  const [enablers, setEnablers] = React.useState<string[]>([]);
   const [sources, setSources] = React.useState<string[]>([]);
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
-
+  
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [dialogMode, setDialogMode] = React.useState<DialogMode>('add');
-  const [itemType, setItemType] = React.useState<ItemType>('enabler');
+  const [itemType, setItemType] = React.useState<ItemType>('source');
   
-  // State for simple item dialog (enablers, sources)
   const [originalName, setOriginalName] = React.useState('');
   const [itemName, setItemName] = React.useState('');
 
-  // State for custom field dialog
   const [editingField, setEditingField] = React.useState<CustomField | null>(null);
   const [fieldName, setFieldName] = React.useState('');
   const [fieldType, setFieldType] = React.useState<CustomFieldType>('text');
 
   React.useEffect(() => {
+    if (!appUser) return;
+    
     const fetchData = async () => {
       setIsLoading(true);
       setFetchError(null);
       try {
-        const [enablersData, sourcesData, customFieldsData] = await Promise.all([
-          getEnablers(),
-          getContactSources(),
-          getCustomPersonFields(),
+        const [sourcesData, customFieldsData] = await Promise.all([
+          getContactSources(appUser),
+          getCustomPersonFields(appUser),
         ]);
-        setEnablers(enablersData);
         setSources(sourcesData);
         setCustomFields(customFieldsData);
       } catch (error) {
@@ -99,7 +93,7 @@ export default function SettingsPage() {
       }
     };
     fetchData();
-  }, [toast]);
+  }, [appUser]);
 
   const openDialog = (mode: DialogMode, type: ItemType, data: string | CustomField | null = null) => {
     setDialogMode(mode);
@@ -120,6 +114,8 @@ export default function SettingsPage() {
   };
 
   const handleSave = async () => {
+    if (!appUser) return;
+
     const valueToSave = itemType === 'customField' ? fieldName : itemName;
     if (!valueToSave.trim()) {
       toast({ variant: 'destructive', title: 'Name/Label cannot be empty.' });
@@ -129,23 +125,13 @@ export default function SettingsPage() {
     try {
       if (itemType === 'customField') {
         await handleSaveCustomField();
-      } else if (itemType === 'enabler') {
-        if (dialogMode === 'add') {
-          const updated = await addEnabler(itemName);
-          setEnablers(updated);
-          toast({ title: 'Enabler Added' });
-        } else {
-          const updated = await updateEnabler(originalName, itemName);
-          setEnablers(updated);
-          toast({ title: 'Enabler Updated' });
-        }
       } else { // source
         if (dialogMode === 'add') {
-          const updated = await addContactSource(itemName);
+          const updated = await addContactSource(itemName, appUser);
           setSources(updated);
           toast({ title: 'Contact Source Added' });
         } else {
-          const updated = await updateContactSource(originalName, itemName);
+          const updated = await updateContactSource(originalName, itemName, appUser);
           setSources(updated);
           toast({ title: 'Contact Source Updated' });
         }
@@ -157,10 +143,11 @@ export default function SettingsPage() {
   };
   
   const handleSaveCustomField = async () => {
+    if (!appUser) return;
     let updatedFields: CustomField[];
     if (editingField) { // Edit mode
         updatedFields = customFields.map(f => 
-            f.id === editingField.id ? { ...f, label: fieldName.trim() } : f
+            f.id === editingField.id ? { ...f, label: fieldName.trim(), type: fieldType } : f
         );
     } else { // Add mode
         const newField: CustomField = {
@@ -174,24 +161,22 @@ export default function SettingsPage() {
         }
         updatedFields = [...customFields, newField];
     }
-    await saveCustomPersonFields(updatedFields);
+    await saveCustomPersonFields(updatedFields, appUser);
     setCustomFields(updatedFields);
     toast({ title: editingField ? 'Custom Field Updated' : 'Custom Field Added' });
+    setIsDialogOpen(false);
   };
 
   const handleDelete = async (type: ItemType, identifier: string) => {
+    if (!appUser) return;
     try {
-      if (type === 'enabler') {
-        const updated = await deleteEnabler(identifier);
-        setEnablers(updated);
-        toast({ title: 'Enabler Deleted' });
-      } else if (type === 'source') {
-        const updated = await deleteContactSource(identifier);
+      if (type === 'source') {
+        const updated = await deleteContactSource(identifier, appUser);
         setSources(updated);
         toast({ title: 'Contact Source Deleted' });
       } else { // customField
         const updatedFields = customFields.filter(f => f.id !== identifier);
-        await saveCustomPersonFields(updatedFields);
+        await saveCustomPersonFields(updatedFields, appUser);
         setCustomFields(updatedFields);
         toast({ title: 'Custom Field Deleted' });
       }
@@ -200,12 +185,12 @@ export default function SettingsPage() {
     }
   };
   
-  const renderList = (type: 'enabler' | 'source', items: string[]) => (
+  const renderList = (type: 'source', items: string[]) => (
     <Card>
       <CardHeader>
-        <CardTitle>{type === 'enabler' ? 'Manage Enablers' : 'Manage Contact Sources'}</CardTitle>
+        <CardTitle>Manage Contact Sources</CardTitle>
         <CardDescription>
-          Add, edit, or remove the {type === 'enabler' ? 'enablers' : 'sources'} available in dropdowns.
+          Add, edit, or remove the sources available in dropdowns.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -251,7 +236,7 @@ export default function SettingsPage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={2} className="text-center text-muted-foreground h-24">
-                    No {type === 'enabler' ? 'enablers' : 'sources'} found.
+                    No sources found.
                   </TableCell>
                 </TableRow>
               )}
@@ -328,7 +313,7 @@ export default function SettingsPage() {
     if (itemType === 'customField') {
       return `${dialogMode === 'edit' ? 'Edit' : 'Add'} Custom Field`;
     }
-    return `${dialogMode === 'edit' ? 'Edit' : 'Add'} ${itemType === 'enabler' ? 'Enabler' : 'Contact Source'}`;
+    return `${dialogMode === 'edit' ? 'Edit' : 'Add'} Contact Source`;
   }
 
   const renderDialogContent = () => {
@@ -380,84 +365,60 @@ export default function SettingsPage() {
   }
 
   return (
-    <AuthGuard>
-      <>
-        <div className="flex min-h-screen w-full flex-col bg-background">
-          <AppSidebar />
-          <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
-              <PageHeader
-                title="Settings"
-                description="Manage options for dropdown menus and custom fields across the application."
-              />
-              <main className="flex-1 p-4 sm:p-6 sm:pt-0">
-                {isLoading ? (
-                  <div className="flex min-h-[50vh] w-full items-center justify-center bg-background">
-                    <Loader2 className="h-8 w-8 animate-spin" />
-                  </div>
-                ) : fetchError ? (
-                   <FirebaseConfigError error={fetchError} />
-                ) : (
-                  // <div className="mx-auto max-w-4xl space-y-8">
-                  //   <Card>
-                  //     <CardHeader>
-                  //       <CardTitle>Admin Mode</CardTitle>
-                  //       <CardDescription>
-                  //         Unlock administrative privileges to edit protected fields and access all features.
-                  //       </CardDescription>
-                  //     </CardHeader>
-                  //     <CardContent>
-                  //       <AdminModeToggle />
-                  //     </CardContent>
-                  //   </Card>
-                  //   <div>
-                        <div className="flex justify-end mb-4">
-                            <Button onClick={() => openDialog('add', 'enabler')}>
-                            <PlusCircle className="mr-2 h-4 w-4" /> Add Enabler
-                            </Button>
-                        </div>
-                        {renderList('enabler', enablers)}
-                    </div>
-                    <div>
-                         <div className="flex justify-end mb-4">
-                            <Button onClick={() => openDialog('add', 'source')}>
-                            <PlusCircle className="mr-2 h-4 w-4" /> Add Contact Source
-                            </Button>
-                        </div>
-                        {renderList('source', sources)}
-                    </div>
-                    <div>
-                        <div className="flex justify-end mb-4">
-                            <Button onClick={() => openDialog('add', 'customField')}>
-                            <PlusCircle className="mr-2 h-4 w-4" /> Add Custom Field
-                            </Button>
-                        </div>
-                        {renderCustomFieldsList()}
-                    </div>
-                  </div>
-                )}
-              </main>
+    <div className="flex min-h-screen w-full flex-col bg-background">
+      <AppSidebar />
+      <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+        <PageHeader
+          title="Settings"
+          description="Manage options for dropdown menus and custom fields across the application."
+        />
+        <main className="flex-1 p-4 sm:p-6 sm:pt-0">
+          {isLoading ? (
+            <div className="flex min-h-[50vh] w-full items-center justify-center bg-background">
+              <Loader2 className="h-8 w-8 animate-spin" />
             </div>
-          </div>
-
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{getDialogTitle()}</DialogTitle>
-                 <DialogDescription>
-                  {itemType === 'customField' 
-                    ? 'Define a new custom field for your contacts.'
-                    : 'Enter the name for the item below.'
-                  }
-                </DialogDescription>
-              </DialogHeader>
-              {renderDialogContent()}
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleSave}>Save</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-      </>
-    </AuthGuard>
+          ) : fetchError ? (
+            <FirebaseConfigError error={fetchError} />
+          ) : (
+            <div className="mx-auto max-w-4xl space-y-8">
+              <div>
+                <div className="flex justify-end mb-4">
+                  <Button onClick={() => openDialog('add', 'source')}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add Contact Source
+                  </Button>
+                </div>
+                {renderList('source', sources)}
+              </div>
+              <div>
+                <div className="flex justify-end mb-4">
+                  <Button onClick={() => openDialog('add', 'customField')}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add Custom Field
+                  </Button>
+                </div>
+                {renderCustomFieldsList()}
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{getDialogTitle()}</DialogTitle>
+            <DialogDescription>
+              {itemType === 'customField'
+                ? 'Define a new custom field for your contacts.'
+                : 'Enter the name for the item below.'
+              }
+            </DialogDescription>
+          </DialogHeader>
+          {renderDialogContent()}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSave}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
