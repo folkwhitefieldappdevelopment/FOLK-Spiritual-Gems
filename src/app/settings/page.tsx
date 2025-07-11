@@ -6,6 +6,7 @@ import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AuthGuard } from '@/components/auth-guard';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
+import { useAuth } from '@/contexts/auth-context';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -50,6 +51,7 @@ type ItemType = 'source' | 'customField';
 
 export default function SettingsPage() {
   const { toast } = useToast();
+  const { appUser } = useAuth();
   const [isLoading, setIsLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
 
@@ -68,13 +70,15 @@ export default function SettingsPage() {
   const [fieldType, setFieldType] = React.useState<CustomFieldType>('text');
 
   React.useEffect(() => {
+    if (!appUser) return;
+    
     const fetchData = async () => {
       setIsLoading(true);
       setFetchError(null);
       try {
         const [sourcesData, customFieldsData] = await Promise.all([
-          getContactSources(),
-          getCustomPersonFields(),
+          getContactSources(appUser),
+          getCustomPersonFields(appUser),
         ]);
         setSources(sourcesData);
         setCustomFields(customFieldsData);
@@ -90,7 +94,7 @@ export default function SettingsPage() {
       }
     };
     fetchData();
-  }, []);
+  }, [appUser]);
 
   const openDialog = (mode: DialogMode, type: ItemType, data: string | CustomField | null = null) => {
     setDialogMode(mode);
@@ -111,6 +115,8 @@ export default function SettingsPage() {
   };
 
   const handleSave = async () => {
+    if (!appUser) return;
+
     const valueToSave = itemType === 'customField' ? fieldName : itemName;
     if (!valueToSave.trim()) {
       toast({ variant: 'destructive', title: 'Name/Label cannot be empty.' });
@@ -122,11 +128,11 @@ export default function SettingsPage() {
         await handleSaveCustomField();
       } else { // source
         if (dialogMode === 'add') {
-          const updated = await addContactSource(itemName);
+          const updated = await addContactSource(itemName, appUser);
           setSources(updated);
           toast({ title: 'Contact Source Added' });
         } else {
-          const updated = await updateContactSource(originalName, itemName);
+          const updated = await updateContactSource(originalName, itemName, appUser);
           setSources(updated);
           toast({ title: 'Contact Source Updated' });
         }
@@ -138,6 +144,7 @@ export default function SettingsPage() {
   };
   
   const handleSaveCustomField = async () => {
+    if (!appUser) return;
     let updatedFields: CustomField[];
     if (editingField) { // Edit mode
         updatedFields = customFields.map(f => 
@@ -155,21 +162,22 @@ export default function SettingsPage() {
         }
         updatedFields = [...customFields, newField];
     }
-    await saveCustomPersonFields(updatedFields);
+    await saveCustomPersonFields(updatedFields, appUser);
     setCustomFields(updatedFields);
     toast({ title: editingField ? 'Custom Field Updated' : 'Custom Field Added' });
     setIsDialogOpen(false);
   };
 
   const handleDelete = async (type: ItemType, identifier: string) => {
+    if (!appUser) return;
     try {
       if (type === 'source') {
-        const updated = await deleteContactSource(identifier);
+        const updated = await deleteContactSource(identifier, appUser);
         setSources(updated);
         toast({ title: 'Contact Source Deleted' });
       } else { // customField
         const updatedFields = customFields.filter(f => f.id !== identifier);
-        await saveCustomPersonFields(updatedFields);
+        await saveCustomPersonFields(updatedFields, appUser);
         setCustomFields(updatedFields);
         toast({ title: 'Custom Field Deleted' });
       }
@@ -417,5 +425,3 @@ export default function SettingsPage() {
     </AuthGuard>
   );
 }
-
-    

@@ -48,7 +48,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import type { CustomField, CustomFieldType } from '@/lib/types';
 import { customFieldTypes } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AdminModeToggle } from '@/components/admin-mode-toggle';
+//import { AdminModeToggle } from '@/components/admin-mode-toggle';
 
 type DialogMode = 'add' | 'edit';
 type ItemType = 'enabler' | 'source' | 'customField';

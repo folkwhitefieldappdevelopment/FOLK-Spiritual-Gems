@@ -20,7 +20,10 @@ export type EnablerOption = {
   label: string;
 };
 
-const ensureSettingsDoc = async () => {
+const ensureSettingsDoc = async (appUser: AppUser) => {
+    if (!appUser) {
+        throw new Error("Authentication required to access settings.");
+    }
     const settingsDocRef = doc(db, 'settings', 'options');
     const docSnap = await getDoc(settingsDocRef);
     const data = docSnap.data() || {};
@@ -123,12 +126,12 @@ export const getEnablers = async (
   return [];
 };
 
-export const getContactSources = async (): Promise<string[]> => {
-    const settings = await ensureSettingsDoc();
+export const getContactSources = async (appUser: AppUser): Promise<string[]> => {
+    const settings = await ensureSettingsDoc(appUser);
     return settings.contactSources;
 }
 
-export const addContactSource = async (newSource: string) => {
+export const addContactSource = async (newSource: string, appUser: AppUser) => {
     const settingsDocRef = doc(db, 'settings', 'options');
     const currentSources = (await getDoc(settingsDocRef)).data()?.contactSources || [];
     if (!currentSources.includes(newSource)) {
@@ -139,7 +142,7 @@ export const addContactSource = async (newSource: string) => {
     return currentSources;
 }
 
-export const updateContactSource = async (oldName: string, newName: string) => {
+export const updateContactSource = async (oldName: string, newName: string, appUser: AppUser) => {
     const batch = writeBatch(db);
     const settingsDocRef = doc(db, 'settings', 'options');
 
@@ -159,7 +162,7 @@ export const updateContactSource = async (oldName: string, newName: string) => {
     return updatedSources;
 }
 
-export const deleteContactSource = async (sourceToDelete: string) => {
+export const deleteContactSource = async (sourceToDelete: string, appUser: AppUser) => {
     const batch = writeBatch(db);
     const settingsDocRef = doc(db, 'settings', 'options');
 
@@ -180,13 +183,14 @@ export const deleteContactSource = async (sourceToDelete: string) => {
 }
 
 // Custom Person Fields
-export const getCustomPersonFields = async (): Promise<CustomField[]> => {
-    const settings = await ensureSettingsDoc();
+export const getCustomPersonFields = async (appUser: AppUser): Promise<CustomField[]> => {
+    const settings = await ensureSettingsDoc(appUser);
     // Ensure all fields have a type for backward compatibility
     return settings.customPersonFields.map((f: CustomField) => ({ ...f, type: f.type || 'text' }));
 };
 
-export const saveCustomPersonFields = async (fields: CustomField[]): Promise<void> => {
+export const saveCustomPersonFields = async (fields: CustomField[], appUser: AppUser): Promise<void> => {
+    if (!appUser) throw new Error("Authentication required.");
     const settingsDocRef = doc(db, 'settings', 'options');
     await setDoc(settingsDocRef, { customPersonFields: fields }, { merge: true });
 };
