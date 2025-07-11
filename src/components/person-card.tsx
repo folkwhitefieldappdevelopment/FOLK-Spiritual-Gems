@@ -171,7 +171,7 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
         </div>
         
         <div className="flex flex-col h-full">
-            <div className="relative w-full flex justify-center pt-8 pb-4">
+            <div className="relative w-full flex justify-center pt-8 pb-2">
                 <div className="relative h-20 w-20">
                     <Avatar className="h-20 w-20">
                         <AvatarImage
@@ -186,7 +186,7 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups, is
                     <StarRating value={person.sgRating || 0} avatarSizeClass='h-20 w-20' />
                 </div>
             </div>
-            <CardHeader className="text-center p-4 pt-0">
+            <CardHeader className="text-center p-4 pt-2">
                 <CardTitle className={cn("text-lg", !isSelectionActive && "group-hover:underline")}>{fullName}</CardTitle>
                 <CardDescription className="flex items-center justify-center gap-1 text-sm text-muted-foreground">
                     <span>{person.phone}</span>

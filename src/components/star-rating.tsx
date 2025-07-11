@@ -16,10 +16,10 @@ const StarRatingComponent = ({ value, totalStars = 5, avatarSizeClass }: StarRat
   const ratingValue = Math.round(value / (10 / totalStars));
 
   const sizeStyles = {
-    'h-16 w-16': { starSize: 'h-4 w-4', swooshHeight: 'h-8', bottomOffset: '-bottom-3' },
-    'h-20 w-20': { starSize: 'h-5 w-5', swooshHeight: 'h-10', bottomOffset: '-bottom-4' },
-    'h-24 w-24': { starSize: 'h-6 w-6', swooshHeight: 'h-12', bottomOffset: '-bottom-5' },
-    'h-32 w-32': { starSize: 'h-7 w-7', swooshHeight: 'h-14', bottomOffset: '-bottom-6' },
+    'h-16 w-16': { starSize: 'h-4 w-4', swooshHeight: 'h-8', bottomOffset: '-bottom-4' },
+    'h-20 w-20': { starSize: 'h-5 w-5', swooshHeight: 'h-10', bottomOffset: '-bottom-5' },
+    'h-24 w-24': { starSize: 'h-6 w-6', swooshHeight: 'h-12', bottomOffset: '-bottom-6' },
+    'h-32 w-32': { starSize: 'h-7 w-7', swooshHeight: 'h-14', bottomOffset: '-bottom-7' },
   };
 
   const styles = sizeStyles[avatarSizeClass] || sizeStyles['h-20 w-20'];
