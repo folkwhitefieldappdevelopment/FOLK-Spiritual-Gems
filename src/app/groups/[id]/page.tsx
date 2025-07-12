@@ -14,29 +14,42 @@ import {
   Trash2,
   Search,
   PlusCircle,
+  Headset,
+  Edit,
 } from 'lucide-react';
-import type { Person, Group, AppUser } from '@/lib/types';
+import type { Person, Group, AppUser, CustomField, CallStatus } from '@/lib/types';
 import { occupationStatuses } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { getGroup, updateGroup, addPeopleToGroup, getGroups, removePeopleFromGroup } from '@/services/groups-service';
 import { getPeople, updatePerson, assignCoEnablerToPeople, deletePeople } from '@/services/people-service';
-import { getFolkGuides } from '@/services/user-service';
-import { getEnablers, getContactSources, type EnablerOption } from '@/services/settings-service';
+import { getFolkGuides, updateUser } from '@/services/user-service';
+import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from '@/services/settings-service';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 import { useAuth } from '@/contexts/auth-context';
+import { serverTimestamp, arrayUnion } from 'firebase/firestore';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { PersonTable } from '@/components/person-table';
 import { PersonCard } from '@/components/person-card';
 import { CreateUpdatePersonDialog } from '@/components/create-update-person-dialog';
+import { CallingSessionDialog } from '@/components/calling-session-dialog';
 import { ManageGroupMembersDialog } from '@/components/manage-group-members-dialog';
 import { AssignCoEnablerDialog } from '@/components/assign-helper-dialog';
 import { CreateUpdateGroupDialog } from '@/components/create-update-group-dialog';
 import { FilterPopover, type FilterRule, type FilterableField } from '@/components/filter-popover';
 import { SortPopover, type SortDescriptor } from '@/components/sort-popover';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,7 +77,7 @@ function GroupDetailPageComponent() {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
-  const { appUser } = useAuth();
+  const { appUser, user, updateCurrentAppUser } = useAuth();
   const groupId = params.id as string;
 
   const [isLoading, setIsLoading] = React.useState(true);
@@ -74,6 +87,7 @@ function GroupDetailPageComponent() {
   const [allGroups, setAllGroups] = React.useState<Group[]>([]);
   const [allPeople, setAllPeople] = React.useState<Person[]>([]);
   const [members, setMembers] = React.useState<Person[]>([]);
+  const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   
   const [view, setView] = React.useState<'card' | 'table'>('table');
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -93,19 +107,32 @@ function GroupDetailPageComponent() {
   const [isAssignCoEnablerDialogOpen, setIsAssignCoEnablerDialogOpen] = React.useState(false);
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(undefined);
   const isSelectionActive = selectedIds.size > 0;
+  
+  const currentCallingEvent = appUser?.currentCallingEvent || "Default Event";
+  const [isSessionDialogOpen, setIsSessionDialogOpen] = React.useState(false);
+  const [peopleForSession, setPeopleForSession] = React.useState<Person[]>([]);
+  const [isEventDialogOpen, setIsEventDialogOpen] = React.useState(false);
+  const [isStartingSessionFlow, setIsStartingSessionFlow] = React.useState(false);
+  const [editableEventName, setEditableEventName] = React.useState(currentCallingEvent);
+  const [callRange, setCallRange] = React.useState({ from: '1', to: '' });
+  const [callRangeNames, setCallRangeNames] = React.useState({ from: '', to: '' });
+  const [sessionStartIndex, setSessionStartIndex] = React.useState(0);
+  const pausedSession = appUser?.pausedSession;
+
 
   const fetchPageData = React.useCallback(async () => {
     if (!groupId || !appUser) return;
     setIsLoading(true);
     setFetchError(null);
     try {
-      const [groupData, peopleData, allGroupsData, enablersData, sourcesData, guidesData] = await Promise.all([
+      const [groupData, peopleData, allGroupsData, enablersData, sourcesData, guidesData, customFieldsData] = await Promise.all([
         getGroup(groupId),
         getPeople(appUser),
         getGroups(appUser),
         getEnablers(appUser, 'filter'),
         getContactSources(appUser),
         getFolkGuides(),
+        getCustomPersonFields(appUser),
       ]);
 
       setAllPeople(peopleData);
@@ -113,6 +140,7 @@ function GroupDetailPageComponent() {
       setEnablerOptions(enablersData);
       setContactSourceOptions(sourcesData);
       setFolkGuides(guidesData);
+      setCustomFields(customFieldsData);
 
       if (groupData) {
         setGroup(groupData);
@@ -223,6 +251,29 @@ function GroupDetailPageComponent() {
   }, [filteredMembers, currentPage]);
 
   const totalPages = Math.ceil(filteredMembers.length / ROWS_PER_PAGE);
+  
+  React.useEffect(() => {
+    if (!isEventDialogOpen || !isStartingSessionFlow || filteredMembers.length === 0) {
+      setCallRangeNames({ from: '', to: '' });
+      return;
+    }
+    const handler = setTimeout(() => {
+        const fromInput = callRange.from.trim();
+        const toInput = callRange.to.trim();
+        const fromIndex = parseInt(fromInput, 10) - 1;
+        const toIndex = toInput === '' ? filteredMembers.length - 1 : parseInt(toInput, 10) - 1;
+        let fromName = '';
+        if (fromInput && !isNaN(fromIndex) && fromIndex >= 0 && fromIndex < filteredMembers.length) {
+          fromName = filteredMembers[fromIndex]?.fullName || '';
+        }
+        let toName = '';
+        if (!isNaN(toIndex) && toIndex >= 0 && toIndex < filteredMembers.length) {
+          toName = filteredMembers[toIndex]?.fullName || '';
+        }
+        setCallRangeNames({ from: fromName, to: toName });
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [callRange, filteredMembers, isEventDialogOpen, isStartingSessionFlow]);
 
   React.useEffect(() => {
     setSelectedIds(new Set());
@@ -308,6 +359,85 @@ function GroupDetailPageComponent() {
     }
   }, [selectedIds, toast, fetchPageData]);
 
+  const handleSessionSave = React.useCallback((
+    personId: string, 
+    remark: string, 
+    status: CallStatus, 
+    sg: boolean | undefined, 
+    ma: boolean | undefined, 
+    frp: boolean | undefined
+  ) => {
+    if (!appUser || !user) return;
+    const callTime = new Date();
+    const callHistoryEntry: any = {
+      remark: remark, calledAt: callTime, status: status, event: currentCallingEvent,
+      callerId: appUser.id, callerName: appUser.name, callerPhotoUrl: user.photoURL || '',
+    };
+    if (sg !== undefined) callHistoryEntry.sg = sg;
+    if (ma !== undefined) callHistoryEntry.ma = ma;
+    if (frp !== undefined) callHistoryEntry.frp = frp;
+    const updateData: any = {
+      lastCallRemark: remark, lastCallAt: serverTimestamp(), lastCallStatus: status, callHistory: arrayUnion(callHistoryEntry),
+    };
+    if (sg !== undefined) updateData.lastSg = sg;
+    if (ma !== undefined) updateData.lastMa = ma;
+    if (frp !== undefined) updateData.lastFrp = frp;
+    updatePerson(personId, updateData);
+    setMembers(prev => prev.map(p => {
+        if (p.id === personId) {
+            const newHistory = p.callHistory ? [...p.callHistory, callHistoryEntry] : [callHistoryEntry];
+            const updatedPerson = { ...p, callHistory: newHistory, lastCallRemark: remark, lastCallAt: callTime, lastCallStatus: status, };
+            if (sg !== undefined) updatedPerson.lastSg = sg;
+            if (ma !== undefined) updatedPerson.lastMa = ma;
+            if (frp !== undefined) updatedPerson.lastFrp = frp;
+            return updatedPerson;
+        }
+        return p;
+    }));
+  }, [appUser, user, currentCallingEvent]);
+  
+  const handleOpenEventDialog = React.useCallback((isStartingFlow: boolean) => {
+    setEditableEventName(currentCallingEvent);
+    setCallRange({ from: '1', to: String(filteredMembers.length) });
+    setIsStartingSessionFlow(isStartingFlow);
+    setIsEventDialogOpen(true);
+  }, [currentCallingEvent, filteredMembers.length]);
+
+  const handleSaveEventAndContinue = React.useCallback(async () => {
+    if (!appUser) return;
+    if (!editableEventName.trim()) {
+      toast({ variant: 'destructive', title: 'Event name cannot be empty.' });
+      return;
+    }
+    if (editableEventName !== currentCallingEvent) {
+      try {
+        await updateUser(appUser.id, { currentCallingEvent: editableEventName });
+        updateCurrentAppUser({ currentCallingEvent: editableEventName });
+        toast({ title: 'Calling Event Updated' });
+      } catch (error) {
+        toast({ variant: 'destructive', title: 'Error updating event.' });
+        return; 
+      }
+    }
+    if (isStartingSessionFlow) {
+      const fromIndex = parseInt(callRange.from, 10);
+      const toIndex = callRange.to.trim() === '' ? filteredMembers.length : parseInt(callRange.to, 10);
+      if (isNaN(fromIndex) || isNaN(toIndex) || fromIndex < 1 || toIndex > filteredMembers.length || fromIndex > toIndex) {
+        toast({ variant: 'destructive', title: 'Invalid Range', description: `Please enter a valid range between 1 and ${filteredMembers.length}.` });
+        return;
+      }
+      const peopleToCall = filteredMembers.slice(fromIndex - 1, toIndex);
+      if (peopleToCall.length === 0) {
+        toast({ variant: 'destructive', title: 'No Contacts Selected', description: 'The specified range is empty.' });
+        return;
+      }
+      setSessionStartIndex(fromIndex - 1);
+      setPeopleForSession(peopleToCall);
+      setIsSessionDialogOpen(true);
+    }
+    setIsEventDialogOpen(false);
+  }, [appUser, editableEventName, currentCallingEvent, isStartingSessionFlow, callRange, filteredMembers, toast, updateCurrentAppUser]);
+
   const renderContent = () => {
     if (isLoading) return <div className="flex min-h-[50vh] w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     if (fetchError) return <FirebaseConfigError error={fetchError} />;
@@ -348,6 +478,10 @@ function GroupDetailPageComponent() {
                {filteredMembers.length > 0 && <Button variant="outline" size="sm" onClick={() => { if (selectedIds.size === filteredMembers.length) { setSelectedIds(new Set()); } else { setSelectedIds(new Set(filteredMembers.map(p => p.id))); } }}>{selectedIds.size === filteredMembers.length ? 'Deselect All' : 'Select All'}</Button>}
             </div>
             <div className="flex items-center gap-2">
+              <Button size="sm" onClick={() => handleOpenEventDialog(true)} disabled={filteredMembers.length === 0 || isSelectionActive || isLoading}>
+                  <Headset className="mr-2 h-4 w-4" />
+                  Start Calling Session ({isLoading ? '...' : filteredMembers.length})
+              </Button>
               <div className="flex items-center rounded-md bg-muted p-1">
                 <Button variant={view === "card" ? "secondary" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setView("card")} aria-label="Card View"><LayoutGrid className="h-4 w-4" /></Button>
                 <Button variant={view === "table" ? "secondary" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setView("table")} aria-label="Table View"><List className="h-4 w-4" /></Button>
@@ -405,6 +539,86 @@ function GroupDetailPageComponent() {
       {editingPerson && <CreateUpdatePersonDialog isOpen={!!editingPerson} setIsOpen={() => setEditingPerson(undefined)} onSave={handleSavePersonDialog} person={editingPerson} allPeople={allPeople} />}
       {group && <ManageGroupMembersDialog isOpen={isManageMembersDialogOpen} setIsOpen={setIsManageMembersDialogOpen} onSave={handleSaveMembers} group={group} allPeople={allPeople} />}
       {isAssignCoEnablerDialogOpen && <AssignCoEnablerDialog isOpen={isAssignCoEnablerDialogOpen} setIsOpen={setIsAssignCoEnablerDialogOpen} onSave={handleAssignCoEnabler} peopleCount={selectedIds.size} />}
+      <Dialog open={isEventDialogOpen} onOpenChange={setIsEventDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{isStartingSessionFlow ? 'Confirm Calling Event' : 'Edit Calling Event'}</DialogTitle>
+            <DialogDescription>
+              {isStartingSessionFlow
+                ? 'Confirm the event and optionally specify a range of contacts to call.'
+                : 'Update the name of the current calling event.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="eventName">Event Name</Label>
+              <Input
+                id="eventName"
+                value={editableEventName}
+                onChange={(e) => setEditableEventName(e.target.value)}
+                className="mt-1"
+                placeholder="e.g., Spiritual Camp - July 2024"
+              />
+            </div>
+            {isStartingSessionFlow && (
+              <div className="space-y-2">
+                <Label>Calling Range</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                      type="number"
+                      placeholder="From"
+                      value={callRange.from}
+                      onChange={(e) => setCallRange(prev => ({...prev, from: e.target.value}))}
+                      min="1"
+                      max={filteredMembers.length}
+                  />
+                  <span className="text-muted-foreground">to</span>
+                  <Input
+                      type="number"
+                      placeholder="To"
+                      value={callRange.to}
+                      onChange={(e) => setCallRange(prev => ({...prev, to: e.target.value}))}
+                      min="1"
+                      max={filteredMembers.length}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                    Select a range from your filtered list of {filteredMembers.length} contacts.
+                </p>
+                {callRangeNames.from && (
+                  <div className="text-xs text-muted-foreground mt-2 border-l-2 border-primary pl-2 space-y-1">
+                      <p>From: <strong className="text-foreground">{callRange.from}. {callRangeNames.from}</strong></p>
+                      {callRangeNames.to && <p>To: <strong className="text-foreground">{callRange.to || filteredMembers.length}. {callRangeNames.to}</strong></p>}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEventDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveEventAndContinue}>
+              {isStartingSessionFlow ? 'Start Session' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <CallingSessionDialog
+        isOpen={isSessionDialogOpen}
+        onClose={() => setIsSessionDialogOpen(false)}
+        people={peopleForSession}
+        onSaveRemark={handleSessionSave}
+        currentEvent={currentCallingEvent}
+        customFields={customFields}
+        groups={allGroups}
+        sessionStartIndex={sessionStartIndex}
+        totalPeopleCount={filteredMembers.length}
+        initialIndex={pausedSession?.currentIndex}
+        filters={filters}
+        sortDescriptors={sortDescriptors}
+        searchTerm={searchTerm}
+        selectedGroupId={groupId}
+        columnFilters={columnFilters}
+      />
     </div>
   );
 }
