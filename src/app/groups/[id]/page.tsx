@@ -73,7 +73,7 @@ function GroupDetailPageComponent() {
   const [allPeople, setAllPeople] = React.useState<Person[]>([]);
   const [members, setMembers] = React.useState<Person[]>([]);
   
-  const [view, setView] = React.useState<'card' | 'table'>('card');
+  const [view, setView] = React.useState<'card' | 'table'>('table');
   const [searchTerm, setSearchTerm] = React.useState('');
   const [filters, setFilters] = React.useState<FilterRule[]>([]);
   const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([{ field: 'createdAt', direction: 'desc' }]);
@@ -382,7 +382,9 @@ function GroupDetailPageComponent() {
                 </PageHeader>
             )}
             <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
-              {renderContent()}
+              <AuthGuard>
+                {renderContent()}
+              </AuthGuard>
             </main>
         </div>
       
