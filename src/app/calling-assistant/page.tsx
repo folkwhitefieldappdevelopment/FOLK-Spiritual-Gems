@@ -282,12 +282,12 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     });
   }, [people, searchTerm, filters, sortDescriptors, groups, selectedGroupId, columnFilters]);
 
+  const totalPages = Math.ceil(filteredPeople.length / ROWS_PER_PAGE);
+
   const paginatedPeople = React.useMemo(() => {
     const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
     return filteredPeople.slice(startIndex, startIndex + ROWS_PER_PAGE);
   }, [filteredPeople, currentPage]);
-
-  const totalPages = Math.ceil(filteredPeople.length / ROWS_PER_PAGE);
 
   React.useEffect(() => {
     if (!isEventDialogOpen || !isStartingSessionFlow || filteredPeople.length === 0) {
@@ -782,6 +782,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
             isOpen={isEditingDialogOpen}
             setIsOpen={setIsEditingDialogOpen}
             onSave={async (data) => {
+              if (!appUser) return;
               await updatePerson(editingPersonRef.current!.id, data, appUser);
               // Also update the main people list to reflect changes immediately
               setPeople(prev => prev.map(p => p.id === editingPersonRef.current!.id ? {...p, ...data} : p));

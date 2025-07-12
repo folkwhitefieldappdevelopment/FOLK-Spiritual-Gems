@@ -266,14 +266,14 @@ function ContactsPageComponent() {
       return 0;
     });
   }, [people, searchTerm, filters, sortDescriptors, columnFilters]);
+  
+  const totalPages = Math.ceil(filteredPeople.length / ROWS_PER_PAGE);
 
   const paginatedPeople = React.useMemo(() => {
     const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
     return filteredPeople.slice(startIndex, startIndex + ROWS_PER_PAGE);
   }, [filteredPeople, currentPage]);
 
-  const totalPages = Math.ceil(filteredPeople.length / ROWS_PER_PAGE);
-  
   React.useEffect(() => {
     setSelectedIds(new Set());
     setCurrentPage(1);
@@ -863,6 +863,23 @@ function ContactsPageComponent() {
                   )
               })}
             </div>
+            {totalPages > 1 && (
+                <Pagination className="mt-8">
+                <PaginationContent>
+                    <PaginationItem>
+                    <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }} aria-disabled={currentPage === 1} tabIndex={currentPage === 1 ? -1 : undefined} className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''} />
+                    </PaginationItem>
+                    <PaginationItem>
+                    <span className="p-2 text-sm font-medium">
+                        Page {currentPage} of {totalPages}
+                    </span>
+                    </PaginationItem>
+                    <PaginationItem>
+                    <PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} aria-disabled={currentPage === totalPages} tabIndex={currentPage === totalPages ? -1 : undefined} className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''} />
+                    </PaginationItem>
+                </PaginationContent>
+                </Pagination>
+            )}
           </>
         ) : (
           <PersonTable
@@ -880,24 +897,6 @@ function ContactsPageComponent() {
             totalPages={totalPages}
             onPageChange={setCurrentPage}
           />
-        )}
-        
-        {totalPages > 1 && (
-          <Pagination className="mt-8">
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }} aria-disabled={currentPage === 1} tabIndex={currentPage === 1 ? -1 : undefined} className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''} />
-              </PaginationItem>
-              <PaginationItem>
-                <span className="p-2 text-sm font-medium">
-                  Page {currentPage} of {totalPages}
-                </span>
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} aria-disabled={currentPage === totalPages} tabIndex={currentPage === totalPages ? -1 : undefined} className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''} />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
         )}
       </>
     );
