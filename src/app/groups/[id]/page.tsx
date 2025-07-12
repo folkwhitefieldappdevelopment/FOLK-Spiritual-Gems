@@ -16,6 +16,7 @@ import {
   PlusCircle,
   Headset,
   Edit,
+  Play,
 } from 'lucide-react';
 import type { Person, Group, AppUser, CustomField, CallStatus } from '@/lib/types';
 import { occupationStatuses } from '@/lib/types';
@@ -118,6 +119,7 @@ function GroupDetailPageComponent() {
   const [callRangeNames, setCallRangeNames] = React.useState({ from: '', to: '' });
   const [sessionStartIndex, setSessionStartIndex] = React.useState(0);
   const [initialSessionIndex, setInitialSessionIndex] = React.useState(0);
+  const pausedSession = appUser?.pausedSession;
 
 
   const fetchPageData = React.useCallback(async () => {
@@ -439,6 +441,33 @@ function GroupDetailPageComponent() {
     setIsEventDialogOpen(false);
   }, [appUser, editableEventName, currentCallingEvent, isStartingSessionFlow, callRange, filteredMembers, toast, updateCurrentAppUser]);
 
+  const handleResumeSession = React.useCallback(() => {
+    if (!pausedSession) return;
+    
+    // On the group page, we don't restore filters/search from a potentially different context.
+    // We just find the people from the paused list that exist in THIS group.
+    
+    const peopleMap = new Map(allPeople.map(p => [p.id, p]));
+    const peopleForPausedSession = pausedSession.peopleIds
+        .map(id => peopleMap.get(id))
+        .filter((p): p is Person => !!p);
+
+    if (peopleForPausedSession.length !== pausedSession.peopleIds.length) {
+        toast({
+            variant: 'destructive',
+            title: 'Could not resume session',
+            description: 'Some contacts in the paused session no longer exist or are inaccessible.'
+        });
+        return;
+    }
+
+    setPeopleForSession(peopleForPausedSession);
+    setSessionStartIndex(pausedSession.sessionStartIndex);
+    setInitialSessionIndex(pausedSession.currentIndex);
+    setIsSessionDialogOpen(true);
+
+  }, [pausedSession, allPeople, toast]);
+
   const renderContent = () => {
     if (isLoading) return <div className="flex min-h-[50vh] w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     if (fetchError) return <FirebaseConfigError error={fetchError} />;
@@ -479,6 +508,12 @@ function GroupDetailPageComponent() {
                {filteredMembers.length > 0 && <Button variant="outline" size="sm" onClick={() => { if (selectedIds.size === filteredMembers.length) { setSelectedIds(new Set()); } else { setSelectedIds(new Set(filteredMembers.map(p => p.id))); } }}>{selectedIds.size === filteredMembers.length ? 'Deselect All' : 'Select All'}</Button>}
             </div>
             <div className="flex items-center gap-2">
+              {pausedSession && (
+                  <Button size="sm" onClick={handleResumeSession} variant="outline">
+                      <Play className="mr-2 h-4 w-4" />
+                      Resume Session ({pausedSession.currentIndex + 1} / {pausedSession.peopleIds.length})
+                  </Button>
+              )}
               <Button size="sm" onClick={() => handleOpenEventDialog(true)} disabled={filteredMembers.length === 0 || isSelectionActive || isLoading}>
                   <Headset className="mr-2 h-4 w-4" />
                   Start Calling Session ({isLoading ? '...' : filteredMembers.length})
