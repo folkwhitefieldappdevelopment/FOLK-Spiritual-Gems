@@ -501,9 +501,7 @@ function GroupDetailPageComponent() {
                 <>
                   <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by name or phone..." className="pl-10 w-full sm:w-64" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
                   <FilterPopover filters={filters} setFilters={setFilters} filterableFields={filterableFields} />
-                  {view === 'card' && (
-                    <SortPopover sortDescriptors={sortDescriptors} setSortDescriptors={setSortDescriptors} />
-                  )}
+                  <SortPopover sortDescriptors={sortDescriptors} setSortDescriptors={setSortDescriptors} />
                 </>
               )}
                {filteredMembers.length > 0 && <Button variant="outline" size="sm" onClick={() => { if (selectedIds.size === filteredMembers.length) { setSelectedIds(new Set()); } else { setSelectedIds(new Set(filteredMembers.map(p => p.id))); } }}>{selectedIds.size === filteredMembers.length ? 'Deselect All' : 'Select All'}</Button>}

@@ -613,6 +613,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
                                 </SelectContent>
                             </Select>
                             <FilterPopover filters={filters} setFilters={setFilters} filterableFields={filterableFields} />
+                            <SortPopover sortDescriptors={sortDescriptors} setSortDescriptors={setSortDescriptors} />
                         </>
                     )}
                 </div>

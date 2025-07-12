@@ -778,12 +778,10 @@ function ContactsPageComponent() {
                                 setFilters={setFilters}
                                 filterableFields={filterableFields}
                             />
-                            {view === 'card' && (
-                                <SortPopover
-                                    sortDescriptors={sortDescriptors}
-                                    setSortDescriptors={setSortDescriptors}
-                                />
-                            )}
+                            <SortPopover
+                                sortDescriptors={sortDescriptors}
+                                setSortDescriptors={setSortDescriptors}
+                            />
                         </>
                     )}
                     {filteredPeople.length > 0 && !isSelectionActive && (
