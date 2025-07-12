@@ -153,9 +153,8 @@ export function EditablePersonDetailsForm({
   }, [person, resetFormToPerson]);
   
   React.useEffect(() => {
-    if (isEditing) {
+    if (isEditing && appUser) { // <-- Added appUser check here
       const loadOptions = async () => {
-          if (!appUser) return;
           try {
               const [enablers, sources, fields] = await Promise.all([
                 getEnablers(appUser, 'assignment'), 

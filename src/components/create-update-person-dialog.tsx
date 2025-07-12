@@ -139,9 +139,8 @@ export function CreateUpdatePersonDialog({
 
 
   React.useEffect(() => {
-    if (isOpen) {
+    if (isOpen && appUser) { // <-- Added appUser check here
       const loadOptions = async () => {
-          if (!appUser) return;
           try {
               const [enablers, sources, fields] = await Promise.all([
                 getEnablers(appUser, 'assignment'), 
