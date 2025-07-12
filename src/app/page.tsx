@@ -64,12 +64,14 @@ import { FilterPopover, type FilterRule, type FilterableField } from "@/componen
 import { Input } from "@/components/ui/input";
 import { ColumnFilterState, applyColumnFilters } from "@/components/column-header-filter";
 import { AuthGuard } from "@/components/auth-guard";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const ROWS_PER_PAGE = 10;
 
 function ContactsPageComponent() {
   const { toast } = useToast();
   const { appUser } = useAuth();
+  const isMobile = useIsMobile();
 
   const [people, setPeople] = React.useState<Person[]>([]);
   const [groups, setGroups] = React.useState<Group[]>([]);
@@ -100,6 +102,10 @@ function ContactsPageComponent() {
   const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
 
   const canAssignCoEnabler = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
+
+  React.useEffect(() => {
+    setView(isMobile ? 'table' : 'card');
+  }, [isMobile]);
 
   const fetchPageData = React.useCallback(async () => {
     if (!appUser) return;

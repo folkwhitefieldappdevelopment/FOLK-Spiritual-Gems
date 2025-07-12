@@ -217,10 +217,10 @@ export function ProgressTracker({
       </CardHeader>
       <CardContent className="p-0">
         <div className="relative h-[660px] w-full overflow-auto border">
-            <table className="w-full caption-bottom text-sm border-collapse">
+            <table className="w-full caption-bottom text-sm border-collapse table-fixed">
             <TableHeader className="sticky top-0 z-30 bg-muted">
                 <TableRow>
-                    <TableHead className="w-[300px] min-w-[300px] font-bold text-foreground align-bottom sticky left-0 z-40 bg-muted py-2 pr-2 pl-4 border-b border-r">
+                    <TableHead className="w-[280px] min-w-[280px] font-bold text-foreground align-bottom sticky left-0 z-40 bg-muted py-2 pr-2 pl-4 border-b border-r">
                         Category
                     </TableHead>
                     <TableHead className="w-[120px] text-center text-xs font-semibold border-l border-b p-1">Goal</TableHead>
@@ -246,7 +246,7 @@ export function ProgressTracker({
                         
                         return (
                         <TableRow key={item.question}>
-                            <TableCell className="font-medium text-sm text-muted-foreground align-top sticky left-0 z-20 bg-card py-2 pr-2 pl-4 border-b border-r whitespace-normal">
+                            <TableCell className="font-medium text-sm text-muted-foreground align-top sticky left-0 z-20 bg-card py-2 pr-2 pl-4 border-b border-r whitespace-normal break-words">
                             {item.link ? (
                                 <Link
                                 href={item.link}
