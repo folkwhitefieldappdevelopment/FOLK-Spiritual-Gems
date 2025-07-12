@@ -94,6 +94,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   const [callRange, setCallRange] = React.useState({ from: '1', to: '' });
   const [callRangeNames, setCallRangeNames] = React.useState({ from: '', to: '' });
   const [sessionStartIndex, setSessionStartIndex] = React.useState(0);
+  const [initialSessionIndex, setInitialSessionIndex] = React.useState(0);
 
   const pausedSession = appUser?.pausedSession;
 
@@ -443,6 +444,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       }
       
       setSessionStartIndex(fromIndex - 1);
+      setInitialSessionIndex(0); // Always start new session from beginning
       setPeopleForSession(peopleToCall);
       setIsSessionDialogOpen(true);
     }
@@ -544,6 +546,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
     setPeopleForSession(peopleForPausedSession);
     setSessionStartIndex(pausedSession.sessionStartIndex);
+    setInitialSessionIndex(pausedSession.currentIndex);
     setIsSessionDialogOpen(true);
 
   }, [pausedSession, people, toast]);
@@ -749,7 +752,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
         groups={groups}
         sessionStartIndex={sessionStartIndex}
         totalPeopleCount={filteredPeople.length}
-        initialIndex={pausedSession?.currentIndex}
+        initialIndex={initialSessionIndex}
         // Pass all filter/sort states to be saved on pause
         filters={filters}
         sortDescriptors={sortDescriptors}

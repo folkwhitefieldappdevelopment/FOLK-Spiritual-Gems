@@ -117,7 +117,7 @@ function GroupDetailPageComponent() {
   const [callRange, setCallRange] = React.useState({ from: '1', to: '' });
   const [callRangeNames, setCallRangeNames] = React.useState({ from: '', to: '' });
   const [sessionStartIndex, setSessionStartIndex] = React.useState(0);
-  const pausedSession = appUser?.pausedSession;
+  const [initialSessionIndex, setInitialSessionIndex] = React.useState(0);
 
 
   const fetchPageData = React.useCallback(async () => {
@@ -432,6 +432,7 @@ function GroupDetailPageComponent() {
         return;
       }
       setSessionStartIndex(fromIndex - 1);
+      setInitialSessionIndex(0); // Always start new session from beginning
       setPeopleForSession(peopleToCall);
       setIsSessionDialogOpen(true);
     }
@@ -612,7 +613,7 @@ function GroupDetailPageComponent() {
         groups={allGroups}
         sessionStartIndex={sessionStartIndex}
         totalPeopleCount={filteredMembers.length}
-        initialIndex={pausedSession?.currentIndex}
+        initialIndex={initialSessionIndex}
         filters={filters}
         sortDescriptors={sortDescriptors}
         searchTerm={searchTerm}
