@@ -1,3 +1,4 @@
+
 import { db, auth } from '@/lib/firebase';
 import {
   collection,
@@ -12,15 +13,15 @@ import {
 } from 'firebase/firestore';
 import { sendSignInLinkToEmail, type AuthError } from 'firebase/auth';
 import type { AppUser } from '@/lib/types';
+import { logAudit } from './audit-service';
 
 type UserData = Omit<AppUser, 'id' | 'createdAt'>;
 
 /**
  * Creates a user record in the 'users' Firestore collection and sends a sign-in link.
  * @param userData - The user data to save.
- * @throws Will throw an error if a user with the same email or FG code already exists.
  */
-export const createUser = async (userData: UserData): Promise<void> => {
+export const createUser = async (userData: UserData, actor: AppUser): Promise<void> => {
   const usersCollection = collection(db, 'users');
   
   const q = query(usersCollection, where("email", "==", userData.email));
@@ -61,7 +62,8 @@ export const createUser = async (userData: UserData): Promise<void> => {
   };
 
   try {
-      await addDoc(usersCollection, dataToSave);
+      const docRef = await addDoc(usersCollection, dataToSave);
+      await logAudit('Create User', `Created new user: ${userData.name} (${userData.email})`, actor);
   } catch (dbError) {
       console.error("Failed to create user in Firestore after sending email:", dbError);
       throw new Error("Sign-up email was sent, but failed to save user to the database. Please check Firestore permissions or try again.");
@@ -73,7 +75,7 @@ export const createUser = async (userData: UserData): Promise<void> => {
  * @param id The ID of the user to update.
  * @param userData The data to update.
  */
-export const updateUser = async (id: string, userData: { [key: string]: any }): Promise<void> => {
+export const updateUser = async (id: string, userData: { [key: string]: any }, actor: AppUser | null = null): Promise<void> => {
   const userDocRef = doc(db, 'users', id);
   if (userData.email) {
     const q = query(collection(db, 'users'), where("email", "==", userData.email));
@@ -98,6 +100,16 @@ export const updateUser = async (id: string, userData: { [key: string]: any }): 
   }
 
   await updateDoc(userDocRef, userData);
+  
+  if (actor) {
+    if (userData.pausedSession) {
+        await logAudit('Pause Calling Session', `Paused session for event: ${userData.pausedSession.currentEvent}`, actor);
+    } else if (userData.hasOwnProperty('pausedSession') && userData.pausedSession === undefined) {
+        await logAudit('End Calling Session', `Ended/cleared paused session.`, actor);
+    } else {
+        await logAudit('Update User', `Updated user: ${userData.name || id}`, actor);
+    }
+  }
 };
 
 /**

@@ -15,6 +15,7 @@ import {
   type DocumentData,
 } from 'firebase/firestore';
 import type { Group, AppUser, UserRole } from '@/lib/types';
+import { logAudit } from './audit-service';
 
 export const getGroups = async (appUser: AppUser): Promise<Group[]> => {
   const groupsCollection = collection(db, 'groups');
@@ -89,27 +90,35 @@ export const createGroup = async (groupData: Omit<Group, 'id' | 'memberCount' | 
     peopleIds: [],
   };
   const docRef = await addDoc(groupsCollection, dataToSave);
+  await logAudit('Create Group', `Created group: ${groupData.name}`, appUser);
   return { id: docRef.id, ...dataToSave } as Group;
 };
 
-export const updateGroup = async (id: string, groupData: Partial<Omit<Group, 'id'>>): Promise<void> => {
+export const updateGroup = async (id: string, groupData: Partial<Omit<Group, 'id'>>, appUser: AppUser): Promise<void> => {
   const docRef = doc(db, 'groups', id);
   await updateDoc(docRef, groupData);
+  await logAudit('Update Group', `Updated group: ${groupData.name || id}`, appUser);
 };
 
-export const deleteGroup = async (id: string): Promise<void> => {
+export const deleteGroup = async (id: string, appUser: AppUser): Promise<void> => {
+  const group = await getGroup(id);
   const docRef = doc(db, 'groups', id);
   await deleteDoc(docRef);
+  if (group) {
+    await logAudit('Delete Group', `Deleted group: ${group.name} (${id})`, appUser);
+  }
 };
 
-export const addPeopleToGroup = async (groupId: string, peopleIds: string[]): Promise<void> => {
+export const addPeopleToGroup = async (groupId: string, peopleIds: string[], appUser: AppUser): Promise<void> => {
   const groupRef = doc(db, 'groups', groupId);
+  let groupName = 'Unknown Group';
 
   await runTransaction(db, async (transaction) => {
     const groupDoc = await transaction.get(groupRef);
     if (!groupDoc.exists()) {
       throw new Error("Group not found.");
     }
+    groupName = groupDoc.data().name;
 
     const currentPeopleIds: string[] = groupDoc.data().peopleIds || [];
     const newPeopleIds = Array.from(new Set([...currentPeopleIds, ...peopleIds]));
@@ -121,16 +130,20 @@ export const addPeopleToGroup = async (groupId: string, peopleIds: string[]): Pr
       });
     }
   });
+
+  await logAudit('Add to Group', `Added ${peopleIds.length} members to group: ${groupName}`, appUser);
 };
 
-export const removePeopleFromGroup = async (groupId: string, peopleIdsToRemove: string[]): Promise<void> => {
+export const removePeopleFromGroup = async (groupId: string, peopleIdsToRemove: string[], appUser: AppUser): Promise<void> => {
   const groupRef = doc(db, 'groups', groupId);
+  let groupName = 'Unknown Group';
 
   await runTransaction(db, async (transaction) => {
     const groupDoc = await transaction.get(groupRef);
     if (!groupDoc.exists()) {
       throw new Error("Group not found.");
     }
+    groupName = groupDoc.data().name;
 
     const currentPeopleIds: string[] = groupDoc.data().peopleIds || [];
     const idsToRemoveSet = new Set(peopleIdsToRemove);
@@ -143,4 +156,6 @@ export const removePeopleFromGroup = async (groupId: string, peopleIdsToRemove: 
       });
     }
   });
+  
+  await logAudit('Remove from Group', `Removed ${peopleIdsToRemove.length} members from group: ${groupName}`, appUser);
 };

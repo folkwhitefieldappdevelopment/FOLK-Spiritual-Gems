@@ -71,6 +71,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { ColumnFilterState, applyColumnFilters } from '@/components/column-header-filter';
 import { AuthGuard } from '@/components/auth-guard';
+import { logAudit } from '@/services/audit-service';
 
 const ROWS_PER_PAGE = 10;
 
@@ -288,9 +289,9 @@ function GroupDetailPageComponent() {
   }, []);
   
   const handleRemoveMembers = React.useCallback(async (idsToRemove: string[]) => {
-    if (!group) return;
+    if (!group || !appUser) return;
     try {
-      await removePeopleFromGroup(group.id, idsToRemove);
+      await removePeopleFromGroup(group.id, idsToRemove, appUser);
       setMembers(prev => prev.filter(m => !idsToRemove.includes(m.id)));
       setGroup(prev => prev ? { ...prev, peopleIds: prev.peopleIds.filter(id => !idsToRemove.includes(id)), memberCount: prev.memberCount - idsToRemove.length } : null);
       toast({
@@ -301,12 +302,12 @@ function GroupDetailPageComponent() {
     } catch(e) {
       toast({ variant: 'destructive', title: 'Error removing members' });
     }
-  }, [group, toast]);
+  }, [group, toast, appUser]);
   
   const handleSavePersonDialog = React.useCallback(async (personData: Omit<Person, 'id' | 'progress'>) => {
-    if (!editingPerson) return;
+    if (!editingPerson || !appUser) return;
     try {
-      await updatePerson(editingPerson.id, personData);
+      await updatePerson(editingPerson.id, personData, appUser);
       const updatedPerson = { ...editingPerson, ...personData };
       setAllPeople(allPeople.map(p => p.id === updatedPerson.id ? updatedPerson : p));
       setMembers(members.map(m => m.id === updatedPerson.id ? updatedPerson : m));
@@ -315,20 +316,20 @@ function GroupDetailPageComponent() {
     } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not update person details.'});
     }
-  }, [editingPerson, allPeople, members, toast]);
+  }, [editingPerson, allPeople, members, toast, appUser]);
   
   const handleSaveMembers = React.useCallback(async (memberIds: string[]) => {
-    if (!group) return;
+    if (!group || !appUser) return;
     try {
       const updatedGroupData = { peopleIds: memberIds, memberCount: memberIds.length };
-      await updateGroup(groupId, updatedGroupData);
+      await updateGroup(groupId, updatedGroupData, appUser);
       const updatedGroup = { ...group, ...updatedGroupData };
       setGroup(updatedGroup);
       setMembers(allPeople.filter(p => memberIds.includes(p.id)));
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not update group members.'});
     }
-  }, [group, groupId, allPeople, toast]);
+  }, [group, groupId, allPeople, toast, appUser]);
   
   const handleSelectionChange = React.useCallback((personId: string, checked: boolean) => {
     setSelectedIds(prev => {
@@ -340,27 +341,27 @@ function GroupDetailPageComponent() {
   }, []);
 
   const handleAddToGroup = React.useCallback(async (targetGroupId: string) => {
-    if (selectedIds.size === 0) return;
+    if (selectedIds.size === 0 || !appUser) return;
     try {
-      await addPeopleToGroup(targetGroupId, Array.from(selectedIds));
+      await addPeopleToGroup(targetGroupId, Array.from(selectedIds), appUser);
       toast({ title: 'Members Added', description: `${selectedIds.size} contacts have been added to the other group.` });
       setSelectedIds(new Set());
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not add contacts to the group.'});
     }
-  }, [selectedIds, toast]);
+  }, [selectedIds, toast, appUser]);
 
   const handleAssignCoEnabler = React.useCallback(async (coEnabler: AppUser | null) => {
-    if (selectedIds.size === 0) return;
+    if (!appUser || selectedIds.size === 0) return;
     try {
-      await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler);
+      await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler, appUser);
       toast({ title: coEnabler ? 'Co-Enabler Assigned' : 'Co-Enabler Unassigned', description: `${selectedIds.size} contacts have been updated.` });
       fetchPageData(); // Refetch to show changes
       setSelectedIds(new Set());
     } catch (error) {
        toast({ variant: "destructive", title: "Error", description: "Could not assign co-enabler." });
     }
-  }, [selectedIds, toast, fetchPageData]);
+  }, [selectedIds, toast, fetchPageData, appUser]);
 
   const handleSessionSave = React.useCallback((
     personId: string, 
@@ -414,7 +415,7 @@ function GroupDetailPageComponent() {
     }
     if (editableEventName !== currentCallingEvent) {
       try {
-        await updateUser(appUser.id, { currentCallingEvent: editableEventName });
+        await updateUser(appUser.id, { currentCallingEvent: editableEventName }, appUser);
         updateCurrentAppUser({ currentCallingEvent: editableEventName });
         toast({ title: 'Calling Event Updated' });
       } catch (error) {
@@ -434,13 +435,14 @@ function GroupDetailPageComponent() {
         toast({ variant: 'destructive', title: 'No Contacts Selected', description: 'The specified range is empty.' });
         return;
       }
+      await logAudit('Start Calling Session', `Started session for group "${group?.name}" with ${peopleToCall.length} contacts.`, appUser);
       setSessionStartIndex(fromIndex - 1);
       setInitialSessionIndex(0); // Always start new session from beginning
       setPeopleForSession(peopleToCall);
       setIsSessionDialogOpen(true);
     }
     setIsEventDialogOpen(false);
-  }, [appUser, editableEventName, currentCallingEvent, isStartingSessionFlow, callRange, filteredMembers, toast, updateCurrentAppUser]);
+  }, [appUser, editableEventName, currentCallingEvent, isStartingSessionFlow, callRange, filteredMembers, toast, updateCurrentAppUser, group]);
 
   const handleResumeSession = React.useCallback(() => {
     if (!pausedSession || !canResumeSession) return;

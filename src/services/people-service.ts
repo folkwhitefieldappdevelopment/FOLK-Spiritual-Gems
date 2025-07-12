@@ -17,6 +17,7 @@ import {
   deleteField,
 } from 'firebase/firestore';
 import type { Person, AppUser } from '@/lib/types';
+import { logAudit } from './audit-service';
 
 const processPersonDoc = (doc: DocumentSnapshot): Person => {
   const data = doc.data() as any; // Use 'any' to access potential legacy fields
@@ -169,6 +170,7 @@ export const createPerson = async (
   };
 
   const docRef = await addDoc(peopleCollection, dataToSave);
+  await logAudit('Create Contact', `Created new contact: ${dataToSave.fullName} (${docRef.id})`, appUser);
   const newPerson: Person = {
     ...(dataToSave as Omit<Person, 'id'>),
     id: docRef.id,
@@ -177,7 +179,7 @@ export const createPerson = async (
   return newPerson;
 };
 
-export const updatePerson = async (id: string, personData: Partial<Omit<Person, 'id'>>): Promise<void> => {
+export const updatePerson = async (id: string, personData: Partial<Omit<Person, 'id'>>, appUser: AppUser | null = null): Promise<void> => {
   if (personData.phone) {
     const peopleCollection = collection(db, 'people');
     const q = query(peopleCollection, where("phone", "==", personData.phone));
@@ -189,14 +191,22 @@ export const updatePerson = async (id: string, personData: Partial<Omit<Person, 
   }
   const docRef = doc(db, 'people', id);
   await updateDoc(docRef, personData);
+  if (appUser) {
+    const person = await getPerson(id);
+    await logAudit('Update Contact', `Updated details for contact: ${person?.fullName} (${id})`, appUser);
+  }
 };
 
-export const deletePerson = async (id: string): Promise<void> => {
+export const deletePerson = async (id: string, appUser: AppUser): Promise<void> => {
+  const person = await getPerson(id);
   const docRef = doc(db, 'people', id);
   await deleteDoc(docRef);
+  if (person) {
+    await logAudit('Delete Contact', `Deleted contact: ${person.fullName} (${id})`, appUser);
+  }
 };
 
-export const deletePeople = async (ids: string[]): Promise<void> => {
+export const deletePeople = async (ids: string[], appUser: AppUser): Promise<void> => {
   if (ids.length === 0) return;
   const batch = writeBatch(db);
   ids.forEach(id => {
@@ -204,6 +214,7 @@ export const deletePeople = async (ids: string[]): Promise<void> => {
     batch.delete(docRef);
   });
   await batch.commit();
+  await logAudit('Delete Multiple Contacts', `Deleted ${ids.length} contacts: ${ids.join(', ')}`, appUser);
 };
 
 export const importPeople = async (
@@ -299,9 +310,10 @@ export const importPeople = async (
     }
     
     await batch.commit();
+    await logAudit('Import Contacts', `Imported ${people.length} contacts from a file.`, appUser);
 };
 
-export const assignCoEnablerToPeople = async (personIds: string[], coEnabler: AppUser | null): Promise<void> => {
+export const assignCoEnablerToPeople = async (personIds: string[], coEnabler: AppUser | null, appUser: AppUser): Promise<void> => {
   if (personIds.length === 0) return;
   const batch = writeBatch(db);
   personIds.forEach(id => {
@@ -319,4 +331,8 @@ export const assignCoEnablerToPeople = async (personIds: string[], coEnabler: Ap
     }
   });
   await batch.commit();
+  const details = coEnabler 
+    ? `Assigned ${coEnabler.name} as co-enabler for ${personIds.length} contacts.`
+    : `Unassigned co-enabler from ${personIds.length} contacts.`;
+  await logAudit('Assign Co-Enabler', details, appUser);
 };

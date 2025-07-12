@@ -3,18 +3,29 @@
 
 import { doc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { logAudit } from './audit-service';
+import type { AppUser } from '@/lib/types';
+import { getDoc } from 'firebase/firestore';
 
 /**
  * Deletes a user record from Firestore.
  * This does NOT delete the user from Firebase Authentication.
  * This is a server action and requires admin privileges.
  * @param userId The Firestore document ID of the user.
+ * @param actor The user performing the action.
  */
-export async function deleteUserAndAuth(userId: string) {
+export async function deleteUserAndAuth(userId: string, actor: AppUser) {
   try {
-    // Delete from Firestore only
     const userDocRef = doc(db, 'users', userId);
+    const userSnap = await getDoc(userDocRef);
+    const userData = userSnap.data();
+
     await deleteDoc(userDocRef);
+    
+    if (userData) {
+      await logAudit('Delete User', `Deleted user: ${userData.name} (${userId})`, actor);
+    }
+
   } catch (error: any) {
     console.error('Error deleting user record from Firestore:', error);
     const message =

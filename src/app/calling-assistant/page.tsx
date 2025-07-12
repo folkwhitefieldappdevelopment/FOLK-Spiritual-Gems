@@ -51,6 +51,7 @@ import { AssignCoEnablerDialog } from '@/components/assign-helper-dialog';
 import { ColumnFilterState, applyColumnFilters } from "@/components/column-header-filter";
 import { SortPopover, type SortDescriptor } from "@/components/sort-popover";
 import { AuthGuard } from "@/components/auth-guard";
+import { logAudit } from "@/services/audit-service";
 
 const ROWS_PER_PAGE = 10;
 
@@ -405,7 +406,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
     if (editableEventName !== currentCallingEvent) {
       try {
-        await updateUser(appUser.id, { currentCallingEvent: editableEventName });
+        await updateUser(appUser.id, { currentCallingEvent: editableEventName }, appUser);
         updateCurrentAppUser({ currentCallingEvent: editableEventName });
         toast({ title: 'Calling Event Updated' });
       } catch (error) {
@@ -444,6 +445,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
         return;
       }
       
+      await logAudit('Start Calling Session', `Started session for event "${editableEventName}" with ${peopleToCall.length} contacts.`, appUser);
       setSessionStartIndex(fromIndex - 1);
       setInitialSessionIndex(0); // Always start new session from beginning
       setPeopleForSession(peopleToCall);
@@ -456,7 +458,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   const handleAddToGroup = React.useCallback(async (targetGroupId: string) => {
     if (selectedIds.size === 0 || !appUser) return;
     try {
-        await addPeopleToGroup(targetGroupId, Array.from(selectedIds));
+        await addPeopleToGroup(targetGroupId, Array.from(selectedIds), appUser);
         toast({ title: 'Members Added', description: `${selectedIds.size} contacts have been added to the other group.` });
         const updatedGroups = await getGroups(appUser);
         setGroups(updatedGroups);
@@ -478,7 +480,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
         setGroups((prev) => [...prev, newGroup]);
         
         if (selectedIds.size > 0) {
-            await addPeopleToGroup(newGroup.id, Array.from(selectedIds));
+            await addPeopleToGroup(newGroup.id, Array.from(selectedIds), appUser);
             toast({
                 title: "Group Created & Members Added",
                 description: `The group "${newGroup.name}" was created and ${selectedIds.size} contacts were added.`,
@@ -503,18 +505,16 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   }, [selectedIds, appUser, toast]);
 
   const handleAssignCoEnabler = React.useCallback(async (coEnabler: AppUser | null) => {
-    if (selectedIds.size === 0) return;
+    if (!appUser || selectedIds.size === 0) return;
     try {
-        await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler);
+        await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler, appUser);
         toast({
             title: coEnabler ? 'Co-Enabler Assigned' : 'Co-Enabler Unassigned',
             description: `${selectedIds.size} contacts have been updated.`,
         });
         // Refetch all people data to show the change
-        if (appUser) {
-            const peopleData = await getPeople(appUser);
-            setPeople(peopleData);
-        }
+        const peopleData = await getPeople(appUser);
+        setPeople(peopleData);
         setSelectedIds(new Set());
     } catch (error) {
         toast({ variant: "destructive", title: "Error", description: "Could not assign co-enabler." });
@@ -782,7 +782,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
             isOpen={isEditingDialogOpen}
             setIsOpen={setIsEditingDialogOpen}
             onSave={async (data) => {
-              await updatePerson(editingPersonRef.current!.id, data);
+              await updatePerson(editingPersonRef.current!.id, data, appUser);
               // Also update the main people list to reflect changes immediately
               setPeople(prev => prev.map(p => p.id === editingPersonRef.current!.id ? {...p, ...data} : p));
             }}

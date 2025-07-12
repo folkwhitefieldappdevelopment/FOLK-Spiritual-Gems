@@ -310,7 +310,7 @@ function ContactsPageComponent() {
   }, []);
 
   const handleExport = React.useCallback(async () => {
-    if (filteredPeople.length === 0) {
+    if (filteredPeople.length === 0 || !appUser) {
       toast({
         variant: "destructive",
         title: "No Contacts to Export",
@@ -390,6 +390,7 @@ function ContactsPageComponent() {
         title: 'Export Successful',
         description: `Exported ${filteredPeople.length} contacts in contacts_export.zip.`,
       });
+      await logAudit('Export Contacts', `Exported ${filteredPeople.length} contacts.`, appUser);
 
     } catch (err) {
       console.error("Failed to generate zip file:", err);
@@ -401,7 +402,7 @@ function ContactsPageComponent() {
     } finally {
       setIsExporting(false);
     }
-  }, [filteredPeople, toast]);
+  }, [filteredPeople, toast, appUser]);
 
   const handleFileImport = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -519,8 +520,9 @@ function ContactsPageComponent() {
   }, []);
 
   const handleDeletePerson = React.useCallback(async (personId: string) => {
+    if (!appUser) return;
     try {
-      await deletePerson(personId);
+      await deletePerson(personId, appUser);
       setPeople((prev) => prev.filter((p) => p.id !== personId));
       toast({
         title: "Person Deleted",
@@ -533,11 +535,12 @@ function ContactsPageComponent() {
         description: "Could not delete person.",
       });
     }
-  }, [toast]);
+  }, [toast, appUser]);
 
   const handleDeleteSelected = React.useCallback(async () => {
+    if (!appUser) return;
     try {
-      await deletePeople(Array.from(selectedIds));
+      await deletePeople(Array.from(selectedIds), appUser);
       setPeople((prev) => prev.filter((p) => !selectedIds.has(p.id)));
       toast({
         title: "Contacts Deleted",
@@ -551,7 +554,7 @@ function ContactsPageComponent() {
         description: "Could not delete the selected contacts.",
       });
     }
-  }, [selectedIds, toast]);
+  }, [selectedIds, toast, appUser]);
 
 
   const handleSavePerson = React.useCallback(async (personData: Omit<Person, "id" | "progress" | "createdAt">) => {
@@ -559,7 +562,7 @@ function ContactsPageComponent() {
     try {
       if (editingPerson) {
         const updatedData = { ...editingPerson, ...personData };
-        await updatePerson(editingPerson.id, personData);
+        await updatePerson(editingPerson.id, personData, appUser);
         setPeople((prev) =>
           prev.map((p) =>
             p.id === editingPerson.id ? updatedData : p
@@ -606,14 +609,13 @@ function ContactsPageComponent() {
   }, []);
 
   const handleAddToGroup = React.useCallback(async (groupId: string) => {
-    if (selectedIds.size === 0) return;
+    if (selectedIds.size === 0 || !appUser) return;
     try {
-      await addPeopleToGroup(groupId, Array.from(selectedIds));
+      await addPeopleToGroup(groupId, Array.from(selectedIds), appUser);
       toast({
         title: "Members Added",
         description: `${selectedIds.size} contacts have been added to the group.`,
       });
-      if (!appUser) return;
       const updatedGroups = await getGroups(appUser);
       setGroups(updatedGroups);
       setSelectedIds(new Set());
@@ -638,7 +640,7 @@ function ContactsPageComponent() {
       setGroups((prev) => [...prev, newGroup]);
       
       if (selectedIds.size > 0) {
-        await addPeopleToGroup(newGroup.id, Array.from(selectedIds));
+        await addPeopleToGroup(newGroup.id, Array.from(selectedIds), appUser);
          toast({
           title: "Group Created & Members Added",
           description: `The group "${newGroup.name}" was created and ${selectedIds.size} contacts were added.`,
@@ -663,9 +665,9 @@ function ContactsPageComponent() {
   }, [selectedIds, appUser, toast]);
   
   const handleAssignCoEnabler = React.useCallback(async (coEnabler: AppUser | null) => {
-    if (selectedIds.size === 0) return;
+    if (!appUser || selectedIds.size === 0) return;
     try {
-      await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler);
+      await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler, appUser);
       toast({
         title: coEnabler ? 'Co-Enabler Assigned' : 'Co-Enabler Unassigned',
         description: `${selectedIds.size} contacts have been updated.`,
@@ -680,7 +682,7 @@ function ContactsPageComponent() {
         description: "Could not assign co-enabler.",
       });
     }
-  }, [selectedIds, toast, fetchPageData]);
+  }, [selectedIds, toast, fetchPageData, appUser]);
 
 
   const isLoadingAction = isImporting || isExporting;
@@ -915,7 +917,9 @@ function ContactsPageComponent() {
               </div>
           </PageHeader>
           <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
-            {renderContent()}
+            <AuthGuard>
+              {renderContent()}
+            </AuthGuard>
           </main>
       </div>
       <CreateUpdatePersonDialog

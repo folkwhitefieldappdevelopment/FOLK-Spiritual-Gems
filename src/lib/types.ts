@@ -138,3 +138,12 @@ export type CustomField = {
   label: string;
   type: CustomFieldType;
 };
+
+export type AuditLog = {
+    id: string;
+    timestamp: any; // Firestore Timestamp
+    userId: string;
+    userName: string;
+    action: string;
+    details: string;
+};

@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, UserSquare, Settings, Gem, Headset, UserCog } from "lucide-react";
+import { Users, UserSquare, Settings, Gem, Headset, UserCog, History } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import {
   Tooltip,
@@ -22,11 +22,21 @@ export function AppSidebar() {
     { href: "/groups", label: "Groups", icon: UserSquare },
     { href: "/calling-assistant", label: "Calling Assistant", icon: Headset },
     { href: "/user-management", label: "User Management", icon: UserCog, adminOnly: true },
+    { href: "/user-audit", label: "User Audit", icon: History, adminOnly: true },
   ];
   
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
     return pathname.startsWith(href);
+  }
+
+  const userCanSee = (item: typeof navItems[0]) => {
+    if (!item.adminOnly) return true;
+    if (appUser?.role.includes('Admin')) return true;
+    // Special case for guides to see user management
+    if (item.href === '/user-management' && appUser?.role.includes('Folk Guide')) return true;
+    if (item.href === '/user-audit' && appUser?.role.includes('Folk Guide')) return true;
+    return false;
   }
 
   return (
@@ -41,14 +51,7 @@ export function AppSidebar() {
             <span className="sr-only">FOLK SPIRITUAL GEMS</span>
           </Link>
           {navItems.map((item) => {
-            if (item.adminOnly && !appUser?.role?.includes('Admin')) {
-              // Exception for User Management page for Folk Guides
-              if (item.href === '/user-management' && appUser?.role?.includes('Folk Guide')) {
-                 // Render the item
-              } else {
-                  return null;
-              }
-            }
+            if (!userCanSee(item)) return null;
             return (
               <Tooltip key={item.href} delayDuration={0}>
                 <TooltipTrigger asChild>

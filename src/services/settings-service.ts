@@ -11,7 +11,7 @@ import {
   getDocs,
 } from 'firebase/firestore';
 import type { AppUser, CustomField } from '@/lib/types';
-
+import { logAudit } from './audit-service';
 
 const defaultContactSources = ['Govinda Temple', 'ITPL', 'HK hill'];
 
@@ -137,6 +137,7 @@ export const addContactSource = async (newSource: string, appUser: AppUser) => {
     if (!currentSources.includes(newSource)) {
         const updatedSources = [...currentSources, newSource];
         await setDoc(settingsDocRef, { contactSources: updatedSources }, { merge: true });
+        await logAudit('Add Contact Source', `Added source: ${newSource}`, appUser);
         return updatedSources;
     }
     return currentSources;
@@ -159,6 +160,7 @@ export const updateContactSource = async (oldName: string, newName: string, appU
     });
 
     await batch.commit();
+    await logAudit('Update Contact Source', `Renamed source from "${oldName}" to "${newName}"`, appUser);
     return updatedSources;
 }
 
@@ -179,6 +181,7 @@ export const deleteContactSource = async (sourceToDelete: string, appUser: AppUs
     });
 
     await batch.commit();
+    await logAudit('Delete Contact Source', `Deleted source: ${sourceToDelete}`, appUser);
     return updatedSources;
 }
 
@@ -193,4 +196,5 @@ export const saveCustomPersonFields = async (fields: CustomField[], appUser: App
     if (!appUser) throw new Error("Authentication required.");
     const settingsDocRef = doc(db, 'settings', 'options');
     await setDoc(settingsDocRef, { customPersonFields: fields }, { merge: true });
+    await logAudit('Update Custom Fields', `Updated custom fields definition.`, appUser);
 };

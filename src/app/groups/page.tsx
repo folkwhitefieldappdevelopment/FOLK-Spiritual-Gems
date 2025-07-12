@@ -59,14 +59,15 @@ function GroupsPageComponent() {
   }, []);
 
   const handleDeleteGroup = React.useCallback(async (groupId: string) => {
+    if (!appUser) return;
     try {
-      await deleteGroup(groupId);
+      await deleteGroup(groupId, appUser);
       setGroups((prev) => prev.filter((g) => g.id !== groupId));
       toast({ title: "Group Deleted", description: "The group has been removed." });
     } catch (error) {
        toast({ variant: "destructive", title: "Error", description: "Could not delete group." });
     }
-  }, [toast]);
+  }, [toast, appUser]);
 
   const handleSaveGroup = React.useCallback(async (
     groupData: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy">
@@ -75,7 +76,7 @@ function GroupsPageComponent() {
     try {
       if (editingGroup) {
         // Update existing group
-        await updateGroup(editingGroup.id, groupData);
+        await updateGroup(editingGroup.id, groupData, appUser);
         setGroups((prev) =>
           prev.map((g) =>
             g.id === editingGroup.id ? { ...g, ...groupData } : g
