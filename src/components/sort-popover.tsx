@@ -75,7 +75,7 @@ export function SortPopover({ sortDescriptors, setSortDescriptors }: SortPopover
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline">
+        <Button variant="outline" size="sm">
           <ArrowDownUp className="mr-2 h-4 w-4" />
           Sort
           {sortDescriptors.length > 0 && (
