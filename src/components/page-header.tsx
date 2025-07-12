@@ -11,6 +11,7 @@ import Link from "next/link";
 import { Users, UserSquare, Settings, Gem, Headset, UserCog } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { usePathname } from "next/navigation";
+import { ThemeSwitcher } from "./theme-switcher";
 
 
 type PageHeaderProps = {
@@ -50,7 +51,7 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
             <span className="sr-only">Toggle Menu</span>
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="sm:max-w-xs">
+        <SheetContent side="left" className="sm:max-w-xs flex flex-col">
           <SheetHeader className="sr-only">
             <SheetTitle>Mobile Menu</SheetTitle>
             <SheetDescription>A list of navigation links for the application.</SheetDescription>
@@ -85,6 +86,9 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
                )
             })}
           </nav>
+          <div className="mt-auto">
+            <ThemeSwitcher />
+          </div>
         </SheetContent>
       </Sheet>
       <div className="flex-1 min-w-0 overflow-hidden">
