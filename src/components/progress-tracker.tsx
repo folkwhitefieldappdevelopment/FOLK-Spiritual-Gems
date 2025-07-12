@@ -246,7 +246,7 @@ export function ProgressTracker({
                         
                         return (
                         <TableRow key={item.question}>
-                            <TableCell className="font-medium text-sm text-muted-foreground align-top sticky left-0 z-20 bg-card py-2 pr-2 pl-4 border-b border-r">
+                            <TableCell className="font-medium text-sm text-muted-foreground align-top sticky left-0 z-20 bg-card py-2 pr-2 pl-4 border-b border-r whitespace-normal">
                             {item.link ? (
                                 <Link
                                 href={item.link}
