@@ -120,6 +120,7 @@ function GroupDetailPageComponent() {
   const [sessionStartIndex, setSessionStartIndex] = React.useState(0);
   const [initialSessionIndex, setInitialSessionIndex] = React.useState(0);
   const pausedSession = appUser?.pausedSession;
+  const canResumeSession = pausedSession?.context === 'group' && pausedSession.selectedGroupId === groupId;
 
 
   const fetchPageData = React.useCallback(async () => {
@@ -442,7 +443,7 @@ function GroupDetailPageComponent() {
   }, [appUser, editableEventName, currentCallingEvent, isStartingSessionFlow, callRange, filteredMembers, toast, updateCurrentAppUser]);
 
   const handleResumeSession = React.useCallback(() => {
-    if (!pausedSession) return;
+    if (!pausedSession || !canResumeSession) return;
     
     // On the group page, we don't restore filters/search from a potentially different context.
     // We just find the people from the paused list that exist in THIS group.
@@ -466,7 +467,7 @@ function GroupDetailPageComponent() {
     setInitialSessionIndex(pausedSession.currentIndex);
     setIsSessionDialogOpen(true);
 
-  }, [pausedSession, allPeople, toast]);
+  }, [pausedSession, canResumeSession, allPeople, toast]);
 
   const renderContent = () => {
     if (isLoading) return <div className="flex min-h-[50vh] w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -508,7 +509,7 @@ function GroupDetailPageComponent() {
                {filteredMembers.length > 0 && <Button variant="outline" size="sm" onClick={() => { if (selectedIds.size === filteredMembers.length) { setSelectedIds(new Set()); } else { setSelectedIds(new Set(filteredMembers.map(p => p.id))); } }}>{selectedIds.size === filteredMembers.length ? 'Deselect All' : 'Select All'}</Button>}
             </div>
             <div className="flex items-center gap-2">
-              {pausedSession && (
+              {canResumeSession && (
                   <Button size="sm" onClick={handleResumeSession} variant="outline">
                       <Play className="mr-2 h-4 w-4" />
                       Resume Session ({pausedSession.currentIndex + 1} / {pausedSession.peopleIds.length})
@@ -649,6 +650,7 @@ function GroupDetailPageComponent() {
         sessionStartIndex={sessionStartIndex}
         totalPeopleCount={filteredMembers.length}
         initialIndex={initialSessionIndex}
+        context="group"
         filters={filters}
         sortDescriptors={sortDescriptors}
         searchTerm={searchTerm}

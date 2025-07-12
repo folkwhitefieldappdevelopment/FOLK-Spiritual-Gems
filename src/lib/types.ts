@@ -90,6 +90,7 @@ export const userRoles = ['Admin', 'Folk Guide', 'Folk Enabler'] as const;
 export type UserRole = (typeof userRoles)[number];
 
 export type PausedSession = {
+  context: 'assistant' | 'group';
   peopleIds: string[];
   currentIndex: number;
   currentEvent: string;

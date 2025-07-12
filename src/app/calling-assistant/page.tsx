@@ -97,6 +97,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   const [initialSessionIndex, setInitialSessionIndex] = React.useState(0);
 
   const pausedSession = appUser?.pausedSession;
+  const canResumeSession = pausedSession?.context === 'assistant';
 
   const fetchPageData = React.useCallback(async () => {
     if (!appUser) return;
@@ -521,7 +522,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   }, [selectedIds, toast, appUser]);
 
   const handleResumeSession = React.useCallback(() => {
-    if (!pausedSession) return;
+    if (!pausedSession || !canResumeSession) return;
     
     // Restore filters and sorting from paused session
     setFilters(pausedSession.filters);
@@ -549,7 +550,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     setInitialSessionIndex(pausedSession.currentIndex);
     setIsSessionDialogOpen(true);
 
-  }, [pausedSession, people, toast]);
+  }, [pausedSession, canResumeSession, people, toast]);
 
   const renderContent = () => {
     if (fetchError) {
@@ -616,7 +617,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
                     )}
                 </div>
                  <div className="flex items-center gap-2">
-                    {pausedSession && (
+                    {canResumeSession && (
                         <Button size="sm" onClick={handleResumeSession} variant="outline">
                             <Play className="mr-2 h-4 w-4" />
                             Resume Session ({pausedSession.currentIndex + 1} / {pausedSession.peopleIds.length})
@@ -753,6 +754,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
         sessionStartIndex={sessionStartIndex}
         totalPeopleCount={filteredPeople.length}
         initialIndex={initialSessionIndex}
+        context="assistant"
         // Pass all filter/sort states to be saved on pause
         filters={filters}
         sortDescriptors={sortDescriptors}

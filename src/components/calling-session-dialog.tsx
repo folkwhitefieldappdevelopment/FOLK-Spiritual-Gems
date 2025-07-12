@@ -85,6 +85,7 @@ type CallingSessionDialogProps = {
   sessionStartIndex: number;
   totalPeopleCount: number;
   initialIndex?: number;
+  context: 'assistant' | 'group';
   // Filter states to be saved
   filters: FilterRule[];
   sortDescriptors: SortDescriptor[];
@@ -104,6 +105,7 @@ const CallingSessionDialogComponent = ({
   sessionStartIndex,
   totalPeopleCount,
   initialIndex = 0,
+  context,
   ...filterStates
 }: CallingSessionDialogProps) => {
   const { toast } = useToast();
@@ -180,7 +182,7 @@ const CallingSessionDialogComponent = ({
   
   const handlePrevious = React.useCallback(() => {
     if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
+      setCurrentIndex(currentIndex + 1);
     }
   }, [currentIndex]);
   
@@ -215,6 +217,7 @@ const CallingSessionDialogComponent = ({
   const handlePauseSession = React.useCallback(async () => {
     if (!appUser) return;
     const pausedSessionData: PausedSession = {
+        context,
         peopleIds: currentPeople.map(p => p.id),
         currentIndex,
         currentEvent,
@@ -234,7 +237,7 @@ const CallingSessionDialogComponent = ({
     } catch (e) {
         toast({ variant: 'destructive', title: "Error", description: 'Could not pause the session.' });
     }
-  }, [appUser, currentPeople, currentIndex, currentEvent, sessionStartIndex, totalPeopleCount, filterStates, onClose, toast, updateCurrentAppUser]);
+  }, [appUser, context, currentPeople, currentIndex, currentEvent, sessionStartIndex, totalPeopleCount, filterStates, onClose, toast, updateCurrentAppUser]);
 
   const handleEndAndClearSession = React.useCallback(async () => {
     if (!appUser) return;
