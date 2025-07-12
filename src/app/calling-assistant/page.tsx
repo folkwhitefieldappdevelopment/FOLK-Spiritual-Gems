@@ -52,6 +52,7 @@ import { ColumnFilterState, applyColumnFilters } from "@/components/column-heade
 import { SortPopover, type SortDescriptor } from "@/components/sort-popover";
 import { AuthGuard } from "@/components/auth-guard";
 
+const ROWS_PER_PAGE = 50;
 
 const CallingAssistantPageComponent = React.memo(function CallingAssistantPageComponent() {
   const { toast } = useToast();
@@ -67,6 +68,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([{ field: 'lastCallAt', direction: 'asc' }]);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [columnFilters, setColumnFilters] = React.useState<ColumnFilterState>({});
+  const [currentPage, setCurrentPage] = React.useState(1);
 
   const [isSessionDialogOpen, setIsSessionDialogOpen] = React.useState(false);
   const editingPersonRef = React.useRef<Person | undefined>(undefined);
@@ -134,6 +136,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   
   React.useEffect(() => {
     setSelectedIds(new Set());
+    setCurrentPage(1);
   }, [filters, sortDescriptors, searchTerm, selectedGroupId, columnFilters]);
 
   const filterableFields: FilterableField[] = React.useMemo(() => {
@@ -275,6 +278,13 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       return 0;
     });
   }, [people, searchTerm, filters, sortDescriptors, groups, selectedGroupId, columnFilters]);
+
+  const paginatedPeople = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
+    return filteredPeople.slice(startIndex, startIndex + ROWS_PER_PAGE);
+  }, [filteredPeople, currentPage]);
+
+  const totalPages = Math.ceil(filteredPeople.length / ROWS_PER_PAGE);
 
   React.useEffect(() => {
     if (!isEventDialogOpen || !isStartingSessionFlow || filteredPeople.length === 0) {
@@ -624,7 +634,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
           </div>
         ) : (
           <PersonTable
-            people={filteredPeople}
+            people={paginatedPeople}
             onEdit={handleEditPerson}
             onDelete={handleDeletePerson}
             isCallingAssistantView={true}
@@ -635,6 +645,9 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
             setSortDescriptors={setSortDescriptors}
             columnFilters={columnFilters}
             setColumnFilters={setColumnFilters}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
           />
         )}
       </>

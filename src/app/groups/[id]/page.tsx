@@ -58,6 +58,8 @@ import {
 import { ColumnFilterState, applyColumnFilters } from '@/components/column-header-filter';
 import { AuthGuard } from '@/components/auth-guard';
 
+const ROWS_PER_PAGE = 50;
+
 function GroupDetailPageComponent() {
   const router = useRouter();
   const params = useParams();
@@ -79,6 +81,7 @@ function GroupDetailPageComponent() {
   const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([{ field: 'createdAt', direction: 'desc' }]);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [columnFilters, setColumnFilters] = React.useState<ColumnFilterState>({});
+  const [currentPage, setCurrentPage] = React.useState(1);
   
   const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
@@ -213,9 +216,17 @@ function GroupDetailPageComponent() {
       return 0;
     });
   }, [members, searchTerm, filters, sortDescriptors, columnFilters]);
+  
+  const paginatedMembers = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
+    return filteredMembers.slice(startIndex, startIndex + ROWS_PER_PAGE);
+  }, [filteredMembers, currentPage]);
+
+  const totalPages = Math.ceil(filteredMembers.length / ROWS_PER_PAGE);
 
   React.useEffect(() => {
     setSelectedIds(new Set());
+    setCurrentPage(1);
   }, [filters, sortDescriptors, searchTerm, columnFilters, view]);
 
   const handleEditPerson = React.useCallback((person: Person) => {
@@ -349,11 +360,11 @@ function GroupDetailPageComponent() {
           <div className="text-center py-12 text-muted-foreground"><p>No members found.</p><p className="text-sm">Try adjusting your search or filters.</p></div>
         ) : view === 'card' ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredMembers.map((person) => <PersonCard key={person.id} person={person} isSelected={selectedIds.has(person.id)} onSelectionChange={handleSelectionChange} groups={allGroups.filter(g => g.peopleIds.includes(person.id))} isSelectionActive={isSelectionActive} />)}
+            {paginatedMembers.map((person) => <PersonCard key={person.id} person={person} isSelected={selectedIds.has(person.id)} onSelectionChange={handleSelectionChange} groups={allGroups.filter(g => g.peopleIds.includes(person.id))} isSelectionActive={isSelectionActive} />)}
           </div>
         ) : (
           <PersonTable 
-            people={filteredMembers} 
+            people={paginatedMembers} 
             onEdit={handleEditPerson} 
             onDelete={(id) => handleRemoveMembers([id])} 
             selectedIds={selectedIds} 
@@ -363,6 +374,9 @@ function GroupDetailPageComponent() {
             setSortDescriptors={setSortDescriptors}
             columnFilters={columnFilters}
             setColumnFilters={setColumnFilters}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
           />
         )}
       </>

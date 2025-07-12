@@ -13,6 +13,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableFooter,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,13 @@ import { Checkbox } from './ui/checkbox';
 import { Badge } from './ui/badge';
 import type { SortDescriptor } from './sort-popover';
 import { ColumnHeaderFilter, type ColumnFilterState } from './column-header-filter';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationPrevious,
+  PaginationNext,
+} from '@/components/ui/pagination';
 
 
 type PersonTableProps = {
@@ -57,6 +65,9 @@ type PersonTableProps = {
   setSortDescriptors?: React.Dispatch<React.SetStateAction<SortDescriptor[]>>;
   columnFilters?: ColumnFilterState;
   setColumnFilters?: React.Dispatch<React.SetStateAction<ColumnFilterState>>;
+  currentPage?: number;
+  totalPages?: number;
+  onPageChange?: (page: number) => void;
 };
 
 const safeDate = (timestamp: any): Date | null => {
@@ -78,6 +89,9 @@ export function PersonTable({
   setSortDescriptors = () => {},
   columnFilters = {},
   setColumnFilters = () => {},
+  currentPage = 1,
+  totalPages = 1,
+  onPageChange = () => {},
 }: PersonTableProps) {
   
   const isSelectionEnabled = !!selectedIds && !!setSelectedIds;
@@ -359,6 +373,29 @@ export function PersonTable({
               </TableRow>
             )})}
           </TableBody>
+          {totalPages > 1 && (
+            <TableFooter>
+                <TableRow>
+                    <TableCell colSpan={columns.length + (isSelectionEnabled ? 2 : 1)}>
+                        <Pagination>
+                            <PaginationContent>
+                                <PaginationItem>
+                                    <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); onPageChange(currentPage - 1); }} aria-disabled={currentPage === 1} tabIndex={currentPage === 1 ? -1 : undefined} className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''} />
+                                </PaginationItem>
+                                <PaginationItem>
+                                  <span className="p-2 text-sm">
+                                    Page {currentPage} of {totalPages}
+                                  </span>
+                                </PaginationItem>
+                                <PaginationItem>
+                                    <PaginationNext href="#" onClick={(e) => { e.preventDefault(); onPageChange(currentPage + 1); }} aria-disabled={currentPage === totalPages} tabIndex={currentPage === totalPages ? -1 : undefined} className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''} />
+                                </PaginationItem>
+                            </PaginationContent>
+                        </Pagination>
+                    </TableCell>
+                </TableRow>
+            </TableFooter>
+          )}
         </Table>
       </div>
     </TooltipProvider>

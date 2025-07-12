@@ -65,6 +65,8 @@ import { Input } from "@/components/ui/input";
 import { ColumnFilterState, applyColumnFilters } from "@/components/column-header-filter";
 import { AuthGuard } from "@/components/auth-guard";
 
+const ROWS_PER_PAGE = 50;
+
 function ContactsPageComponent() {
   const { toast } = useToast();
   const { appUser } = useAuth();
@@ -81,6 +83,7 @@ function ContactsPageComponent() {
   const [filters, setFilters] = React.useState<FilterRule[]>([]);
   const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([{ field: 'createdAt', direction: 'desc' }]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFilterState>({});
+  const [currentPage, setCurrentPage] = React.useState(1);
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = React.useState(false);
@@ -254,9 +257,17 @@ function ContactsPageComponent() {
       return 0;
     });
   }, [people, searchTerm, filters, sortDescriptors, columnFilters]);
+
+  const paginatedPeople = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
+    return filteredPeople.slice(startIndex, startIndex + ROWS_PER_PAGE);
+  }, [filteredPeople, currentPage]);
+
+  const totalPages = Math.ceil(filteredPeople.length / ROWS_PER_PAGE);
   
   React.useEffect(() => {
     setSelectedIds(new Set());
+    setCurrentPage(1);
   }, [filters, sortDescriptors, searchTerm, view, columnFilters]);
 
   const handleSampleDownload = React.useCallback(() => {
@@ -830,7 +841,7 @@ function ContactsPageComponent() {
 
         {view === "card" ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredPeople.map((person) => {
+            {paginatedPeople.map((person) => {
                 const personGroups = groups.filter(g => g.peopleIds.includes(person.id));
                 return (
                   <PersonCard
@@ -846,7 +857,7 @@ function ContactsPageComponent() {
           </div>
         ) : (
           <PersonTable
-            people={filteredPeople}
+            people={paginatedPeople}
             onEdit={handleEditPerson}
             onDelete={handleDeletePerson}
             selectedIds={selectedIds}
@@ -856,6 +867,9 @@ function ContactsPageComponent() {
             setSortDescriptors={setSortDescriptors}
             columnFilters={columnFilters}
             setColumnFilters={setColumnFilters}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
           />
         )}
       </>
