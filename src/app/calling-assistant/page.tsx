@@ -52,7 +52,7 @@ import { ColumnFilterState, applyColumnFilters } from "@/components/column-heade
 import { SortPopover, type SortDescriptor } from "@/components/sort-popover";
 import { AuthGuard } from "@/components/auth-guard";
 
-const ROWS_PER_PAGE = 50;
+const ROWS_PER_PAGE = 10;
 
 const CallingAssistantPageComponent = React.memo(function CallingAssistantPageComponent() {
   const { toast } = useToast();

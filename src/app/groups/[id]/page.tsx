@@ -72,7 +72,7 @@ import {
 import { ColumnFilterState, applyColumnFilters } from '@/components/column-header-filter';
 import { AuthGuard } from '@/components/auth-guard';
 
-const ROWS_PER_PAGE = 50;
+const ROWS_PER_PAGE = 10;
 
 function GroupDetailPageComponent() {
   const router = useRouter();

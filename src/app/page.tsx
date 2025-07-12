@@ -65,7 +65,7 @@ import { Input } from "@/components/ui/input";
 import { ColumnFilterState, applyColumnFilters } from "@/components/column-header-filter";
 import { AuthGuard } from "@/components/auth-guard";
 
-const ROWS_PER_PAGE = 50;
+const ROWS_PER_PAGE = 10;
 
 function ContactsPageComponent() {
   const { toast } = useToast();
