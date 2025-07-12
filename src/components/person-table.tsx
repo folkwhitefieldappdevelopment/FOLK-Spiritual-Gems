@@ -270,16 +270,20 @@ export function PersonTable({
                     );
                   case 'lastCallRemark':
                     return (
-                      <Tooltip>
+                        <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="flex items-center gap-2 truncate text-sm text-muted-foreground">
-                              <MessageSquare className="h-4 w-4 shrink-0" />
-                              <span className="truncate">{person.lastCallRemark || 'No remarks yet'}</span>
+                            <span className="flex items-start gap-2 text-sm text-muted-foreground">
+                              <MessageSquare className="h-4 w-4 shrink-0 mt-1" />
+                              <span className="whitespace-normal break-words line-clamp-3">
+                                {person.lastCallRemark || 'No remarks yet'}
+                              </span>
                             </span>
                           </TooltipTrigger>
                           {person.lastCallRemark && (
                             <TooltipContent>
-                                <p className="max-w-xs">{person.lastCallRemark}</p>
+                              <p className="max-w-xs whitespace-normal break-words">
+                                {person.lastCallRemark}
+                              </p>
                             </TooltipContent>
                           )}
                         </Tooltip>
