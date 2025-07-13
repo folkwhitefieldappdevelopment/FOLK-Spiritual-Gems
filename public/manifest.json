@@ -3,19 +3,50 @@
   "short_name": "FOLK GEMS",
   "description": "A contact management center for FOLK.",
   "start_url": "/dashboard",
+  "id": "/dashboard",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#E8EAF6",
   "theme_color": "#3F51B5",
+  "orientation": "portrait-primary",
+  "lang": "en-US",
+  "dir": "ltr",
+  "categories": [
+    "business",
+    "productivity"
+  ],
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+  "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/icon-192x192.png",
+      "src": "https://placehold.co/192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "/icon-512x512.png",
+      "src": "https://placehold.co/512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "https://placehold.co/1080x1920.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Contacts View"
+    },
+    {
+      "src": "https://placehold.co/1920x1080.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Dashboard View"
     }
   ]
 }
