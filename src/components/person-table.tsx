@@ -53,6 +53,8 @@ import {
 } from '@/components/ui/pagination';
 
 
+const ROWS_PER_PAGE = 10;
+
 type PersonTableProps = {
   people: Person[];
   onEdit: (person: Person) => void;
@@ -65,9 +67,6 @@ type PersonTableProps = {
   setSortDescriptors?: React.Dispatch<React.SetStateAction<SortDescriptor[]>>;
   columnFilters?: ColumnFilterState;
   setColumnFilters?: React.Dispatch<React.SetStateAction<ColumnFilterState>>;
-  currentPage?: number;
-  totalPages?: number;
-  onPageChange?: (page: number) => void;
 };
 
 const safeDate = (timestamp: any): Date | null => {
@@ -89,10 +88,21 @@ export function PersonTable({
   setSortDescriptors = () => {},
   columnFilters = {},
   setColumnFilters = () => {},
-  currentPage = 1,
-  totalPages = 1,
-  onPageChange = () => {},
 }: PersonTableProps) {
+  
+  const [currentPage, setCurrentPage] = React.useState(1);
+
+  // Reset to page 1 whenever filters or data change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [people, sortDescriptors, columnFilters]);
+  
+  const totalPages = Math.ceil(people.length / ROWS_PER_PAGE);
+
+  const paginatedPeople = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
+    return people.slice(startIndex, startIndex + ROWS_PER_PAGE);
+  }, [people, currentPage]);
   
   const isSelectionEnabled = !!selectedIds && !!setSelectedIds;
 
@@ -172,7 +182,7 @@ export function PersonTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {people.map((person) => {
+            {paginatedPeople.map((person) => {
               const fullName = person.fullName || '';
               const nameParts = fullName.split(' ');
               const fallback = (
@@ -380,15 +390,15 @@ export function PersonTable({
                         <Pagination>
                             <PaginationContent>
                                 <PaginationItem>
-                                    <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); onPageChange(currentPage - 1); }} aria-disabled={currentPage === 1} tabIndex={currentPage === 1 ? -1 : undefined} className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''} />
+                                    <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }} aria-disabled={currentPage === 1} tabIndex={currentPage === 1 ? -1 : undefined} className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''} />
                                 </PaginationItem>
                                 <PaginationItem>
-                                  <span className="p-2 text-sm">
+                                  <span className="p-2 text-sm font-medium">
                                     Page {currentPage} of {totalPages}
                                   </span>
                                 </PaginationItem>
                                 <PaginationItem>
-                                    <PaginationNext href="#" onClick={(e) => { e.preventDefault(); onPageChange(currentPage + 1); }} aria-disabled={currentPage === totalPages} tabIndex={currentPage === totalPages ? -1 : undefined} className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''} />
+                                    <PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} aria-disabled={currentPage === totalPages} tabIndex={currentPage === totalPages ? -1 : undefined} className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''} />
                                 </PaginationItem>
                             </PaginationContent>
                         </Pagination>

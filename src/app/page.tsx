@@ -64,17 +64,6 @@ import { FilterPopover, type FilterRule, type FilterableField } from "@/componen
 import { Input } from "@/components/ui/input";
 import { ColumnFilterState, applyColumnFilters } from "@/components/column-header-filter";
 import { AuthGuard } from "@/components/auth-guard";
-import { useIsMobile } from "@/hooks/use-mobile";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationPrevious,
-  PaginationNext,
-} from '@/components/ui/pagination';
-
-
-const ROWS_PER_PAGE = 10;
 
 function ContactsPageComponent() {
   const { toast } = useToast();
@@ -92,7 +81,6 @@ function ContactsPageComponent() {
   const [filters, setFilters] = React.useState<FilterRule[]>([]);
   const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([{ field: 'createdAt', direction: 'desc' }]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFilterState>({});
-  const [currentPage, setCurrentPage] = React.useState(1);
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = React.useState(false);
@@ -232,7 +220,7 @@ function ContactsPageComponent() {
       });
     }
 
-    // Apply column filters (only for table view)
+    // Apply column filters
     tempPeople = applyColumnFilters(tempPeople, columnFilters);
 
     // Apply sorting
@@ -266,17 +254,9 @@ function ContactsPageComponent() {
       return 0;
     });
   }, [people, searchTerm, filters, sortDescriptors, columnFilters]);
-  
-  const totalPages = Math.ceil(filteredPeople.length / ROWS_PER_PAGE);
-
-  const paginatedPeople = React.useMemo(() => {
-    const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
-    return filteredPeople.slice(startIndex, startIndex + ROWS_PER_PAGE);
-  }, [filteredPeople, currentPage]);
 
   React.useEffect(() => {
     setSelectedIds(new Set());
-    setCurrentPage(1);
   }, [filters, sortDescriptors, searchTerm, view, columnFilters]);
 
   const handleSampleDownload = React.useCallback(() => {
@@ -846,44 +826,9 @@ function ContactsPageComponent() {
             <p>No contacts found.</p>
             <p className="text-sm">Try adjusting your search or filters.</p>
           </div>
-        ) : view === "card" ? (
-          <>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {paginatedPeople.map((person) => {
-                  const personGroups = groups.filter(g => g.peopleIds.includes(person.id));
-                  return (
-                    <PersonCard
-                      key={person.id}
-                      person={person}
-                      isSelected={selectedIds.has(person.id)}
-                      onSelectionChange={handleSelectionChange}
-                      groups={personGroups}
-                      isSelectionActive={isSelectionActive}
-                    />
-                  )
-              })}
-            </div>
-            {totalPages > 1 && (
-                <Pagination className="mt-8">
-                <PaginationContent>
-                    <PaginationItem>
-                    <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }} aria-disabled={currentPage === 1} tabIndex={currentPage === 1 ? -1 : undefined} className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''} />
-                    </PaginationItem>
-                    <PaginationItem>
-                    <span className="p-2 text-sm font-medium">
-                        Page {currentPage} of {totalPages}
-                    </span>
-                    </PaginationItem>
-                    <PaginationItem>
-                    <PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} aria-disabled={currentPage === totalPages} tabIndex={currentPage === totalPages ? -1 : undefined} className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''} />
-                    </PaginationItem>
-                </PaginationContent>
-                </Pagination>
-            )}
-          </>
         ) : (
           <PersonTable
-            people={paginatedPeople}
+            people={filteredPeople}
             onEdit={handleEditPerson}
             onDelete={handleDeletePerson}
             selectedIds={selectedIds}
@@ -893,9 +838,6 @@ function ContactsPageComponent() {
             setSortDescriptors={setSortDescriptors}
             columnFilters={columnFilters}
             setColumnFilters={setColumnFilters}
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
           />
         )}
       </>
@@ -903,77 +845,77 @@ function ContactsPageComponent() {
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-background">
-      <AppSidebar />
-      <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
-          <PageHeader
-              title="FOLK SPIRITUAL GEMS"
-              description="Your central hub for managing contacts and activities."
-          >
-              <div className="flex items-center gap-2">
-                  <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
-                          {isLoadingAction ? (
-                          <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
-                      ) : (
-                          <Upload className="h-4 w-4 sm:mr-2" />
-                      )}
-                      <span className="hidden sm:inline">{isLoadingAction ? loadingText : 'Import/Export'}</span>
-                      </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                      <DropdownMenuItem onSelect={() => fileInputRef.current?.click()} disabled={isLoadingAction}>
-                      Import from Excel
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleExport} disabled={isLoadingAction}>
-                      Export to Excel
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleSampleDownload} disabled={isLoadingAction}>
-                      Download Sample Excel
-                      </DropdownMenuItem>
-                  </DropdownMenuContent>
-                  </DropdownMenu>
+    <AuthGuard>
+      <div className="flex min-h-screen w-full flex-col bg-background">
+        <AppSidebar />
+        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+            <PageHeader
+                title="FOLK SPIRITUAL GEMS"
+                description="Your central hub for managing contacts and activities."
+            >
+                <div className="flex items-center gap-2">
+                    <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
+                            {isLoadingAction ? (
+                            <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
+                        ) : (
+                            <Upload className="h-4 w-4 sm:mr-2" />
+                        )}
+                        <span className="hidden sm:inline">{isLoadingAction ? loadingText : 'Import/Export'}</span>
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuItem onSelect={() => fileInputRef.current?.click()} disabled={isLoadingAction}>
+                        Import from Excel
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleExport} disabled={isLoadingAction}>
+                        Export to Excel
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleSampleDownload} disabled={isLoadingAction}>
+                        Download Sample Excel
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                    </DropdownMenu>
 
-                  <Button size="sm" onClick={handleAddPerson} className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
-                  <PlusCircle className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Add Person</span>
-                  </Button>
-              </div>
-          </PageHeader>
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
-            <AuthGuard>
+                    <Button size="sm" onClick={handleAddPerson} className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
+                    <PlusCircle className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Add Person</span>
+                    </Button>
+                </div>
+            </PageHeader>
+            <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
               {renderContent()}
-            </AuthGuard>
-          </main>
+            </main>
+        </div>
+        <CreateUpdatePersonDialog
+          isOpen={isDialogOpen}
+          setIsOpen={setIsDialogOpen}
+          onSave={handleSavePerson}
+          person={editingPerson}
+          allPeople={people}
+        />
+        <CreateUpdateGroupDialog
+            isOpen={isCreateGroupDialogOpen}
+            setIsOpen={setIsCreateGroupDialogOpen}
+            onSave={handleSaveGroupAndAddMembers}
+        />
+        <AssignCoEnablerDialog
+          isOpen={isAssignCoEnablerDialogOpen}
+          setIsOpen={setIsAssignCoEnablerDialogOpen}
+          onSave={handleAssignCoEnabler}
+          peopleCount={selectedIds.size}
+        />
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileImport}
+          className="hidden"
+          accept=".xlsx, .xls, .csv"
+        />
       </div>
-      <CreateUpdatePersonDialog
-        isOpen={isDialogOpen}
-        setIsOpen={setIsDialogOpen}
-        onSave={handleSavePerson}
-        person={editingPerson}
-        allPeople={people}
-      />
-      <CreateUpdateGroupDialog
-          isOpen={isCreateGroupDialogOpen}
-          setIsOpen={setIsCreateGroupDialogOpen}
-          onSave={handleSaveGroupAndAddMembers}
-      />
-      <AssignCoEnablerDialog
-        isOpen={isAssignCoEnablerDialogOpen}
-        setIsOpen={setIsAssignCoEnablerDialogOpen}
-        onSave={handleAssignCoEnabler}
-        peopleCount={selectedIds.size}
-      />
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileImport}
-        className="hidden"
-        accept=".xlsx, .xls, .csv"
-      />
-    </div>
+    </AuthGuard>
   );
 }
 

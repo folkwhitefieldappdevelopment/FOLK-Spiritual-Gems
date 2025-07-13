@@ -72,15 +72,6 @@ import {
 import { ColumnFilterState, applyColumnFilters } from '@/components/column-header-filter';
 import { AuthGuard } from '@/components/auth-guard';
 import { logAudit } from '@/services/audit-service';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationPrevious,
-  PaginationNext,
-} from '@/components/ui/pagination';
-
-const ROWS_PER_PAGE = 10;
 
 function GroupDetailPageComponent() {
   const router = useRouter();
@@ -104,7 +95,6 @@ function GroupDetailPageComponent() {
   const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([{ field: 'createdAt', direction: 'desc' }]);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [columnFilters, setColumnFilters] = React.useState<ColumnFilterState>({});
-  const [currentPage, setCurrentPage] = React.useState(1);
   
   const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
@@ -256,13 +246,6 @@ function GroupDetailPageComponent() {
     });
   }, [members, searchTerm, filters, sortDescriptors, columnFilters]);
   
-  const totalPages = Math.ceil(filteredMembers.length / ROWS_PER_PAGE);
-
-  const paginatedMembers = React.useMemo(() => {
-    const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
-    return filteredMembers.slice(startIndex, startIndex + ROWS_PER_PAGE);
-  }, [filteredMembers, currentPage]);
-  
   React.useEffect(() => {
     if (!isEventDialogOpen || !isStartingSessionFlow || filteredMembers.length === 0) {
       setCallRangeNames({ from: '', to: '' });
@@ -288,7 +271,6 @@ function GroupDetailPageComponent() {
 
   React.useEffect(() => {
     setSelectedIds(new Set());
-    setCurrentPage(1);
   }, [filters, sortDescriptors, searchTerm, columnFilters, view]);
 
   const handleEditPerson = React.useCallback((person: Person) => {
@@ -536,32 +518,9 @@ function GroupDetailPageComponent() {
 
         {filteredMembers.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground"><p>No members found.</p><p className="text-sm">Try adjusting your search or filters.</p></div>
-        ) : view === 'card' ? (
-          <>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {paginatedMembers.map((person) => <PersonCard key={person.id} person={person} isSelected={selectedIds.has(person.id)} onSelectionChange={handleSelectionChange} groups={allGroups.filter(g => g.peopleIds.includes(person.id))} isSelectionActive={isSelectionActive} />)}
-            </div>
-            {totalPages > 1 && (
-                <Pagination className="mt-8">
-                <PaginationContent>
-                    <PaginationItem>
-                    <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }} aria-disabled={currentPage === 1} tabIndex={currentPage === 1 ? -1 : undefined} className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''} />
-                    </PaginationItem>
-                    <PaginationItem>
-                    <span className="p-2 text-sm font-medium">
-                        Page {currentPage} of {totalPages}
-                    </span>
-                    </PaginationItem>
-                    <PaginationItem>
-                    <PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} aria-disabled={currentPage === totalPages} tabIndex={currentPage === totalPages ? -1 : undefined} className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''} />
-                    </PaginationItem>
-                </PaginationContent>
-                </Pagination>
-            )}
-          </>
         ) : (
           <PersonTable 
-            people={paginatedMembers} 
+            people={filteredMembers} 
             onEdit={handleEditPerson} 
             onDelete={(id) => handleRemoveMembers([id])} 
             selectedIds={selectedIds} 
@@ -571,9 +530,6 @@ function GroupDetailPageComponent() {
             setSortDescriptors={setSortDescriptors}
             columnFilters={columnFilters}
             setColumnFilters={setColumnFilters}
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
           />
         )}
       </>
