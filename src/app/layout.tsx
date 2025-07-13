@@ -7,6 +7,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "FOLK SPIRITUAL GEMS",
   description: "A contact management center for FOLK.",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({

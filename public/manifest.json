@@ -1,0 +1,21 @@
+{
+  "name": "FOLK SPIRITUAL GEMS",
+  "short_name": "FOLK GEMS",
+  "description": "A contact management center for FOLK.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#E8EAF6",
+  "theme_color": "#3F51B5",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
