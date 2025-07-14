@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, UserSquare, Settings, Gem, Headset, UserCog, History, FileText } from "lucide-react";
+import { Users, UserSquare, Settings, Gem, Headset, UserCog, History, FileText, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import {
   Tooltip,
@@ -18,7 +18,7 @@ export function AppSidebar() {
   const { appUser } = useAuth();
 
   const navItems = [
-    { href: "/dashboard", label: "Dashboard", icon: Gem },
+    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/contacts", label: "Contacts", icon: Users },
     { href: "/groups", label: "Groups", icon: UserSquare },
     { href: "/calling-assistant", label: "Calling Assistant", icon: Headset },
@@ -28,7 +28,7 @@ export function AppSidebar() {
   ];
   
   const isActive = (href: string) => {
-    if (href === '/contacts') return pathname === '/contacts' || pathname === '/';
+    if (href === '/contacts' && pathname === '/') return true;
     return pathname.startsWith(href);
   }
 
@@ -54,7 +54,6 @@ export function AppSidebar() {
           </Link>
           {navItems.map((item) => {
             if (!userCanSee(item)) return null;
-            if(item.href === '/dashboard') return null; // Dashboard icon is already the main one
             return (
               <Tooltip key={item.href} delayDuration={0}>
                 <TooltipTrigger asChild>

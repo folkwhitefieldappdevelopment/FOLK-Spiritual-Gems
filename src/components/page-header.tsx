@@ -37,7 +37,7 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
     ];
 
     const isActive = (href: string) => {
-      if (href === '/contacts') return pathname === '/contacts' || pathname === '/';
+      if (href === '/contacts' && pathname === '/') return true;
       return pathname.startsWith(href);
     }
     
