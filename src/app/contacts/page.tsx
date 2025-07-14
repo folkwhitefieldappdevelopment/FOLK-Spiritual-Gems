@@ -223,11 +223,11 @@ function ContactsPageComponent() {
             case 'gt':
               return Number(personValue) > Number(filterValue);
             case 'lt':
-              return Number(personValue) &lt; Number(filterValue);
+              return Number(personValue) < Number(filterValue);
             case 'gte':
               return Number(personValue) >= Number(filterValue);
             case 'lte':
-              return Number(personValue) &lt;= Number(filterValue);
+              return Number(personValue) <= Number(filterValue);
             default:
               return true;
           }
@@ -461,10 +461,10 @@ function ContactsPageComponent() {
             }
 
             const age = parseInt(String(row.age), 10);
-            const isValidAge = !isNaN(age) && age >= 16 && age &lt;= 40;
+            const isValidAge = !isNaN(age) && age >= 16 && age <= 40;
             const stayingWith = ["PG / Hostel", "Flat", "Family"].includes(row.stayingWith) ? row.stayingWith : "Family";
             const rating = parseFloat(String(row.sgRating));
-            const isValidRating = !isNaN(rating) && rating >= 0 && rating &lt;= 5;
+            const isValidRating = !isNaN(rating) && rating >= 0 && rating <= 5;
             const phone = String(row.phone).replace(/\s+/g, '');
             const occupation = ["Working", "Student", "Searching for job"].includes(row.occupation) ? row.occupation : "Working";
             const photoUrlValue = String(row.photoUrl || '').trim();
@@ -1013,5 +1013,3 @@ export default function ContactsPageRoot() {
         </AuthGuard>
     )
 }
-
-    
