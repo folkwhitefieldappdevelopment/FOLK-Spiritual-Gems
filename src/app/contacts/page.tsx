@@ -1030,3 +1030,11 @@ function ContactsPageComponent() {
     </div>
   );
 }
+
+export default function ContactsPage() {
+    return (
+        <AuthGuard>
+            <ContactsPageComponent />
+        </AuthGuard>
+    )
+}
