@@ -76,6 +76,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([{ field: 'lastCallAt', direction: 'asc' }]);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [columnFilters, setColumnFilters] = React.useState<ColumnFilterState>({});
+  const [currentPage, setCurrentPage] = React.useState(1);
 
   const editingPersonRef = React.useRef<Person | undefined>(undefined);
   const [isEditingDialogOpen, setIsEditingDialogOpen] = React.useState(false);
@@ -144,6 +145,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   }, [appUser, fetchPageData]);
   
   React.useEffect(() => {
+    setCurrentPage(1);
     setSelectedIds(new Set());
   }, [filters, sortDescriptors, searchTerm, selectedGroupId, columnFilters]);
 
@@ -286,6 +288,12 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       return 0;
     });
   }, [people, searchTerm, filters, sortDescriptors, groups, selectedGroupId, columnFilters]);
+
+  const totalPages = Math.ceil(filteredPeople.length / ROWS_PER_PAGE);
+  const paginatedPeople = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
+    return filteredPeople.slice(startIndex, startIndex + ROWS_PER_PAGE);
+  }, [filteredPeople, currentPage]);
 
   React.useEffect(() => {
     if (!isEventDialogOpen || !isStartingSessionFlow || filteredPeople.length === 0) {
@@ -636,19 +644,39 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
             <p className="text-sm">Try adjusting your search or filters.</p>
           </div>
         ) : (
-          <PersonTable
-            allPeople={filteredPeople}
-            onEdit={handleEditPerson}
-            onDelete={handleDeletePerson}
-            isCallingAssistantView={true}
-            selectedIds={selectedIds}
-            setSelectedIds={setSelectedIds}
-            isSelectionActive={isSelectionActive}
-            sortDescriptors={sortDescriptors}
-            setSortDescriptors={setSortDescriptors}
-            columnFilters={columnFilters}
-            setColumnFilters={setColumnFilters}
-          />
+          <>
+            <PersonTable
+              people={paginatedPeople}
+              allPeople={filteredPeople}
+              onEdit={handleEditPerson}
+              onDelete={handleDeletePerson}
+              isCallingAssistantView={true}
+              selectedIds={selectedIds}
+              setSelectedIds={setSelectedIds}
+              isSelectionActive={isSelectionActive}
+              sortDescriptors={sortDescriptors}
+              setSortDescriptors={setSortDescriptors}
+              columnFilters={columnFilters}
+              setColumnFilters={setColumnFilters}
+            />
+            {totalPages > 1 && (
+              <Pagination className="mt-8">
+                  <PaginationContent>
+                      <PaginationItem>
+                          <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }} aria-disabled={currentPage === 1} tabIndex={currentPage === 1 ? -1 : undefined} className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''} />
+                      </PaginationItem>
+                      <PaginationItem>
+                        <span className="p-2 text-sm font-medium">
+                          Page {currentPage} of {totalPages}
+                        </span>
+                      </PaginationItem>
+                      <PaginationItem>
+                          <PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} aria-disabled={currentPage === totalPages} tabIndex={currentPage === totalPages ? -1 : undefined} className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''} />
+                      </PaginationItem>
+                  </PaginationContent>
+              </Pagination>
+            )}
+          </>
         )}
       </>
     );
@@ -798,5 +826,7 @@ export default function CallingAssistantPage() {
         </AuthGuard>
     );
 }
+
+    
 
     

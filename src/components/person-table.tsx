@@ -44,7 +44,7 @@ import type { SortDescriptor } from './sort-popover';
 import { ColumnHeaderFilter, type ColumnFilterState } from './column-header-filter';
 
 type PersonTableProps = {
-  people: Person[]; // Should be the paginated list
+  people?: Person[];
   allPeople: Person[]; // The full list for context
   onEdit: (person: Person) => void;
   onDelete: (personId: string) => void;
@@ -66,7 +66,7 @@ const safeDate = (timestamp: any): Date | null => {
 }
 
 export function PersonTable({ 
-  people, 
+  people = [], 
   allPeople,
   onEdit, 
   onDelete, 
@@ -158,7 +158,7 @@ export function PersonTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {people && people.map((person) => {
+            {people.map((person) => {
               const fullName = person.fullName || '';
               const nameParts = fullName.split(' ');
               const fallback = (
@@ -364,3 +364,5 @@ export function PersonTable({
     </TooltipProvider>
   );
 }
+
+    
