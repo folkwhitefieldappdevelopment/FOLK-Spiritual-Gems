@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { Loader2, UsersRound, Search } from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
 import type { Person, AppUser } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
@@ -151,129 +151,127 @@ function AssignmentsPageComponent() {
           title="Contact Assignments"
           description="Assign unassigned contacts to available enablers."
         />
-        <main className="flex-1 overflow-hidden p-4 sm:p-6 sm:pt-0">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-120px)]">
-            {/* Left Panel: Enablers */}
-            <Card className="lg:col-span-1 flex flex-col">
-              <CardHeader>
-                <CardTitle>Enablers</CardTitle>
-                <CardDescription>List of all available enablers and their current contact count.</CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1 overflow-hidden">
-                <ScrollArea className="h-full pr-4 -mr-4">
-                  <div className="space-y-4">
-                    {enablers.map(enabler => (
-                      <div key={enabler.id} className="p-3 border rounded-lg flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Avatar>
-                              <AvatarImage src={enabler.photoUrl} alt={enabler.name} />
-                              <AvatarFallback>{enabler.name.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-semibold">{enabler.name}</p>
-                            <div className="text-xs text-muted-foreground">
-                                {enabler.role.includes('Folk Guide') && <Badge variant="secondary" className="mr-1">Guide</Badge>}
-                                {enabler.role.includes('Folk Enabler') && <Badge variant="outline" className="mr-1">Enabler</Badge>}
-                            </div>
+        <main className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 sm:p-6 sm:pt-0 h-[calc(100vh-80px)]">
+          {/* Left Panel: Enablers */}
+          <Card className="lg:col-span-1 flex flex-col">
+            <CardHeader>
+              <CardTitle>Enablers</CardTitle>
+              <CardDescription>List of all available enablers and their current contact count.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-hidden">
+              <ScrollArea className="h-full pr-4 -mr-4">
+                <div className="space-y-4">
+                  {enablers.map(enabler => (
+                    <div key={enabler.id} className="p-3 border rounded-lg flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Avatar>
+                            <AvatarImage src={enabler.photoUrl} alt={enabler.name} />
+                            <AvatarFallback>{enabler.name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-semibold">{enabler.name}</p>
+                          <div className="text-xs text-muted-foreground">
+                              {enabler.role.includes('Folk Guide') && <Badge variant="secondary" className="mr-1">Guide</Badge>}
+                              {enabler.role.includes('Folk Enabler') && <Badge variant="outline" className="mr-1">Enabler</Badge>}
                           </div>
                         </div>
-                        <div className="text-center">
-                          <p className="text-2xl font-bold">{enablerStats.get(enabler.name) || 0}</p>
-                          <p className="text-xs text-muted-foreground">contacts</p>
-                        </div>
                       </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold">{enablerStats.get(enabler.name) || 0}</p>
+                        <p className="text-xs text-muted-foreground">contacts</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
 
-            {/* Right Panel: Unassigned Contacts */}
-            <Card className="lg:col-span-2 flex flex-col">
-              <CardHeader>
-                <CardTitle>Unassigned Contacts ({unassignedContacts.length})</CardTitle>
-                <CardDescription>Select contacts from this list to assign them to an enabler.</CardDescription>
-                <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search unassigned contacts..."
-                      className="pl-10"
-                      value={unassignedSearchTerm}
-                      onChange={e => setUnassignedSearchTerm(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Select value={selectedEnablerId} onValueChange={setSelectedEnablerId}>
-                      <SelectTrigger className="w-full sm:w-[200px]">
-                        <SelectValue placeholder="Assign to..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {enablers.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <Button onClick={handleAssign} disabled={selectedContactIds.size === 0 || !selectedEnablerId}>
-                      Assign
-                    </Button>
-                  </div>
+          {/* Right Panel: Unassigned Contacts */}
+          <Card className="lg:col-span-2 flex flex-col">
+            <CardHeader>
+              <CardTitle>Unassigned Contacts ({unassignedContacts.length})</CardTitle>
+              <CardDescription>Select contacts from this list to assign them to an enabler.</CardDescription>
+              <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search unassigned contacts..."
+                    className="pl-10"
+                    value={unassignedSearchTerm}
+                    onChange={e => setUnassignedSearchTerm(e.target.value)}
+                  />
                 </div>
-              </CardHeader>
-              <CardContent className="flex-1 overflow-hidden">
-                <div className="border rounded-lg h-full">
-                  <ScrollArea className="h-full">
-                    <Table>
-                      <TableHeader className="sticky top-0 bg-muted z-10">
-                        <TableRow>
-                          <TableHead className="w-[50px]">
-                            <Checkbox 
-                                onCheckedChange={handleSelectAllUnassigned}
-                                checked={selectedContactIds.size > 0 && selectedContactIds.size === unassignedContacts.length}
-                                aria-label="Select all unassigned"
-                            />
-                          </TableHead>
-                          <TableHead>Name</TableHead>
-                          <TableHead>Phone</TableHead>
-                          <TableHead>Source</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {unassignedContacts.length > 0 ? (
-                          unassignedContacts.map(person => (
-                            <TableRow key={person.id}
-                                data-state={selectedContactIds.has(person.id) ? "selected" : undefined}
-                            >
-                              <TableCell>
-                                <Checkbox
-                                    checked={selectedContactIds.has(person.id)}
-                                    onCheckedChange={(checked) => {
-                                        setSelectedContactIds(prev => {
-                                            const newSet = new Set(prev);
-                                            if(checked) newSet.add(person.id);
-                                            else newSet.delete(person.id);
-                                            return newSet;
-                                        })
-                                    }}
-                                />
-                              </TableCell>
-                              <TableCell className="font-medium">{person.fullName}</TableCell>
-                              <TableCell>{person.phone}</TableCell>
-                              <TableCell>{person.contactSource || 'N/A'}</TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={4} className="h-24 text-center">
-                              No unassigned contacts found.
+                <div className="flex items-center gap-2">
+                  <Select value={selectedEnablerId} onValueChange={setSelectedEnablerId}>
+                    <SelectTrigger className="w-full sm:w-[200px]">
+                      <SelectValue placeholder="Assign to..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {enablers.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Button onClick={handleAssign} disabled={selectedContactIds.size === 0 || !selectedEnablerId}>
+                    Assign
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-hidden">
+              <div className="border rounded-lg h-full">
+                <ScrollArea className="h-full">
+                  <Table>
+                    <TableHeader className="sticky top-0 bg-muted z-10">
+                      <TableRow>
+                        <TableHead className="w-[50px]">
+                          <Checkbox 
+                              onCheckedChange={handleSelectAllUnassigned}
+                              checked={selectedContactIds.size > 0 && selectedContactIds.size === unassignedContacts.length}
+                              aria-label="Select all unassigned"
+                          />
+                        </TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Phone</TableHead>
+                        <TableHead>Source</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {unassignedContacts.length > 0 ? (
+                        unassignedContacts.map(person => (
+                          <TableRow key={person.id}
+                              data-state={selectedContactIds.has(person.id) ? "selected" : undefined}
+                          >
+                            <TableCell>
+                              <Checkbox
+                                  checked={selectedContactIds.has(person.id)}
+                                  onCheckedChange={(checked) => {
+                                      setSelectedContactIds(prev => {
+                                          const newSet = new Set(prev);
+                                          if(checked) newSet.add(person.id);
+                                          else newSet.delete(person.id);
+                                          return newSet;
+                                      })
+                                  }}
+                              />
                             </TableCell>
+                            <TableCell className="font-medium">{person.fullName}</TableCell>
+                            <TableCell>{person.phone}</TableCell>
+                            <TableCell>{person.contactSource || 'N/A'}</TableCell>
                           </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </ScrollArea>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={4} className="h-24 text-center">
+                            No unassigned contacts found.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+              </div>
+            </CardContent>
+          </Card>
         </main>
       </div>
     </div>
