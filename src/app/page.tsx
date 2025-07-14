@@ -867,6 +867,7 @@ function ContactsPageComponent() {
           </div>
         ) : (
           <PersonTable
+            people={paginatedPeople}
             allPeople={filteredPeople}
             onEdit={handleEditPerson}
             onDelete={handleDeletePerson}
