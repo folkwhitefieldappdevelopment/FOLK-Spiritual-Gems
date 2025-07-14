@@ -79,6 +79,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
   const editingPersonRef = React.useRef<Person | undefined>(undefined);
   const [isEditingDialogOpen, setIsEditingDialogOpen] = React.useState(false);
+  const [isSessionDialogOpen, setIsSessionDialogOpen] = React.useState(false);
 
 
   const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
@@ -797,3 +798,5 @@ export default function CallingAssistantPage() {
         </AuthGuard>
     );
 }
+
+    
