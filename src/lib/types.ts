@@ -55,7 +55,7 @@ export type Person = {
   nativePlace: string;
   sgRating: number;
   contactSource: string;
-  chantingStatus: string;
+  chantingStatus: number;
   fromOtherCamp: boolean;
   enablerInTouchWith: string;
   folkGuide?: string;

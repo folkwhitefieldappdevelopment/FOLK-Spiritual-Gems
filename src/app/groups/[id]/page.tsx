@@ -170,7 +170,7 @@ function GroupDetailPageComponent() {
     { value: 'occupation', label: 'Occupation', type: 'enum', options: occupationStatuses.map(s => ({ value: s, label: s })) },
     { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(s => ({ value: s, label: s })) },
     { value: 'enablerInTouchWith', label: 'Enabler', type: 'enum', options: enablerOptions },
-    { value: 'chantingStatus', label: 'Chanting Status', type: 'string' },
+    { value: 'chantingStatus', label: 'Chanting Rounds', type: 'number' },
     { value: 'stayingWith', label: 'Staying At', type: 'enum', options: [{value: "PG / Hostel", label: "PG / Hostel"}, {value: "Flat", label: "Flat"}, {value: "Family", label: "Family"}] },
     { value: 'organisation', label: 'Organisation', type: 'string' },
     { value: 'folkGuide', label: 'Folk Guide', type: 'enum', options: folkGuides.map(g => ({ value: g.name, label: `${g.name} (${g.fgCode || 'N/A'})` })) },
@@ -520,7 +520,7 @@ function GroupDetailPageComponent() {
           <div className="text-center py-12 text-muted-foreground"><p>No members found.</p><p className="text-sm">Try adjusting your search or filters.</p></div>
         ) : (
           <PersonTable 
-            people={filteredMembers} 
+            allPeople={filteredMembers} 
             onEdit={handleEditPerson} 
             onDelete={(id) => handleRemoveMembers([id])} 
             selectedIds={selectedIds} 

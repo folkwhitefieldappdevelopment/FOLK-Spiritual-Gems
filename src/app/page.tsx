@@ -47,7 +47,6 @@ import {
 import {
   Pagination,
   PaginationContent,
-  PaginationEllipsis,
   PaginationItem,
   PaginationNext,
   PaginationPrevious,
@@ -149,7 +148,7 @@ function ContactsPageComponent() {
     { value: 'occupation', label: 'Occupation', type: 'enum', options: occupationStatuses.map(s => ({ value: s, label: s })) },
     { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(s => ({ value: s, label: s })) },
     { value: 'enablerInTouchWith', label: 'Enabler', type: 'enum', options: enablerOptions },
-    { value: 'chantingStatus', label: 'Chanting Status', type: 'string' },
+    { value: 'chantingStatus', label: 'Chanting Rounds', type: 'number' },
     { value: 'stayingWith', label: 'Staying At', type: 'enum', options: [{value: "PG / Hostel", label: "PG / Hostel"}, {value: "Flat", label: "Flat"}, {value: "Family", label: "Family"}] },
     { value: 'organisation', label: 'Organisation', type: 'string' },
     { value: 'folkGuide', label: 'Folk Guide', type: 'enum', options: folkGuides.map(g => ({ value: g.name, label: `${g.name} (${g.fgCode || 'N/A'})` })) },
@@ -297,7 +296,7 @@ function ContactsPageComponent() {
       nativePlace: "Mumbai",
       sgRating: 4,
       contactSource: "Govinda Temple",
-      chantingStatus: "4 rounds",
+      chantingStatus: 4,
       fromOtherCamp: false,
       enablerInTouchWith: "Sarthak",
     }];
@@ -450,6 +449,8 @@ function ContactsPageComponent() {
             const photoUrlValue = String(row.photoUrl || '').trim();
             const isValidPhotoUrl = photoUrlValue.startsWith('http') || photoUrlValue.startsWith('data:image');
             const enablerValue = String(row.enablerInTouchWith || '').trim();
+            const chantingStatus = parseInt(String(row.chantingStatus), 10);
+            const isValidChanting = !isNaN(chantingStatus) && chantingStatus >= 0;
 
             return {
               fullName,
@@ -462,7 +463,7 @@ function ContactsPageComponent() {
               nativePlace: String(row.nativePlace || ""),
               sgRating: isValidRating ? rating : 0,
               contactSource: String(row.contactSource || ""),
-              chantingStatus: String(row.chantingStatus || ""),
+              chantingStatus: isValidChanting ? chantingStatus : 0,
               fromOtherCamp: String(row.fromOtherCamp).toLowerCase() === 'yes' || String(row.fromOtherCamp) === 'true',
               enablerInTouchWith: enablerValue,
               photoUrl: isValidPhotoUrl ? photoUrlValue : `https://placehold.co/100x100.png`,
@@ -866,7 +867,7 @@ function ContactsPageComponent() {
           </div>
         ) : (
           <PersonTable
-            people={paginatedPeople}
+            allPeople={filteredPeople}
             onEdit={handleEditPerson}
             onDelete={handleDeletePerson}
             selectedIds={selectedIds}
@@ -876,7 +877,6 @@ function ContactsPageComponent() {
             setSortDescriptors={setSortDescriptors}
             columnFilters={columnFilters}
             setColumnFilters={setColumnFilters}
-            allPeople={people}
           />
         )}
         {totalPages > 1 && (

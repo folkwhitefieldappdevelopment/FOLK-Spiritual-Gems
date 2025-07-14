@@ -76,9 +76,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([{ field: 'lastCallAt', direction: 'asc' }]);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [columnFilters, setColumnFilters] = React.useState<ColumnFilterState>({});
-  const [currentPage, setCurrentPage] = React.useState(1);
 
-  const [isSessionDialogOpen, setIsSessionDialogOpen] = React.useState(false);
   const editingPersonRef = React.useRef<Person | undefined>(undefined);
   const [isEditingDialogOpen, setIsEditingDialogOpen] = React.useState(false);
 
@@ -146,7 +144,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   
   React.useEffect(() => {
     setSelectedIds(new Set());
-    setCurrentPage(1);
   }, [filters, sortDescriptors, searchTerm, selectedGroupId, columnFilters]);
 
   const filterableFields: FilterableField[] = React.useMemo(() => {
@@ -158,7 +155,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       { value: 'lastSg', label: 'SG', type: 'boolean' },
       { value: 'lastMa', label: 'MA', type: 'boolean' },
       { value: 'lastFrp', label: 'FRP', type: 'boolean' },
-      { value: 'chantingStatus', label: 'Chanting Status', type: 'string' },
+      { value: 'chantingStatus', label: 'Chanting Rounds', type: 'number' },
       { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(s => ({ value: s, label: s })) },
       { value: 'stayingWith', label: 'Staying At', type: 'enum', options: [{value: "PG / Hostel", label: "PG / Hostel"}, {value: "Flat", label: "Flat"}, {value: "Family", label: "Family"}] },
       { value: 'organisation', label: 'Organisation', type: 'string' },
@@ -288,13 +285,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       return 0;
     });
   }, [people, searchTerm, filters, sortDescriptors, groups, selectedGroupId, columnFilters]);
-
-  const totalPages = Math.ceil(filteredPeople.length / ROWS_PER_PAGE);
-
-  const paginatedPeople = React.useMemo(() => {
-    const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
-    return filteredPeople.slice(startIndex, startIndex + ROWS_PER_PAGE);
-  }, [filteredPeople, currentPage]);
 
   React.useEffect(() => {
     if (!isEventDialogOpen || !isStartingSessionFlow || filteredPeople.length === 0) {
@@ -646,7 +636,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
           </div>
         ) : (
           <PersonTable
-            people={paginatedPeople}
             allPeople={filteredPeople}
             onEdit={handleEditPerson}
             onDelete={handleDeletePerson}
@@ -659,23 +648,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
             columnFilters={columnFilters}
             setColumnFilters={setColumnFilters}
           />
-        )}
-        {totalPages > 1 && (
-            <Pagination className="mt-8">
-                <PaginationContent>
-                    <PaginationItem>
-                        <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }} aria-disabled={currentPage === 1} tabIndex={currentPage === 1 ? -1 : undefined} className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''} />
-                    </PaginationItem>
-                    <PaginationItem>
-                      <span className="p-2 text-sm font-medium">
-                        Page {currentPage} of {totalPages}
-                      </span>
-                    </PaginationItem>
-                    <PaginationItem>
-                        <PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} aria-disabled={currentPage === totalPages} tabIndex={currentPage === totalPages ? -1 : undefined} className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''} />
-                    </PaginationItem>
-                </PaginationContent>
-            </Pagination>
         )}
       </>
     );

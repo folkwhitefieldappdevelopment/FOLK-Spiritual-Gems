@@ -48,6 +48,8 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Slider } from "./ui/slider";
 
+const chantingRoundOptions = Array.from({ length: 17 }, (_, i) => i); // 0-16
+
 const createPersonFormSchema = (allPeople: Person[], currentPersonId?: string) => (
   z.object({
     fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
@@ -60,7 +62,7 @@ const createPersonFormSchema = (allPeople: Person[], currentPersonId?: string) =
     nativePlace: z.string().optional(),
     sgRating: z.coerce.number().min(0).max(5).optional(),
     contactSource: z.string().optional(),
-    chantingStatus: z.string().optional(),
+    chantingStatus: z.coerce.number().optional(),
     fromOtherCamp: z.boolean().default(false),
     enablerInTouchWith: z.string().optional(),
     folkGuideId: z.string().optional(),
@@ -113,7 +115,7 @@ export function CreateUpdatePersonDialog({
       nativePlace: "",
       sgRating: 0,
       contactSource: "",
-      chantingStatus: "",
+      chantingStatus: 0,
       fromOtherCamp: false,
       enablerInTouchWith: "",
       folkGuideId: "",
@@ -193,7 +195,7 @@ export function CreateUpdatePersonDialog({
           nativePlace: "",
           sgRating: 0,
           contactSource: "",
-          chantingStatus: "",
+          chantingStatus: 0,
           fromOtherCamp: false,
           enablerInTouchWith: "",
           folkGuideId: "",
@@ -300,6 +302,7 @@ export function CreateUpdatePersonDialog({
       const saveData = {
         ...data,
         sgRating: Number(data.sgRating || 0),
+        chantingStatus: Number(data.chantingStatus || 0),
         photoUrl:
           photoPreview ||
           person?.photoUrl ||
@@ -643,10 +646,17 @@ export function CreateUpdatePersonDialog({
                       name="chantingStatus"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Chanting Status</FormLabel>
-                          <FormControl>
-                            <Input placeholder="e.g. 16 rounds" {...field} />
-                          </FormControl>
+                          <FormLabel>Chanting Rounds</FormLabel>
+                          <Select onValueChange={(value) => field.onChange(Number(value))} value={String(field.value || 0)}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select rounds" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {chantingRoundOptions.map(r => <SelectItem key={r} value={String(r)}>{r}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
                           <FormMessage />
                         </FormItem>
                       )}
