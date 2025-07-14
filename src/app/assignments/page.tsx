@@ -45,7 +45,7 @@ function AssignmentsPageComponent() {
   const { toast } = useToast();
 
   const [people, setPeople] = React.useState<Person[]>([]);
-  const [enablers, setEnablers] = React.useState<AppUser[]>([]);
+  const [assignableUsers, setAssignableUsers] = React.useState<AppUser[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
 
@@ -60,18 +60,20 @@ function AssignmentsPageComponent() {
     setFetchError(null);
     try {
       const peopleData = await getPeople(appUser);
-      let enablersData: AppUser[] = [];
+      let usersToAssign: AppUser[] = [];
+
       if (appUser.role.includes('Admin')) {
         const allUsers = await getUsers();
-        enablersData = allUsers.filter(u => u.role.includes('Folk Enabler') || u.role.includes('Folk Guide'));
+        // Admins can assign to any enabler or guide
+        usersToAssign = allUsers.filter(u => u.role.includes('Folk Enabler') || u.role.includes('Folk Guide'));
       } else if (appUser.role.includes('Folk Guide')) {
-        enablersData = await getEnablersForGuide(appUser.id);
-        // Also include the guide themselves as an option
-        enablersData.push(appUser);
+        const enablersUnderGuide = await getEnablersForGuide(appUser.id);
+        // Guides can assign to enablers under them, or to themselves
+        usersToAssign = [appUser, ...enablersUnderGuide];
       }
       
       setPeople(peopleData);
-      setEnablers(enablersData.sort((a,b) => a.name.localeCompare(b.name)));
+      setAssignableUsers(usersToAssign.sort((a,b) => a.name.localeCompare(b.name)));
 
     } catch (error) {
       console.error("Failed to load assignment data:", error);
@@ -87,7 +89,7 @@ function AssignmentsPageComponent() {
 
   const { enablerStats, unassignedContacts } = React.useMemo(() => {
     const stats = new Map<string, number>();
-    enablers.forEach(e => stats.set(e.name, 0));
+    assignableUsers.forEach(e => stats.set(e.name, 0));
     
     const unassigned: Person[] = [];
 
@@ -105,7 +107,7 @@ function AssignmentsPageComponent() {
     );
 
     return { enablerStats: stats, unassignedContacts: filteredUnassigned };
-  }, [people, enablers, unassignedSearchTerm]);
+  }, [people, assignableUsers, unassignedSearchTerm]);
   
   const totalPages = Math.ceil(unassignedContacts.length / ROWS_PER_PAGE);
   
@@ -119,7 +121,7 @@ function AssignmentsPageComponent() {
       toast({ variant: 'destructive', title: 'Selection required', description: 'Please select contacts and an enabler.' });
       return;
     }
-    const enabler = enablers.find(e => e.id === selectedEnablerId);
+    const enabler = assignableUsers.find(e => e.id === selectedEnablerId);
     if (!enabler) {
       toast({ variant: 'destructive', title: 'Invalid Enabler' });
       return;
@@ -189,7 +191,7 @@ function AssignmentsPageComponent() {
             <CardContent className="flex-1 overflow-hidden">
               <ScrollArea className="h-full pr-4 -mr-4">
                 <div className="space-y-4">
-                  {enablers.map(enabler => (
+                  {assignableUsers.map(enabler => (
                     <div key={enabler.id} className="p-3 border rounded-lg flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <Avatar>
@@ -236,7 +238,7 @@ function AssignmentsPageComponent() {
                       <SelectValue placeholder="Assign to..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {enablers.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
+                      {assignableUsers.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <Button onClick={handleAssign} disabled={selectedContactIds.size === 0 || !selectedEnablerId}>
@@ -325,7 +327,7 @@ function AssignmentsPageComponent() {
 
 export default function AssignmentsPage() {
     return (
-        <AuthGuard adminOnly>
+        <AuthGuard adminOrGuideOnly>
             <AssignmentsPageComponent />
         </AuthGuard>
     )

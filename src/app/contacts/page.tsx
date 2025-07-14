@@ -118,6 +118,7 @@ function ContactsPageComponent() {
 
   const [currentPage, setCurrentPage] = React.useState(1);
   const canAssignCoEnabler = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
+  const isAdmin = appUser?.role.includes('Admin');
 
   const fetchPageData = React.useCallback(async () => {
     if (!appUser) return;
@@ -157,19 +158,26 @@ function ContactsPageComponent() {
     }
   }, [appUser, fetchPageData]);
 
-  const filterableFields: FilterableField[] = React.useMemo(() => [
-    { value: 'occupation', label: 'Occupation', type: 'enum', options: occupationStatuses.map(s => ({ value: s, label: s })) },
-    { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(s => ({ value: s, label: s })) },
-    { value: 'enablerInTouchWith', label: 'Enabler', type: 'enum', options: enablerOptions },
-    { value: 'chantingStatus', label: 'Chanting Rounds', type: 'number' },
-    { value: 'stayingWith', label: 'Staying At', type: 'enum', options: [{value: "PG / Hostel", label: "PG / Hostel"}, {value: "Flat", label: "Flat"}, {value: "Family", label: "Family"}] },
-    { value: 'organisation', label: 'Organisation', type: 'string' },
-    { value: 'folkGuide', label: 'Folk Guide', type: 'enum', options: folkGuides.map(g => ({ value: g.name, label: `${g.name} (${g.fgCode || 'N/A'})` })) },
-    { value: 'nativePlace', label: 'Native Place', type: 'string' },
-    { value: 'fromOtherCamp', label: 'From Other Camp', type: 'boolean' },
-    { value: 'age', label: 'Age', type: 'number' },
-    { value: 'sgRating', label: 'Rating', type: 'number' },
-  ], [enablerOptions, contactSourceOptions, folkGuides]);
+  const filterableFields: FilterableField[] = React.useMemo(() => {
+    const fields: FilterableField[] = [
+        { value: 'occupation', label: 'Occupation', type: 'enum', options: occupationStatuses.map(s => ({ value: s, label: s })) },
+        { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(s => ({ value: s, label: s })) },
+        { value: 'enablerInTouchWith', label: 'Enabler', type: 'enum', options: enablerOptions },
+        { value: 'chantingStatus', label: 'Chanting Rounds', type: 'number' },
+        { value: 'stayingWith', label: 'Staying At', type: 'enum', options: [{value: "PG / Hostel", label: "PG / Hostel"}, {value: "Flat", label: "Flat"}, {value: "Family", label: "Family"}] },
+        { value: 'organisation', label: 'Organisation', type: 'string' },
+        { value: 'nativePlace', label: 'Native Place', type: 'string' },
+        { value: 'fromOtherCamp', label: 'From Other Camp', type: 'boolean' },
+        { value: 'age', label: 'Age', type: 'number' },
+        { value: 'sgRating', label: 'Rating', type: 'number' },
+    ];
+
+    if (isAdmin) {
+        fields.push({ value: 'folkGuide', label: 'Folk Guide', type: 'enum', options: folkGuides.map(g => ({ value: g.name, label: `${g.name} (${g.fgCode || 'N/A'})` })) });
+    }
+
+    return fields;
+  }, [enablerOptions, contactSourceOptions, folkGuides, isAdmin]);
 
   const filteredPeople = React.useMemo(() => {
     let tempPeople = [...people];

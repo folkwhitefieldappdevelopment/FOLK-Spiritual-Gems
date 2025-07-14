@@ -129,9 +129,9 @@ function UserManagementPageComponent() {
   };
   
   const handleDeleteConfirmed = async () => {
-    if (!userToDelete) return;
+    if (!userToDelete || !appUser) return;
     try {
-        await deleteUserAndAuth(userToDelete.id);
+        await deleteUserAndAuth(userToDelete.id, appUser);
         toast({
             title: 'User Record Deleted',
             description: `User ${userToDelete.name}'s record has been deleted. They can still log in.`
@@ -150,6 +150,7 @@ function UserManagementPageComponent() {
   };
 
   const handleSaveUser = async (data: UserFormValues, userId?: string) => {
+    if (!appUser) return;
     try {
       const userData: { [key: string]: any } = {
         name: data.name,
@@ -178,13 +179,13 @@ function UserManagementPageComponent() {
       }
       
       if (userId) {
-        await updateUser(userId, userData);
+        await updateUser(userId, userData, appUser);
         toast({
           title: 'User Updated',
           description: `${data.name}'s details have been updated.`,
         });
       } else {
-        await createUser(userData as Omit<AppUser, 'id' | 'createdAt'>);
+        await createUser(userData as Omit<AppUser, 'id' | 'createdAt'>, appUser);
         toast({
           title: 'User Created & Invite Sent',
           description: `${data.name} has been added and a sign-up link has been sent to their email.`,
@@ -414,7 +415,7 @@ function UserManagementPageComponent() {
 
 export default function UserManagementPage() {
     return (
-        <AuthGuard adminOnly>
+        <AuthGuard adminOrGuideOnly>
             <UserManagementPageComponent />
         </AuthGuard>
     )
