@@ -71,6 +71,7 @@ import { FilterPopover, type FilterRule, type FilterableField } from "@/componen
 import { Input } from "@/components/ui/input";
 import { ColumnFilterState, applyColumnFilters } from "@/components/column-header-filter";
 import { AuthGuard } from "@/components/auth-guard";
+import { logAudit } from '@/services/audit-service';
 
 const ROWS_PER_PAGE = 10;
 
@@ -790,12 +791,10 @@ function ContactsPageComponent() {
                                 setFilters={setFilters}
                                 filterableFields={filterableFields}
                             />
-                            {view === 'card' && (
-                                <SortPopover
-                                    sortDescriptors={sortDescriptors}
-                                    setSortDescriptors={setSortDescriptors}
-                                />
-                            )}
+                            <SortPopover
+                                sortDescriptors={sortDescriptors}
+                                setSortDescriptors={setSortDescriptors}
+                            />
                         </>
                     )}
                     {filteredPeople.length > 0 && !isSelectionActive && (
