@@ -59,17 +59,18 @@ function AssignmentsPageComponent() {
     setIsLoading(true);
     setFetchError(null);
     try {
+      // Admins see all unassigned, Guides only see unassigned within their folk.
       const peopleData = await getPeople(appUser);
       let usersToAssign: AppUser[] = [];
 
       if (appUser.role.includes('Admin')) {
         const allUsers = await getUsers();
-        // Admins can assign to any enabler or guide
-        usersToAssign = allUsers.filter(u => u.role.includes('Folk Enabler') || u.role.includes('Folk Guide'));
+        // Admins can assign to any enabler
+        usersToAssign = allUsers.filter(u => u.role.includes('Folk Enabler'));
       } else if (appUser.role.includes('Folk Guide')) {
         const enablersUnderGuide = await getEnablersForGuide(appUser.id);
-        // Guides can assign to enablers under them, or to themselves
-        usersToAssign = [appUser, ...enablersUnderGuide];
+        // Guides can assign only to enablers under them.
+        usersToAssign = enablersUnderGuide;
       }
       
       setPeople(peopleData);
@@ -132,9 +133,15 @@ function AssignmentsPageComponent() {
       toast({ title: 'Contacts Assigned', description: `${selectedContactIds.size} contacts were assigned to ${enabler.name}.` });
       
       // Manually update local state for instant feedback
+      const guideInfo = enabler.reportsTo;
       setPeople(prev => prev.map(p => {
         if (selectedContactIds.has(p.id)) {
-          return { ...p, enablerInTouchWith: enabler.name };
+          return { 
+            ...p, 
+            enablerInTouchWith: enabler.name,
+            folkGuide: guideInfo ? `${guideInfo.guideName} (${guideInfo.guideFgCode || 'N/A'})` : '',
+            folkGuideId: guideInfo ? guideInfo.guideId : '',
+          };
         }
         return p;
       }));
@@ -186,7 +193,7 @@ function AssignmentsPageComponent() {
           <Card className="lg:col-span-1 flex flex-col">
             <CardHeader>
               <CardTitle>Enablers</CardTitle>
-              <CardDescription>List of all available enablers and their current contact count.</CardDescription>
+              <CardDescription>List of available enablers and their current contact count.</CardDescription>
             </CardHeader>
             <CardContent className="flex-1 overflow-hidden">
               <ScrollArea className="h-full pr-4 -mr-4">
@@ -201,7 +208,6 @@ function AssignmentsPageComponent() {
                         <div>
                           <p className="font-semibold">{enabler.name}</p>
                           <div className="text-xs text-muted-foreground">
-                              {enabler.role.includes('Folk Guide') && <Badge variant="secondary" className="mr-1">Guide</Badge>}
                               {enabler.role.includes('Folk Enabler') && <Badge variant="outline" className="mr-1">Enabler</Badge>}
                           </div>
                         </div>
