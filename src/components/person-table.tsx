@@ -158,7 +158,7 @@ export function PersonTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {people.map((person) => {
+            {people && people.map((person) => {
               const fullName = person.fullName || '';
               const nameParts = fullName.split(' ');
               const fallback = (
