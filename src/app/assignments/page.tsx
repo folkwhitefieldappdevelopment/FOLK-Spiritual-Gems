@@ -29,7 +29,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 
+
+const ROWS_PER_PAGE = 50;
 
 function AssignmentsPageComponent() {
   const { appUser } = useAuth();
@@ -43,6 +52,7 @@ function AssignmentsPageComponent() {
   const [unassignedSearchTerm, setUnassignedSearchTerm] = React.useState('');
   const [selectedContactIds, setSelectedContactIds] = React.useState<Set<string>>(new Set());
   const [selectedEnablerId, setSelectedEnablerId] = React.useState<string>('');
+  const [currentPage, setCurrentPage] = React.useState(1);
 
   const fetchData = React.useCallback(async () => {
     if (!appUser) return;
@@ -96,6 +106,13 @@ function AssignmentsPageComponent() {
 
     return { enablerStats: stats, unassignedContacts: filteredUnassigned };
   }, [people, enablers, unassignedSearchTerm]);
+  
+  const totalPages = Math.ceil(unassignedContacts.length / ROWS_PER_PAGE);
+  
+  const paginatedContacts = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
+    return unassignedContacts.slice(startIndex, startIndex + ROWS_PER_PAGE);
+  }, [unassignedContacts, currentPage]);
 
   const handleAssign = async () => {
     if (selectedContactIds.size === 0 || !selectedEnablerId) {
@@ -128,13 +145,24 @@ function AssignmentsPageComponent() {
     }
   };
   
-  const handleSelectAllUnassigned = (checked: boolean) => {
+  const handleSelectAllOnPage = (checked: boolean) => {
     if (checked) {
-      setSelectedContactIds(new Set(unassignedContacts.map(p => p.id)));
+      const pageIds = new Set(paginatedContacts.map(p => p.id));
+      setSelectedContactIds(prev => new Set([...Array.from(prev), ...Array.from(pageIds)]));
     } else {
-      setSelectedContactIds(new Set());
+      const pageIds = new Set(paginatedContacts.map(p => p.id));
+      setSelectedContactIds(prev => {
+          const newSet = new Set(prev);
+          pageIds.forEach(id => newSet.delete(id));
+          return newSet;
+      });
     }
   }
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+    setSelectedContactIds(new Set());
+  }, [unassignedSearchTerm]);
 
   if (isLoading) {
     return <div className="flex min-h-screen w-full items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -217,17 +245,17 @@ function AssignmentsPageComponent() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="flex-1 overflow-hidden">
-              <div className="border rounded-lg h-full">
+            <CardContent className="flex-1 overflow-hidden flex flex-col">
+              <div className="border rounded-lg flex-1 overflow-hidden">
                 <ScrollArea className="h-full">
                   <Table>
                     <TableHeader className="sticky top-0 bg-muted z-10">
                       <TableRow>
                         <TableHead className="w-[50px]">
                           <Checkbox 
-                              onCheckedChange={handleSelectAllUnassigned}
-                              checked={selectedContactIds.size > 0 && selectedContactIds.size === unassignedContacts.length}
-                              aria-label="Select all unassigned"
+                              onCheckedChange={handleSelectAllOnPage}
+                              checked={paginatedContacts.length > 0 && paginatedContacts.every(p => selectedContactIds.has(p.id))}
+                              aria-label="Select all on this page"
                           />
                         </TableHead>
                         <TableHead>Name</TableHead>
@@ -236,8 +264,8 @@ function AssignmentsPageComponent() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {unassignedContacts.length > 0 ? (
-                        unassignedContacts.map(person => (
+                      {paginatedContacts.length > 0 ? (
+                        paginatedContacts.map(person => (
                           <TableRow key={person.id}
                               data-state={selectedContactIds.has(person.id) ? "selected" : undefined}
                           >
@@ -270,6 +298,23 @@ function AssignmentsPageComponent() {
                   </Table>
                 </ScrollArea>
               </div>
+              {totalPages > 1 && (
+                <Pagination className="mt-4">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }} aria-disabled={currentPage === 1} tabIndex={currentPage === 1 ? -1 : undefined} className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''} />
+                    </PaginationItem>
+                    <PaginationItem>
+                      <span className="p-2 text-sm font-medium">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                    </PaginationItem>
+                    <PaginationItem>
+                      <PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} aria-disabled={currentPage === totalPages} tabIndex={currentPage === totalPages ? -1 : undefined} className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''} />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              )}
             </CardContent>
           </Card>
         </main>
