@@ -13,6 +13,7 @@ import {
   UserCheck,
   Search,
   Info,
+  UserPlus,
 } from "lucide-react";
 import { read, utils, write } from "xlsx";
 import JSZip from "jszip";
@@ -66,6 +67,7 @@ import {
   deletePeople,
   importPeople,
   assignCoEnablerToPeople,
+  assignEnablerToPeople,
 } from "@/services/people-service";
 import { getGroups, createGroup, addPeopleToGroup } from "@/services/groups-service";
 import { getFolkGuides } from "@/services/user-service";
@@ -73,6 +75,7 @@ import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOpti
 import { useAuth } from "@/contexts/auth-context";
 import { CreateUpdateGroupDialog } from "@/components/create-update-group-dialog";
 import { AssignCoEnablerDialog } from "@/components/assign-helper-dialog";
+import { AssignEnablerDialog } from "@/components/assign-enabler-dialog";
 import { SortPopover, type SortDescriptor } from "@/components/sort-popover";
 import { FilterPopover, type FilterRule, type FilterableField } from "@/components/filter-popover";
 import { Input } from "@/components/ui/input";
@@ -103,6 +106,7 @@ function ContactsPageComponent() {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = React.useState(false);
   const [isAssignCoEnablerDialogOpen, setIsAssignCoEnablerDialogOpen] = React.useState(false);
+  const [isAssignEnablerDialogOpen, setIsAssignEnablerDialogOpen] = React.useState(false);
 
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(
     undefined
@@ -117,7 +121,7 @@ function ContactsPageComponent() {
 
 
   const [currentPage, setCurrentPage] = React.useState(1);
-  const canAssignCoEnabler = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
+  const canAssignUsers = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
   const isAdmin = appUser?.role.includes('Admin');
 
   const fetchPageData = React.useCallback(async () => {
@@ -742,6 +746,20 @@ function ContactsPageComponent() {
     }
   }, [selectedIds, toast, fetchPageData, appUser]);
 
+  const handleAssignEnabler = React.useCallback(async (enabler: AppUser) => {
+    if (!appUser || selectedIds.size === 0) return;
+    try {
+        await assignEnablerToPeople(Array.from(selectedIds), enabler, appUser);
+        toast({
+            title: 'Enabler Assigned',
+            description: `${selectedIds.size} contacts have been assigned to ${enabler.name}.`,
+        });
+        await fetchPageData();
+        setSelectedIds(new Set());
+    } catch (error) {
+        toast({ variant: "destructive", title: "Error", description: "Could not assign the enabler." });
+    }
+  }, [selectedIds, toast, fetchPageData, appUser]);
 
   const isLoadingAction = !!importingStatus || isExporting;
   const loadingText = typeof importingStatus === 'string' ? importingStatus : (isExporting ? 'Exporting...' : '');
@@ -792,11 +810,17 @@ function ContactsPageComponent() {
                                 </DropdownMenuContent>
                             </DropdownMenu>
 
-                            {canAssignCoEnabler && (
-                              <Button variant="outline" size="sm" onClick={() => setIsAssignCoEnablerDialogOpen(true)}>
-                                <UserCheck className="mr-2 h-4 w-4" />
-                                Assign Co-Enabler
-                              </Button>
+                            {canAssignUsers && (
+                              <>
+                                <Button variant="outline" size="sm" onClick={() => setIsAssignEnablerDialogOpen(true)}>
+                                  <UserPlus className="mr-2 h-4 w-4" />
+                                  Assign Enabler
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={() => setIsAssignCoEnablerDialogOpen(true)}>
+                                  <UserCheck className="mr-2 h-4 w-4" />
+                                  Assign Co-Enabler
+                                </Button>
+                              </>
                             )}
 
                             <AlertDialog>
@@ -1026,6 +1050,12 @@ function ContactsPageComponent() {
         isOpen={isAssignCoEnablerDialogOpen}
         setIsOpen={setIsAssignCoEnablerDialogOpen}
         onSave={handleAssignCoEnabler}
+        peopleCount={selectedIds.size}
+      />
+       <AssignEnablerDialog
+        isOpen={isAssignEnablerDialogOpen}
+        setIsOpen={setIsAssignEnablerDialogOpen}
+        onSave={handleAssignEnabler}
         peopleCount={selectedIds.size}
       />
       <input
