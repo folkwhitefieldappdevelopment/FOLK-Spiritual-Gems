@@ -336,3 +336,16 @@ export const assignCoEnablerToPeople = async (personIds: string[], coEnabler: Ap
     : `Unassigned co-enabler from ${personIds.length} contacts.`;
   await logAudit('Assign Co-Enabler', details, appUser);
 };
+
+export const assignEnablerToPeople = async (personIds: string[], enabler: AppUser, appUser: AppUser | null): Promise<void> => {
+    if (personIds.length === 0) return;
+    const batch = writeBatch(db);
+    personIds.forEach(id => {
+        const docRef = doc(db, 'people', id);
+        batch.update(docRef, { enablerInTouchWith: enabler.name });
+    });
+    await batch.commit();
+    if (appUser) {
+        await logAudit('Assign Enabler', `Assigned ${personIds.length} contacts to ${enabler.name}.`, appUser);
+    }
+};

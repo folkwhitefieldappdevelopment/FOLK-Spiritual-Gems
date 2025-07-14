@@ -31,8 +31,8 @@ export function AuthGuard({ children, adminOnly = false }: AuthGuardProps) {
       return;
     }
     
-    // If the route is admin-only and the user is not an admin, redirect.
-    if (adminOnly && !appUser?.role.includes('Admin')) {
+    // If the route is admin-only and the user is not an admin or guide, redirect.
+    if (adminOnly && !(appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide'))) {
       toast({
           variant: 'destructive',
           title: 'Access Denied',

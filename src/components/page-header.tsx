@@ -8,7 +8,7 @@ import { Button } from "./ui/button";
 import { Menu, Edit } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 import Link from "next/link";
-import { Users, UserSquare, Settings, Gem, Headset, UserCog, History, LayoutDashboard } from "lucide-react";
+import { Users, UserSquare, Settings, Gem, Headset, UserCog, History, LayoutDashboard, UsersRound } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { usePathname } from "next/navigation";
 import { ThemeSwitcher } from "./theme-switcher";
@@ -30,6 +30,7 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
       { href: "/contacts", label: "Contacts", icon: Users },
       { href: "/groups", label: "Groups", icon: UserSquare },
       { href: "/calling-assistant", label: "Calling Assistant", icon: Headset },
+      { href: "/assignments", label: "Assignments", icon: UsersRound, adminOnly: true },
       { href: "/user-management", label: "User Management", icon: UserCog, adminOnly: true },
       { href: "/user-audit", label: "User Audit", icon: History, adminOnly: true },
       { href: "/settings", label: "Settings", icon: Settings },
@@ -46,6 +47,7 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
         // Special case for guides to see user management
         if (item.href === '/user-management' && appUser?.role.includes('Folk Guide')) return true;
         if (item.href === '/user-audit' && appUser?.role.includes('Folk Guide')) return true;
+        if (item.href === '/assignments' && appUser?.role.includes('Folk Guide')) return true;
         return false;
     }
   

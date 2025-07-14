@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, UserSquare, Settings, Gem, Headset, UserCog, History, LayoutDashboard } from "lucide-react";
+import { Users, UserSquare, Settings, Gem, Headset, UserCog, History, LayoutDashboard, UsersRound } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import {
   Tooltip,
@@ -22,6 +22,7 @@ export function AppSidebar() {
     { href: "/contacts", label: "Contacts", icon: Users },
     { href: "/groups", label: "Groups", icon: UserSquare },
     { href: "/calling-assistant", label: "Calling Assistant", icon: Headset },
+    { href: "/assignments", label: "Assignments", icon: UsersRound, adminOnly: true },
     { href: "/user-management", label: "User Management", icon: UserCog, adminOnly: true },
     { href: "/user-audit", label: "User Audit", icon: History, adminOnly: true },
   ];
@@ -37,6 +38,7 @@ export function AppSidebar() {
     // Special case for guides to see user management
     if (item.href === '/user-management' && appUser?.role.includes('Folk Guide')) return true;
     if (item.href === '/user-audit' && appUser?.role.includes('Folk Guide')) return true;
+    if (item.href === '/assignments' && appUser?.role.includes('Folk Guide')) return true;
     return false;
   }
 
