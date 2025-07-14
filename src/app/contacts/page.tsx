@@ -12,6 +12,7 @@ import {
   Loader2,
   UserCheck,
   Search,
+  Info,
 } from "lucide-react";
 import { read, utils, write } from "xlsx";
 import JSZip from "jszip";
@@ -33,6 +34,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  TooltipProvider,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent
+} from "@/components/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -85,7 +92,7 @@ function ContactsPageComponent() {
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
   const [isImporting, setIsImporting] = React.useState(false);
   const [isExporting, setIsExporting] = React.useState(false);
-  const [view, setView] = React.useState<"card" | "table">("table");
+  const [view, setView] = React.useState<"table" | "table">("table");
   
   const [searchTerm, setSearchTerm] = React.useState("");
   const [filters, setFilters] = React.useState<FilterRule[]>([]);
@@ -941,30 +948,49 @@ function ContactsPageComponent() {
                 description="Your central hub for managing contacts and activities."
             >
                 <div className="flex items-center gap-2">
-                    <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
-                            {isLoadingAction ? (
-                            <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
-                        ) : (
-                            <Upload className="h-4 w-4 sm:mr-2" />
-                        )}
-                        <span className="hidden sm:inline">{isLoadingAction ? loadingText : 'Import/Export'}</span>
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                        <DropdownMenuItem onSelect={() => fileInputRef.current?.click()} disabled={isLoadingAction}>
-                        Import from Excel
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleExport} disabled={isLoadingAction}>
-                        Export to Excel
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={handleSampleDownload} disabled={isLoadingAction}>
-                        Download Sample Excel
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                    </DropdownMenu>
+                    <TooltipProvider>
+                      <div className="flex items-center gap-1">
+                          <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="sm" className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
+                                  {isLoadingAction ? (
+                                  <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
+                              ) : (
+                                  <Upload className="h-4 w-4 sm:mr-2" />
+                              )}
+                              <span className="hidden sm:inline">{isLoadingAction ? loadingText : 'Import/Export'}</span>
+                              </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                              <DropdownMenuItem onSelect={() => fileInputRef.current?.click()} disabled={isLoadingAction}>
+                              Import from Excel
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={handleExport} disabled={isLoadingAction}>
+                              Export to Excel
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={handleSampleDownload} disabled={isLoadingAction}>
+                              Download Sample Excel
+                              </DropdownMenuItem>
+                          </DropdownMenuContent>
+                          </DropdownMenu>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-9 w-9">
+                                    <Info className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="max-w-xs">
+                                <p className="font-semibold">Import/Export Guide</p>
+                                <ul className="list-disc pl-4 mt-2 space-y-1 text-xs">
+                                    <li>Put your contacts in the sample Excel file to import.</li>
+                                    <li>Export is best for up to 500 contacts with photos, or thousands without.</li>
+                                    <li>Import can handle up to 10,000 contacts at once.</li>
+                                </ul>
+                            </TooltipContent>
+                          </Tooltip>
+                      </div>
+                    </TooltipProvider>
 
                     <Button size="sm" onClick={handleAddPerson} className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
                     <PlusCircle className="h-4 w-4 sm:mr-2" />
@@ -1004,12 +1030,4 @@ function ContactsPageComponent() {
       </div>
     </AuthGuard>
   );
-}
-
-export default function ContactsPageRoot() {
-    return (
-        <AuthGuard>
-            <ContactsPageComponent />
-        </AuthGuard>
-    )
 }
