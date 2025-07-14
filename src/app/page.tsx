@@ -45,6 +45,14 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
+import {
   getPeople,
   createPerson,
   updatePerson,
@@ -64,6 +72,8 @@ import { FilterPopover, type FilterRule, type FilterableField } from "@/componen
 import { Input } from "@/components/ui/input";
 import { ColumnFilterState, applyColumnFilters } from "@/components/column-header-filter";
 import { AuthGuard } from "@/components/auth-guard";
+
+const ROWS_PER_PAGE = 10;
 
 function ContactsPageComponent() {
   const { toast } = useToast();
@@ -96,6 +106,7 @@ function ContactsPageComponent() {
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
   const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
 
+  const [currentPage, setCurrentPage] = React.useState(1);
   const canAssignCoEnabler = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
 
   const fetchPageData = React.useCallback(async () => {
@@ -255,9 +266,18 @@ function ContactsPageComponent() {
     });
   }, [people, searchTerm, filters, sortDescriptors, columnFilters]);
 
+  // Reset to page 1 whenever filters or data change
   React.useEffect(() => {
+    setCurrentPage(1);
     setSelectedIds(new Set());
-  }, [filters, sortDescriptors, searchTerm, view, columnFilters]);
+  }, [filteredPeople.length, filters, sortDescriptors, searchTerm, view, columnFilters]);
+  
+  const totalPages = Math.ceil(filteredPeople.length / ROWS_PER_PAGE);
+
+  const paginatedPeople = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
+    return filteredPeople.slice(startIndex, startIndex + ROWS_PER_PAGE);
+  }, [filteredPeople, currentPage]);
 
   const handleSampleDownload = React.useCallback(() => {
     const headers = [
@@ -769,10 +789,12 @@ function ContactsPageComponent() {
                                 setFilters={setFilters}
                                 filterableFields={filterableFields}
                             />
-                            <SortPopover
-                                sortDescriptors={sortDescriptors}
-                                setSortDescriptors={setSortDescriptors}
-                            />
+                            {view === 'card' && (
+                                <SortPopover
+                                    sortDescriptors={sortDescriptors}
+                                    setSortDescriptors={setSortDescriptors}
+                                />
+                            )}
                         </>
                     )}
                     {filteredPeople.length > 0 && !isSelectionActive && (
@@ -826,9 +848,25 @@ function ContactsPageComponent() {
             <p>No contacts found.</p>
             <p className="text-sm">Try adjusting your search or filters.</p>
           </div>
+        ) : view === "card" ? (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {paginatedPeople.map((person) => {
+                const personGroups = groups.filter(g => g.peopleIds.includes(person.id));
+                return (
+                  <PersonCard
+                    key={person.id}
+                    person={person}
+                    isSelected={selectedIds.has(person.id)}
+                    onSelectionChange={handleSelectionChange}
+                    groups={personGroups}
+                    isSelectionActive={isSelectionActive}
+                  />
+                )
+            })}
+          </div>
         ) : (
           <PersonTable
-            people={filteredPeople}
+            people={paginatedPeople}
             onEdit={handleEditPerson}
             onDelete={handleDeletePerson}
             selectedIds={selectedIds}
@@ -838,7 +876,25 @@ function ContactsPageComponent() {
             setSortDescriptors={setSortDescriptors}
             columnFilters={columnFilters}
             setColumnFilters={setColumnFilters}
+            allPeople={people}
           />
+        )}
+        {totalPages > 1 && (
+            <Pagination className="mt-8">
+                <PaginationContent>
+                    <PaginationItem>
+                        <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }} aria-disabled={currentPage === 1} tabIndex={currentPage === 1 ? -1 : undefined} className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''} />
+                    </PaginationItem>
+                    <PaginationItem>
+                      <span className="p-2 text-sm font-medium">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                    </PaginationItem>
+                    <PaginationItem>
+                        <PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} aria-disabled={currentPage === totalPages} tabIndex={currentPage === totalPages ? -1 : undefined} className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''} />
+                    </PaginationItem>
+                </PaginationContent>
+            </Pagination>
         )}
       </>
     );

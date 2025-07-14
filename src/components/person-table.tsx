@@ -13,7 +13,6 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  TableFooter,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -41,22 +40,12 @@ import {
   TooltipTrigger,
 } from "./ui/tooltip";
 import { Checkbox } from './ui/checkbox';
-import { Badge } from './ui/badge';
 import type { SortDescriptor } from './sort-popover';
 import { ColumnHeaderFilter, type ColumnFilterState } from './column-header-filter';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationPrevious,
-  PaginationNext,
-} from '@/components/ui/pagination';
-
-
-const ROWS_PER_PAGE = 10;
 
 type PersonTableProps = {
-  people: Person[];
+  people: Person[]; // Should be the paginated list
+  allPeople: Person[]; // The full list for context
   onEdit: (person: Person) => void;
   onDelete: (personId: string) => void;
   isCallingAssistantView?: boolean;
@@ -78,6 +67,7 @@ const safeDate = (timestamp: any): Date | null => {
 
 export function PersonTable({ 
   people, 
+  allPeople,
   onEdit, 
   onDelete, 
   isCallingAssistantView = false, 
@@ -90,31 +80,17 @@ export function PersonTable({
   setColumnFilters = () => {},
 }: PersonTableProps) {
   
-  const [currentPage, setCurrentPage] = React.useState(1);
-
-  // Reset to page 1 whenever filters or data change
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [people, sortDescriptors, columnFilters]);
-  
-  const totalPages = Math.ceil(people.length / ROWS_PER_PAGE);
-
-  const paginatedPeople = React.useMemo(() => {
-    const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
-    return people.slice(startIndex, startIndex + ROWS_PER_PAGE);
-  }, [people, currentPage]);
-  
   const isSelectionEnabled = !!selectedIds && !!setSelectedIds;
 
   const handleSelectAll = React.useCallback((checked: boolean) => {
     if (isSelectionEnabled && setSelectedIds) {
       if (checked) {
-        setSelectedIds(new Set(people.map(p => p.id)));
+        setSelectedIds(new Set(allPeople.map(p => p.id)));
       } else {
         setSelectedIds(new Set());
       }
     }
-  }, [isSelectionEnabled, setSelectedIds, people]);
+  }, [isSelectionEnabled, setSelectedIds, allPeople]);
 
   const handleSelectOne = React.useCallback((personId: string, checked: boolean) => {
     if (isSelectionEnabled && setSelectedIds) {
@@ -131,7 +107,7 @@ export function PersonTable({
   }, [isSelectionEnabled, setSelectedIds]);
 
   const numSelected = selectedIds ? selectedIds.size : 0;
-  const rowCount = people.length;
+  const rowCount = allPeople.length;
   
   const columns: { key: keyof Person, label: string }[] = React.useMemo(() => {
     const baseColumns: { key: keyof Person, label: string }[] = [
@@ -160,7 +136,7 @@ export function PersonTable({
                 <TableHead className="w-[50px]">
                   <Checkbox
                     checked={numSelected === rowCount && rowCount > 0}
-                    onCheckedChange={handleSelectAll}
+                    onCheckedChange={(checked) => handleSelectAll(!!checked)}
                     aria-label="Select all"
                     data-state={numSelected > 0 && numSelected < rowCount ? 'indeterminate' : undefined}
                   />
@@ -174,7 +150,7 @@ export function PersonTable({
                     setSortDescriptors={setSortDescriptors}
                     columnFilters={columnFilters}
                     setColumnFilters={setColumnFilters}
-                    data={people}
+                    data={allPeople}
                   />
                 </TableHead>
               ))}
@@ -182,7 +158,7 @@ export function PersonTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedPeople.map((person) => {
+            {people.map((person) => {
               const fullName = person.fullName || '';
               const nameParts = fullName.split(' ');
               const fallback = (
@@ -383,29 +359,6 @@ export function PersonTable({
               </TableRow>
             )})}
           </TableBody>
-          {totalPages > 1 && (
-            <TableFooter>
-                <TableRow>
-                    <TableCell colSpan={columns.length + (isSelectionEnabled ? 2 : 1)}>
-                        <Pagination>
-                            <PaginationContent>
-                                <PaginationItem>
-                                    <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }} aria-disabled={currentPage === 1} tabIndex={currentPage === 1 ? -1 : undefined} className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''} />
-                                </PaginationItem>
-                                <PaginationItem>
-                                  <span className="p-2 text-sm font-medium">
-                                    Page {currentPage} of {totalPages}
-                                  </span>
-                                </PaginationItem>
-                                <PaginationItem>
-                                    <PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} aria-disabled={currentPage === totalPages} tabIndex={currentPage === totalPages ? -1 : undefined} className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''} />
-                                </PaginationItem>
-                            </PaginationContent>
-                        </Pagination>
-                    </TableCell>
-                </TableRow>
-            </TableFooter>
-          )}
         </Table>
       </div>
     </TooltipProvider>
