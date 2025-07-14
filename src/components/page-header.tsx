@@ -8,7 +8,7 @@ import { Button } from "./ui/button";
 import { Menu, Edit } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 import Link from "next/link";
-import { Users, UserSquare, Settings, Gem, Headset, UserCog, History } from "lucide-react";
+import { Users, UserSquare, Settings, Gem, Headset, UserCog, History, FileText } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { usePathname } from "next/navigation";
 import { ThemeSwitcher } from "./theme-switcher";
@@ -29,6 +29,7 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
       { href: "/", label: "Contacts", icon: Users },
       { href: "/groups", label: "Groups", icon: UserSquare },
       { href: "/calling-assistant", label: "Calling Assistant", icon: Headset },
+      { href: "/blank-page", label: "Blank Page", icon: FileText },
       { href: "/user-management", label: "User Management", icon: UserCog, adminOnly: true },
       { href: "/user-audit", label: "User Audit", icon: History, adminOnly: true },
       { href: "/settings", label: "Settings", icon: Settings },

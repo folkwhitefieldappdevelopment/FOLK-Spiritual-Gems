@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, UserSquare, Settings, Gem, Headset, UserCog, History } from "lucide-react";
+import { Users, UserSquare, Settings, Gem, Headset, UserCog, History, FileText } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import {
   Tooltip,
@@ -21,6 +21,7 @@ export function AppSidebar() {
     { href: "/", label: "Contacts", icon: Users },
     { href: "/groups", label: "Groups", icon: UserSquare },
     { href: "/calling-assistant", label: "Calling Assistant", icon: Headset },
+    { href: "/blank-page", label: "Blank Page", icon: FileText },
     { href: "/user-management", label: "User Management", icon: UserCog, adminOnly: true },
     { href: "/user-audit", label: "User Audit", icon: History, adminOnly: true },
   ];
