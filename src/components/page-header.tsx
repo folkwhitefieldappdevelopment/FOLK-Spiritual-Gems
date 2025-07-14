@@ -8,7 +8,7 @@ import { Button } from "./ui/button";
 import { Menu, Edit } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 import Link from "next/link";
-import { Users, UserSquare, Settings, Gem, Headset, UserCog, History, FileText } from "lucide-react";
+import { Users, UserSquare, Settings, Gem, Headset, UserCog, History, FileText, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { usePathname } from "next/navigation";
 import { ThemeSwitcher } from "./theme-switcher";
@@ -26,7 +26,8 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
     const [isMobileSheetOpen, setIsMobileSheetOpen] = React.useState(false);
 
     const navItems = [
-      { href: "/", label: "Contacts", icon: Users },
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/contacts", label: "Contacts", icon: Users },
       { href: "/groups", label: "Groups", icon: UserSquare },
       { href: "/calling-assistant", label: "Calling Assistant", icon: Headset },
       { href: "/blank-page", label: "Blank Page", icon: FileText },
@@ -36,7 +37,7 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
     ];
 
     const isActive = (href: string) => {
-      if (href === '/') return pathname === '/';
+      if (href === '/contacts') return pathname === '/contacts' || pathname === '/';
       return pathname.startsWith(href);
     }
     

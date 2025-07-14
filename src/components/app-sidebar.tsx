@@ -18,7 +18,8 @@ export function AppSidebar() {
   const { appUser } = useAuth();
 
   const navItems = [
-    { href: "/", label: "Contacts", icon: Users },
+    { href: "/dashboard", label: "Dashboard", icon: Gem },
+    { href: "/contacts", label: "Contacts", icon: Users },
     { href: "/groups", label: "Groups", icon: UserSquare },
     { href: "/calling-assistant", label: "Calling Assistant", icon: Headset },
     { href: "/blank-page", label: "Blank Page", icon: FileText },
@@ -27,7 +28,7 @@ export function AppSidebar() {
   ];
   
   const isActive = (href: string) => {
-    if (href === '/') return pathname === '/';
+    if (href === '/contacts') return pathname === '/contacts' || pathname === '/';
     return pathname.startsWith(href);
   }
 
@@ -53,6 +54,7 @@ export function AppSidebar() {
           </Link>
           {navItems.map((item) => {
             if (!userCanSee(item)) return null;
+            if(item.href === '/dashboard') return null; // Dashboard icon is already the main one
             return (
               <Tooltip key={item.href} delayDuration={0}>
                 <TooltipTrigger asChild>
