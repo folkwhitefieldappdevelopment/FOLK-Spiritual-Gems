@@ -60,7 +60,7 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 
-const ROWS_PER_PAGE = 50;
+const ROWS_PER_PAGE = 10;
 
 const CallingAssistantPageComponent = React.memo(function CallingAssistantPageComponent() {
   const { toast } = useToast();
