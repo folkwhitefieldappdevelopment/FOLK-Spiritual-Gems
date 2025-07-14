@@ -16,7 +16,7 @@ import {
 import { read, utils, write } from "xlsx";
 import JSZip from "jszip";
 import { createInitialProgress } from "@/lib/data";
-import type { Person, Group, AppUser } from "@/lib/types";
+import type { Person, Group, AppUser, CustomField } from "@/lib/types";
 import { occupationStatuses } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -62,7 +62,7 @@ import {
 } from "@/services/people-service";
 import { getGroups, createGroup, addPeopleToGroup } from "@/services/groups-service";
 import { getFolkGuides } from "@/services/user-service";
-import { getEnablers, getContactSources, type EnablerOption } from "@/services/settings-service";
+import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
 import { useAuth } from "@/contexts/auth-context";
 import { CreateUpdateGroupDialog } from "@/components/create-update-group-dialog";
 import { AssignCoEnablerDialog } from "@/components/assign-helper-dialog";
@@ -105,6 +105,8 @@ function ContactsPageComponent() {
   const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
   const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
+  const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
+
 
   const [currentPage, setCurrentPage] = React.useState(1);
   const canAssignCoEnabler = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
@@ -114,18 +116,20 @@ function ContactsPageComponent() {
     setIsLoading(true);
     setFetchError(null);
     try {
-      const [peopleData, enablersData, sourcesData, groupsData, guidesData] = await Promise.all([
+      const [peopleData, enablersData, sourcesData, groupsData, guidesData, customFieldsData] = await Promise.all([
         getPeople(appUser),
         getEnablers(appUser, 'filter'),
         getContactSources(appUser),
         getGroups(appUser),
         getFolkGuides(),
+        getCustomPersonFields(appUser),
       ]);
       setPeople(peopleData);
       setEnablerOptions(enablersData);
       setContactSourceOptions(sourcesData);
       setGroups(groupsData);
       setFolkGuides(guidesData);
+      setCustomFields(customFieldsData);
     } catch (error) {
       console.error("Failed to load data:", error);
       if (error instanceof Error) {
@@ -219,11 +223,11 @@ function ContactsPageComponent() {
             case 'gt':
               return Number(personValue) > Number(filterValue);
             case 'lt':
-              return Number(personValue) < Number(filterValue);
+              return Number(personValue) &lt; Number(filterValue);
             case 'gte':
               return Number(personValue) >= Number(filterValue);
             case 'lte':
-              return Number(personValue) <= Number(filterValue);
+              return Number(personValue) &lt;= Number(filterValue);
             default:
               return true;
           }
@@ -280,29 +284,28 @@ function ContactsPageComponent() {
   }, [filteredPeople, currentPage]);
 
   const handleSampleDownload = React.useCallback(() => {
-    const headers = [
+    const baseHeaders = [
       "fullName", "phone", "photoUrl", "age", "stayingWith",
       "occupation", "organisation", "rentDetails", "nativePlace", "sgRating",
-      "contactSource", "chantingStatus", "fromOtherCamp", "enablerInTouchWith"
+      "contactSource", "chantingStatus", "fromOtherCamp", "enablerInTouchWith",
+      "generalRemarks", "lastCallRemark",
     ];
-    const dummyContact = [{
-      fullName: "John Doe",
-      phone: "9876543210",
-      photoUrl: "https://placehold.co/100x100.png",
-      age: 25,
-      stayingWith: "PG / Hostel",
-      occupation: "Working",
-      organisation: "Acme Inc.",
-      rentDetails: "7000/month",
-      nativePlace: "Mumbai",
-      sgRating: 4,
-      contactSource: "Govinda Temple",
-      chantingStatus: 4,
-      fromOtherCamp: false,
-      enablerInTouchWith: "Sarthak",
-    }];
+    const customHeaders = customFields.map(f => f.label);
+    const headers = [...baseHeaders, ...customHeaders];
 
-    const worksheet = utils.json_to_sheet(dummyContact, { header: headers });
+    const dummyContact: {[key: string]: any} = {
+      fullName: "John Doe", phone: "9876543210", photoUrl: "https://placehold.co/100x100.png",
+      age: 25, stayingWith: "PG / Hostel", occupation: "Working", organisation: "Acme Inc.",
+      rentDetails: "7000/month", nativePlace: "Mumbai", sgRating: 4, contactSource: "Govinda Temple",
+      chantingStatus: 4, fromOtherCamp: false, enablerInTouchWith: "Sarthak",
+      generalRemarks: "Is progressing well in spiritual life.", lastCallRemark: "Confirmed for Sunday feast.",
+    };
+
+    customFields.forEach(f => {
+      dummyContact[f.label] = f.type === 'number' ? 123 : f.type === 'boolean' ? true : `Sample ${f.type} data`;
+    });
+
+    const worksheet = utils.json_to_sheet([dummyContact], { header: headers });
     const workbook = utils.book_new();
     utils.book_append_sheet(workbook, worksheet, "Contacts");
     
@@ -316,7 +319,7 @@ function ContactsPageComponent() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(link.href);
-  }, []);
+  }, [customFields]);
 
   const handleExport = React.useCallback(async () => {
     if (filteredPeople.length === 0 || !appUser) {
@@ -333,6 +336,12 @@ function ContactsPageComponent() {
     const zip = new JSZip();
     const photosFolder = zip.folder("photos");
     const exportData = [];
+
+    const safeDate = (timestamp: any): string => {
+        if (!timestamp) return '';
+        const d = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+        return isNaN(d.getTime()) ? '' : d.toISOString();
+    }
 
     for (const p of filteredPeople) {
       let photoColumnValue = '';
@@ -360,7 +369,7 @@ function ContactsPageComponent() {
         }
       }
       
-      exportData.push({
+      const personExportData: {[key: string]: any} = {
         fullName: p.fullName || '',
         phone: p.phone,
         photoUrl: photoColumnValue,
@@ -375,7 +384,17 @@ function ContactsPageComponent() {
         chantingStatus: p.chantingStatus,
         fromOtherCamp: p.fromOtherCamp,
         enablerInTouchWith: p.enablerInTouchWith,
+        generalRemarks: p.generalRemarks || '',
+        lastCallRemark: p.lastCallRemark || '',
+        lastCallStatus: p.lastCallStatus || '',
+        lastCallAt: safeDate(p.lastCallAt),
+      };
+
+      customFields.forEach(field => {
+        personExportData[field.label] = p.customData?.[field.id] ?? '';
       });
+
+      exportData.push(personExportData);
     }
 
     const worksheet = utils.json_to_sheet(exportData);
@@ -411,7 +430,7 @@ function ContactsPageComponent() {
     } finally {
       setIsExporting(false);
     }
-  }, [filteredPeople, toast, appUser]);
+  }, [filteredPeople, toast, appUser, customFields]);
 
   const handleFileImport = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -427,6 +446,7 @@ function ContactsPageComponent() {
         const worksheet = workbook.Sheets[sheetName];
         const json = utils.sheet_to_json<any>(worksheet);
 
+        const customFieldMap = new Map(customFields.map(f => [f.label.toLowerCase(), f.id]));
         const totalRows = json.length;
         const existingPhones = new Set(people.map(p => p.phone));
         const phonesInThisFile = new Set<string>();
@@ -441,10 +461,10 @@ function ContactsPageComponent() {
             }
 
             const age = parseInt(String(row.age), 10);
-            const isValidAge = !isNaN(age) && age >= 16 && age <= 40;
+            const isValidAge = !isNaN(age) && age >= 16 && age &lt;= 40;
             const stayingWith = ["PG / Hostel", "Flat", "Family"].includes(row.stayingWith) ? row.stayingWith : "Family";
             const rating = parseFloat(String(row.sgRating));
-            const isValidRating = !isNaN(rating) && rating >= 0 && rating <= 5;
+            const isValidRating = !isNaN(rating) && rating >= 0 && rating &lt;= 5;
             const phone = String(row.phone).replace(/\s+/g, '');
             const occupation = ["Working", "Student", "Searching for job"].includes(row.occupation) ? row.occupation : "Working";
             const photoUrlValue = String(row.photoUrl || '').trim();
@@ -452,6 +472,15 @@ function ContactsPageComponent() {
             const enablerValue = String(row.enablerInTouchWith || '').trim();
             const chantingStatus = parseInt(String(row.chantingStatus), 10);
             const isValidChanting = !isNaN(chantingStatus) && chantingStatus >= 0;
+
+            const rowCustomData: {[key: string]: any} = {};
+            for (const header in row) {
+                const lowerHeader = header.toLowerCase();
+                if (customFieldMap.has(lowerHeader)) {
+                    const fieldId = customFieldMap.get(lowerHeader)!;
+                    rowCustomData[fieldId] = row[header];
+                }
+            }
 
             return {
               fullName,
@@ -469,7 +498,9 @@ function ContactsPageComponent() {
               enablerInTouchWith: enablerValue,
               photoUrl: isValidPhotoUrl ? photoUrlValue : `https://placehold.co/100x100.png`,
               progress: createInitialProgress(),
-              customData: {},
+              customData: rowCustomData,
+              generalRemarks: String(row.generalRemarks || ''),
+              lastCallRemark: String(row.lastCallRemark || ''),
             };
           })
           .filter((p): p is Omit<Person, 'id' | 'createdAt'> => {
@@ -518,7 +549,7 @@ function ContactsPageComponent() {
       }
     };
     reader.readAsArrayBuffer(file);
-  }, [appUser, people, toast]);
+  }, [appUser, people, toast, customFields]);
 
   const handleAddPerson = React.useCallback(() => {
     setEditingPerson(undefined);
@@ -982,3 +1013,5 @@ export default function ContactsPageRoot() {
         </AuthGuard>
     )
 }
+
+    
