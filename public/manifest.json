@@ -4,11 +4,17 @@
   "description": "A contact management center for FOLK.",
   "start_url": "/dashboard",
   "display": "standalone",
+  "display_override": [
+  "window-controls-overlay",
+  "standalone",
+  "minimal-ui",
+  "browser"
+  ],
   "background_color": "#E8EAF6",
   "theme_color": "#3F51B5",
   "orientation": "portrait-primary",
   "scope": "/",
-  "id": "/?utm_source=pwa",
+  "id": "/folk-spiritual-gems",
   "lang": "en-US",
   "dir": "ltr",
   "categories": ["business", "lifestyle", "productivity"],
@@ -29,19 +35,6 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ],
-  "screenshots": [
-    {
-      "src": "https://placehold.co/1080x1920.png",
-      "sizes": "1080x1920",
-      "type": "image/png",
-      "form_factor": "narrow"
-    },
-    {
-      "src": "https://placehold.co/1280x720.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide"
-    }
   ]
+  
 }

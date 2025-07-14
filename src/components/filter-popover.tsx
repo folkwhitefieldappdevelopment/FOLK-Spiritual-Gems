@@ -38,12 +38,12 @@ const operators: Record<FilterableField['type'], Operator[]> = {
     { value: 'is_not_empty', label: 'is not empty' },
   ],
   number: [
-    { value: 'eq', label: '=' },
-    { value: 'neq', label: '!=' },
-    { value: 'gt', label: '>' },
-    { value: 'lt', label: '<' },
-    { value: 'gte', label: '>=' },
-    { value: 'lte', label: '<=' },
+    { value: 'eq', label: 'is equal to' },
+    { value: 'neq', label: 'is not equal to' },
+    { value: 'gt', label: 'is greater than' },
+    { value: 'lt', label: 'is less than' },
+    { value: 'gte', label: 'is greater than or equal to' },
+    { value: 'lte', label: 'is less than or equal to' },
   ],
   enum: [
     { value: 'is', label: 'is' },

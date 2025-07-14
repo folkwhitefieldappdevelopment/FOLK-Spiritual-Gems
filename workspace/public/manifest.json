@@ -4,6 +4,12 @@
   "description": "A contact management center for FOLK.",
   "start_url": "/dashboard",
   "display": "standalone",
+  "display_override": [
+  "window-controls-overlay",
+  "standalone",
+  "minimal-ui",
+  "browser"
+  ],
   "background_color": "#E8EAF6",
   "theme_color": "#3F51B5",
   "orientation": "portrait-primary",
