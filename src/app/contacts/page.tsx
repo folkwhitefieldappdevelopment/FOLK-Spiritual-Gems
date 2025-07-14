@@ -81,7 +81,7 @@ import { AuthGuard } from "@/components/auth-guard";
 import { logAudit } from '@/services/audit-service';
 
 const ROWS_PER_PAGE = 10;
-const IMPORT_BATCH_SIZE = 500;
+const IMPORT_BATCH_SIZE = 50;
 
 function ContactsPageComponent() {
   const { toast } = useToast();
@@ -1031,7 +1031,7 @@ function ContactsPageComponent() {
   );
 }
 
-export default function ContactsPage() {
+export default function ContactsPageWithAuth() {
     return (
         <AuthGuard>
             <ContactsPageComponent />
