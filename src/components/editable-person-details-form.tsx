@@ -49,6 +49,8 @@ import {
 import { StarRating } from "./star-rating";
 import { Slider } from "./ui/slider";
 
+const chantingRoundOptions = Array.from({ length: 17 }, (_, i) => i); // 0-16
+
 const createPersonFormSchema = (allPeople: Person[], currentPersonId?: string) => 
   z.object({
     fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
@@ -61,7 +63,7 @@ const createPersonFormSchema = (allPeople: Person[], currentPersonId?: string) =
     nativePlace: z.string().optional(),
     sgRating: z.coerce.number().min(0).max(5).optional(),
     contactSource: z.string().optional(),
-    chantingStatus: z.string().optional(),
+    chantingStatus: z.coerce.number().optional(),
     fromOtherCamp: z.boolean().default(false),
     enablerInTouchWith: z.string().optional(),
     folkGuideId: z.string().optional(),
@@ -258,6 +260,7 @@ export function EditablePersonDetailsForm({
     const saveData = {
       ...data,
       sgRating: Number(data.sgRating || 0),
+      chantingStatus: Number(data.chantingStatus || 0),
       photoUrl: photoPreview || person?.photoUrl || `https://placehold.co/100x100.png`,
       customData: customData,
     };
@@ -357,7 +360,26 @@ export function EditablePersonDetailsForm({
           />
 
           <FormField control={form.control} name="contactSource" render={({ field }) => (<FormItem><FormLabel>Contact Source</FormLabel><Select onValueChange={(v) => field.onChange(v === '__NONE__' ? '' : v)} value={field.value || '__NONE__'}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="__NONE__">None</SelectItem>{contactSourceOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-          <FormField control={form.control} name="chantingStatus" render={({ field }) => (<FormItem><FormLabel>Chanting Status</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+          <FormField
+              control={form.control}
+              name="chantingStatus"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Chanting Rounds</FormLabel>
+                  <Select onValueChange={(value) => field.onChange(Number(value))} value={String(field.value || 0)}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select rounds" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {chantingRoundOptions.map(r => <SelectItem key={r} value={String(r)}>{r}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           <FormField control={form.control} name="enablerInTouchWith" render={({ field }) => (<FormItem><FormLabel>Enabler</FormLabel><Select onValueChange={(v) => field.onChange(v === '__NONE__' ? '' : v)} value={field.value || '__NONE__'}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="__NONE__">None</SelectItem>{enablerOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
           {isAdmin && <FormField control={form.control} name="folkGuideId" render={({ field }) => (<FormItem><FormLabel>Folk Guide</FormLabel><Select onValueChange={(v) => field.onChange(v === '__NONE__' ? '' : v)} value={field.value || '__NONE__'}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="__NONE__">Unassigned</SelectItem>{folkGuides.map(g => <SelectItem key={g.id} value={g.id}>{`${g.name} (${g.fgCode || 'N/A'})`}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />}
           <FormField control={form.control} name="fromOtherCamp" render={({ field }) => (<FormItem className="flex flex-row items-center space-x-2 pt-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel className="!mt-0">From other camp?</FormLabel></FormItem>)} />
@@ -418,7 +440,7 @@ export function EditablePersonDetailsForm({
         <div className="font-semibold text-muted-foreground">Rent Details</div><div>{person.rentDetails || 'N/A'}</div>
         <div className="font-semibold text-muted-foreground">Native Place</div><div>{person.nativePlace || 'N/A'}</div>
         <div className="font-semibold text-muted-foreground">Contact Source</div><div>{person.contactSource || 'N/A'}</div>
-        <div className="font-semibold text-muted-foreground">Chanting Status</div><div>{person.chantingStatus || 'N/A'}</div>
+        <div className="font-semibold text-muted-foreground">Chanting Status</div><div>{person.chantingStatus}</div>
         <div className="font-semibold text-muted-foreground">From other camp?</div><div>{person.fromOtherCamp ? 'Yes' : 'No'}</div>
         <div className="font-semibold text-muted-foreground">Enabler</div><div>{person.enablerInTouchWith || 'N/A'}</div>
         <div className="font-semibold text-muted-foreground">Folk Guide</div><div>{person.folkGuide || 'N/A'}</div>
