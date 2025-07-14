@@ -81,6 +81,7 @@ import { AuthGuard } from "@/components/auth-guard";
 import { logAudit } from '@/services/audit-service';
 
 const ROWS_PER_PAGE = 10;
+const IMPORT_BATCH_SIZE = 500;
 
 function ContactsPageComponent() {
   const { toast } = useToast();
@@ -90,7 +91,7 @@ function ContactsPageComponent() {
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
-  const [isImporting, setIsImporting] = React.useState(false);
+  const [importingStatus, setImportingStatus] = React.useState<string | false>(false);
   const [isExporting, setIsExporting] = React.useState(false);
   const [view, setView] = React.useState<"table" | "table">("table");
   
@@ -443,7 +444,7 @@ function ContactsPageComponent() {
     const file = event.target.files?.[0];
     if (!file || !appUser) return;
 
-    setIsImporting(true);
+    setImportingStatus("Reading file...");
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
@@ -456,23 +457,31 @@ function ContactsPageComponent() {
         const customFieldMap = new Map(customFields.map(f => [f.label.toLowerCase(), f.id]));
         const totalRows = json.length;
         const existingPhones = new Set(people.map(p => p.phone));
+        
+        const allNewPeople: Omit<Person, 'id' | 'createdAt'>[] = [];
+        let skippedCount = 0;
+
         const phonesInThisFile = new Set<string>();
 
-        const newPeople: Omit<Person, 'id' | 'createdAt'>[] = json
-          .map((row: any) => {
+        json.forEach((row: any) => {
             const fullName = String(row.fullName || '').trim();
-            
-            if (!fullName || !row.phone) {
-              console.warn("Skipping row due to missing data: fullName and phone are required.", row);
-              return null;
+            const phone = String(row.phone || '').replace(/\s+/g, '');
+
+            if (!fullName || !phone) {
+                skippedCount++;
+                return;
             }
+            if (existingPhones.has(phone) || phonesInThisFile.has(phone)) {
+                skippedCount++;
+                return;
+            }
+            phonesInThisFile.add(phone);
 
             const age = parseInt(String(row.age), 10);
             const isValidAge = !isNaN(age) && age >= 16 && age <= 40;
             const stayingWith = ["PG / Hostel", "Flat", "Family"].includes(row.stayingWith) ? row.stayingWith : "Family";
             const rating = parseFloat(String(row.sgRating));
             const isValidRating = !isNaN(rating) && rating >= 0 && rating <= 5;
-            const phone = String(row.phone).replace(/\s+/g, '');
             const occupation = ["Working", "Student", "Searching for job"].includes(row.occupation) ? row.occupation : "Working";
             const photoUrlValue = String(row.photoUrl || '').trim();
             const isValidPhotoUrl = photoUrlValue.startsWith('http') || photoUrlValue.startsWith('data:image');
@@ -488,8 +497,8 @@ function ContactsPageComponent() {
                     rowCustomData[fieldId] = row[header];
                 }
             }
-
-            return {
+            
+            allNewPeople.push({
               fullName,
               phone,
               age: isValidAge ? age : 25,
@@ -508,38 +517,30 @@ function ContactsPageComponent() {
               customData: rowCustomData,
               generalRemarks: String(row.generalRemarks || ''),
               lastCallRemark: String(row.lastCallRemark || ''),
-            };
-          })
-          .filter((p): p is Omit<Person, 'id' | 'createdAt'> => {
-             if (p === null) return false;
-    
-            if (existingPhones.has(p.phone) || phonesInThisFile.has(p.phone)) {
-                console.warn(`Skipping duplicate phone number during import: ${p.phone}`);
-                return false;
-            }
-            phonesInThisFile.add(p.phone);
-            return true;
-          });
-        
-        const importedCount = newPeople.length;
-        const skippedCount = totalRows - importedCount;
+            });
+        });
 
-        if (importedCount === 0) {
-          toast({
-            variant: "destructive",
-            title: "Import Failed",
-            description: skippedCount > 0 ? "All contacts in the file were duplicates or invalid." : "No valid contacts found. Ensure columns include at least: fullName and phone.",
-          });
-          return;
+        if (allNewPeople.length === 0) {
+            toast({
+                variant: "destructive",
+                title: "Import Failed",
+                description: skippedCount > 0 ? "All contacts in the file were duplicates or invalid." : "No valid contacts found.",
+            });
+            setImportingStatus(false);
+            return;
         }
 
-        await importPeople(newPeople, appUser);
-        const updatedPeople = await getPeople(appUser);
-        setPeople(updatedPeople);
+        for (let i = 0; i < allNewPeople.length; i += IMPORT_BATCH_SIZE) {
+            const batch = allNewPeople.slice(i, i + IMPORT_BATCH_SIZE);
+            setImportingStatus(`Importing ${i + batch.length} of ${allNewPeople.length}...`);
+            await importPeople(batch, appUser);
+        }
+
+        await fetchPageData(); // Refresh all data
 
         toast({
           title: "Import Successful",
-          description: `${importedCount} new contacts added. ${skippedCount > 0 ? `${skippedCount} duplicates skipped.` : ''}`,
+          description: `${allNewPeople.length} new contacts added. ${skippedCount > 0 ? `${skippedCount} duplicates/invalid rows skipped.` : ''}`,
         });
       } catch (error) {
         console.error("Error importing file:", error);
@@ -552,11 +553,11 @@ function ContactsPageComponent() {
         if (event.target) {
           event.target.value = "";
         }
-        setIsImporting(false);
+        setImportingStatus(false);
       }
     };
     reader.readAsArrayBuffer(file);
-  }, [appUser, people, toast, customFields]);
+  }, [appUser, people, toast, customFields, fetchPageData]);
 
   const handleAddPerson = React.useCallback(() => {
     setEditingPerson(undefined);
@@ -734,8 +735,8 @@ function ContactsPageComponent() {
   }, [selectedIds, toast, fetchPageData, appUser]);
 
 
-  const isLoadingAction = isImporting || isExporting;
-  const loadingText = isImporting ? 'Importing...' : isExporting ? 'Exporting...' : '';
+  const isLoadingAction = !!importingStatus || isExporting;
+  const loadingText = typeof importingStatus === 'string' ? importingStatus : (isExporting ? 'Exporting...' : '');
   const isSelectionActive = selectedIds.size > 0;
 
   const renderContent = () => {
@@ -939,102 +940,95 @@ function ContactsPageComponent() {
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-background">
-      <AppSidebar />
-      <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
-          <PageHeader
-              title="FOLK SPIRITUAL GEMS"
-              description="Your central hub for managing contacts and activities."
-          >
-              <div className="flex items-center gap-2">
-                  <TooltipProvider>
-                    <div className="flex items-center gap-1">
-                        <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
-                                {isLoadingAction ? (
-                                <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
-                            ) : (
-                                <Upload className="h-4 w-4 sm:mr-2" />
-                            )}
-                            <span className="hidden sm:inline">{isLoadingAction ? loadingText : 'Import/Export'}</span>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            <DropdownMenuItem onSelect={() => fileInputRef.current?.click()} disabled={isLoadingAction}>
-                            Import from Excel
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={handleExport} disabled={isLoadingAction}>
-                            Export to Excel
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={handleSampleDownload} disabled={isLoadingAction}>
-                            Download Sample Excel
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                        </DropdownMenu>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-9 w-9">
-                                  <Info className="h-4 w-4" />
+    <AuthGuard>
+      <div className="flex min-h-screen w-full flex-col bg-background">
+        <AppSidebar />
+        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+            <PageHeader
+                title="FOLK SPIRITUAL GEMS"
+                description="Your central hub for managing contacts and activities."
+            >
+                <div className="flex items-center gap-2">
+                    <TooltipProvider>
+                      <div className="flex items-center gap-1">
+                          <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="sm" className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
+                                  {isLoadingAction ? (
+                                  <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
+                              ) : (
+                                  <Upload className="h-4 w-4 sm:mr-2" />
+                              )}
+                              <span className="hidden sm:inline">{isLoadingAction ? loadingText : 'Import/Export'}</span>
                               </Button>
-                          </TooltipTrigger>
-                          <TooltipContent side="bottom" className="max-w-xs">
-                              <p className="font-semibold">Import/Export Guide</p>
-                              <ul className="list-disc pl-4 mt-2 space-y-1 text-xs">
-                                  <li>Put your contacts in the sample Excel file to import.</li>
-                                  <li>Export is best for up to 500 contacts with photos, or thousands without.</li>
-                                  <li>Import can handle up to 10,000 contacts at once.</li>
-                              </ul>
-                          </TooltipContent>
-                        </Tooltip>
-                    </div>
-                  </TooltipProvider>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                              <DropdownMenuItem onSelect={() => fileInputRef.current?.click()} disabled={isLoadingAction}>
+                              Import from Excel
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={handleExport} disabled={isLoadingAction}>
+                              Export to Excel
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={handleSampleDownload} disabled={isLoadingAction}>
+                              Download Sample Excel
+                              </DropdownMenuItem>
+                          </DropdownMenuContent>
+                          </DropdownMenu>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-9 w-9">
+                                    <Info className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="max-w-xs">
+                                <p className="font-semibold">Import/Export Guide</p>
+                                <ul className="list-disc pl-4 mt-2 space-y-1 text-xs">
+                                    <li>Put your contacts in the sample Excel file to import.</li>
+                                    <li>Export is best for up to 500 contacts with photos, or thousands without.</li>
+                                    <li>Import can handle up to 10,000 contacts at once.</li>
+                                </ul>
+                            </TooltipContent>
+                          </Tooltip>
+                      </div>
+                    </TooltipProvider>
 
-                  <Button size="sm" onClick={handleAddPerson} className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
-                  <PlusCircle className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Add Person</span>
-                  </Button>
-              </div>
-          </PageHeader>
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
-            {renderContent()}
-          </main>
+                    <Button size="sm" onClick={handleAddPerson} className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
+                    <PlusCircle className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Add Person</span>
+                    </Button>
+                </div>
+            </PageHeader>
+            <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
+              {renderContent()}
+            </main>
+        </div>
+        <CreateUpdatePersonDialog
+          isOpen={isDialogOpen}
+          setIsOpen={setIsDialogOpen}
+          onSave={handleSavePerson}
+          person={editingPerson}
+          allPeople={people}
+        />
+        <CreateUpdateGroupDialog
+            isOpen={isCreateGroupDialogOpen}
+            setIsOpen={setIsCreateGroupDialogOpen}
+            onSave={handleSaveGroupAndAddMembers}
+        />
+        <AssignCoEnablerDialog
+          isOpen={isAssignCoEnablerDialogOpen}
+          setIsOpen={setIsAssignCoEnablerDialogOpen}
+          onSave={handleAssignCoEnabler}
+          peopleCount={selectedIds.size}
+        />
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileImport}
+          className="hidden"
+          accept=".xlsx, .xls, .csv"
+        />
       </div>
-      <CreateUpdatePersonDialog
-        isOpen={isDialogOpen}
-        setIsOpen={setIsDialogOpen}
-        onSave={handleSavePerson}
-        person={editingPerson}
-        allPeople={people}
-      />
-      <CreateUpdateGroupDialog
-          isOpen={isCreateGroupDialogOpen}
-          setIsOpen={setIsCreateGroupDialogOpen}
-          onSave={handleSaveGroupAndAddMembers}
-      />
-      <AssignCoEnablerDialog
-        isOpen={isAssignCoEnablerDialogOpen}
-        setIsOpen={setIsAssignCoEnablerDialogOpen}
-        onSave={handleAssignCoEnabler}
-        peopleCount={selectedIds.size}
-      />
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileImport}
-        className="hidden"
-        accept=".xlsx, .xls, .csv"
-      />
-    </div>
+    </AuthGuard>
   );
-}
-
-
-export default function ContactsPage() {
-    return (
-        <AuthGuard>
-            <ContactsPageComponent />
-        </AuthGuard>
-    );
 }
