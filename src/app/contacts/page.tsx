@@ -103,7 +103,7 @@ function ContactsPageComponent() {
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
   const [importingStatus, setImportingStatus] = React.useState<string | false>(false);
   const [isExporting, setIsExporting] = React.useState(false);
-  const [view, setView] = React.useState<"table" | "table">("table");
+  const [view, setView] = React.useState<"table" | "card">("table");
   
   const [searchTerm, setSearchTerm] = React.useState("");
   const [filters, setFilters] = React.useState<FilterRule[]>([]);
@@ -144,7 +144,6 @@ function ContactsPageComponent() {
     setIsLoading(true);
     setFetchError(null);
     try {
-      // Pass a simplified, serializable user object to the server function
       const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
       const { people: peopleData, totalCount } = await getPeople(userInfo, {
           page: currentPage,
@@ -156,7 +155,6 @@ function ContactsPageComponent() {
       setAllFetchedPeople(peopleData);
       setTotalPeople(totalCount);
       
-      // These can still be fetched in parallel as they don't depend on the main data query
       const [enablersData, sourcesData, groupsData, guidesData, customFieldsData] = await Promise.all([
         getEnablers(userInfo, 'filter'),
         getContactSources(userInfo),
@@ -182,14 +180,6 @@ function ContactsPageComponent() {
     }
   }, [appUser, currentPage, filters, sortDescriptors, searchTerm]);
 
-
-  React.useEffect(() => {
-    if (appUser) {
-        // Initial fetch is now combined into the next effect
-    }
-  }, [appUser]);
-  
-  // This effect will re-trigger the fetch when filter/sort/page changes
   React.useEffect(() => {
     if (appUser) {
       fetchPageData();
@@ -220,12 +210,9 @@ function ContactsPageComponent() {
   }, [enablerOptions, contactSourceOptions, folkGuides, isAdmin]);
   
   const filteredPeople = React.useMemo(() => {
-    // With server-side filtering, the `allFetchedPeople` is already filtered.
-    // We only need to apply column filters which are client-side for now.
     return applyColumnFilters(allFetchedPeople, columnFilters);
   }, [allFetchedPeople, columnFilters]);
 
-  // Reset to page 1 whenever filters or data change
   React.useEffect(() => {
     setCurrentPage(1);
     setSelectedIds(new Set());
@@ -283,7 +270,6 @@ function ContactsPageComponent() {
 
     setIsExporting(true);
     
-    // Fetch all matching people for export
     const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     const { people: allMatchingPeople } = await getPeople(userInfo, {
       pageSize: totalPeople,
@@ -392,13 +378,13 @@ function ContactsPageComponent() {
     }
   }, [totalPeople, toast, appUser, customFields, filters, sortDescriptors, searchTerm]);
 
-  const handleFileImport = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileImport = React.useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !appUser) return;
 
     setImportingStatus("Reading file...");
-    const reader = new FileReader();
     const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+    const reader = new FileReader();
     reader.onload = async (e) => {
       try {
         const data = e.target?.result;
@@ -413,13 +399,13 @@ function ContactsPageComponent() {
         const allNewPeople: Omit<Person, 'id' | 'createdAt'>[] = [];
         let skippedCount = 0;
 
-        json.forEach((row: any) => {
+        for (const row of json) {
             const fullName = String(row.fullName || '').trim();
             const phone = String(row.phone || '').replace(/\s+/g, '');
 
             if (!fullName || !phone) {
                 skippedCount++;
-                return;
+                continue;
             }
 
             const age = parseInt(String(row.age), 10);
@@ -463,7 +449,7 @@ function ContactsPageComponent() {
               generalRemarks: String(row.generalRemarks || ''),
               lastCallRemark: String(row.lastCallRemark || ''),
             });
-        });
+        }
 
         if (allNewPeople.length === 0) {
             toast({
@@ -472,6 +458,7 @@ function ContactsPageComponent() {
                 description: "No new valid contacts found in the file.",
             });
             setImportingStatus(false);
+            if (event.target) event.target.value = "";
             return;
         }
 
@@ -481,7 +468,7 @@ function ContactsPageComponent() {
             await importPeople(batch, userInfo);
         }
 
-        await fetchPageData(); // Refresh all data
+        await fetchPageData();
 
         toast({
           title: "Import Successful",
@@ -492,7 +479,7 @@ function ContactsPageComponent() {
         toast({
           variant: "destructive",
           title: "Import Failed",
-          description: "There was an error processing your file. Please check your Firebase setup.",
+          description: error instanceof Error ? error.message : "There was an error processing your file.",
         });
       } finally {
         if (event.target) {
@@ -516,14 +503,14 @@ function ContactsPageComponent() {
 
   const handleDeletePerson = React.useCallback(async (personId: string) => {
     if (!appUser) return;
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     try {
-      const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
       await deletePerson(personId, userInfo);
       toast({
         title: "Person Deleted",
         description: "The person has been removed from your contacts.",
       });
-      fetchPageData(); // Re-fetch data
+      fetchPageData();
     } catch(error) {
       toast({
         variant: "destructive",
@@ -535,15 +522,15 @@ function ContactsPageComponent() {
 
   const handleDeleteSelected = React.useCallback(async () => {
     if (!appUser) return;
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     try {
-      const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
       await deletePeople(Array.from(selectedIds), userInfo);
       toast({
         title: "Contacts Deleted",
         description: `${selectedIds.size} contacts have been removed.`,
       });
       setSelectedIds(new Set());
-      fetchPageData(); // Re-fetch data
+      fetchPageData();
     } catch (error) {
        toast({
         variant: "destructive",
@@ -584,22 +571,10 @@ function ContactsPageComponent() {
         title: "Error",
         description: errorMessage,
       });
-      throw error; // Re-throw to allow dialog to handle its own state.
+      throw error;
     }
   }, [appUser, toast, editingPerson, fetchPageData]);
   
-  const handleSelectionChange = React.useCallback((personId: string, checked: boolean) => {
-    setSelectedIds(prev => {
-      const newSet = new Set(prev);
-      if (checked) {
-        newSet.add(personId);
-      } else {
-        newSet.delete(personId);
-      }
-      return newSet;
-    });
-  }, []);
-
   const handleAddToGroup = React.useCallback(async (groupId: string) => {
     if (selectedIds.size === 0 || !appUser) return;
     const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
@@ -609,7 +584,6 @@ function ContactsPageComponent() {
         title: "Members Added",
         description: `${selectedIds.size} contacts have been added to the group.`,
       });
-      // Group data is fetched with main data, so no need to refetch separately
       setSelectedIds(new Set());
     } catch (error) {
       toast({
@@ -644,7 +618,7 @@ function ContactsPageComponent() {
           description: `The new group "${newGroup.name}" has been added.`,
         });
       }
-      fetchPageData(); // Refetch all data to update groups list
+      fetchPageData();
       setIsCreateGroupDialogOpen(false);
     } catch (error) {
        toast({
@@ -664,7 +638,6 @@ function ContactsPageComponent() {
         title: coEnabler ? 'Co-Enabler Assigned' : 'Co-Enabler Unassigned',
         description: `${selectedIds.size} contacts have been updated.`,
       });
-      // Refetch data to show the change
       await fetchPageData();
       setSelectedIds(new Set());
     } catch (error) {
@@ -859,7 +832,14 @@ function ContactsPageComponent() {
                     key={person.id}
                     person={person}
                     isSelected={selectedIds.has(person.id)}
-                    onSelectionChange={handleSelectionChange}
+                    onSelectionChange={(id, checked) => {
+                      setSelectedIds(prev => {
+                        const newSet = new Set(prev);
+                        if (checked) newSet.add(id);
+                        else newSet.delete(id);
+                        return newSet;
+                      });
+                    }}
                     groups={personGroups}
                     isSelectionActive={isSelectionActive}
                   />
@@ -998,12 +978,4 @@ function ContactsPageComponent() {
       />
     </div>
   );
-}
-
-export default function ContactsPageWithAuth() {
-    return (
-        <AuthGuard>
-            <ContactsPageComponent />
-        </AuthGuard>
-    )
 }

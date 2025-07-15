@@ -13,7 +13,7 @@ export default function HomePage() {
   React.useEffect(() => {
     if (!loading) {
       if (user) {
-        router.replace('/contacts');
+        router.replace('/dashboard');
       } else {
         router.replace('/login');
       }

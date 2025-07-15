@@ -59,14 +59,12 @@ type GetPeopleResult = {
   totalCount: number;
 };
 
-// Simplified user info to be passed from client to server
 type UserInfo = {
   id: string;
   name: string;
   role: UserRole[];
 };
 
-// Firestore's hard limit for `limit` is 10000.
 const MAX_FIRESTORE_LIMIT = 10000;
 
 export const getPeople = async (
@@ -89,23 +87,21 @@ export const getPeople = async (
 ): Promise<GetPeopleResult> => {
     if (!userInfo) return { people: [], totalCount: 0 };
 
-    // Cap the pageSize to Firestore's maximum limit.
     const effectivePageSize = Math.min(pageSize, MAX_FIRESTORE_LIMIT);
 
     const peopleCollection = collection(db, 'people');
     let queryConstraints: QueryConstraint[] = [];
     let sortDescriptors = initialSortDescriptors;
     
-    // This flag will be used to prevent applying a default sort that would require a composite index.
     let disableDefaultSort = false;
 
     // --- Role-based Access Control ---
     if (userInfo.role.includes('Admin')) {
-        // Admin sees all. No additional constraint needed for access.
+        // No additional constraints needed.
     } else if (userInfo.role.includes('Folk Guide')) {
         queryConstraints.push(where('folkGuideId', '==', userInfo.id));
-        // Filtering by folkGuideId while sorting by a different field requires a composite index.
-        // We disable the default sort to prevent crashes. The user can still apply their own sort.
+        // This is a key change: if we filter by a field, we should avoid default sorting by another field
+        // unless a composite index is guaranteed to exist. We remove the default sort to be safe.
         disableDefaultSort = true;
     } else { // Folk Enabler
         queryConstraints.push(
@@ -114,7 +110,6 @@ export const getPeople = async (
                 where('coEnablerId', '==', userInfo.id)
             )
         );
-        // This is a complex 'OR' query, which also restricts sorting.
         disableDefaultSort = true;
     }
     
@@ -138,10 +133,10 @@ export const getPeople = async (
                     queryConstraints.push(where('__name__', 'in', memberIds));
                  }
             } else {
-                 return { people: [], totalCount: 0 }; // Group has no members
+                 return { people: [], totalCount: 0 };
             }
         } else {
-             return { people: [], totalCount: 0 }; // Group not found
+             return { people: [], totalCount: 0 };
         }
     }
 
@@ -156,6 +151,10 @@ export const getPeople = async (
         if (operator === 'lt') return where(field, '<', value);
         if (operator === 'gte') return where(field, '>=', value);
         if (operator === 'lte') return where(field, '<=', value);
+        if (operator === 'contains') {
+           console.warn("Firestore does not support 'contains' directly. Filtering will happen on the client. For large datasets, this may be slow or incomplete.");
+           return null;
+        }
         return null;
     }).filter((c): c is QueryConstraint => c !== null);
 
@@ -163,16 +162,15 @@ export const getPeople = async (
         queryConstraints.push(and(...filterConstraints));
     }
 
-    // --- Search Term (simple prefix search on fullName) ---
+    // --- Search Term ---
     if (searchTerm.trim()) {
         const term = searchTerm.trim();
         queryConstraints.push(where('fullName', '>=', term));
         queryConstraints.push(where('fullName', '<=', term + '\uf8ff'));
     }
 
-    // --- Create Count and Data Queries ---
+    // --- Count and Data Queries ---
     const countQuery = query(peopleCollection, ...queryConstraints);
-    
     const sortConstraints = sortDescriptors.map(desc => orderBy(desc.field, desc.direction));
     let dataQuery = query(peopleCollection, ...queryConstraints, ...sortConstraints, limit(effectivePageSize));
 
@@ -221,16 +219,16 @@ export const createPerson = async (
   let assignedEnabler = personData.enablerInTouchWith;
   let { folkGuide, folkGuideId } = personData;
 
-  // Auto-assignment for Folk Guide if not provided (e.g., by non-admin)
+  // Auto-assignment for Folk Guide if not provided
   if (!folkGuideId) {
     if (userInfo.role.includes('Folk Guide')) {
       folkGuideId = userInfo.id;
-      // We don't have fgCode here, but we can reconstruct it or leave it out
       folkGuide = `${userInfo.name}`; 
     }
   }
 
   const dataToSave = {
+    ...personData,
     fullName: personData.fullName || '',
     phone: personData.phone || '',
     photoUrl: personData.photoUrl || 'https://placehold.co/100x100.png',
@@ -244,8 +242,6 @@ export const createPerson = async (
     contactSource: personData.contactSource || '',
     chantingStatus: personData.chantingStatus || 0,
     fromOtherCamp: personData.fromOtherCamp || false,
-    progress: personData.progress,
-    customData: personData.customData || {},
     enablerInTouchWith: assignedEnabler || '',
     folkGuide: folkGuide || '',
     folkGuideId: folkGuideId || '',
@@ -303,13 +299,18 @@ export const importPeople = async (
 ): Promise<void> => {
   if (people.length === 0) return;
 
-  const batch = writeBatch(db);
-  people.forEach((person) => {
-    const docRef = doc(collection(db, 'people'));
+  const peopleCollection = collection(db, 'people');
+  for (const person of people) {
+    const q = query(peopleCollection, where("phone", "==", person.phone));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+        console.warn(`Skipping import for duplicate phone number: ${person.phone}`);
+        continue;
+    }
+
     let assignedEnabler = person.enablerInTouchWith;
     let { folkGuide, folkGuideId } = person;
 
-    // Auto-assign Folk Guide if not provided
     if (!folkGuideId && !folkGuide) {
       if (userInfo.role.includes('Folk Guide')) {
         folkGuideId = userInfo.id;
@@ -318,30 +319,12 @@ export const importPeople = async (
     }
 
     const dataToSave = {
-        fullName: person.fullName || '',
-        phone: person.phone || '',
-        photoUrl: person.photoUrl || 'https://placehold.co/100x100.png',
-        age: person.age || 18,
-        stayingWith: person.stayingWith || 'Family',
-        occupation: person.occupation || 'Working',
-        organisation: person.organisation || '',
-        rentDetails: person.rentDetails || '',
-        nativePlace: person.nativePlace || '',
-        sgRating: person.sgRating || 0,
-        contactSource: person.contactSource || '',
-        chantingStatus: person.chantingStatus || 0,
-        fromOtherCamp: person.fromOtherCamp || false,
-        progress: person.progress,
-        customData: person.customData || {},
-        enablerInTouchWith: assignedEnabler || '',
-        folkGuide: folkGuide || '',
-        folkGuideId: folkGuideId || '',
+        ...person,
         createdAt: serverTimestamp()
     };
-    batch.set(docRef, dataToSave);
-  });
+    await addDoc(peopleCollection, dataToSave);
+  }
   
-  await batch.commit();
   await logAudit('Import Contacts', `Imported ${people.length} contacts from a file.`, userInfo);
 };
 
@@ -387,6 +370,3 @@ export const assignEnablerToPeople = async (personIds: string[], enabler: AppUse
         await logAudit('Assign Enabler', `Assigned ${personIds.length} contacts to ${enabler.name}.`, userInfo);
     }
 };
-
-
-    
