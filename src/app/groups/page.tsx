@@ -20,6 +20,7 @@ import { AuthGuard } from "@/components/auth-guard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 function GroupsPageComponent() {
   const { toast } = useToast();
@@ -35,8 +36,9 @@ function GroupsPageComponent() {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [editingGroup, setEditingGroup] = React.useState<Group | undefined>(undefined);
 
-  const [filterId, setFilterId] = React.useState<string>('all');
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [viewFilter, setViewFilter] = React.useState('all'); // 'all' or 'mine'
+  const [userFilterId, setUserFilterId] = React.useState('all'); // 'all', or a user ID
 
   const isAdmin = appUser?.role.includes('Admin');
   const isGuide = appUser?.role.includes('Folk Guide');
@@ -54,6 +56,7 @@ function GroupsPageComponent() {
         setPeople(peopleData);
         setAllUsers(usersData);
 
+        // This gets all static groups the user can see
         const groupsData = await getAllGroups(appUser, peopleData);
         setAllGroups(groupsData);
 
@@ -71,55 +74,75 @@ function GroupsPageComponent() {
     fetchData();
   }, [appUser]);
   
-  const getFilterDataSource = () => {
+  const getUserFilterDataSource = () => {
     if(isAdmin) return allUsers.filter(u => u.role.includes('Folk Guide'));
     if(isGuide) return allUsers.filter(u => u.reportsTo?.guideId === appUser?.id);
     return [];
   }
 
-  const filteredGroupsAndCounts = React.useMemo(() => {
+  const filteredGroups = React.useMemo(() => {
+    // 1. Filter people based on the user filter (Guide or Enabler)
     let relevantPeople = people;
-
-    if (filterId !== 'all') {
+    if (userFilterId !== 'all') {
       if (isAdmin) { // Admin filtering by a Folk Guide
-        relevantPeople = people.filter(p => p.folkGuideId === filterId);
+        const guide = allUsers.find(u => u.id === userFilterId);
+        if (guide) {
+          const enablerIds = allUsers.filter(u => u.reportsTo?.guideId === guide.id).map(u => u.id);
+          const teamIds = new Set([guide.id, ...enablerIds]);
+          relevantPeople = people.filter(p => p.folkGuideId && teamIds.has(p.folkGuideId));
+        }
       } else if (isGuide) { // Guide filtering by an Enabler
-        if (filterId === '__UNASSIGNED__') {
-            relevantPeople = people.filter(p => !p.enablerInTouchWith);
+        if (userFilterId === '__UNASSIGNED__') {
+          relevantPeople = people.filter(p => !p.enablerInTouchWith && p.folkGuideId === appUser?.id);
         } else {
-            const enabler = allUsers.find(e => e.id === filterId);
-            if (enabler) {
-              relevantPeople = people.filter(p => p.enablerInTouchWith === enabler.name);
-            }
+          const enabler = allUsers.find(e => e.id === userFilterId);
+          if (enabler) {
+            relevantPeople = people.filter(p => p.enablerInTouchWith === enabler.name);
+          }
         }
       }
     }
+    const relevantPeopleIds = new Set(relevantPeople.map(p => p.id));
+
+    // 2. Filter groups based on the view filter (All or My Groups)
+    let baseGroups = allGroups;
+    if (viewFilter === 'mine') {
+      baseGroups = allGroups.filter(g => !g.isDynamic && g.createdBy === appUser?.id);
+    }
     
-    // Always regenerate dynamic groups based on the currently filtered people
-    const dynamicGroups = generateDynamicGroups(relevantPeople);
-    
-    let processedGroups: Group[] = allGroups.map(group => {
+    // 3. Process the groups: update counts and add dynamic groups
+    const processedGroups = baseGroups.map(group => {
+      // For dynamic groups, re-generate them with the filtered people list
       if (group.isDynamic) {
-        // Find the corresponding dynamically generated group
-        const dynamicVersion = dynamicGroups.find(dg => dg.id === group.id);
-        return dynamicVersion || { ...group, peopleIds: [], memberCount: 0 };
+        const dynamicDef = generateDynamicGroups(relevantPeople).find(dg => dg.id === group.id);
+        return {
+          ...group,
+          peopleIds: dynamicDef?.peopleIds || [],
+          memberCount: dynamicDef?.memberCount || 0,
+        };
       }
-      
-      // For static groups, we just need to update the member count based on the filter
-      const relevantMemberIds = new Set(relevantPeople.map(p => p.id));
-      const filteredMembersCount = group.peopleIds.filter(id => relevantMemberIds.has(id)).length;
-      return { ...group, memberCount: filteredMembersCount };
+      // For static groups, filter their members and update the count
+      const filteredMembers = group.peopleIds.filter(id => relevantPeopleIds.has(id));
+      return {
+        ...group,
+        filteredMemberCount: filteredMembers.length,
+      };
+    }).filter(group => {
+        // Only show groups that have members matching the filter, unless no filter is applied
+        return userFilterId === 'all' || (group.isDynamic ? group.memberCount > 0 : (group.filteredMemberCount || 0) > 0);
     });
 
+    // 4. Apply search term
     if (searchTerm.trim()) {
-      processedGroups = processedGroups.filter(g => 
-        g.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        (g.description || '').toLowerCase().includes(searchTerm.toLowerCase())
+      const lowercasedTerm = searchTerm.toLowerCase();
+      return processedGroups.filter(g => 
+        g.name.toLowerCase().includes(lowercasedTerm) || 
+        (g.description || '').toLowerCase().includes(lowercasedTerm)
       );
     }
     
     return processedGroups.sort((a,b) => a.name.localeCompare(b.name));
-  }, [allGroups, people, allUsers, filterId, searchTerm, isAdmin, isGuide]);
+  }, [allGroups, people, allUsers, userFilterId, searchTerm, isAdmin, isGuide, appUser, viewFilter]);
 
   const handleCreateGroup = React.useCallback(() => {
     setEditingGroup(undefined);
@@ -192,7 +215,7 @@ function GroupsPageComponent() {
       return <FirebaseConfigError error={fetchError} />;
     }
 
-    if (filteredGroupsAndCounts.length === 0) {
+    if (filteredGroups.length === 0) {
       return (
         <div className="text-center py-12 text-muted-foreground">
           <p>No groups found for the current filters.</p>
@@ -203,8 +226,13 @@ function GroupsPageComponent() {
 
     return (
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {filteredGroupsAndCounts.map((group) => {
+        {filteredGroups.map((group) => {
           const owner = allUsers.find(u => u.id === group.createdBy);
+          const memberCount = userFilterId === 'all' || group.isDynamic
+              ? group.memberCount
+              : group.filteredMemberCount;
+          const totalCount = group.isDynamic ? undefined : group.memberCount;
+
           return (
             <GroupCard
               key={group.id}
@@ -212,6 +240,8 @@ function GroupsPageComponent() {
               onEdit={() => handleEditGroup(group)}
               onDelete={() => handleDeleteGroup(group.id)}
               ownerName={owner?.name}
+              displayMemberCount={memberCount}
+              totalMemberCount={totalCount}
             />
           );
         })}
@@ -219,51 +249,39 @@ function GroupsPageComponent() {
     );
   }
   
-  const renderFilter = () => {
-    const filterOptions = getFilterDataSource();
+  const renderUserFilter = () => {
+    const filterOptions = getUserFilterDataSource();
+    if (!isAdmin && !isGuide) return null;
 
+    let filterLabel = "Filter by User...";
+    let Icon = UsersIcon;
     if (isAdmin) {
-      return (
-         <Select value={filterId} onValueChange={setFilterId}>
-            <SelectTrigger className="w-full sm:w-[280px]">
-              <div className="flex items-center gap-2">
-                <UsersIcon className="h-4 w-4 text-muted-foreground" />
-                <SelectValue placeholder="Filter by Folk Guide..." />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Folk Guides</SelectItem>
-              {filterOptions.map(g => (
-                <SelectItem key={g.id} value={g.id}>
-                  {g.name} ({g.fgCode || 'N/A'})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-      )
+      filterLabel = "Filter by Folk Guide...";
+      Icon = UsersIcon;
+    } else if (isGuide) {
+      filterLabel = "Filter by Enabler...";
+      Icon = UserCog;
     }
-    if (isGuide) {
-       return (
-         <Select value={filterId} onValueChange={setFilterId}>
-            <SelectTrigger className="w-full sm:w-[280px]">
-               <div className="flex items-center gap-2">
-                  <UserCog className="h-4 w-4 text-muted-foreground" />
-                  <SelectValue placeholder="Filter by enabler..." />
-               </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Enablers</SelectItem>
-              <SelectItem value="__UNASSIGNED__">Unassigned Contacts</SelectItem>
-              {filterOptions.map(e => (
-                <SelectItem key={e.id} value={e.id}>
-                  {e.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-      )
-    }
-    return null;
+
+    return (
+      <Select value={userFilterId} onValueChange={setUserFilterId}>
+        <SelectTrigger className="w-full sm:w-[280px]">
+          <div className="flex items-center gap-2">
+            <Icon className="h-4 w-4 text-muted-foreground" />
+            <SelectValue placeholder={filterLabel} />
+          </div>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All Users</SelectItem>
+          {isGuide && <SelectItem value="__UNASSIGNED__">Unassigned Contacts</SelectItem>}
+          {filterOptions.map(u => (
+            <SelectItem key={u.id} value={u.id}>
+              {u.name} {isAdmin && `(${u.fgCode || 'N/A'})`}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    )
   }
 
   return (
@@ -283,16 +301,24 @@ function GroupsPageComponent() {
         </PageHeader>
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0 space-y-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search groups..."
-                className="pl-10 w-full sm:w-64"
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-              />
+            <div className="flex flex-col sm:flex-row gap-4 flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search groups..."
+                  className="pl-10 w-full sm:w-64"
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                />
+              </div>
+              {renderUserFilter()}
             </div>
-            {renderFilter()}
+            <Tabs value={viewFilter} onValueChange={setViewFilter} className="w-full sm:w-auto">
+              <TabsList className="grid w-full grid-cols-2 sm:w-auto">
+                <TabsTrigger value="all">All Groups</TabsTrigger>
+                <TabsTrigger value="mine">My Groups</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
           {renderContent()}
         </main>

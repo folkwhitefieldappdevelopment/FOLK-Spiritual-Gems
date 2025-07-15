@@ -35,13 +35,18 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 
 type GroupCardProps = {
-  group: Group;
+  group: Group & { filteredMemberCount?: number };
   onEdit: () => void;
   onDelete: () => void;
   ownerName?: string;
+  displayMemberCount?: number;
+  totalMemberCount?: number;
 };
 
-const GroupCardComponent = ({ group, onEdit, onDelete, ownerName }: GroupCardProps) => {
+const GroupCardComponent = ({ group, onEdit, onDelete, ownerName, displayMemberCount, totalMemberCount }: GroupCardProps) => {
+
+  const memberCount = displayMemberCount ?? group.memberCount;
+  const showTotal = typeof totalMemberCount !== 'undefined' && totalMemberCount !== memberCount;
 
   return (
     <Link href={`/groups/${group.id}`} className="block h-full">
@@ -111,7 +116,9 @@ const GroupCardComponent = ({ group, onEdit, onDelete, ownerName }: GroupCardPro
           <div className="flex flex-col gap-1 items-start text-xs text-muted-foreground">
               <div className="flex items-center">
                   <Users className="mr-2 h-4 w-4" />
-                  <span>{group.memberCount} member{group.memberCount !== 1 && "s"}</span>
+                  <span>
+                    {showTotal ? `${memberCount} of ${totalMemberCount}` : memberCount} member{memberCount !== 1 && "s"}
+                  </span>
               </div>
               {!group.isDynamic && ownerName && (
                   <TooltipProvider>

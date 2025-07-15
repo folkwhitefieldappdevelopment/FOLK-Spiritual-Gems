@@ -132,6 +132,7 @@ export type Group = {
   creatorRole?: UserRole[];
   visibility: UserRole[];
   isDynamic?: boolean; // Flag for dynamic groups
+  filteredMemberCount?: number; // Used for client-side filtering
 };
 
 export type CustomField = {
