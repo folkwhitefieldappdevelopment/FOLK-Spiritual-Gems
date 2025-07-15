@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from "react";
-import { Headset, Loader2, Edit, Search, Users, UserCheck, PlusCircle, Play, Pause } from "lucide-react";
+import { Headset, Loader2, Edit, Search, Users, UserCheck, PlusCircle, Play, Pause, AlertCircle } from "lucide-react";
 import type { Person, CallStatus, CustomField, Group, AppUser, PausedSession, UserRole } from "@/lib/types";
 import { occupationStatuses } from "@/lib/types";
 import { callStatuses } from "@/lib/data";
@@ -58,8 +58,11 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+
 
 const ROWS_PER_PAGE = 10;
+const FIRESTORE_QUERY_LIMIT = 10000;
 
 type UserInfo = {
   id: string;
@@ -120,9 +123,10 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       setFetchError(null);
       const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
       try {
-        // Calling assistant needs all matching people for the session, so we don't paginate.
-        const { people: peopleData } = await getPeople(userInfo, { 
-            pageSize: 99999, // Fetch all matching contacts
+        // Calling assistant needs all matching people for the session.
+        // We respect Firestore's 10,000 limit.
+        const { people: peopleData, totalCount } = await getPeople(userInfo, { 
+            pageSize: FIRESTORE_QUERY_LIMIT, // Fetch up to the max limit
             filters,
             sortDescriptors,
             searchTerm,
@@ -130,7 +134,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
          });
 
         setAllFetchedPeople(peopleData);
-        setTotalPeople(peopleData.length); // Use the length of fetched data for total
+        setTotalPeople(totalCount); // Use the length of fetched data for total
 
         const [enablersData, sourcesData, customFieldsData, groupsData, guidesData] = await Promise.all([
           getEnablers(userInfo, 'filter'),
@@ -299,10 +303,10 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
   const handleOpenEventDialog = React.useCallback((isStartingFlow: boolean) => {
     setEditableEventName(currentCallingEvent);
-    setCallRange({ from: '1', to: String(filteredPeople.length) });
+    setCallRange({ from: '1', to: String(totalPeople) });
     setIsStartingSessionFlow(isStartingFlow);
     setIsEventDialogOpen(true);
-  }, [currentCallingEvent, filteredPeople.length]);
+  }, [currentCallingEvent, totalPeople]);
 
   const handleSaveEventAndContinue = React.useCallback(async () => {
     if (!appUser) return;
@@ -325,19 +329,19 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
     if (isStartingSessionFlow) {
       const fromIndex = parseInt(callRange.from, 10);
-      const toIndex = callRange.to.trim() === '' ? filteredPeople.length : parseInt(callRange.to, 10);
+      const toIndex = callRange.to.trim() === '' ? totalPeople : parseInt(callRange.to, 10);
 
       if (
         isNaN(fromIndex) ||
         isNaN(toIndex) ||
         fromIndex < 1 ||
-        toIndex > filteredPeople.length ||
+        toIndex > totalPeople ||
         fromIndex > toIndex
       ) {
         toast({
           variant: 'destructive',
           title: 'Invalid Range',
-          description: `Please enter a valid range between 1 and ${filteredPeople.length}.`,
+          description: `Please enter a valid range between 1 and ${totalPeople}.`,
         });
         return;
       }
@@ -361,7 +365,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     }
     
     setIsEventDialogOpen(false);
-  }, [appUser, editableEventName, currentCallingEvent, isStartingSessionFlow, callRange, filteredPeople, toast, updateCurrentAppUser]);
+  }, [appUser, editableEventName, currentCallingEvent, isStartingSessionFlow, callRange, totalPeople, filteredPeople, toast, updateCurrentAppUser]);
   
   const handleAddToGroup = React.useCallback(async (targetGroupId: string) => {
     if (selectedIds.size === 0 || !appUser) return;
@@ -483,6 +487,8 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
             </div>
         );
     }
+    
+    const showLimitWarning = totalPeople > FIRESTORE_QUERY_LIMIT;
 
     return (
       <>
@@ -543,12 +549,21 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
                             Resume Session ({pausedSession.currentIndex + 1} / {pausedSession.peopleIds.length})
                         </Button>
                     )}
-                    <Button size="sm" onClick={() => handleOpenEventDialog(true)} disabled={filteredPeople.length === 0 || isSelectionActive || isDataLoading}>
+                    <Button size="sm" onClick={() => handleOpenEventDialog(true)} disabled={totalPeople === 0 || isSelectionActive || isDataLoading}>
                         <Headset className="mr-2 h-4 w-4" />
-                        Start Calling Session ({isDataLoading ? '...' : filteredPeople.length})
+                        Start Calling Session ({isDataLoading ? '...' : totalPeople})
                     </Button>
                  </div>
             </div>
+            {showLimitWarning && (
+                <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Large Dataset</AlertTitle>
+                    <AlertDescription>
+                        Your filter matches {totalPeople} contacts. The calling session will be created with the first {FIRESTORE_QUERY_LIMIT} contacts due to system limits. Please use more specific filters to narrow down the list.
+                    </AlertDescription>
+                </Alert>
+            )}
         </div>
         
         {filteredPeople.length === 0 ? (
@@ -647,7 +662,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
                       value={callRange.from}
                       onChange={(e) => setCallRange(prev => ({...prev, from: e.target.value}))}
                       min="1"
-                      max={filteredPeople.length}
+                      max={totalPeople}
                   />
                   <span className="text-muted-foreground">to</span>
                   <Input
@@ -656,16 +671,16 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
                       value={callRange.to}
                       onChange={(e) => setCallRange(prev => ({...prev, to: e.target.value}))}
                       min="1"
-                      max={filteredPeople.length}
+                      max={totalPeople}
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                    Select a range from your filtered list of {filteredPeople.length} contacts.
+                    Select a range from your filtered list of {totalPeople} contacts.
                 </p>
                 {callRangeNames.from && (
                   <div className="text-xs text-muted-foreground mt-2 border-l-2 border-primary pl-2 space-y-1">
                       <p>From: <strong className="text-foreground">{callRange.from}. {callRangeNames.from}</strong></p>
-                      {callRangeNames.to && <p>To: <strong className="text-foreground">{callRange.to || filteredPeople.length}. {callRangeNames.to}</strong></p>}
+                      {callRangeNames.to && <p>To: <strong className="text-foreground">{callRange.to || totalPeople}. {callRangeNames.to}</strong></p>}
                   </div>
                 )}
               </div>
@@ -689,7 +704,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
         customFields={customFields}
         groups={groups}
         sessionStartIndex={sessionStartIndex}
-        totalPeopleCount={filteredPeople.length}
+        totalPeopleCount={totalPeople}
         initialIndex={initialSessionIndex}
         context="assistant"
         // Pass all filter/sort states to be saved on pause

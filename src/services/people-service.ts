@@ -66,6 +66,9 @@ type UserInfo = {
   role: UserRole[];
 };
 
+// Firestore's hard limit for `limit` is 10000.
+const MAX_FIRESTORE_LIMIT = 10000;
+
 export const getPeople = async (
     userInfo: UserInfo,
     {
@@ -85,6 +88,9 @@ export const getPeople = async (
     }
 ): Promise<GetPeopleResult> => {
     if (!userInfo) return { people: [], totalCount: 0 };
+
+    // Cap the pageSize to Firestore's maximum limit.
+    const effectivePageSize = Math.min(pageSize, MAX_FIRESTORE_LIMIT);
 
     const peopleCollection = collection(db, 'people');
     let queryConstraints: QueryConstraint[] = [];
@@ -156,11 +162,11 @@ export const getPeople = async (
     const countQuery = query(peopleCollection, ...queryConstraints);
     
     const sortConstraints = sortDescriptors.map(desc => orderBy(desc.field, desc.direction));
-    let dataQuery = query(peopleCollection, ...queryConstraints, ...sortConstraints, limit(pageSize));
+    let dataQuery = query(peopleCollection, ...queryConstraints, ...sortConstraints, limit(effectivePageSize));
 
     // --- Pagination ---
     if (page > 1) {
-        const prevPageQuery = query(peopleCollection, ...queryConstraints, ...sortConstraints, limit((page - 1) * pageSize));
+        const prevPageQuery = query(peopleCollection, ...queryConstraints, ...sortConstraints, limit((page - 1) * effectivePageSize));
         const prevPageSnapshot = await getDocs(prevPageQuery);
         if (!prevPageSnapshot.empty) {
             const lastVisible = prevPageSnapshot.docs[prevPageSnapshot.docs.length - 1];
