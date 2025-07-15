@@ -75,7 +75,7 @@ export const getPeople = async (
         page = 1,
         pageSize = 10,
         filters = [],
-        sortDescriptors = [{ field: 'createdAt', direction: 'desc' }],
+        sortDescriptors: initialSortDescriptors = [],
         searchTerm = '',
         groupId,
     }: {
@@ -94,12 +94,17 @@ export const getPeople = async (
 
     const peopleCollection = collection(db, 'people');
     let queryConstraints: QueryConstraint[] = [];
+    let sortDescriptors = initialSortDescriptors;
 
     // --- Role-based Access Control ---
     if (userInfo.role.includes('Admin')) {
         // Admin sees all. No additional constraint needed for access.
     } else if (userInfo.role.includes('Folk Guide')) {
         queryConstraints.push(where('folkGuideId', '==', userInfo.id));
+        // Avoid default index error by changing sort if none is provided
+        if (sortDescriptors.length === 0) {
+            sortDescriptors = [{ field: 'fullName', direction: 'asc' }];
+        }
     } else { // Folk Enabler
         queryConstraints.push(
             or(
@@ -107,6 +112,11 @@ export const getPeople = async (
                 where('coEnablerId', '==', userInfo.id)
             )
         );
+    }
+    
+    // Set a default sort descriptor if none is provided
+    if (sortDescriptors.length === 0) {
+      sortDescriptors = [{ field: 'createdAt', direction: 'desc' }];
     }
     
     // --- Group Filter ---
