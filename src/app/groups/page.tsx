@@ -19,7 +19,8 @@ import { AuthGuard } from "@/components/auth-guard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup as UiSelectGroup, SelectLabel } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { generateDynamicGroups } from "@/lib/dynamic-groups";
 
 type UserInfo = {
   id: string;
