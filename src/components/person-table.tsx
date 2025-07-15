@@ -60,9 +60,8 @@ type PersonTableProps = {
 
 const safeDate = (timestamp: any): Date | null => {
     if (!timestamp) return null;
-    if (timestamp.toDate) return timestamp.toDate(); // Firestore Timestamp
-    if (timestamp instanceof Date) return timestamp; // Javascript Date
-    return null;
+    const d = new Date(timestamp);
+    return isNaN(d.getTime()) ? null : d;
 }
 
 export function PersonTable({ 
@@ -250,20 +249,21 @@ export function PersonTable({
                         </Tooltip>
                       );
                   case 'lastCallAt':
+                    const lastCallDate = safeDate(person.lastCallAt);
                     return (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <span className="flex items-center gap-2 truncate text-sm text-muted-foreground">
                               <Clock className="h-4 w-4 shrink-0" />
-                              {person.lastCallAt ? 
-                                    `${formatDistanceToNow(safeDate(person.lastCallAt)!, { addSuffix: true })}` 
+                              {lastCallDate ? 
+                                    `${formatDistanceToNow(lastCallDate, { addSuffix: true })}` 
                                     : 'Never'
                                 }
                             </span>
                           </TooltipTrigger>
-                          {person.lastCallAt && (
+                          {lastCallDate && (
                             <TooltipContent>
-                                <p>{safeDate(person.lastCallAt)!.toLocaleString()}</p>
+                                <p>{lastCallDate.toLocaleString()}</p>
                             </TooltipContent>
                           )}
                         </Tooltip>
@@ -364,5 +364,3 @@ export function PersonTable({
     </TooltipProvider>
   );
 }
-
-    

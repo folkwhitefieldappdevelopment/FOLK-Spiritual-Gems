@@ -10,9 +10,8 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 
 const safeDate = (timestamp: any): Date | null => {
     if (!timestamp) return null;
-    if (timestamp.toDate) return timestamp.toDate();
-    if (timestamp instanceof Date) return timestamp;
-    return null;
+    const d = new Date(timestamp);
+    return isNaN(d.getTime()) ? null : d;
 }
 
 export function CallHistory({ person }: { person: Person }) {

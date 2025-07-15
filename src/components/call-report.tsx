@@ -1,5 +1,4 @@
 
-      
 'use client';
 
 import * as React from 'react';
@@ -51,6 +50,12 @@ const callPickedStatuses: CallStatus[] = ['A1 - Coming', 'A2 - Not Interested', 
 const callNotPickedStatuses: CallStatus[] = ['B - Not Answering', 'C - Busy', 'E - Switched Off', 'F - Not Reachable'];
 const contactEliminatedStatuses: CallStatus[] = ['D - Wrong Number', 'G - Completely Shifted to Another city'];
 
+const safeDate = (timestamp: any): Date | null => {
+    if (!timestamp) return null;
+    const d = new Date(timestamp);
+    return isNaN(d.getTime()) ? null : d;
+}
+
 export function CallReport({ people, relatedUsers }: CallReportProps) {
   const { appUser } = useAuth();
   const [date, setDate] = React.useState<DateRange | undefined>({
@@ -71,8 +76,8 @@ export function CallReport({ people, relatedUsers }: CallReportProps) {
         (person.callHistory || [])
             .filter(call => {
                 if (!call.calledAt) return false;
-                const callDate = call.calledAt?.toDate ? call.calledAt.toDate() : new Date(call.calledAt);
-                return isWithinInterval(callDate, { start: from, end: to });
+                const callDate = safeDate(call.calledAt);
+                return callDate && isWithinInterval(callDate, { start: from, end: to });
             })
             .map(call => ({ ...call, enabler: person.enablerInTouchWith || 'Unassigned' }))
     );
@@ -328,5 +333,3 @@ export function CallReport({ people, relatedUsers }: CallReportProps) {
     </Card>
   )
 }
-
-    

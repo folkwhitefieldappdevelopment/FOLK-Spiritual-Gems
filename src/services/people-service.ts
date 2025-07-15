@@ -35,6 +35,22 @@ const processPersonDoc = (doc: DocumentSnapshot): Person => {
   if (!data.fullName && (data.firstName || data.lastName)) {
     data.fullName = `${data.firstName || ''} ${data.lastName || ''}`.trim();
   }
+  // Convert Firestore Timestamps to serializable strings
+  if (data.createdAt?.toDate) {
+    data.createdAt = data.createdAt.toDate().toISOString();
+  }
+  if (data.lastCallAt?.toDate) {
+    data.lastCallAt = data.lastCallAt.toDate().toISOString();
+  }
+  if (Array.isArray(data.callHistory)) {
+    data.callHistory = data.callHistory.map((log: any) => {
+      if (log.calledAt?.toDate) {
+        log.calledAt = log.calledAt.toDate().toISOString();
+      }
+      return log;
+    });
+  }
+
   return { id: doc.id, ...data } as Person;
 };
 
@@ -89,17 +105,20 @@ export const getPeople = async (
     
     // --- Group Filter ---
     if (groupId) {
-        const groupDoc = await doc(db, 'groups', groupId);
-        const groupSnap = await getDoc(groupDoc);
+        const groupDocRef = doc(db, 'groups', groupId);
+        const groupSnap = await getDoc(groupDocRef);
         if (groupSnap.exists()) {
             const groupData = groupSnap.data();
             const memberIds = groupData.peopleIds || [];
             if (memberIds.length > 0) {
-                 // Firestore 'in' queries are limited to 30 values.
-                 // For groups larger than 30, this will fail.
-                 // A more scalable solution would involve denormalizing group membership onto the person document.
-                 // For now, we assume groups are smaller than 30.
-                queryConstraints.push(where('__name__', 'in', memberIds));
+                 if (memberIds.length > 30) {
+                    // If memberIds are more than 30, a single 'in' query won't work.
+                    // This is a limitation we're accepting for now.
+                    console.warn(`Group ${groupId} has more than 30 members, which exceeds Firestore's 'in' query limit. Results may be incomplete.`);
+                    queryConstraints.push(where('__name__', 'in', memberIds.slice(0, 30)));
+                 } else {
+                    queryConstraints.push(where('__name__', 'in', memberIds));
+                 }
             } else {
                  return { people: [], totalCount: 0 }; // Group has no members
             }
@@ -113,7 +132,6 @@ export const getPeople = async (
         const { field, operator, value } = filter;
         if (operator === 'is_empty') return where(field, '==', '');
         if (operator === 'is_not_empty') return where(field, '!=', '');
-        // Basic operators for now. More complex ones like 'contains' require more complex solutions (e.g., third-party search).
         if (operator === 'is') return where(field, '==', value);
         if (operator === 'is_not') return where(field, '!=', value);
         if (operator === 'gt') return where(field, '>', value);
@@ -218,12 +236,9 @@ export const createPerson = async (
 
   const docRef = await addDoc(peopleCollection, dataToSave);
   await logAudit('Create Contact', `Created new contact: ${dataToSave.fullName} (${docRef.id})`, userInfo);
-  const newPerson: Person = {
-    ...(dataToSave as Omit<Person, 'id'>),
-    id: docRef.id,
-    createdAt: new Date(),
-  };
-  return newPerson;
+  
+  const newPersonData = await getDoc(docRef);
+  return processPersonDoc(newPersonData);
 };
 
 export const updatePerson = async (id: string, personData: Partial<Omit<Person, 'id'>>, userInfo: UserInfo | null = null): Promise<void> => {
