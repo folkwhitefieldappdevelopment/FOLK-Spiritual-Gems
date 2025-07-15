@@ -66,7 +66,8 @@ function AssignmentsPageComponent() {
     setFetchError(null);
     try {
       const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-      const { people: peopleData } = await getPeople(userInfo, { pageSize: 30000 }); // Fetch all for assignments
+      // Firestore has a hard limit of 10000 documents per query.
+      const { people: peopleData } = await getPeople(userInfo, { pageSize: 10000 });
       let usersToAssign: AppUser[] = [];
 
       if (appUser.role.includes('Admin')) {
