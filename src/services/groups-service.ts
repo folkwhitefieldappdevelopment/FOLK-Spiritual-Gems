@@ -28,11 +28,10 @@ type UserInfo = {
 };
 
 // This function now fetches BOTH static (Firestore) and dynamic (code-defined) groups
-export const getAllGroups = async (userInfo: UserInfo, allPeople: Person[]): Promise<Group[]> => {
+export const getAllGroups = async (userInfo: UserInfo): Promise<Group[]> => {
   const staticGroups = await getStaticGroups(userInfo);
-  const dynamicGroups = generateDynamicGroups(allPeople);
-
-  return [...staticGroups, ...dynamicGroups].sort((a,b) => a.name.localeCompare(b.name));
+  // Dynamic groups are generated client-side based on the current people context
+  return staticGroups.sort((a,b) => a.name.localeCompare(b.name));
 };
 
 
@@ -68,10 +67,11 @@ export const getStaticGroups = async (userInfo: UserInfo): Promise<Group[]> => {
   return results.sort((a,b) => a.name.localeCompare(b.name));
 };
 
-export const getGroup = async (id: string, allPeople: Person[] = []): Promise<Group | null> => {
+export const getGroup = async (id: string): Promise<Group | null> => {
   if (id.startsWith('dynamic-')) {
-    const dynamicGroups = generateDynamicGroups(allPeople);
-    return dynamicGroups.find(g => g.id === id) || null;
+    // Dynamic groups can't be fetched directly, they are generated client-side
+    // This part of the logic will need to be handled where allPeople is available.
+    return null;
   }
 
   const docRef = doc(db, 'groups', id);

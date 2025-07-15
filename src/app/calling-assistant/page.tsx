@@ -16,8 +16,7 @@ import { CreateUpdatePersonDialog } from "@/components/create-update-person-dial
 import { CallingSessionDialog } from "@/components/calling-session-dialog";
 import { FirebaseConfigError } from "@/components/firebase-config-error";
 import { getPeople, updatePerson, assignCoEnablerToPeople } from "@/services/people-service";
-import { getFolkGuides } from "@/services/user-service";
-import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
+import { getFolkGuides, getAllUsers, getEnablers, getContactSources, getCustomPersonFields, type EnablerOption, getUsers } from "@/services/settings-service";
 import { getAllGroups, createGroup, addPeopleToGroup } from "@/services/groups-service";
 import { updateUser } from "@/services/user-service";
 import { serverTimestamp, arrayUnion } from "firebase/firestore";
@@ -72,7 +71,9 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   const { toast } = useToast();
   const { appUser, user, updateCurrentAppUser } = useAuth();
 
+  const [allFetchedPeople, setAllFetchedPeople] = React.useState<Person[]>([]);
   const [people, setPeople] = React.useState<Person[]>([]);
+  const [totalPeople, setTotalPeople] = React.useState(0);
   const [peopleForSession, setPeopleForSession] = React.useState<Person[]>([]);
   const [isDataLoading, setIsDataLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
@@ -119,20 +120,31 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       setFetchError(null);
       const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
       try {
-        const { people: peopleData } = await getPeople(userInfo, { pageSize: 5000 });
+        const { people: peopleData, totalCount } = await getPeople(userInfo, { 
+            pageSize: 5000, // Fetch all for this page's logic
+            filters,
+            sortDescriptors,
+            searchTerm,
+            groupId: selectedGroupId !== 'all' ? selectedGroupId : undefined,
+         });
+
+        setAllFetchedPeople(peopleData);
+        setTotalPeople(totalCount);
+
         const [enablersData, sourcesData, customFieldsData, groupsData, guidesData] = await Promise.all([
           getEnablers(userInfo, 'filter'),
           getContactSources(userInfo),
           getCustomPersonFields(userInfo),
-          getAllGroups(userInfo, peopleData),
+          getAllGroups(userInfo),
           getFolkGuides(),
         ]);
-        setPeople(peopleData);
+        
         setEnablerOptions(enablersData);
         setContactSourceOptions(sourcesData);
         setCustomFields(customFieldsData);
         setGroups(groupsData);
         setFolkGuides(guidesData);
+
       } catch (error) {
         console.error("Failed to load data:", error);
         if (error instanceof Error) {
@@ -143,12 +155,13 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       } finally {
         setIsDataLoading(false);
       }
-  }, [appUser]);
+  }, [appUser, filters, sortDescriptors, searchTerm, selectedGroupId]);
 
   React.useEffect(() => {
     if (appUser) {
       fetchPageData();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appUser, fetchPageData]);
   
   React.useEffect(() => {
@@ -173,128 +186,10 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     ]
   }, [enablerOptions, contactSourceOptions, folkGuides]);
 
-
   const filteredPeople = React.useMemo(() => {
-    let tempPeople = [...people];
+    return applyColumnFilters(allFetchedPeople, columnFilters);
+  }, [allFetchedPeople, columnFilters]);
 
-    // Apply group filter
-    if (selectedGroupId && selectedGroupId !== 'all') {
-        const group = groups.find(g => g.id === selectedGroupId);
-        if (group) {
-            const memberIds = new Set(group.peopleIds);
-            tempPeople = tempPeople.filter(p => memberIds.has(p.id));
-        }
-    }
-
-    // Apply search filter
-    if (searchTerm.trim()) {
-        const lowercasedFilter = searchTerm.trim().toLowerCase();
-        tempPeople = tempPeople.filter(person => {
-            return (
-                person.fullName.toLowerCase().includes(lowercasedFilter) ||
-                person.phone.includes(lowercasedFilter)
-            );
-        });
-    }
-
-    // Apply advanced global filters
-    if (filters.length > 0) {
-      tempPeople = tempPeople.filter(person => {
-        return filters.every(filter => {
-          const personValue = person[filter.field as keyof Person];
-
-          // Special handling for 'Unassigned' enabler
-          if (filter.field === 'enablerInTouchWith' && filter.value === '__UNASSIGNED__') {
-             if (filter.operator === 'is') return !personValue;
-             if (filter.operator === 'is_not') return !!personValue;
-          }
-
-          if (filter.operator === 'is_empty') {
-            return personValue === null || personValue === undefined || personValue === '';
-          }
-          if (filter.operator === 'is_not_empty') {
-            return personValue !== null && personValue !== undefined && personValue !== '';
-          }
-          
-          if (personValue === null || personValue === undefined) return false;
-
-          const filterValue = filter.value;
-          
-          if (typeof filter.value === 'undefined' || filter.value === null || filter.value === '') return true;
-
-          const personString = String(personValue).toLowerCase();
-          const filterString = String(filterValue).toLowerCase();
-
-          switch (filter.operator) {
-            case 'contains':
-              return personString.includes(filterString);
-            case 'not_contains':
-              return !personString.includes(filterString);
-            case 'is': {
-              if (typeof personValue === 'boolean') {
-                return personValue === (filterValue === 'true' || filterValue === true);
-              }
-              return personString === filterString;
-            }
-            case 'is_not': {
-              if (typeof personValue === 'boolean') {
-                return personValue !== (filterValue === 'true' || filterValue === true);
-              }
-              return personString !== filterString;
-            }
-            case 'eq':
-              return Number(personValue) === Number(filterValue);
-            case 'neq':
-              return Number(personValue) !== Number(filterValue);
-            case 'gt':
-              return Number(personValue) > Number(filterValue);
-            case 'lt':
-              return Number(personValue) < Number(filterValue);
-            case 'gte':
-              return Number(personValue) >= Number(filterValue);
-            case 'lte':
-              return Number(personValue) <= Number(filterValue);
-            default:
-              return true;
-          }
-        });
-      });
-    }
-
-    // Apply column filters
-    tempPeople = applyColumnFilters(tempPeople, columnFilters);
-
-    // Apply sorting
-    return tempPeople.sort((a, b) => {
-      for (const { field, direction } of sortDescriptors) {
-        const valA = a[field as keyof Person];
-        const valB = b[field as keyof Person];
-
-        let comparison = 0;
-
-        if (valA == null && valB != null) {
-          comparison = 1;
-        } else if (valA != null && valB == null) {
-          comparison = -1;
-        } else if (valA == null && valB == null) {
-          comparison = 0;
-        } else if (field === 'createdAt' || field === 'lastCallAt') {
-            const dateA = (valA as any)?.toDate ? (valA as any).toDate() : new Date(0);
-            const dateB = (valB as any)?.toDate ? (valB as any).toDate() : new Date(0);
-            comparison = dateA.getTime() - dateB.getTime();
-        } else if (typeof valA === 'string' && typeof valB === 'string') {
-          comparison = valA.localeCompare(valB, undefined, { numeric: true });
-        } else if (typeof valA === 'number' && typeof valB === 'number') {
-          comparison = valA - valB;
-        }
-
-        if (comparison !== 0) {
-          return direction === 'asc' ? comparison : -comparison;
-        }
-      }
-      return 0;
-    });
-  }, [people, searchTerm, filters, sortDescriptors, groups, selectedGroupId, columnFilters]);
 
   const totalPages = Math.ceil(filteredPeople.length / ROWS_PER_PAGE);
   const paginatedPeople = React.useMemo(() => {
@@ -375,15 +270,14 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
     updatePerson(personId, updateData, userInfo);
     
-    // Optimistic update using the same client-side timestamp
-    setPeople(prev => prev.map(p => {
+    setAllFetchedPeople(prev => prev.map(p => {
         if (p.id === personId) {
             const newHistory = p.callHistory ? [...p.callHistory, callHistoryEntry] : [callHistoryEntry];
             const updatedPerson = {
                 ...p,
                 callHistory: newHistory,
                 lastCallRemark: remark,
-                lastCallAt: callTime, // Show the client time in UI immediately
+                lastCallAt: callTime.toISOString(),
                 lastCallStatus: status,
             };
             if (sg !== undefined) updatedPerson.lastSg = sg;
@@ -396,7 +290,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   }, [appUser, user, currentCallingEvent]);
   
   const handleDeletePerson = React.useCallback(() => {
-    // This view is for calling, not deleting. Deleting can be done from main contacts page.
     toast({
         title: "Action Disabled",
         description: "Please go to the main Contacts page to delete a contact.",
@@ -475,13 +368,13 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     try {
         await addPeopleToGroup(targetGroupId, Array.from(selectedIds), userInfo);
         toast({ title: 'Members Added', description: `${selectedIds.size} contacts have been added to the other group.` });
-        const updatedGroups = await getAllGroups(userInfo, people);
+        const updatedGroups = await getAllGroups(userInfo);
         setGroups(updatedGroups);
         setSelectedIds(new Set());
     } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not add contacts to the group.' });
     }
-  }, [selectedIds, appUser, toast, people]);
+  }, [selectedIds, appUser, toast]);
 
   const handleSaveGroupAndAddMembers = React.useCallback(async (groupData: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy">) => {
     if (!appUser) return;
@@ -493,7 +386,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
             ...groupData,
         };
         const newGroup = await createGroup(newGroupData, userInfo);
-        setGroups((prev) => [...prev, newGroup]);
         
         if (selectedIds.size > 0) {
             await addPeopleToGroup(newGroup.id, Array.from(selectedIds), userInfo);
@@ -501,7 +393,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
                 title: "Group Created & Members Added",
                 description: `The group "${newGroup.name}" was created and ${selectedIds.size} contacts were added.`,
             });
-            const updatedGroups = await getAllGroups(userInfo, people);
+            const updatedGroups = await getAllGroups(userInfo);
             setGroups(updatedGroups);
             setSelectedIds(new Set());
         } else {
@@ -509,6 +401,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
                 title: "Group Created",
                 description: `The new group "${newGroup.name}" has been added.`,
             });
+             setGroups((prev) => [...prev, newGroup]);
         }
         setIsCreateGroupDialogOpen(false);
     } catch (error) {
@@ -518,7 +411,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
             description: "Could not create or add members to the new group.",
         });
     }
-  }, [selectedIds, appUser, toast, people]);
+  }, [selectedIds, appUser, toast]);
 
   const handleAssignCoEnabler = React.useCallback(async (coEnabler: AppUser | null) => {
     if (!appUser || selectedIds.size === 0) return;
@@ -529,45 +422,53 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
             title: coEnabler ? 'Co-Enabler Assigned' : 'Co-Enabler Unassigned',
             description: `${selectedIds.size} contacts have been updated.`,
         });
-        // Refetch all people data to show the change
-        const { people: peopleData } = await getPeople(userInfo, { pageSize: 5000 });
-        setPeople(peopleData);
+        await fetchPageData();
         setSelectedIds(new Set());
     } catch (error) {
         toast({ variant: "destructive", title: "Error", description: "Could not assign co-enabler." });
     }
-  }, [selectedIds, toast, appUser]);
+  }, [selectedIds, toast, appUser, fetchPageData]);
 
-  const handleResumeSession = React.useCallback(() => {
-    if (!pausedSession || !canResumeSession) return;
+  const handleResumeSession = React.useCallback(async () => {
+    if (!pausedSession || !canResumeSession || !appUser) return;
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     
-    // Restore filters and sorting from paused session
-    setFilters(pausedSession.filters);
-    setSortDescriptors(pausedSession.sortDescriptors);
-    setSearchTerm(pausedSession.searchTerm);
-    setSelectedGroupId(pausedSession.selectedGroupId);
-    setColumnFilters(pausedSession.columnFilters);
-    
-    const peopleMap = new Map(people.map(p => [p.id, p]));
-    const peopleForPausedSession = pausedSession.peopleIds
-        .map(id => peopleMap.get(id))
-        .filter((p): p is Person => !!p);
+    try {
+      // Re-fetch the exact list of people from the paused session to ensure data freshness
+      const { people: peopleForPausedSession } = await getPeople(userInfo, {
+        pageSize: pausedSession.peopleIds.length,
+        filters: pausedSession.filters,
+        sortDescriptors: pausedSession.sortDescriptors,
+        searchTerm: pausedSession.searchTerm,
+        groupId: pausedSession.selectedGroupId !== 'all' ? pausedSession.selectedGroupId : undefined,
+      });
 
-    if (peopleForPausedSession.length !== pausedSession.peopleIds.length) {
-        toast({
-            variant: 'destructive',
-            title: 'Could not resume session',
-            description: 'Some contacts in the paused session no longer exist or are inaccessible.'
-        });
-        return;
+      if (peopleForPausedSession.length === 0) {
+          toast({
+              variant: 'destructive',
+              title: 'Could not resume session',
+              description: 'The contacts in the paused session no longer match the filter criteria.'
+          });
+          return;
+      }
+      
+      setAllFetchedPeople(peopleForPausedSession); // Update main list to reflect resumed session state
+      setFilters(pausedSession.filters);
+      setSortDescriptors(pausedSession.sortDescriptors);
+      setSearchTerm(pausedSession.searchTerm);
+      setSelectedGroupId(pausedSession.selectedGroupId);
+      setColumnFilters(pausedSession.columnFilters);
+      
+      setPeopleForSession(peopleForPausedSession);
+      setSessionStartIndex(pausedSession.sessionStartIndex);
+      setInitialSessionIndex(pausedSession.currentIndex);
+      setIsSessionDialogOpen(true);
+
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Error Resuming', description: 'Could not reload the paused session data.' });
     }
 
-    setPeopleForSession(peopleForPausedSession);
-    setSessionStartIndex(pausedSession.sessionStartIndex);
-    setInitialSessionIndex(pausedSession.currentIndex);
-    setIsSessionDialogOpen(true);
-
-  }, [pausedSession, canResumeSession, people, toast]);
+  }, [pausedSession, canResumeSession, appUser, toast]);
 
   const renderContent = () => {
     if (fetchError) {
@@ -820,10 +721,10 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
               const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
               await updatePerson(editingPersonRef.current!.id, data, userInfo);
               // Also update the main people list to reflect changes immediately
-              setPeople(prev => prev.map(p => p.id === editingPersonRef.current!.id ? {...p, ...data} : p));
+              setAllFetchedPeople(prev => prev.map(p => p.id === editingPersonRef.current!.id ? {...p, ...data} : p));
             }}
             person={editingPersonRef.current}
-            allPeople={people}
+            allPeople={allFetchedPeople}
         />
       )}
     </div>

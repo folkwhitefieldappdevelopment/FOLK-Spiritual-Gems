@@ -9,7 +9,6 @@ import { getPeople } from "@/services/people-service";
 import { getEnablersForGuide, getFolkGuides, getUsers } from "@/services/user-service";
 import { FirebaseConfigError } from "@/components/firebase-config-error";
 import { useAuth } from "@/contexts/auth-context";
-import { generateDynamicGroups } from '@/lib/dynamic-groups';
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { PageHeader } from "@/components/page-header";
@@ -56,17 +55,14 @@ function GroupsPageComponent() {
       setFetchError(null);
       const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
       try {
-        const [{ people: peopleData }, usersData] = await Promise.all([
-            getPeople(userInfo, { pageSize: 5000 }),
+        const [peopleData, usersData, groupsData] = await Promise.all([
+            getPeople(userInfo, { pageSize: 5000 }), // Needed for dynamic groups context
             getUsers(),
+            getAllGroups(userInfo),
         ]);
-        setPeople(peopleData);
+        setPeople(peopleData.people);
         setAllUsers(usersData);
-
-        // This gets all static groups the user can see
-        const groupsData = await getAllGroups(userInfo, peopleData);
         setAllGroups(groupsData);
-
       } catch (error) {
         console.error("Failed to fetch groups and people", error);
         if (error instanceof Error) {
