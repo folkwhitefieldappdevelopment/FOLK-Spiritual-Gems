@@ -96,7 +96,7 @@ export const getPeople = async (
     let queryConstraints: QueryConstraint[] = [];
     let sortDescriptors = initialSortDescriptors;
     
-    // Flag to disable default sorting if a complex filter is applied
+    // This flag will be used to prevent applying a default sort that would require a composite index.
     let disableDefaultSort = false;
 
     // --- Role-based Access Control ---
@@ -104,8 +104,8 @@ export const getPeople = async (
         // Admin sees all. No additional constraint needed for access.
     } else if (userInfo.role.includes('Folk Guide')) {
         queryConstraints.push(where('folkGuideId', '==', userInfo.id));
-        // This combination requires an index, so we disable default sorting.
-        // The user can still apply sorting manually.
+        // Filtering by folkGuideId while sorting by a different field requires a composite index.
+        // We disable the default sort to prevent crashes. The user can still apply their own sort.
         disableDefaultSort = true;
     } else { // Folk Enabler
         queryConstraints.push(
@@ -114,11 +114,11 @@ export const getPeople = async (
                 where('coEnablerId', '==', userInfo.id)
             )
         );
-        // This is a complex 'OR' query, so we should not apply a default sort.
+        // This is a complex 'OR' query, which also restricts sorting.
         disableDefaultSort = true;
     }
     
-    // Set a default sort descriptor if none is provided and not disabled
+    // Set a default sort descriptor if none is provided and it's not disabled.
     if (sortDescriptors.length === 0 && !disableDefaultSort) {
       sortDescriptors = [{ field: 'createdAt', direction: 'desc' }];
     }
@@ -132,7 +132,6 @@ export const getPeople = async (
             const memberIds = groupData.peopleIds || [];
             if (memberIds.length > 0) {
                  if (memberIds.length > 30) {
-                    // If memberIds are more than 30, a single 'in' query won't work.
                     console.warn(`Group ${groupId} has more than 30 members, which exceeds Firestore's 'in' query limit. Results may be incomplete.`);
                     queryConstraints.push(where('__name__', 'in', memberIds.slice(0, 30)));
                  } else {
@@ -388,3 +387,6 @@ export const assignEnablerToPeople = async (personIds: string[], enabler: AppUse
         await logAudit('Assign Enabler', `Assigned ${personIds.length} contacts to ${enabler.name}.`, userInfo);
     }
 };
+
+
+    
