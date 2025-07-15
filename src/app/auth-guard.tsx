@@ -20,12 +20,10 @@ export function AuthGuard({ children, adminOnly = false, adminOrGuideOnly = fals
   const [isRedirecting, setIsRedirecting] = React.useState(false);
 
   React.useEffect(() => {
-    // Don't do anything while auth is loading.
     if (loading) {
       return;
     }
 
-    // If there's no user, redirect to login.
     if (!user) {
       router.replace('/login');
       setIsRedirecting(true);
@@ -39,7 +37,6 @@ export function AuthGuard({ children, adminOnly = false, adminOrGuideOnly = fals
       hasPermission = !!appUser?.role.includes('Admin') || !!appUser?.role.includes('Folk Guide');
     }
     
-    // If the route has restrictions and the user doesn't meet them, redirect.
     if (!hasPermission) {
       toast({
           variant: 'destructive',
@@ -51,12 +48,10 @@ export function AuthGuard({ children, adminOnly = false, adminOrGuideOnly = fals
       return;
     }
 
-    // If all checks pass, we are not redirecting.
     setIsRedirecting(false);
 
   }, [user, appUser, loading, adminOnly, adminOrGuideOnly, router, toast]);
 
-  // While auth is loading or a redirect is in progress, show a spinner.
   if (loading || isRedirecting || !appUser) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
@@ -65,6 +60,5 @@ export function AuthGuard({ children, adminOnly = false, adminOrGuideOnly = fals
     );
   }
 
-  // If all checks pass and we are not redirecting, render the children.
   return <>{children}</>;
 }

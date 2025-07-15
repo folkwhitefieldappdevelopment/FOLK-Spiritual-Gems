@@ -65,44 +65,40 @@ type UserInfo = {
   role: UserRole[];
 };
 
-const MAX_FIRESTORE_LIMIT = 10000;
-
 export const getPeople = async (
     userInfo: UserInfo,
-    {
-        page = 1,
-        pageSize = 10,
-        filters = [],
-        sortDescriptors: initialSortDescriptors = [],
-        searchTerm = '',
-        groupId,
-    }: {
+    options: {
         page?: number;
         pageSize?: number;
         filters?: FilterRule[];
         sortDescriptors?: SortDescriptor[];
         searchTerm?: string;
         groupId?: string;
-    }
+    } = {}
 ): Promise<GetPeopleResult> => {
     if (!userInfo) return { people: [], totalCount: 0 };
-
-    const effectivePageSize = Math.min(pageSize, MAX_FIRESTORE_LIMIT);
+    
+    const {
+        page = 1,
+        pageSize = 10,
+        filters = [],
+        sortDescriptors: initialSortDescriptors = [],
+        searchTerm = '',
+        groupId,
+    } = options;
 
     const peopleCollection = collection(db, 'people');
     let queryConstraints: QueryConstraint[] = [];
     let sortDescriptors = initialSortDescriptors;
     
-    let disableDefaultSort = false;
+    let isComplexQuery = false;
 
     // --- Role-based Access Control ---
     if (userInfo.role.includes('Admin')) {
         // No additional constraints needed.
     } else if (userInfo.role.includes('Folk Guide')) {
         queryConstraints.push(where('folkGuideId', '==', userInfo.id));
-        // This is a key change: if we filter by a field, we should avoid default sorting by another field
-        // unless a composite index is guaranteed to exist. We remove the default sort to be safe.
-        disableDefaultSort = true;
+        isComplexQuery = true;
     } else { // Folk Enabler
         queryConstraints.push(
             or(
@@ -110,12 +106,7 @@ export const getPeople = async (
                 where('coEnablerId', '==', userInfo.id)
             )
         );
-        disableDefaultSort = true;
-    }
-    
-    // Set a default sort descriptor if none is provided and it's not disabled.
-    if (sortDescriptors.length === 0 && !disableDefaultSort) {
-      sortDescriptors = [{ field: 'createdAt', direction: 'desc' }];
+        isComplexQuery = true;
     }
     
     // --- Group Filter ---
@@ -123,11 +114,10 @@ export const getPeople = async (
         const groupDocRef = doc(db, 'groups', groupId);
         const groupSnap = await getDoc(groupDocRef);
         if (groupSnap.exists()) {
-            const groupData = groupSnap.data();
-            const memberIds = groupData.peopleIds || [];
+            const memberIds = groupSnap.data().peopleIds || [];
             if (memberIds.length > 0) {
                  if (memberIds.length > 30) {
-                    console.warn(`Group ${groupId} has more than 30 members, which exceeds Firestore's 'in' query limit. Results may be incomplete.`);
+                    console.warn(`Group ${groupId} has more than 30 members, exceeding Firestore's 'in' query limit. Only the first 30 will be shown.`);
                     queryConstraints.push(where('__name__', 'in', memberIds.slice(0, 30)));
                  } else {
                     queryConstraints.push(where('__name__', 'in', memberIds));
@@ -151,15 +141,12 @@ export const getPeople = async (
         if (operator === 'lt') return where(field, '<', value);
         if (operator === 'gte') return where(field, '>=', value);
         if (operator === 'lte') return where(field, '<=', value);
-        if (operator === 'contains') {
-           console.warn("Firestore does not support 'contains' directly. Filtering will happen on the client. For large datasets, this may be slow or incomplete.");
-           return null;
-        }
         return null;
     }).filter((c): c is QueryConstraint => c !== null);
 
     if (filterConstraints.length > 0) {
         queryConstraints.push(and(...filterConstraints));
+        isComplexQuery = true;
     }
 
     // --- Search Term ---
@@ -167,31 +154,35 @@ export const getPeople = async (
         const term = searchTerm.trim();
         queryConstraints.push(where('fullName', '>=', term));
         queryConstraints.push(where('fullName', '<=', term + '\uf8ff'));
+        isComplexQuery = true;
     }
 
-    // --- Count and Data Queries ---
-    const countQuery = query(peopleCollection, ...queryConstraints);
+    // --- Sorting ---
+    // If no sort is provided and it's not a complex query, apply default.
+    // Otherwise, let Firestore use its default order to avoid index errors.
+    if (sortDescriptors.length === 0 && !isComplexQuery) {
+      sortDescriptors = [{ field: 'createdAt', direction: 'desc' }];
+    }
     const sortConstraints = sortDescriptors.map(desc => orderBy(desc.field, desc.direction));
-    let dataQuery = query(peopleCollection, ...queryConstraints, ...sortConstraints, limit(effectivePageSize));
 
-    // --- Pagination ---
+    // --- Count Query (without pagination/sorting) ---
+    const countQuery = query(peopleCollection, ...queryConstraints);
+    const countSnapshot = await getCountFromServer(countQuery);
+    const totalCount = countSnapshot.data().count;
+
+    // --- Data Query (with pagination and sorting) ---
+    let dataQuery = query(peopleCollection, ...queryConstraints, ...sortConstraints, limit(pageSize));
     if (page > 1) {
-        const prevPageQuery = query(peopleCollection, ...queryConstraints, ...sortConstraints, limit((page - 1) * effectivePageSize));
+        const prevPageQuery = query(peopleCollection, ...queryConstraints, ...sortConstraints, limit((page - 1) * pageSize));
         const prevPageSnapshot = await getDocs(prevPageQuery);
         if (!prevPageSnapshot.empty) {
             const lastVisible = prevPageSnapshot.docs[prevPageSnapshot.docs.length - 1];
             dataQuery = query(dataQuery, startAfter(lastVisible));
         }
     }
-
-    // --- Execute Queries ---
-    const [countSnapshot, dataSnapshot] = await Promise.all([
-        getCountFromServer(countQuery),
-        getDocs(dataQuery)
-    ]);
     
+    const dataSnapshot = await getDocs(dataQuery);
     const people = dataSnapshot.docs.map(processPersonDoc);
-    const totalCount = countSnapshot.data().count;
     
     return { people, totalCount };
 };

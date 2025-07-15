@@ -66,19 +66,14 @@ function AssignmentsPageComponent() {
     setFetchError(null);
     try {
       const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-      // Admins see all unassigned, Guides only see unassigned within their folk.
-      // We still fetch all people and filter client-side for this specific view.
-      // A dedicated server-side query for unassigned people could be an optimization.
-      const { people: peopleData } = await getPeople(userInfo, { pageSize: 5000 }); // Fetch a large number
+      const peopleData = await getPeople(userInfo);
       let usersToAssign: AppUser[] = [];
 
       if (appUser.role.includes('Admin')) {
         const allUsers = await getUsers();
-        // Admins can assign to any enabler
         usersToAssign = allUsers.filter(u => u.role.includes('Folk Enabler'));
       } else if (appUser.role.includes('Folk Guide')) {
         const enablersUnderGuide = await getEnablersForGuide(appUser.id);
-        // Guides can assign only to enablers under them.
         usersToAssign = enablersUnderGuide;
       }
       
@@ -143,7 +138,6 @@ function AssignmentsPageComponent() {
       await assignEnablerToPeople(Array.from(selectedContactIds), enabler, userInfo);
       toast({ title: 'Contacts Assigned', description: `${selectedContactIds.size} contacts were assigned to ${enabler.name}.` });
       
-      // Manually update local state for instant feedback
       const guideInfo = enabler.reportsTo;
       setPeople(prev => prev.map(p => {
         if (selectedContactIds.has(p.id)) {
@@ -200,7 +194,6 @@ function AssignmentsPageComponent() {
           description="Assign unassigned contacts to available enablers."
         />
         <main className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 sm:p-6 sm:pt-0 h-[calc(100vh-80px)]">
-          {/* Left Panel: Enablers */}
           <Card className="lg:col-span-1 flex flex-col">
             <CardHeader>
               <CardTitle>Enablers</CardTitle>
@@ -234,7 +227,6 @@ function AssignmentsPageComponent() {
             </CardContent>
           </Card>
 
-          {/* Right Panel: Unassigned Contacts */}
           <Card className="lg:col-span-2 flex flex-col">
             <CardHeader>
               <CardTitle>Unassigned Contacts ({unassignedContacts.length})</CardTitle>

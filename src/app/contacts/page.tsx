@@ -108,12 +108,7 @@ function ContactsPageComponent() {
   const [searchTerm, setSearchTerm] = React.useState("");
   const [filters, setFilters] = React.useState<FilterRule[]>([]);
   
-  const getDefaultSort = (): SortDescriptor[] => {
-    if (appUser?.role.includes('Folk Guide') && !appUser.role.includes('Admin')) {
-      return [{ field: 'fullName', direction: 'asc' }];
-    }
-    return [{ field: 'createdAt', direction: 'desc' }];
-  };
+  const getDefaultSort = (): SortDescriptor[] => [{ field: 'createdAt', direction: 'desc' }];
   const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>(getDefaultSort());
   
   const [columnFilters, setColumnFilters] = React.useState<ColumnFilterState>({});
@@ -184,8 +179,7 @@ function ContactsPageComponent() {
     if (appUser) {
       fetchPageData();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, filters, sortDescriptors, searchTerm, appUser]);
+  }, [appUser, currentPage, filters, sortDescriptors, searchTerm, fetchPageData]);
 
 
   const filterableFields: FilterableField[] = React.useMemo(() => {
@@ -978,4 +972,12 @@ function ContactsPageComponent() {
       />
     </div>
   );
+}
+
+export default function ContactsPage() {
+    return (
+        <AuthGuard>
+            <ContactsPageComponent />
+        </AuthGuard>
+    )
 }
