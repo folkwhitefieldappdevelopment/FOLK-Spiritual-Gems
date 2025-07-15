@@ -120,8 +120,9 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       setFetchError(null);
       const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
       try {
-        const { people: peopleData, totalCount } = await getPeople(userInfo, { 
-            pageSize: 5000, // Fetch all for this page's logic
+        // Calling assistant needs all matching people for the session, so we don't paginate.
+        const { people: peopleData } = await getPeople(userInfo, { 
+            pageSize: 99999, // Fetch all matching contacts
             filters,
             sortDescriptors,
             searchTerm,
