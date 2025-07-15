@@ -173,7 +173,7 @@ export const getPerson = async (id: string): Promise<Person | null> => {
 
 export const createPerson = async (
   personData: Omit<Person, 'id' | 'createdAt'>,
-  appUser: AppUser
+  userInfo: UserInfo
 ): Promise<Person> => {
   const peopleCollection = collection(db, 'people');
   const q = query(peopleCollection, where("phone", "==", personData.phone));
@@ -187,57 +187,11 @@ export const createPerson = async (
 
   // Auto-assignment for Folk Guide if not provided (e.g., by non-admin)
   if (!folkGuideId) {
-    if (appUser.role.includes('Folk Guide')) {
-      folkGuideId = appUser.id;
-      folkGuide = `${appUser.name} (${appUser.fgCode || 'N/A'})`;
-    } else if (appUser.role.includes('Folk Enabler') && appUser.reportsTo) {
-      folkGuideId = appUser.reportsTo.guideId;
-      folkGuide = `${appUser.reportsTo.guideName} (${appUser.reportsTo.guideFgCode || 'N/A'})`;
+    if (userInfo.role.includes('Folk Guide')) {
+      folkGuideId = userInfo.id;
+      // We don't have fgCode here, but we can reconstruct it or leave it out
+      folkGuide = `${userInfo.name}`; 
     }
-  }
-
-  // If unassigned, and the creator is a Folk Guide, auto-assign enabler.
-  if (!assignedEnabler && appUser.role.includes('Folk Guide')) {
-    const usersCollection = collection(db, 'users');
-    const enablersQuery = query(usersCollection, where('reportsTo.guideId', '==', appUser.id));
-    const enablersSnapshot = await getDocs(enablersQuery);
-    // Sort enablers by name to ensure consistent order
-    const enablers = enablersSnapshot.docs
-      .map(doc => doc.data() as AppUser)
-      .sort((a, b) => a.name.localeCompare(b.name));
-
-    if (enablers.length > 0) {
-        const guideDocRef = doc(db, 'users', appUser.id);
-        try {
-            const newAssignedEnablerName = await runTransaction(db, async (transaction) => {
-                const guideDoc = await transaction.get(guideDocRef);
-                if (!guideDoc.exists()) {
-                    throw "Folk Guide document not found!";
-                }
-
-                const guideData = guideDoc.data();
-                const lastIndex = guideData.lastAssignedEnablerIndex ?? -1;
-                const nextIndex = (lastIndex + 1) % enablers.length;
-                
-                const enablerToAssign = enablers[nextIndex];
-                
-                transaction.update(guideDocRef, { lastAssignedEnablerIndex: nextIndex });
-                
-                return enablerToAssign.name;
-            });
-            assignedEnabler = newAssignedEnablerName;
-        } catch (e) {
-            console.error("Transaction for auto-assignment failed: ", e);
-            // Fallback: assign to the guide themselves if transaction fails
-            assignedEnabler = appUser.name;
-        }
-    } else {
-        // If no enablers, assign to the guide themselves
-        assignedEnabler = appUser.name;
-    }
-  } else if (!assignedEnabler && appUser.role.includes('Folk Enabler')) {
-    // If an enabler creates a contact without specifying, assign it to them by default.
-    assignedEnabler = appUser.name;
   }
 
   const dataToSave = {
@@ -263,7 +217,7 @@ export const createPerson = async (
   };
 
   const docRef = await addDoc(peopleCollection, dataToSave);
-  await logAudit('Create Contact', `Created new contact: ${dataToSave.fullName} (${docRef.id})`, appUser);
+  await logAudit('Create Contact', `Created new contact: ${dataToSave.fullName} (${docRef.id})`, userInfo);
   const newPerson: Person = {
     ...(dataToSave as Omit<Person, 'id'>),
     id: docRef.id,
@@ -272,7 +226,7 @@ export const createPerson = async (
   return newPerson;
 };
 
-export const updatePerson = async (id: string, personData: Partial<Omit<Person, 'id'>>, appUser: AppUser | null = null): Promise<void> => {
+export const updatePerson = async (id: string, personData: Partial<Omit<Person, 'id'>>, userInfo: UserInfo | null = null): Promise<void> => {
   if (personData.phone) {
     const peopleCollection = collection(db, 'people');
     const q = query(peopleCollection, where("phone", "==", personData.phone));
@@ -284,22 +238,22 @@ export const updatePerson = async (id: string, personData: Partial<Omit<Person, 
   }
   const docRef = doc(db, 'people', id);
   await updateDoc(docRef, personData);
-  if (appUser) {
+  if (userInfo) {
     const person = await getPerson(id);
-    await logAudit('Update Contact', `Updated details for contact: ${person?.fullName} (${id})`, appUser);
+    await logAudit('Update Contact', `Updated details for contact: ${person?.fullName} (${id})`, userInfo);
   }
 };
 
-export const deletePerson = async (id: string, appUser: AppUser): Promise<void> => {
+export const deletePerson = async (id: string, userInfo: UserInfo): Promise<void> => {
   const person = await getPerson(id);
   const docRef = doc(db, 'people', id);
   await deleteDoc(docRef);
   if (person) {
-    await logAudit('Delete Contact', `Deleted contact: ${person.fullName} (${id})`, appUser);
+    await logAudit('Delete Contact', `Deleted contact: ${person.fullName} (${id})`, userInfo);
   }
 };
 
-export const deletePeople = async (ids: string[], appUser: AppUser): Promise<void> => {
+export const deletePeople = async (ids: string[], userInfo: UserInfo): Promise<void> => {
   if (ids.length === 0) return;
   const batch = writeBatch(db);
   ids.forEach(id => {
@@ -307,12 +261,12 @@ export const deletePeople = async (ids: string[], appUser: AppUser): Promise<voi
     batch.delete(docRef);
   });
   await batch.commit();
-  await logAudit('Delete Multiple Contacts', `Deleted ${ids.length} contacts: ${ids.join(', ')}`, appUser);
+  await logAudit('Delete Multiple Contacts', `Deleted ${ids.length} contacts: ${ids.join(', ')}`, userInfo);
 };
 
 export const importPeople = async (
     people: Omit<Person, 'id' | 'createdAt'>[],
-    appUser: AppUser
+    userInfo: UserInfo
 ): Promise<void> => {
   if (people.length === 0) return;
 
@@ -324,12 +278,9 @@ export const importPeople = async (
 
     // Auto-assign Folk Guide if not provided
     if (!folkGuideId && !folkGuide) {
-      if (appUser.role.includes('Folk Guide')) {
-        folkGuideId = appUser.id;
-        folkGuide = `${appUser.name} (${appUser.fgCode || 'N/A'})`;
-      } else if (appUser.role.includes('Folk Enabler') && appUser.reportsTo) {
-        folkGuideId = appUser.reportsTo.guideId;
-        folkGuide = `${appUser.reportsTo.guideName} (${appUser.reportsTo.guideFgCode || 'N/A'})`;
+      if (userInfo.role.includes('Folk Guide')) {
+        folkGuideId = userInfo.id;
+        folkGuide = `${userInfo.name}`;
       }
     }
 
@@ -358,10 +309,10 @@ export const importPeople = async (
   });
   
   await batch.commit();
-  await logAudit('Import Contacts', `Imported ${people.length} contacts from a file.`, appUser);
+  await logAudit('Import Contacts', `Imported ${people.length} contacts from a file.`, userInfo);
 };
 
-export const assignCoEnablerToPeople = async (personIds: string[], coEnabler: AppUser | null, appUser: AppUser): Promise<void> => {
+export const assignCoEnablerToPeople = async (personIds: string[], coEnabler: AppUser | null, userInfo: UserInfo): Promise<void> => {
   if (personIds.length === 0) return;
   const batch = writeBatch(db);
   personIds.forEach(id => {
@@ -382,10 +333,10 @@ export const assignCoEnablerToPeople = async (personIds: string[], coEnabler: Ap
   const details = coEnabler 
     ? `Assigned ${coEnabler.name} as co-enabler for ${personIds.length} contacts.`
     : `Unassigned co-enabler from ${personIds.length} contacts.`;
-  await logAudit('Assign Co-Enabler', details, appUser);
+  await logAudit('Assign Co-Enabler', details, userInfo);
 };
 
-export const assignEnablerToPeople = async (personIds: string[], enabler: AppUser, appUser: AppUser | null): Promise<void> => {
+export const assignEnablerToPeople = async (personIds: string[], enabler: AppUser, userInfo: UserInfo | null): Promise<void> => {
     if (personIds.length === 0) return;
     const batch = writeBatch(db);
     const guideInfo = enabler.reportsTo;
@@ -399,7 +350,7 @@ export const assignEnablerToPeople = async (personIds: string[], enabler: AppUse
         });
     });
     await batch.commit();
-    if (appUser) {
-        await logAudit('Assign Enabler', `Assigned ${personIds.length} contacts to ${enabler.name}.`, appUser);
+    if (userInfo) {
+        await logAudit('Assign Enabler', `Assigned ${personIds.length} contacts to ${enabler.name}.`, userInfo);
     }
 };

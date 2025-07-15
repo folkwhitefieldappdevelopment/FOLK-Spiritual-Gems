@@ -130,9 +130,11 @@ function AssignmentsPageComponent() {
       toast({ variant: 'destructive', title: 'Invalid Enabler' });
       return;
     }
+    if (!appUser) return;
+    const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
 
     try {
-      await assignEnablerToPeople(Array.from(selectedContactIds), enabler, appUser);
+      await assignEnablerToPeople(Array.from(selectedContactIds), enabler, userInfo);
       toast({ title: 'Contacts Assigned', description: `${selectedContactIds.size} contacts were assigned to ${enabler.name}.` });
       
       // Manually update local state for instant feedback

@@ -1,7 +1,7 @@
 
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp, getDocs, query, orderBy } from 'firebase/firestore';
-import type { AppUser } from '@/lib/types';
+import type { AppUser, UserRole } from '@/lib/types';
 
 export type AuditLog = {
     id: string;
@@ -12,14 +12,20 @@ export type AuditLog = {
     details: string;
 };
 
+type UserInfo = {
+  id: string;
+  name: string;
+  role: UserRole[];
+};
+
 type AuditLogData = Omit<AuditLog, 'id' | 'timestamp'>;
 
-export const logAudit = async (action: string, details: string, appUser: AppUser | null) => {
-    if (!appUser) return; // Don't log if user isn't available
+export const logAudit = async (action: string, details: string, userInfo: UserInfo | null) => {
+    if (!userInfo) return; // Don't log if user isn't available
 
     const auditData: AuditLogData = {
-        userId: appUser.id,
-        userName: appUser.name,
+        userId: userInfo.id,
+        userName: userInfo.name,
         action,
         details,
     };

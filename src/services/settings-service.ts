@@ -10,8 +10,14 @@ import {
   where,
   getDocs,
 } from 'firebase/firestore';
-import type { AppUser, CustomField } from '@/lib/types';
+import type { AppUser, CustomField, UserRole } from '@/lib/types';
 import { logAudit } from './audit-service';
+
+type UserInfo = {
+  id: string;
+  name: string;
+  role: UserRole[];
+};
 
 const defaultContactSources = ['Govinda Temple', 'ITPL', 'HK hill'];
 
@@ -20,8 +26,8 @@ export type EnablerOption = {
   label: string;
 };
 
-const ensureSettingsDoc = async (appUser: AppUser) => {
-    if (!appUser) {
+const ensureSettingsDoc = async (userInfo: UserInfo) => {
+    if (!userInfo) {
         throw new Error("Authentication required to access settings.");
     }
     const settingsDocRef = doc(db, 'settings', 'options');
@@ -55,15 +61,15 @@ const ensureSettingsDoc = async (appUser: AppUser) => {
 }
 
 export const getEnablers = async (
-  appUser: AppUser | null,
+  userInfo: UserInfo | null,
   context: 'filter' | 'assignment' = 'filter'
 ): Promise<EnablerOption[]> => {
-  if (!appUser) return [];
+  if (!userInfo) return [];
 
   const usersCollection = collection(db, 'users');
 
   // Admin sees all Folk Enablers and Folk Guides
-  if (appUser.role.includes('Admin')) {
+  if (userInfo.role.includes('Admin')) {
     const allUsersSnapshot = await getDocs(usersCollection);
     const allUsers = allUsersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as AppUser));
 
@@ -97,8 +103,8 @@ export const getEnablers = async (
   }
 
   // Folk Guide sees their enablers
-  if (appUser.role.includes('Folk Guide')) {
-    const enablersQuery = query(usersCollection, where('reportsTo.guideId', '==', appUser.id));
+  if (userInfo.role.includes('Folk Guide')) {
+    const enablersQuery = query(usersCollection, where('reportsTo.guideId', '==', userInfo.id));
     const snapshot = await getDocs(enablersQuery);
     const enablerUsers = snapshot.docs.map(doc => doc.data() as AppUser);
 
@@ -111,7 +117,7 @@ export const getEnablers = async (
       // For filtering, add a special "Unassigned" option.
       options.unshift({
         value: '__UNASSIGNED__',
-        label: `${appUser.fgCode || 'Guide'} (Unassigned)`,
+        label: `Unassigned`,
       });
     }
 
@@ -119,31 +125,31 @@ export const getEnablers = async (
   }
 
   // A Folk Enabler only ever sees themselves.
-  if (appUser.role.includes('Folk Enabler')) {
-    return [{ value: appUser.name, label: appUser.name }];
+  if (userInfo.role.includes('Folk Enabler')) {
+    return [{ value: userInfo.name, label: userInfo.name }];
   }
 
   return [];
 };
 
-export const getContactSources = async (appUser: AppUser): Promise<string[]> => {
-    const settings = await ensureSettingsDoc(appUser);
+export const getContactSources = async (userInfo: UserInfo): Promise<string[]> => {
+    const settings = await ensureSettingsDoc(userInfo);
     return settings.contactSources;
 }
 
-export const addContactSource = async (newSource: string, appUser: AppUser) => {
+export const addContactSource = async (newSource: string, userInfo: UserInfo) => {
     const settingsDocRef = doc(db, 'settings', 'options');
     const currentSources = (await getDoc(settingsDocRef)).data()?.contactSources || [];
     if (!currentSources.includes(newSource)) {
         const updatedSources = [...currentSources, newSource];
         await setDoc(settingsDocRef, { contactSources: updatedSources }, { merge: true });
-        await logAudit('Add Contact Source', `Added source: ${newSource}`, appUser);
+        await logAudit('Add Contact Source', `Added source: ${newSource}`, userInfo);
         return updatedSources;
     }
     return currentSources;
 }
 
-export const updateContactSource = async (oldName: string, newName: string, appUser: AppUser) => {
+export const updateContactSource = async (oldName: string, newName: string, userInfo: UserInfo) => {
     const batch = writeBatch(db);
     const settingsDocRef = doc(db, 'settings', 'options');
 
@@ -160,11 +166,11 @@ export const updateContactSource = async (oldName: string, newName: string, appU
     });
 
     await batch.commit();
-    await logAudit('Update Contact Source', `Renamed source from "${oldName}" to "${newName}"`, appUser);
+    await logAudit('Update Contact Source', `Renamed source from "${oldName}" to "${newName}"`, userInfo);
     return updatedSources;
 }
 
-export const deleteContactSource = async (sourceToDelete: string, appUser: AppUser) => {
+export const deleteContactSource = async (sourceToDelete: string, userInfo: UserInfo) => {
     const batch = writeBatch(db);
     const settingsDocRef = doc(db, 'settings', 'options');
 
@@ -181,20 +187,20 @@ export const deleteContactSource = async (sourceToDelete: string, appUser: AppUs
     });
 
     await batch.commit();
-    await logAudit('Delete Contact Source', `Deleted source: ${sourceToDelete}`, appUser);
+    await logAudit('Delete Contact Source', `Deleted source: ${sourceToDelete}`, userInfo);
     return updatedSources;
 }
 
 // Custom Person Fields
-export const getCustomPersonFields = async (appUser: AppUser): Promise<CustomField[]> => {
-    const settings = await ensureSettingsDoc(appUser);
+export const getCustomPersonFields = async (userInfo: UserInfo): Promise<CustomField[]> => {
+    const settings = await ensureSettingsDoc(userInfo);
     // Ensure all fields have a type for backward compatibility
     return settings.customPersonFields.map((f: CustomField) => ({ ...f, type: f.type || 'text' }));
 };
 
-export const saveCustomPersonFields = async (fields: CustomField[], appUser: AppUser): Promise<void> => {
-    if (!appUser) throw new Error("Authentication required.");
+export const saveCustomPersonFields = async (fields: CustomField[], userInfo: UserInfo): Promise<void> => {
+    if (!userInfo) throw new Error("Authentication required.");
     const settingsDocRef = doc(db, 'settings', 'options');
     await setDoc(settingsDocRef, { customPersonFields: fields }, { merge: true });
-    await logAudit('Update Custom Fields', `Updated custom fields definition.`, appUser);
+    await logAudit('Update Custom Fields', `Updated custom fields definition.`, userInfo);
 };

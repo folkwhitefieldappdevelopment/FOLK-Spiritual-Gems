@@ -76,9 +76,10 @@ function SettingsPageComponent() {
       setIsLoading(true);
       setFetchError(null);
       try {
+        const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
         const [sourcesData, customFieldsData] = await Promise.all([
-          getContactSources(appUser),
-          getCustomPersonFields(appUser),
+          getContactSources(userInfo),
+          getCustomPersonFields(userInfo),
         ]);
         setSources(sourcesData);
         setCustomFields(customFieldsData);
@@ -127,12 +128,13 @@ function SettingsPageComponent() {
       if (itemType === 'customField') {
         await handleSaveCustomField();
       } else { // source
+        const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
         if (dialogMode === 'add') {
-          const updated = await addContactSource(itemName, appUser);
+          const updated = await addContactSource(itemName, userInfo);
           setSources(updated);
           toast({ title: 'Contact Source Added' });
         } else {
-          const updated = await updateContactSource(originalName, itemName, appUser);
+          const updated = await updateContactSource(originalName, itemName, userInfo);
           setSources(updated);
           toast({ title: 'Contact Source Updated' });
         }
@@ -162,7 +164,8 @@ function SettingsPageComponent() {
         }
         updatedFields = [...customFields, newField];
     }
-    await saveCustomPersonFields(updatedFields, appUser);
+    const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+    await saveCustomPersonFields(updatedFields, userInfo);
     setCustomFields(updatedFields);
     toast({ title: editingField ? 'Custom Field Updated' : 'Custom Field Added' });
     setIsDialogOpen(false);
@@ -171,13 +174,14 @@ function SettingsPageComponent() {
   const handleDelete = async (type: ItemType, identifier: string) => {
     if (!appUser) return;
     try {
+      const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
       if (type === 'source') {
-        const updated = await deleteContactSource(identifier, appUser);
+        const updated = await deleteContactSource(identifier, userInfo);
         setSources(updated);
         toast({ title: 'Contact Source Deleted' });
       } else { // customField
         const updatedFields = customFields.filter(f => f.id !== identifier);
-        await saveCustomPersonFields(updatedFields, appUser);
+        await saveCustomPersonFields(updatedFields, userInfo);
         setCustomFields(updatedFields);
         toast({ title: 'Custom Field Deleted' });
       }

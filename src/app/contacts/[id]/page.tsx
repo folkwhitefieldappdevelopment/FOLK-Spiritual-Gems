@@ -66,6 +66,7 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
 
   React.useEffect(() => {
     if (!personId || !appUser) return;
+    const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
 
     const fetchPersonAndGroups = async () => {
       setIsLoading(true);
@@ -80,7 +81,7 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
         }
 
         // Combine static and dynamic groups
-        const staticGroups = await getStaticGroups(appUser);
+        const staticGroups = await getStaticGroups(userInfo);
         const personStaticGroups = staticGroups.filter(g => g.peopleIds.includes(personData.id));
 
         const personDynamicGroups = dynamicGroupDefinitions
@@ -93,6 +94,8 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
             peopleIds: [], // Not needed for detail view
             memberCount: 0, // Not needed for detail view
             visibility: [],
+            createdBy: '',
+            creatorRole: []
           }));
         
         setPersonGroups([...personStaticGroups, ...personDynamicGroups].sort((a,b) => a.name.localeCompare(b.name)));
@@ -117,7 +120,8 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
   const handleSavePerson = async (formData: Partial<Person>) => {
     if (!person || !appUser) return;
     try {
-      await updatePerson(person.id, formData, appUser);
+      const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+      await updatePerson(person.id, formData, userInfo);
       setPerson(prev => prev ? { ...prev, ...formData } : null);
       toast({ title: 'Person Updated', description: "The person's details have been saved." });
       setIsEditing(false);
@@ -129,7 +133,8 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
   const handleDeletePerson = async () => {
     if (!appUser) return;
     try {
-      await deletePerson(personId, appUser);
+      const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+      await deletePerson(personId, userInfo);
       toast({
         title: 'Person Deleted',
         description: 'The person has been removed from your contacts.',
@@ -151,7 +156,7 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
     value: string,
     field: 'achieved' | 'remark' | 'goal'
   ) => {
-    if (!person) return;
+    if (!person || !appUser) return;
 
     const newProgress = JSON.parse(JSON.stringify(person.progress)) as ProgressCategory[];
     const targetItem = newProgress[catIndex]?.items?.[itemIndex];
@@ -172,9 +177,10 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
     const updatedPerson = { ...person, progress: newProgress };
     
     setPerson(updatedPerson); // Optimistic update
+    const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
 
     try {
-      await updatePerson(personId, { progress: newProgress }, appUser);
+      await updatePerson(personId, { progress: newProgress }, userInfo);
     } catch (error) {
       toast({
         variant: 'destructive',

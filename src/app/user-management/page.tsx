@@ -131,7 +131,8 @@ function UserManagementPageComponent() {
   const handleDeleteConfirmed = async () => {
     if (!userToDelete || !appUser) return;
     try {
-        await deleteUserAndAuth(userToDelete.id, appUser);
+        const actorInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+        await deleteUserAndAuth(userToDelete.id, actorInfo);
         toast({
             title: 'User Record Deleted',
             description: `User ${userToDelete.name}'s record has been deleted. They can still log in.`
@@ -152,6 +153,7 @@ function UserManagementPageComponent() {
   const handleSaveUser = async (data: UserFormValues, userId?: string) => {
     if (!appUser) return;
     try {
+      const actorInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
       const userData: { [key: string]: any } = {
         name: data.name,
         email: data.email,
@@ -179,13 +181,13 @@ function UserManagementPageComponent() {
       }
       
       if (userId) {
-        await updateUser(userId, userData, appUser);
+        await updateUser(userId, userData, actorInfo);
         toast({
           title: 'User Updated',
           description: `${data.name}'s details have been updated.`,
         });
       } else {
-        await createUser(userData as Omit<AppUser, 'id' | 'createdAt'>, appUser);
+        await createUser(userData as Omit<AppUser, 'id' | 'createdAt'>, actorInfo);
         toast({
           title: 'User Created & Invite Sent',
           description: `${data.name} has been added and a sign-up link has been sent to their email.`,
