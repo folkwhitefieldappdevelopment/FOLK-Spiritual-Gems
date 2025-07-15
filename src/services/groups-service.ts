@@ -19,7 +19,8 @@ import {
 } from 'firebase/firestore';
 import type { Group, AppUser, UserRole, Person } from '@/lib/types';
 import { logAudit } from './audit-service';
-import { generateDynamicGroups } from '@/lib/dynamic-groups';
+import { generateDynamicGroups, dynamicGroupDefinitions } from '@/lib/dynamic-groups';
+import { getPeople as getAllPeople } from './people-service';
 
 type UserInfo = {
   id: string;
@@ -67,13 +68,20 @@ export const getStaticGroups = async (userInfo: UserInfo): Promise<Group[]> => {
   return results.sort((a,b) => a.name.localeCompare(b.name));
 };
 
-export const getGroup = async (id: string): Promise<Group | null> => {
+export const getGroup = async (id: string, userInfo: UserInfo): Promise<Group | null> => {
+  // Handle dynamic groups
   if (id.startsWith('dynamic-')) {
-    // Dynamic groups can't be fetched directly, they are generated client-side
-    // This part of the logic will need to be handled where allPeople is available.
-    return null;
+    const dynamicGroupDef = dynamicGroupDefinitions.find(def => def.id === id);
+    if (!dynamicGroupDef) {
+        return null;
+    }
+    // Dynamic groups are based on the full set of people the user can see.
+    const { people } = await getAllPeople(userInfo, {}); 
+    const dynamicGroups = generateDynamicGroups(people);
+    return dynamicGroups.find(g => g.id === id) || null;
   }
 
+  // Handle static groups from Firestore
   const docRef = doc(db, 'groups', id);
   const docSnap = await getDoc(docRef);
   if (docSnap.exists()) {
@@ -110,7 +118,7 @@ export const updateGroup = async (id: string, groupData: Partial<Omit<Group, 'id
 };
 
 export const deleteGroup = async (id: string, userInfo: UserInfo): Promise<void> => {
-  const group = await getGroup(id);
+  const group = await getGroup(id, userInfo);
   const docRef = doc(db, 'groups', id);
   await deleteDoc(docRef);
   if (group) {

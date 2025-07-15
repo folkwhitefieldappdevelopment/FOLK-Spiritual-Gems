@@ -66,7 +66,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
   Pagination,
@@ -142,7 +141,7 @@ function GroupDetailPageComponent() {
     setFetchError(null);
     const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     try {
-        const groupData = await getGroup(groupId);
+        const groupData = await getGroup(groupId, userInfo);
         if (groupData) {
             setGroup(groupData);
 
@@ -163,7 +162,7 @@ function GroupDetailPageComponent() {
         }
 
       const [{people: allPeopleData}, allGroupsData, enablersData, sourcesData, guidesData, customFieldsData] = await Promise.all([
-        getPeople(userInfo, { pageSize: 5000 }), // for manage members dialog
+        getPeople(userInfo, { pageSize: 10000 }), // for manage members dialog
         getStaticGroups(userInfo),
         getEnablers(userInfo, 'filter'),
         getContactSources(userInfo),
