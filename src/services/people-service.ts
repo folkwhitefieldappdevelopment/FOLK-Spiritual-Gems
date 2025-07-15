@@ -95,15 +95,15 @@ export const getPeople = async (
     const peopleCollection = collection(db, 'people');
     let queryConstraints: QueryConstraint[] = [];
     let sortDescriptors = initialSortDescriptors;
+    let isDefaultSortDisabled = false;
 
     // --- Role-based Access Control ---
     if (userInfo.role.includes('Admin')) {
         // Admin sees all. No additional constraint needed for access.
     } else if (userInfo.role.includes('Folk Guide')) {
         queryConstraints.push(where('folkGuideId', '==', userInfo.id));
-        // Avoid default index error by changing sort if none is provided
         if (sortDescriptors.length === 0) {
-            sortDescriptors = [{ field: 'fullName', direction: 'asc' }];
+           isDefaultSortDisabled = true;
         }
     } else { // Folk Enabler
         queryConstraints.push(
@@ -114,8 +114,8 @@ export const getPeople = async (
         );
     }
     
-    // Set a default sort descriptor if none is provided
-    if (sortDescriptors.length === 0) {
+    // Set a default sort descriptor if none is provided and not disabled
+    if (sortDescriptors.length === 0 && !isDefaultSortDisabled) {
       sortDescriptors = [{ field: 'createdAt', direction: 'desc' }];
     }
     
