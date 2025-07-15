@@ -103,7 +103,7 @@ function ContactsPageComponent() {
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
   const [importingStatus, setImportingStatus] = React.useState<string | false>(false);
   const [isExporting, setIsExporting] = React.useState(false);
-  const [view, setView] = React.useState<"card" | "table">("card");
+  const [view, setView] = React.useState<"card" | "table">("table");
   
   const [searchTerm, setSearchTerm] = React.useState("");
   const [filters, setFilters] = React.useState<FilterRule[]>([]);

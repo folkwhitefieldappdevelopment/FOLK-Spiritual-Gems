@@ -129,7 +129,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
          });
 
         setAllFetchedPeople(peopleData);
-        setTotalPeople(totalCount);
+        setTotalPeople(peopleData.length); // Use the length of fetched data for total
 
         const [enablersData, sourcesData, customFieldsData, groupsData, guidesData] = await Promise.all([
           getEnablers(userInfo, 'filter'),
@@ -715,7 +715,10 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       {editingPersonRef.current && (
          <CreateUpdatePersonDialog
             isOpen={isEditingDialogOpen}
-            setIsOpen={setIsEditingDialogOpen}
+            setIsOpen={(isOpen) => {
+              if (!isOpen) editingPersonRef.current = undefined;
+              setIsEditingDialogOpen(isOpen);
+            }}
             onSave={async (data) => {
               if (!appUser) return;
               const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
