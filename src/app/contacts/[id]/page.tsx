@@ -9,8 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { cn } from '@/lib/utils';
 import { getPerson, updatePerson, deletePerson } from '@/services/people-service';
-import { getCustomPersonFields } from '@/services/settings-service';
 import { getStaticGroups } from '@/services/groups-service';
+import { dynamicGroupDefinitions } from '@/lib/dynamic-groups';
 import { createInitialProgress } from '@/lib/data';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 import { AuthGuard } from '@/components/auth-guard';
@@ -53,7 +53,7 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
   const { appUser } = useAuth();
 
   const [person, setPerson] = React.useState<Person | null>(null);
-  const [allGroups, setAllGroups] = React.useState<Group[]>([]);
+  const [personGroups, setPersonGroups] = React.useState<Group[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
   const [isEditing, setIsEditing] = React.useState(false);
@@ -67,43 +67,51 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
   React.useEffect(() => {
     if (!personId || !appUser) return;
 
-    const fetchPerson = async () => {
+    const fetchPersonAndGroups = async () => {
       setIsLoading(true);
       setFetchError(null);
       try {
-        const [personData, groupsData] = await Promise.all([
-            getPerson(personId),
-            getStaticGroups(appUser),
-        ]);
+        const personData = await getPerson(personId);
         
-        setAllGroups(groupsData);
-
-        if (personData) {
-          if (!personData.progress || !Array.isArray(personData.progress) || personData.progress.length === 0 || !personData.progress[0]?.items) {
-            personData.progress = createInitialProgress();
-          }
-          setPerson(personData);
-        } else {
-          toast({
-            variant: 'destructive',
-            title: 'Not Found',
-            description: 'This person could not be found.',
-          });
+        if (!personData) {
+          toast({ variant: 'destructive', title: 'Not Found', description: 'This person could not be found.' });
           router.push('/');
+          return;
         }
+
+        // Combine static and dynamic groups
+        const staticGroups = await getStaticGroups(appUser);
+        const personStaticGroups = staticGroups.filter(g => g.peopleIds.includes(personData.id));
+
+        const personDynamicGroups = dynamicGroupDefinitions
+          .filter(def => def.filter(personData))
+          .map(def => ({
+            id: def.id,
+            name: def.name,
+            description: def.description,
+            isDynamic: true,
+            peopleIds: [], // Not needed for detail view
+            memberCount: 0, // Not needed for detail view
+            visibility: [],
+          }));
+        
+        setPersonGroups([...personStaticGroups, ...personDynamicGroups].sort((a,b) => a.name.localeCompare(b.name)));
+
+        if (!personData.progress || !Array.isArray(personData.progress) || personData.progress.length === 0 || !personData.progress[0]?.items) {
+          personData.progress = createInitialProgress();
+        }
+        setPerson(personData);
+
       } catch (error) {
         console.error('Failed to load person data', error);
-        if (error instanceof Error) {
-          setFetchError(error);
-        } else {
-          setFetchError(new Error("An unknown error occurred while fetching data."));
-        }
+        if (error instanceof Error) setFetchError(error);
+        else setFetchError(new Error("An unknown error occurred while fetching data."));
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchPerson();
+    fetchPersonAndGroups();
   }, [personId, router, toast, appUser]);
 
   const handleSavePerson = async (formData: Partial<Person>) => {
@@ -203,8 +211,6 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
       );
     }
     
-    const personGroups = allGroups.filter(g => g.peopleIds.includes(person.id));
-
     return (
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
             <div className="mx-auto max-w-7xl space-y-6">

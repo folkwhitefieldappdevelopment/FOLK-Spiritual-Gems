@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import type { Person, CustomField, AppUser, Group } from "@/lib/types";
 import { occupationStatuses } from "@/lib/types";
-import { Camera, Upload, SwitchCamera, Phone, Tags } from "lucide-react";
+import { Camera, Upload, SwitchCamera, Phone, Tags, Bot } from "lucide-react";
 import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
 import { getFolkGuides } from "@/services/user-service";
 import { useAuth } from "@/contexts/auth-context";
@@ -423,7 +423,21 @@ export function EditablePersonDetailsForm({
         <div className="font-semibold text-muted-foreground">Organisation</div><div>{person.organisation || 'N/A'}</div>
       </div>
       
-      {groups.length > 0 && (<div className="w-full text-left space-y-2 pt-4"><h4 className="font-semibold text-sm flex items-center gap-2"><Tags className="h-4 w-4 text-muted-foreground"/> In Groups</h4><div className="flex flex-wrap gap-1">{groups.map(g => (<Badge key={g.id} variant="secondary">{g.name}</Badge>))}</div></div>)}
+      {groups.length > 0 && (
+        <div className="w-full text-left space-y-2 pt-4">
+          <h4 className="font-semibold text-sm flex items-center gap-2">
+            <Tags className="h-4 w-4 text-muted-foreground"/> In Groups
+          </h4>
+          <div className="flex flex-wrap gap-1">
+            {groups.map(g => (
+              <Badge key={g.id} variant={g.isDynamic ? "default" : "secondary"} className="flex items-center gap-1">
+                {g.isDynamic && <Bot className="h-3 w-3" />}
+                {g.name}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
       
       <div className="w-full text-left space-y-2 pt-4">
           <h4 className="font-semibold text-sm flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground"/>Contact Info</h4>
@@ -440,7 +454,7 @@ export function EditablePersonDetailsForm({
         <div className="font-semibold text-muted-foreground">Rent Details</div><div>{person.rentDetails || 'N/A'}</div>
         <div className="font-semibold text-muted-foreground">Native Place</div><div>{person.nativePlace || 'N/A'}</div>
         <div className="font-semibold text-muted-foreground">Contact Source</div><div>{person.contactSource || 'N/A'}</div>
-        <div className="font-semibold text-muted-foreground">Chanting Status</div><div>{person.chantingStatus}</div>
+        <div className="font-semibold text-muted-foreground">Chanting Rounds</div><div>{person.chantingStatus}</div>
         <div className="font-semibold text-muted-foreground">From other camp?</div><div>{person.fromOtherCamp ? 'Yes' : 'No'}</div>
         <div className="font-semibold text-muted-foreground">Enabler</div><div>{person.enablerInTouchWith || 'N/A'}</div>
         <div className="font-semibold text-muted-foreground">Folk Guide</div><div>{person.folkGuide || 'N/A'}</div>
