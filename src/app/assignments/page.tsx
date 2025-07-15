@@ -66,7 +66,7 @@ function AssignmentsPageComponent() {
     setFetchError(null);
     try {
       const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-      const peopleData = await getPeople(userInfo);
+      const { people: peopleData } = await getPeople(userInfo, { pageSize: 30000 }); // Fetch all for assignments
       let usersToAssign: AppUser[] = [];
 
       if (appUser.role.includes('Admin')) {
