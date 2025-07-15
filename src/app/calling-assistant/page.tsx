@@ -16,9 +16,9 @@ import { CreateUpdatePersonDialog } from "@/components/create-update-person-dial
 import { CallingSessionDialog } from "@/components/calling-session-dialog";
 import { FirebaseConfigError } from "@/components/firebase-config-error";
 import { getPeople, updatePerson, assignCoEnablerToPeople } from "@/services/people-service";
-import { getFolkGuides, getAllUsers, getEnablers, getContactSources, getCustomPersonFields, type EnablerOption, getUsers } from "@/services/settings-service";
+import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
+import { getFolkGuides, updateUser, getUsers } from "@/services/user-service";
 import { getAllGroups, createGroup, addPeopleToGroup } from "@/services/groups-service";
-import { updateUser } from "@/services/user-service";
 import { serverTimestamp, arrayUnion } from "firebase/firestore";
 import { useAuth } from "@/contexts/auth-context";
 import {
