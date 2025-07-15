@@ -1,4 +1,6 @@
 
+'use server';
+
 import { db } from '@/lib/firebase';
 import {
   collection,
@@ -13,6 +15,7 @@ import {
   where,
   type QuerySnapshot,
   type DocumentData,
+  or,
 } from 'firebase/firestore';
 import type { Group, AppUser, UserRole, Person } from '@/lib/types';
 import { logAudit } from './audit-service';
@@ -29,50 +32,34 @@ export const getAllGroups = async (appUser: AppUser, allPeople: Person[]): Promi
 
 export const getStaticGroups = async (appUser: AppUser): Promise<Group[]> => {
   const groupsCollection = collection(db, 'groups');
-  const results = new Map<string, Group>();
-  const queries: Promise<QuerySnapshot<DocumentData>>[] = [];
   
-  // Admins see everything.
+  let q;
+  // Admins see everything, so a simple collection scan is fine.
   if (appUser.role.includes('Admin')) {
-    const allGroupsSnap = await getDocs(groupsCollection);
-    allGroupsSnap.forEach(doc => {
+    q = query(groupsCollection);
+  } else {
+    // For non-admins, use a more efficient OR query to get groups they created OR groups shared with their role.
+    const viewableRoleFilters = appUser.role.length > 0
+      ? [where('visibility', 'array-contains-any', appUser.role)]
+      : [];
+      
+    q = query(groupsCollection, or(
+      where('createdBy', '==', appUser.id),
+      ...viewableRoleFilters
+    ));
+  }
+  
+  const snapshot = await getDocs(q);
+  const results: Group[] = snapshot.docs.map(doc => {
       const groupData = { id: doc.id, ...doc.data() } as Group;
       if (!Array.isArray(groupData.visibility)) {
-        // @ts-ignore - backward compatibility
-        groupData.visibility = groupData.visibility === 'team' ? ['Folk Guide', 'Folk Enabler'] : [];
+          // @ts-ignore - backward compatibility
+          groupData.visibility = groupData.visibility === 'team' ? (appUser.role.includes('Folk Guide') ? ['Folk Enabler'] : []) : [];
       }
-      results.set(doc.id, groupData);
-    });
-    return Array.from(results.values()).sort((a,b) => a.name.localeCompare(b.name));
-  }
-  
-  // --- For non-admins ---
-
-  // 1. Get groups created by the current user.
-  queries.push(getDocs(query(groupsCollection, where('createdBy', '==', appUser.id))));
-
-  // 2. Get groups shared with the user's role(s).
-  if (appUser.role.length > 0) {
-    // Firestore's 'array-contains-any' is perfect here.
-    queries.push(getDocs(query(groupsCollection, where('visibility', 'array-contains-any', appUser.role))));
-  }
-
-  const snapshots = await Promise.all(queries);
-
-  snapshots.forEach(snap => {
-    snap.forEach(doc => {
-        if (!results.has(doc.id)) {
-            const groupData = { id: doc.id, ...doc.data() } as Group;
-            if (!Array.isArray(groupData.visibility)) {
-              // @ts-ignore - backward compatibility
-              groupData.visibility = groupData.visibility === 'team' ? (appUser.role.includes('Folk Guide') ? ['Folk Enabler'] : []) : [];
-            }
-            results.set(doc.id, groupData);
-        }
-    });
+      return groupData;
   });
   
-  return Array.from(results.values()).sort((a,b) => a.name.localeCompare(b.name));
+  return results.sort((a,b) => a.name.localeCompare(b.name));
 };
 
 export const getGroup = async (id: string, allPeople: Person[] = []): Promise<Group | null> => {
