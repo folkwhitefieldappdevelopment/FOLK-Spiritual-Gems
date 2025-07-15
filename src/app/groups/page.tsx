@@ -9,6 +9,7 @@ import { getPeople } from "@/services/people-service";
 import { getEnablers, type EnablerOption } from "@/services/settings-service";
 import { FirebaseConfigError } from "@/components/firebase-config-error";
 import { useAuth } from "@/contexts/auth-context";
+import { generateDynamicGroups } from '@/lib/dynamic-groups';
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { PageHeader } from "@/components/page-header";
@@ -79,7 +80,7 @@ function GroupsPageComponent() {
     
     // Re-calculate dynamic groups based on the filtered people
     const staticGroups = allGroups.filter(g => !g.isDynamic);
-    const dynamicGroups = getAllGroups(appUser!, tempPeople).filter(g => g.isDynamic);
+    const dynamicGroups = generateDynamicGroups(tempPeople);
 
     let allFilteredGroups = [...staticGroups, ...dynamicGroups];
 
@@ -91,7 +92,7 @@ function GroupsPageComponent() {
     }
     
     return allFilteredGroups.sort((a,b) => a.name.localeCompare(b.name));
-  }, [allGroups, people, enablerFilter, searchTerm, appUser]);
+  }, [allGroups, people, enablerFilter, searchTerm]);
 
   const handleCreateGroup = React.useCallback(() => {
     setEditingGroup(undefined);
@@ -115,7 +116,7 @@ function GroupsPageComponent() {
   }, [toast, appUser]);
 
   const handleSaveGroup = React.useCallback(async (
-    groupData: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy" | "creatorRole">
+    groupData: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy">
   ) => {
     if (!appUser) return;
     try {
@@ -147,6 +148,7 @@ function GroupsPageComponent() {
       }
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: "Could not save group." });
+      throw error;
     }
   }, [appUser, editingGroup, toast]);
   
