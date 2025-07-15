@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import type { Person, AppUser } from '@/lib/types';
+import type { Person, AppUser, UserRole } from '@/lib/types';
 import { getPeople } from '@/services/people-service';
 import { getUsers, getEnablersForGuide } from '@/services/user-service';
 import { useToast } from '@/hooks/use-toast';
@@ -27,6 +27,12 @@ import {
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart, Cell, Line, LineChart, Tooltip, Legend } from 'recharts';
 import { CallReport } from '@/components/call-report';
 import { AuthGuard } from '@/components/auth-guard';
+
+type UserInfo = {
+  id: string;
+  name: string;
+  role: UserRole[];
+};
 
 const CHART_COLORS = [
   'hsl(var(--chart-1))',
@@ -61,7 +67,7 @@ function DashboardPageComponent() {
       setIsLoading(true);
       setFetchError(null);
       try {
-        const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+        const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
         const peoplePromise = getPeople(userInfo, { pageSize: 5000 }); // Fetch a large number for dashboard stats
 
         let usersPromise: Promise<AppUser[]> | Promise<void> = Promise.resolve();
@@ -96,15 +102,13 @@ function DashboardPageComponent() {
   
   const safeDate = (timestamp: any): Date | null => {
     if (!timestamp) return null;
-    if (timestamp.toDate) return timestamp.toDate();
     if (timestamp instanceof Date) return timestamp;
     try {
-      const d = new Date(timestamp);
-      if (!isNaN(d.getTime())) return d;
+        const d = new Date(timestamp);
+        return isNaN(d.getTime()) ? null : d;
     } catch {
-      // ignore
+        return null;
     }
-    return null;
   }
 
   const { totalContacts, newThisWeek, enablerCount, enablerCountDescription, contactsByEnabler, newContactsByWeek, contactsByChantingStatus, contactsByOccupation, enablersByGuideData } = React.useMemo(() => {
@@ -150,7 +154,7 @@ function DashboardPageComponent() {
     const chantingMap = new Map<string, number>();
     people.forEach(p => {
       const status = p.chantingStatus || 'Not specified';
-      chantingMap.set(status, (chantingMap.get(status) || 0) + 1);
+      chantingMap.set(String(status), (chantingMap.get(String(status)) || 0) + 1);
     });
     const chantingData = Array.from(chantingMap.entries()).map(([name, value]) => ({ name, value }));
 
@@ -222,9 +226,8 @@ function DashboardPageComponent() {
     const callsInRange = people.flatMap(person => 
       (person.callHistory || [])
         .filter(call => {
-          if (!call.calledAt) return false;
-          const callDate = call.calledAt?.toDate ? call.calledAt.toDate() : new Date(call.calledAt);
-          return isWithinInterval(callDate, { start: from, end: to });
+          const callDate = safeDate(call.calledAt);
+          return callDate && isWithinInterval(callDate, { start: from, end: to });
         })
         .map(call => ({
           ...call,

@@ -65,7 +65,15 @@ function UserAuditPageComponent() {
         
       const from = dateRange?.from ? startOfDay(dateRange.from) : null;
       const to = dateRange?.to ? endOfDay(dateRange.to) : null;
-      const auditDate = audit.timestamp.toDate();
+      
+      let auditDate;
+      if (audit.timestamp?.toDate) {
+          auditDate = audit.timestamp.toDate();
+      } else if (typeof audit.timestamp === 'string') {
+          auditDate = new Date(audit.timestamp);
+      } else {
+          return false; // Cannot filter if timestamp is invalid
+      }
       
       let dateMatch = true;
       if (from && to) {
@@ -162,7 +170,7 @@ function UserAuditPageComponent() {
                                 filteredAudits.map(log => (
                                     <TableRow key={log.id}>
                                         <TableCell className="text-sm text-muted-foreground">
-                                            {format(log.timestamp.toDate(), 'PPpp')}
+                                            {format(new Date(log.timestamp as string), 'PPpp')}
                                         </TableCell>
                                         <TableCell className="font-medium">{log.userName}</TableCell>
                                         <TableCell>

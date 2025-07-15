@@ -4,13 +4,13 @@
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Edit, Trash2, Phone, Loader2, Tags, Save, XCircle } from 'lucide-react';
-import type { Person, ProgressLevelAnswers, CustomField, Group, ProgressCategory, AppUser } from '@/lib/types';
+import type { Person, ProgressLevelAnswers, CustomField, Group, ProgressCategory, AppUser, UserRole } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { cn } from '@/lib/utils';
 import { getPerson, updatePerson, deletePerson } from '@/services/people-service';
 import { getStaticGroups } from '@/services/groups-service';
-import { dynamicGroupDefinitions } from '@/lib/dynamic-groups';
+import { generateDynamicGroups } from '@/lib/dynamic-groups';
 import { createInitialProgress } from '@/lib/data';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 import { AuthGuard } from '@/components/auth-guard';
@@ -45,6 +45,12 @@ import { GeneralRemarksCard } from '@/components/general-remarks-card';
 import { Badge } from '@/components/ui/badge';
 import { EditablePersonDetailsForm } from '@/components/editable-person-details-form';
 
+type UserInfo = {
+  id: string;
+  name: string;
+  role: UserRole[];
+};
+
 const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent() {
   const router = useRouter();
   const params = useParams();
@@ -66,7 +72,7 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
 
   React.useEffect(() => {
     if (!personId || !appUser) return;
-    const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
 
     const fetchPersonAndGroups = async () => {
       setIsLoading(true);
@@ -84,19 +90,8 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
         const staticGroups = await getStaticGroups(userInfo);
         const personStaticGroups = staticGroups.filter(g => g.peopleIds.includes(personData.id));
 
-        const personDynamicGroups = dynamicGroupDefinitions
-          .filter(def => def.filter(personData))
-          .map(def => ({
-            id: def.id,
-            name: def.name,
-            description: def.description,
-            isDynamic: true,
-            peopleIds: [], // Not needed for detail view
-            memberCount: 0, // Not needed for detail view
-            visibility: [],
-            createdBy: '',
-            creatorRole: []
-          }));
+        const personDynamicGroups = generateDynamicGroups([personData])
+          .filter(g => g.memberCount > 0);
         
         setPersonGroups([...personStaticGroups, ...personDynamicGroups].sort((a,b) => a.name.localeCompare(b.name)));
 
@@ -120,7 +115,7 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
   const handleSavePerson = async (formData: Partial<Person>) => {
     if (!person || !appUser) return;
     try {
-      const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+      const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
       await updatePerson(person.id, formData, userInfo);
       setPerson(prev => prev ? { ...prev, ...formData } : null);
       toast({ title: 'Person Updated', description: "The person's details have been saved." });
@@ -133,7 +128,7 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
   const handleDeletePerson = async () => {
     if (!appUser) return;
     try {
-      const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+      const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
       await deletePerson(personId, userInfo);
       toast({
         title: 'Person Deleted',
@@ -177,7 +172,7 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
     const updatedPerson = { ...person, progress: newProgress };
     
     setPerson(updatedPerson); // Optimistic update
-    const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
 
     try {
       await updatePerson(personId, { progress: newProgress }, userInfo);

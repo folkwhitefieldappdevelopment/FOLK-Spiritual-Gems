@@ -1,4 +1,6 @@
 
+'use server';
+
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp, getDocs, query, orderBy } from 'firebase/firestore';
 import type { AppUser, UserRole } from '@/lib/types';
@@ -46,5 +48,12 @@ export const getAudits = async (): Promise<AuditLog[]> => {
     const auditCollection = collection(db, 'audits');
     const q = query(auditCollection, orderBy('timestamp', 'desc'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AuditLog));
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return { 
+            id: doc.id,
+             ...data,
+             timestamp: data.timestamp?.toDate ? data.timestamp.toDate().toISOString() : new Date().toISOString()
+        } as AuditLog
+    });
 };

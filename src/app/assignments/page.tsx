@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { Loader2, Search } from 'lucide-react';
-import type { Person, AppUser } from '@/lib/types';
+import type { Person, AppUser, UserRole } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 
@@ -40,6 +40,12 @@ import {
 
 const ROWS_PER_PAGE = 50;
 
+type UserInfo = {
+  id: string;
+  name: string;
+  role: UserRole[];
+};
+
 function AssignmentsPageComponent() {
   const { appUser } = useAuth();
   const { toast } = useToast();
@@ -59,7 +65,7 @@ function AssignmentsPageComponent() {
     setIsLoading(true);
     setFetchError(null);
     try {
-      const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+      const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
       // Admins see all unassigned, Guides only see unassigned within their folk.
       // We still fetch all people and filter client-side for this specific view.
       // A dedicated server-side query for unassigned people could be an optimization.
@@ -131,7 +137,7 @@ function AssignmentsPageComponent() {
       return;
     }
     if (!appUser) return;
-    const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
 
     try {
       await assignEnablerToPeople(Array.from(selectedContactIds), enabler, userInfo);
