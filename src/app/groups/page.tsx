@@ -1,12 +1,12 @@
 
 "use client";
 import * as React from "react";
-import { PlusCircle, Loader2, Bot } from "lucide-react";
+import { PlusCircle, Loader2, Bot, Users as UsersIcon, User } from "lucide-react";
 import type { Group, AppUser, Person } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { getAllGroups, createGroup, updateGroup, deleteGroup } from "@/services/groups-service";
 import { getPeople } from "@/services/people-service";
-import { getEnablers, type EnablerOption } from "@/services/settings-service";
+import { getEnablersForGuide, getFolkGuides, getUsers } from "@/services/user-service";
 import { FirebaseConfigError } from "@/components/firebase-config-error";
 import { useAuth } from "@/contexts/auth-context";
 import { generateDynamicGroups } from '@/lib/dynamic-groups';
@@ -34,9 +34,14 @@ function GroupsPageComponent() {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [editingGroup, setEditingGroup] = React.useState<Group | undefined>(undefined);
 
-  const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
-  const [enablerFilter, setEnablerFilter] = React.useState<string>('all');
+  const [enablers, setEnablers] = React.useState<AppUser[]>([]);
+  const [guides, setGuides] = React.useState<AppUser[]>([]);
+  
+  const [filterId, setFilterId] = React.useState<string>('all');
   const [searchTerm, setSearchTerm] = React.useState('');
+
+  const isAdmin = appUser?.role.includes('Admin');
+  const isGuide = appUser?.role.includes('Folk Guide');
 
   React.useEffect(() => {
     if (!appUser) return;
@@ -44,15 +49,20 @@ function GroupsPageComponent() {
       setIsLoading(true);
       setFetchError(null);
       try {
-        const [peopleData, enablersData] = await Promise.all([
-          getPeople(appUser),
-          getEnablers(appUser, 'filter'),
-        ]);
+        const peopleData = await getPeople(appUser);
         setPeople(peopleData);
-        setEnablerOptions(enablersData);
 
         const groupsData = await getAllGroups(appUser, peopleData);
         setAllGroups(groupsData);
+        
+        if (isAdmin) {
+          const guidesData = await getFolkGuides();
+          setGuides(guidesData);
+        } else if (isGuide) {
+          const enablersData = await getEnablersForGuide(appUser.id);
+          setEnablers(enablersData);
+        }
+
       } catch (error) {
         console.error("Failed to fetch groups and people", error);
         if (error instanceof Error) {
@@ -65,34 +75,54 @@ function GroupsPageComponent() {
       }
     };
     fetchData();
-  }, [appUser]);
+  }, [appUser, isAdmin, isGuide]);
 
-  const filteredGroups = React.useMemo(() => {
-    let tempPeople = people;
-    
-    if (enablerFilter && enablerFilter !== 'all') {
-      if (enablerFilter === '__UNASSIGNED__') {
-        tempPeople = tempPeople.filter(p => !p.enablerInTouchWith);
-      } else {
-        tempPeople = tempPeople.filter(p => p.enablerInTouchWith === enablerFilter);
+  const filteredGroupsAndCounts = React.useMemo(() => {
+    let relevantPeople = people;
+
+    if (filterId !== 'all') {
+      if (isAdmin) { // Admin filtering by a Folk Guide
+        const guide = guides.find(g => g.id === filterId);
+        if (guide) {
+          relevantPeople = people.filter(p => p.folkGuideId === guide.id);
+        }
+      } else if (isGuide) { // Guide filtering by an Enabler
+        if (filterId === '__UNASSIGNED__') {
+            relevantPeople = people.filter(p => !p.enablerInTouchWith);
+        } else {
+            const enabler = enablers.find(e => e.id === filterId);
+            if (enabler) {
+              relevantPeople = people.filter(p => p.enablerInTouchWith === enabler.name);
+            }
+        }
       }
     }
     
-    // Re-calculate dynamic groups based on the filtered people
-    const staticGroups = allGroups.filter(g => !g.isDynamic);
-    const dynamicGroups = generateDynamicGroups(tempPeople);
-
-    let allFilteredGroups = [...staticGroups, ...dynamicGroups];
+    // Always regenerate dynamic groups based on the currently filtered people
+    const dynamicGroups = generateDynamicGroups(relevantPeople);
+    
+    let processedGroups: Group[] = allGroups.map(group => {
+      if (group.isDynamic) {
+        // Find the corresponding dynamically generated group
+        const dynamicVersion = dynamicGroups.find(dg => dg.id === group.id);
+        return dynamicVersion || { ...group, peopleIds: [], memberCount: 0 };
+      }
+      
+      // For static groups, we just need to update the member count based on the filter
+      const relevantMemberIds = new Set(relevantPeople.map(p => p.id));
+      const filteredMembersCount = group.peopleIds.filter(id => relevantMemberIds.has(id)).length;
+      return { ...group, memberCount: filteredMembersCount };
+    });
 
     if (searchTerm.trim()) {
-      allFilteredGroups = allFilteredGroups.filter(g => 
+      processedGroups = processedGroups.filter(g => 
         g.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        g.description.toLowerCase().includes(searchTerm.toLowerCase())
+        (g.description || '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     
-    return allFilteredGroups.sort((a,b) => a.name.localeCompare(b.name));
-  }, [allGroups, people, enablerFilter, searchTerm]);
+    return processedGroups.sort((a,b) => a.name.localeCompare(b.name));
+  }, [allGroups, people, enablers, guides, filterId, searchTerm, isAdmin, isGuide]);
 
   const handleCreateGroup = React.useCallback(() => {
     setEditingGroup(undefined);
@@ -116,7 +146,7 @@ function GroupsPageComponent() {
   }, [toast, appUser]);
 
   const handleSaveGroup = React.useCallback(async (
-    groupData: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy">
+    groupData: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy" | "creatorRole">
   ) => {
     if (!appUser) return;
     try {
@@ -165,7 +195,7 @@ function GroupsPageComponent() {
       return <FirebaseConfigError error={fetchError} />;
     }
 
-    if (filteredGroups.length === 0) {
+    if (filteredGroupsAndCounts.length === 0) {
       return (
         <div className="text-center py-12 text-muted-foreground">
           <p>No groups found for the current filters.</p>
@@ -176,7 +206,7 @@ function GroupsPageComponent() {
 
     return (
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {filteredGroups.map((group) => (
+        {filteredGroupsAndCounts.map((group) => (
           <GroupCard
             key={group.id}
             group={group}
@@ -186,6 +216,51 @@ function GroupsPageComponent() {
         ))}
       </div>
     );
+  }
+  
+  const renderFilter = () => {
+    if (isAdmin) {
+      return (
+         <Select value={filterId} onValueChange={setFilterId}>
+            <SelectTrigger className="w-full sm:w-[280px]">
+              <div className="flex items-center gap-2">
+                <UsersIcon className="h-4 w-4 text-muted-foreground" />
+                <SelectValue placeholder="Filter by Folk Guide..." />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Folk Guides</SelectItem>
+              {guides.map(g => (
+                <SelectItem key={g.id} value={g.id}>
+                  {g.name} ({g.fgCode || 'N/A'})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+      )
+    }
+    if (isGuide) {
+       return (
+         <Select value={filterId} onValueChange={setFilterId}>
+            <SelectTrigger className="w-full sm:w-[280px]">
+               <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <SelectValue placeholder="Filter by enabler..." />
+               </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All My Enablers</SelectItem>
+              <SelectItem value="__UNASSIGNED__">Unassigned</SelectItem>
+              {enablers.map(e => (
+                <SelectItem key={e.id} value={e.id}>
+                  {e.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+      )
+    }
+    return null;
   }
 
   return (
@@ -214,19 +289,7 @@ function GroupsPageComponent() {
                 onChange={e => setSearchTerm(e.target.value)}
               />
             </div>
-            <Select value={enablerFilter} onValueChange={setEnablerFilter}>
-              <SelectTrigger className="w-full sm:w-[280px]">
-                <SelectValue placeholder="Filter by enabler..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Enablers' Contacts</SelectItem>
-                {enablerOptions.map(opt => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {renderFilter()}
           </div>
           {renderContent()}
         </main>
