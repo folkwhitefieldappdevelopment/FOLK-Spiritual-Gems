@@ -2,7 +2,7 @@
 "use client";
 import * as React from "react";
 import { PlusCircle, Loader2, Bot, Users as UsersIcon, User, UserCog } from "lucide-react";
-import type { Group, AppUser, Person } from "@/lib/types";
+import type { Group, AppUser, Person, UserRole } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { getAllGroups, createGroup, updateGroup, deleteGroup } from "@/services/groups-service";
 import { getPeople } from "@/services/people-service";
@@ -21,6 +21,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGr
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
+type UserInfo = {
+  id: string;
+  name: string;
+  role: UserRole[];
+};
 
 function GroupsPageComponent() {
   const { toast } = useToast();
@@ -48,16 +54,17 @@ function GroupsPageComponent() {
     const fetchData = async () => {
       setIsLoading(true);
       setFetchError(null);
+      const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
       try {
-        const [peopleData, usersData] = await Promise.all([
-            getPeople(appUser),
+        const [{ people: peopleData }, usersData] = await Promise.all([
+            getPeople(userInfo, { pageSize: 5000 }),
             getUsers(),
         ]);
         setPeople(peopleData);
         setAllUsers(usersData);
 
         // This gets all static groups the user can see
-        const groupsData = await getAllGroups(appUser, peopleData);
+        const groupsData = await getAllGroups(userInfo, peopleData);
         setAllGroups(groupsData);
 
       } catch (error) {
@@ -98,13 +105,8 @@ function GroupsPageComponent() {
       const selectedUser = allUsers.find(u => u.id === userFilterId);
 
       if (selectedUser?.role.includes('Folk Guide')) {
-        // Admin or Guide filtering by a Folk Guide. Get all people under that guide.
-        const enablerIdsUnderGuide = allUsers.filter(u => u.reportsTo?.guideId === selectedUser.id).map(u => u.id);
-        const teamIds = new Set([selectedUser.id, ...enablerIdsUnderGuide]);
-        relevantPeople = people.filter(p => p.folkGuideId && teamIds.has(p.folkGuideId));
-
+        relevantPeople = people.filter(p => p.folkGuideId && p.folkGuideId === selectedUser.id);
       } else if (selectedUser?.role.includes('Folk Enabler')) {
-        // Admin or Guide filtering by an Enabler.
         relevantPeople = people.filter(p => p.enablerInTouchWith === selectedUser.name);
       }
     }
@@ -112,43 +114,33 @@ function GroupsPageComponent() {
 
     // 2. Filter groups based on the view filter (All or My Groups)
     let baseGroups = allGroups;
-    if (viewFilter === 'mine') {
+    if (viewFilter === 'mine' && appUser) {
       baseGroups = allGroups.filter(g => !g.isDynamic && g.createdBy === appUser?.id);
     }
     
-    // 3. Process the groups: update counts and add dynamic groups
-    const processedGroups = baseGroups.map(group => {
-      // For dynamic groups, re-generate them with the filtered people list
-      if (group.isDynamic) {
-        const dynamicDef = generateDynamicGroups(relevantPeople).find(dg => dg.id === group.id);
+    const staticGroups = baseGroups.filter(g => !g.isDynamic).map(group => {
+        const filteredMembers = group.peopleIds.filter(id => relevantPeopleIds.has(id));
         return {
-          ...group,
-          peopleIds: dynamicDef?.peopleIds || [],
-          memberCount: dynamicDef?.memberCount || 0,
+            ...group,
+            filteredMemberCount: filteredMembers.length,
         };
-      }
-      // For static groups, filter their members and update the count
-      const filteredMembers = group.peopleIds.filter(id => relevantPeopleIds.has(id));
-      return {
-        ...group,
-        filteredMemberCount: filteredMembers.length,
-      };
-    }).filter(group => {
-        // Only show groups that have members matching the filter, unless no filter is applied
-        return userFilterId === 'all' || (group.isDynamic ? group.memberCount > 0 : (group.filteredMemberCount || 0) > 0);
-    });
+    }).filter(group => userFilterId === 'all' || (group.filteredMemberCount || 0) > 0);
+
+    const dynamicGroups = generateDynamicGroups(relevantPeople);
+
+    const combined = [...staticGroups, ...dynamicGroups];
 
     // 4. Apply search term
     if (searchTerm.trim()) {
       const lowercasedTerm = searchTerm.toLowerCase();
-      return processedGroups.filter(g => 
+      return combined.filter(g => 
         g.name.toLowerCase().includes(lowercasedTerm) || 
         (g.description || '').toLowerCase().includes(lowercasedTerm)
       );
     }
     
-    return processedGroups.sort((a,b) => a.name.localeCompare(b.name));
-  }, [allGroups, people, allUsers, userFilterId, searchTerm, isAdmin, isGuide, appUser, viewFilter]);
+    return combined.sort((a,b) => a.name.localeCompare(b.name));
+  }, [allGroups, people, allUsers, userFilterId, searchTerm, appUser, viewFilter]);
 
   const handleCreateGroup = React.useCallback(() => {
     setEditingGroup(undefined);
@@ -162,8 +154,9 @@ function GroupsPageComponent() {
 
   const handleDeleteGroup = React.useCallback(async (groupId: string) => {
     if (!appUser) return;
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     try {
-      await deleteGroup(groupId, appUser);
+      await deleteGroup(groupId, userInfo);
       setAllGroups((prev) => prev.filter((g) => g.id !== groupId));
       toast({ title: "Group Deleted", description: "The group has been removed." });
     } catch (error) {
@@ -175,10 +168,11 @@ function GroupsPageComponent() {
     groupData: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy" | "creatorRole">
   ) => {
     if (!appUser) return;
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     try {
       if (editingGroup) {
         // Update existing group
-        await updateGroup(editingGroup.id, groupData, appUser);
+        await updateGroup(editingGroup.id, groupData, userInfo);
         setAllGroups((prev) =>
           prev.map((g) =>
             g.id === editingGroup.id ? { ...g, ...groupData } : g
@@ -195,7 +189,7 @@ function GroupsPageComponent() {
           peopleIds: [],
           ...groupData,
         };
-        const newGroup = await createGroup(newGroupData, appUser);
+        const newGroup = await createGroup(newGroupData, userInfo);
         setAllGroups((prev) => [...prev, newGroup]);
         toast({
           title: "Group Created",

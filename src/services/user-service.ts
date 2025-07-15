@@ -52,7 +52,8 @@ export const createUser = async (userData: UserData, actorInfo: UserInfo): Promi
 
   try {
     await sendSignInLinkToEmail(auth, userData.email, actionCodeSettings);
-    window.localStorage.setItem('emailForSignIn', userData.email);
+    // Note: Storing in localStorage is a client-side operation.
+    // This server action should assume the client handles it.
   } catch (error) {
     console.error("Failed to send sign-in link:", error);
     const authError = error as AuthError;
@@ -101,16 +102,17 @@ export const updateUser = async (id: string, userData: { [key: string]: any }, a
     }
   }
 
-  if (userData.pausedSession === null) {
-    userData.pausedSession = deleteField();
+  const dataToUpdate = { ...userData };
+  if (dataToUpdate.pausedSession === null || dataToUpdate.pausedSession === undefined) {
+    dataToUpdate.pausedSession = deleteField();
   }
 
-  await updateDoc(userDocRef, userData);
+  await updateDoc(userDocRef, dataToUpdate);
   
   if (actorInfo) {
     if (userData.pausedSession) {
         await logAudit('Pause Calling Session', `Paused session for event: ${userData.pausedSession.currentEvent}`, actorInfo);
-    } else if (userData.hasOwnProperty('pausedSession') && userData.pausedSession === undefined) {
+    } else if (userData.hasOwnProperty('pausedSession')) {
         await logAudit('End Calling Session', `Ended/cleared paused session.`, actorInfo);
     } else {
         await logAudit('Update User', `Updated user: ${userData.name || id}`, actorInfo);

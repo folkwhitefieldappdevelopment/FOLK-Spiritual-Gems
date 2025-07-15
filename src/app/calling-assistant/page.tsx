@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { Headset, Loader2, Edit, Search, Users, UserCheck, PlusCircle, Play, Pause } from "lucide-react";
-import type { Person, CallStatus, CustomField, Group, AppUser, PausedSession } from "@/lib/types";
+import type { Person, CallStatus, CustomField, Group, AppUser, PausedSession, UserRole } from "@/lib/types";
 import { occupationStatuses } from "@/lib/types";
 import { callStatuses } from "@/lib/data";
 import { Button } from "@/components/ui/button";
@@ -62,6 +62,12 @@ import {
 
 const ROWS_PER_PAGE = 10;
 
+type UserInfo = {
+  id: string;
+  name: string;
+  role: UserRole[];
+};
+
 const CallingAssistantPageComponent = React.memo(function CallingAssistantPageComponent() {
   const { toast } = useToast();
   const { appUser, user, updateCurrentAppUser } = useAuth();
@@ -111,13 +117,14 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     if (!appUser) return;
      setIsDataLoading(true);
       setFetchError(null);
+      const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
       try {
-        const peopleData = await getPeople(appUser);
+        const { people: peopleData } = await getPeople(userInfo, { pageSize: 5000 });
         const [enablersData, sourcesData, customFieldsData, groupsData, guidesData] = await Promise.all([
-          getEnablers(appUser, 'filter'),
-          getContactSources(appUser),
-          getCustomPersonFields(appUser),
-          getAllGroups(appUser, peopleData),
+          getEnablers(userInfo, 'filter'),
+          getContactSources(userInfo),
+          getCustomPersonFields(userInfo),
+          getAllGroups(userInfo, peopleData),
           getFolkGuides(),
         ]);
         setPeople(peopleData);
@@ -340,7 +347,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     frp: boolean | undefined
   ) => {
     if (!appUser || !user) return;
-    
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     const callTime = new Date(); // Use a client-side timestamp for the history entry
     
     const callHistoryEntry: any = {
@@ -366,7 +373,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     if (ma !== undefined) updateData.lastMa = ma;
     if (frp !== undefined) updateData.lastFrp = frp;
 
-    updatePerson(personId, updateData);
+    updatePerson(personId, updateData, userInfo);
     
     // Optimistic update using the same client-side timestamp
     setPeople(prev => prev.map(p => {
@@ -409,10 +416,11 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       toast({ variant: 'destructive', title: 'Event name cannot be empty.' });
       return;
     }
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
 
     if (editableEventName !== currentCallingEvent) {
       try {
-        await updateUser(appUser.id, { currentCallingEvent: editableEventName }, appUser);
+        await updateUser(appUser.id, { currentCallingEvent: editableEventName }, userInfo);
         updateCurrentAppUser({ currentCallingEvent: editableEventName });
         toast({ title: 'Calling Event Updated' });
       } catch (error) {
@@ -451,7 +459,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
         return;
       }
       
-      await logAudit('Start Calling Session', `Started session for event "${editableEventName}" with ${peopleToCall.length} contacts.`, appUser);
+      await logAudit('Start Calling Session', `Started session for event "${editableEventName}" with ${peopleToCall.length} contacts.`, userInfo);
       setSessionStartIndex(fromIndex - 1);
       setInitialSessionIndex(0); // Always start new session from beginning
       setPeopleForSession(peopleToCall);
@@ -463,10 +471,11 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   
   const handleAddToGroup = React.useCallback(async (targetGroupId: string) => {
     if (selectedIds.size === 0 || !appUser) return;
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     try {
-        await addPeopleToGroup(targetGroupId, Array.from(selectedIds), appUser);
+        await addPeopleToGroup(targetGroupId, Array.from(selectedIds), userInfo);
         toast({ title: 'Members Added', description: `${selectedIds.size} contacts have been added to the other group.` });
-        const updatedGroups = await getAllGroups(appUser, people);
+        const updatedGroups = await getAllGroups(userInfo, people);
         setGroups(updatedGroups);
         setSelectedIds(new Set());
     } catch (error) {
@@ -476,22 +485,23 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
   const handleSaveGroupAndAddMembers = React.useCallback(async (groupData: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy">) => {
     if (!appUser) return;
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     try {
         const newGroupData: Omit<Group, 'id' | 'createdBy'> = {
             memberCount: 0,
             peopleIds: [],
             ...groupData,
         };
-        const newGroup = await createGroup(newGroupData, appUser);
+        const newGroup = await createGroup(newGroupData, userInfo);
         setGroups((prev) => [...prev, newGroup]);
         
         if (selectedIds.size > 0) {
-            await addPeopleToGroup(newGroup.id, Array.from(selectedIds), appUser);
+            await addPeopleToGroup(newGroup.id, Array.from(selectedIds), userInfo);
             toast({
                 title: "Group Created & Members Added",
                 description: `The group "${newGroup.name}" was created and ${selectedIds.size} contacts were added.`,
             });
-            const updatedGroups = await getAllGroups(appUser, people);
+            const updatedGroups = await getAllGroups(userInfo, people);
             setGroups(updatedGroups);
             setSelectedIds(new Set());
         } else {
@@ -512,14 +522,15 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
   const handleAssignCoEnabler = React.useCallback(async (coEnabler: AppUser | null) => {
     if (!appUser || selectedIds.size === 0) return;
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     try {
-        await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler, appUser);
+        await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler, userInfo);
         toast({
             title: coEnabler ? 'Co-Enabler Assigned' : 'Co-Enabler Unassigned',
             description: `${selectedIds.size} contacts have been updated.`,
         });
         // Refetch all people data to show the change
-        const peopleData = await getPeople(appUser);
+        const { people: peopleData } = await getPeople(userInfo, { pageSize: 5000 });
         setPeople(peopleData);
         setSelectedIds(new Set());
     } catch (error) {
@@ -806,7 +817,8 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
             setIsOpen={setIsEditingDialogOpen}
             onSave={async (data) => {
               if (!appUser) return;
-              await updatePerson(editingPersonRef.current!.id, data, appUser);
+              const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+              await updatePerson(editingPersonRef.current!.id, data, userInfo);
               // Also update the main people list to reflect changes immediately
               setPeople(prev => prev.map(p => p.id === editingPersonRef.current!.id ? {...p, ...data} : p));
             }}
@@ -826,7 +838,3 @@ export default function CallingAssistantPage() {
         </AuthGuard>
     );
 }
-
-    
-
-    

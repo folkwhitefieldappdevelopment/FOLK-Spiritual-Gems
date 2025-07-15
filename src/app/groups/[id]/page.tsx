@@ -18,7 +18,7 @@ import {
   Edit,
   Play,
 } from 'lucide-react';
-import type { Person, Group, AppUser, CustomField, CallStatus } from '@/lib/types';
+import type { Person, Group, AppUser, CustomField, CallStatus, UserRole } from '@/lib/types';
 import { occupationStatuses } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { getGroup, getStaticGroups, addPeopleToGroup, removePeopleFromGroup } from '@/services/groups-service';
@@ -81,6 +81,12 @@ import { logAudit } from '@/services/audit-service';
 
 const ROWS_PER_PAGE = 10;
 
+type UserInfo = {
+  id: string;
+  name: string;
+  role: UserRole[];
+};
+
 function GroupDetailPageComponent() {
   const router = useRouter();
   const params = useParams();
@@ -133,14 +139,15 @@ function GroupDetailPageComponent() {
     if (!groupId || !appUser) return;
     setIsLoading(true);
     setFetchError(null);
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     try {
-      const [peopleData, allGroupsData, enablersData, sourcesData, guidesData, customFieldsData] = await Promise.all([
-        getPeople(appUser),
-        getStaticGroups(appUser),
-        getEnablers(appUser, 'filter'),
-        getContactSources(appUser),
+      const [{people: peopleData}, allGroupsData, enablersData, sourcesData, guidesData, customFieldsData] = await Promise.all([
+        getPeople(userInfo, { pageSize: 5000 }),
+        getStaticGroups(userInfo),
+        getEnablers(userInfo, 'filter'),
+        getContactSources(userInfo),
         getFolkGuides(),
-        getCustomPersonFields(appUser),
+        getCustomPersonFields(userInfo),
       ]);
       
       const groupData = await getGroup(groupId, peopleData);
@@ -297,8 +304,9 @@ function GroupDetailPageComponent() {
   
   const handleRemoveMembers = React.useCallback(async (idsToRemove: string[]) => {
     if (!group || group.isDynamic || !appUser) return;
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     try {
-      await removePeopleFromGroup(group.id, idsToRemove, appUser);
+      await removePeopleFromGroup(group.id, idsToRemove, userInfo);
       setMembers(prev => prev.filter(m => !idsToRemove.includes(m.id)));
       setGroup(prev => prev ? { ...prev, peopleIds: prev.peopleIds.filter(id => !idsToRemove.includes(id)), memberCount: prev.memberCount - idsToRemove.length } : null);
       toast({
@@ -314,7 +322,8 @@ function GroupDetailPageComponent() {
   const handleSavePersonDialog = React.useCallback(async (personData: Omit<Person, 'id' | 'progress' | 'createdAt'>) => {
     if (!editingPerson || !appUser) return;
     try {
-      await updatePerson(editingPerson.id, personData, appUser);
+      const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+      await updatePerson(editingPerson.id, personData, userInfo);
       const updatedPerson = { ...editingPerson, ...personData };
       setAllPeople(allPeople.map(p => p.id === updatedPerson.id ? updatedPerson : p));
       setMembers(members.map(m => m.id === updatedPerson.id ? updatedPerson : m));
@@ -327,8 +336,9 @@ function GroupDetailPageComponent() {
   
   const handleSaveMembers = React.useCallback(async (memberIds: string[]) => {
     if (!group || group.isDynamic || !appUser) return;
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     try {
-      await addPeopleToGroup(groupId, memberIds, appUser);
+      await addPeopleToGroup(groupId, memberIds, userInfo);
       const updatedGroup = await getGroup(groupId, allPeople);
       if (updatedGroup) {
         setGroup(updatedGroup);
@@ -350,8 +360,9 @@ function GroupDetailPageComponent() {
 
   const handleAddToGroup = React.useCallback(async (targetGroupId: string) => {
     if (selectedIds.size === 0 || !appUser) return;
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     try {
-      await addPeopleToGroup(targetGroupId, Array.from(selectedIds), appUser);
+      await addPeopleToGroup(targetGroupId, Array.from(selectedIds), userInfo);
       toast({ title: 'Members Added', description: `${selectedIds.size} contacts have been added to the other group.` });
       setSelectedIds(new Set());
     } catch (error) {
@@ -361,8 +372,9 @@ function GroupDetailPageComponent() {
 
   const handleAssignCoEnabler = React.useCallback(async (coEnabler: AppUser | null) => {
     if (!appUser || selectedIds.size === 0) return;
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     try {
-      await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler, appUser);
+      await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler, userInfo);
       toast({ title: coEnabler ? 'Co-Enabler Assigned' : 'Co-Enabler Unassigned', description: `${selectedIds.size} contacts have been updated.` });
       fetchPageData(); // Refetch to show changes
       setSelectedIds(new Set());
@@ -380,6 +392,7 @@ function GroupDetailPageComponent() {
     frp: boolean | undefined
   ) => {
     if (!appUser || !user) return;
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     const callTime = new Date();
     const callHistoryEntry: any = {
       remark: remark, calledAt: callTime, status: status, event: currentCallingEvent,
@@ -394,7 +407,7 @@ function GroupDetailPageComponent() {
     if (sg !== undefined) updateData.lastSg = sg;
     if (ma !== undefined) updateData.lastMa = ma;
     if (frp !== undefined) updateData.lastFrp = frp;
-    updatePerson(personId, updateData);
+    updatePerson(personId, updateData, userInfo);
     setMembers(prev => prev.map(p => {
         if (p.id === personId) {
             const newHistory = p.callHistory ? [...p.callHistory, callHistoryEntry] : [callHistoryEntry];
@@ -417,13 +430,14 @@ function GroupDetailPageComponent() {
 
   const handleSaveEventAndContinue = React.useCallback(async () => {
     if (!appUser) return;
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     if (!editableEventName.trim()) {
       toast({ variant: 'destructive', title: 'Event name cannot be empty.' });
       return;
     }
     if (editableEventName !== currentCallingEvent) {
       try {
-        await updateUser(appUser.id, { currentCallingEvent: editableEventName }, appUser);
+        await updateUser(appUser.id, { currentCallingEvent: editableEventName }, userInfo);
         updateCurrentAppUser({ currentCallingEvent: editableEventName });
         toast({ title: 'Calling Event Updated' });
       } catch (error) {
@@ -443,7 +457,7 @@ function GroupDetailPageComponent() {
         toast({ variant: 'destructive', title: 'No Contacts Selected', description: 'The specified range is empty.' });
         return;
       }
-      await logAudit('Start Calling Session', `Started session for group "${group?.name}" with ${peopleToCall.length} contacts.`, appUser);
+      await logAudit('Start Calling Session', `Started session for group "${group?.name}" with ${peopleToCall.length} contacts.`, userInfo);
       setSessionStartIndex(fromIndex - 1);
       setInitialSessionIndex(0); // Always start new session from beginning
       setPeopleForSession(peopleToCall);

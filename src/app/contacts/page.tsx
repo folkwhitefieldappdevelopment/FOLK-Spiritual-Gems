@@ -18,7 +18,7 @@ import {
 import { read, utils, write } from "xlsx";
 import JSZip from "jszip";
 import { createInitialProgress } from "@/lib/data";
-import type { Person, Group, AppUser, CustomField } from "@/lib/types";
+import type { Person, Group, AppUser, CustomField, UserRole } from "@/lib/types";
 import { occupationStatuses } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -86,6 +86,12 @@ import { logAudit } from '@/services/audit-service';
 const ROWS_PER_PAGE = 10;
 const IMPORT_BATCH_SIZE = 50;
 
+type UserInfo = {
+  id: string;
+  name: string;
+  role: UserRole[];
+};
+
 function ContactsPageComponent() {
   const { toast } = useToast();
   const { appUser } = useAuth();
@@ -97,7 +103,7 @@ function ContactsPageComponent() {
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
   const [importingStatus, setImportingStatus] = React.useState<string | false>(false);
   const [isExporting, setIsExporting] = React.useState(false);
-  const [view, setView] = React.useState<"table" | "table">("table");
+  const [view, setView] = React.useState<"card" | "table">("card");
   
   const [searchTerm, setSearchTerm] = React.useState("");
   const [filters, setFilters] = React.useState<FilterRule[]>([]);
@@ -131,7 +137,7 @@ function ContactsPageComponent() {
     setFetchError(null);
     try {
       // Pass a simplified, serializable user object to the server function
-      const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+      const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
       const { people: peopleData, totalCount } = await getPeople(userInfo, {
           page: currentPage,
           pageSize: ROWS_PER_PAGE,
@@ -144,11 +150,11 @@ function ContactsPageComponent() {
       
       // These can still be fetched in parallel as they don't depend on the main data query
       const [enablersData, sourcesData, groupsData, guidesData, customFieldsData] = await Promise.all([
-        getEnablers(appUser, 'filter'),
-        getContactSources(appUser),
-        getAllGroups(appUser, allFetchedPeople), // Use fetched people for dynamic groups
+        getEnablers(userInfo, 'filter'),
+        getContactSources(userInfo),
+        getAllGroups(userInfo, allFetchedPeople), // Use fetched people for dynamic groups
         getFolkGuides(),
-        getCustomPersonFields(appUser),
+        getCustomPersonFields(userInfo),
       ]);
 
       setEnablerOptions(enablersData);
@@ -171,16 +177,17 @@ function ContactsPageComponent() {
 
   React.useEffect(() => {
     if (appUser) {
-        fetchPageData();
+        // Initial fetch is now combined into the next effect
     }
-  }, [appUser, fetchPageData]);
+  }, [appUser]);
   
   // This effect will re-trigger the fetch when filter/sort/page changes
   React.useEffect(() => {
     if (appUser) {
       fetchPageData();
     }
-  }, [currentPage, filters, sortDescriptors, searchTerm, appUser, fetchPageData]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, filters, sortDescriptors, searchTerm, appUser]);
 
 
   const filterableFields: FilterableField[] = React.useMemo(() => {
@@ -269,7 +276,7 @@ function ContactsPageComponent() {
     setIsExporting(true);
     
     // Fetch all matching people for export
-    const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     const { people: allMatchingPeople } = await getPeople(userInfo, {
       pageSize: totalPeople,
       filters,
@@ -363,7 +370,7 @@ function ContactsPageComponent() {
         title: 'Export Successful',
         description: `Exported ${allMatchingPeople.length} contacts in contacts_export.zip.`,
       });
-      await logAudit('Export Contacts', `Exported ${allMatchingPeople.length} contacts.`, appUser);
+      await logAudit('Export Contacts', `Exported ${allMatchingPeople.length} contacts.`, { id: appUser.id, name: appUser.name, role: appUser.role });
 
     } catch (err) {
       console.error("Failed to generate zip file:", err);
@@ -383,6 +390,7 @@ function ContactsPageComponent() {
 
     setImportingStatus("Reading file...");
     const reader = new FileReader();
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     reader.onload = async (e) => {
       try {
         const data = e.target?.result;
@@ -462,7 +470,7 @@ function ContactsPageComponent() {
         for (let i = 0; i < allNewPeople.length; i += IMPORT_BATCH_SIZE) {
             const batch = allNewPeople.slice(i, i + IMPORT_BATCH_SIZE);
             setImportingStatus(`Importing ${i + batch.length} of ${allNewPeople.length}...`);
-            await importPeople(batch, appUser);
+            await importPeople(batch, userInfo);
         }
 
         await fetchPageData(); // Refresh all data
@@ -501,7 +509,8 @@ function ContactsPageComponent() {
   const handleDeletePerson = React.useCallback(async (personId: string) => {
     if (!appUser) return;
     try {
-      await deletePerson(personId, appUser);
+      const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+      await deletePerson(personId, userInfo);
       toast({
         title: "Person Deleted",
         description: "The person has been removed from your contacts.",
@@ -519,7 +528,8 @@ function ContactsPageComponent() {
   const handleDeleteSelected = React.useCallback(async () => {
     if (!appUser) return;
     try {
-      await deletePeople(Array.from(selectedIds), appUser);
+      const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+      await deletePeople(Array.from(selectedIds), userInfo);
       toast({
         title: "Contacts Deleted",
         description: `${selectedIds.size} contacts have been removed.`,
@@ -538,9 +548,10 @@ function ContactsPageComponent() {
 
   const handleSavePerson = React.useCallback(async (personData: Omit<Person, "id" | "progress" | "createdAt">) => {
     if (!appUser) return;
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     try {
       if (editingPerson) {
-        await updatePerson(editingPerson.id, personData, appUser);
+        await updatePerson(editingPerson.id, personData, userInfo);
         toast({
           title: "Person Updated",
           description: "The person's details have been saved.",
@@ -550,7 +561,7 @@ function ContactsPageComponent() {
           ...personData,
           progress: createInitialProgress(),
         };
-        await createPerson(newPersonData as Omit<Person, 'id' | 'createdAt'>, appUser);
+        await createPerson(newPersonData as Omit<Person, 'id' | 'createdAt'>, userInfo);
         toast({
           title: "Person Added",
           description: "The new person has been added to your contacts.",
@@ -583,8 +594,9 @@ function ContactsPageComponent() {
 
   const handleAddToGroup = React.useCallback(async (groupId: string) => {
     if (selectedIds.size === 0 || !appUser) return;
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     try {
-      await addPeopleToGroup(groupId, Array.from(selectedIds), appUser);
+      await addPeopleToGroup(groupId, Array.from(selectedIds), userInfo);
       toast({
         title: "Members Added",
         description: `${selectedIds.size} contacts have been added to the group.`,
@@ -602,16 +614,17 @@ function ContactsPageComponent() {
 
   const handleSaveGroupAndAddMembers = React.useCallback(async (groupData: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy">) => {
     if (!appUser) return;
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     try {
       const newGroupData: Omit<Group, 'id' | 'createdBy'> = {
         memberCount: 0,
         peopleIds: [],
         ...groupData,
       };
-      const newGroup = await createGroup(newGroupData, appUser);
+      const newGroup = await createGroup(newGroupData, userInfo);
       
       if (selectedIds.size > 0) {
-        await addPeopleToGroup(newGroup.id, Array.from(selectedIds), appUser);
+        await addPeopleToGroup(newGroup.id, Array.from(selectedIds), userInfo);
          toast({
           title: "Group Created & Members Added",
           description: `The group "${newGroup.name}" was created and ${selectedIds.size} contacts were added.`,
@@ -636,8 +649,9 @@ function ContactsPageComponent() {
   
   const handleAssignCoEnabler = React.useCallback(async (coEnabler: AppUser | null) => {
     if (!appUser || selectedIds.size === 0) return;
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     try {
-      await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler, appUser);
+      await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler, userInfo);
       toast({
         title: coEnabler ? 'Co-Enabler Assigned' : 'Co-Enabler Unassigned',
         description: `${selectedIds.size} contacts have been updated.`,
@@ -656,8 +670,9 @@ function ContactsPageComponent() {
 
   const handleAssignEnabler = React.useCallback(async (enabler: AppUser) => {
     if (!appUser || selectedIds.size === 0) return;
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     try {
-        await assignEnablerToPeople(Array.from(selectedIds), enabler, appUser);
+        await assignEnablerToPeople(Array.from(selectedIds), enabler, userInfo);
         toast({
             title: 'Enabler Assigned',
             description: `${selectedIds.size} contacts have been assigned to ${enabler.name}.`,
