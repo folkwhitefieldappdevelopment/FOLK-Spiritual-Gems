@@ -1,4 +1,6 @@
 
+'use server';
+
 import { db } from '@/lib/firebase';
 import {
   collection,
@@ -15,60 +17,142 @@ import {
   runTransaction,
   type DocumentSnapshot,
   deleteField,
+  orderBy,
+  limit,
+  startAfter,
+  getCountFromServer,
+  or,
+  and,
+  type QueryConstraint,
 } from 'firebase/firestore';
 import type { Person, AppUser } from '@/lib/types';
+import type { FilterRule } from '@/components/filter-popover';
+import type { SortDescriptor } from '@/components/sort-popover';
 import { logAudit } from './audit-service';
 
 const processPersonDoc = (doc: DocumentSnapshot): Person => {
-  const data = doc.data() as any; // Use 'any' to access potential legacy fields
-  // Backward compatibility: If fullName is missing, construct it from firstName/lastName.
+  const data = doc.data() as any;
   if (!data.fullName && (data.firstName || data.lastName)) {
     data.fullName = `${data.firstName || ''} ${data.lastName || ''}`.trim();
   }
   return { id: doc.id, ...data } as Person;
 };
 
-export const getPeople = async (appUser: AppUser | null): Promise<Person[]> => {
-  if (!appUser) return [];
+type GetPeopleResult = {
+  people: Person[];
+  totalCount: number;
+};
 
-  const peopleCollection = collection(db, 'people');
-  
-  if (appUser.role.includes('Admin')) {
-    // Admin sees all contacts
-    const q = query(peopleCollection);
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(processPersonDoc);
-  }
-  
-  if (appUser.role.includes('Folk Guide')) {
-    // Guide sees contacts where they are the assigned Folk Guide.
-    const q = query(peopleCollection, where('folkGuideId', '==', appUser.id));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(processPersonDoc);
-  }
+export const getPeople = async (
+    appUser: AppUser | null,
+    {
+        page = 1,
+        pageSize = 10,
+        filters = [],
+        sortDescriptors = [{ field: 'createdAt', direction: 'desc' }],
+        searchTerm = '',
+        groupId,
+    }: {
+        page?: number;
+        pageSize?: number;
+        filters?: FilterRule[];
+        sortDescriptors?: SortDescriptor[];
+        searchTerm?: string;
+        groupId?: string;
+    }
+): Promise<GetPeopleResult> => {
+    if (!appUser) return { people: [], totalCount: 0 };
 
-  // Folk Enabler: must check for permanent assignment AND temporary co-enabler assignment
-  const permanentQuery = query(peopleCollection, where('enablerInTouchWith', '==', appUser.name));
-  const coEnablerQuery = query(peopleCollection, where('coEnablerId', '==', appUser.id));
+    const peopleCollection = collection(db, 'people');
+    let queryConstraints: QueryConstraint[] = [];
 
-  const [permanentSnapshot, coEnablerSnapshot] = await Promise.all([
-      getDocs(permanentQuery),
-      getDocs(coEnablerQuery)
-  ]);
+    // --- Role-based Access Control ---
+    if (appUser.role.includes('Admin')) {
+        // Admin sees all. No additional constraint needed for access.
+    } else if (appUser.role.includes('Folk Guide')) {
+        queryConstraints.push(where('folkGuideId', '==', appUser.id));
+    } else { // Folk Enabler
+        queryConstraints.push(
+            or(
+                where('enablerInTouchWith', '==', appUser.name),
+                where('coEnablerId', '==', appUser.id)
+            )
+        );
+    }
+    
+    // --- Group Filter ---
+    if (groupId) {
+        const groupDoc = await doc(db, 'groups', groupId);
+        const groupSnap = await getDoc(groupDoc);
+        if (groupSnap.exists()) {
+            const groupData = groupSnap.data();
+            const memberIds = groupData.peopleIds || [];
+            if (memberIds.length > 0) {
+                 // Firestore 'in' queries are limited to 30 values.
+                 // For groups larger than 30, this will fail.
+                 // A more scalable solution would involve denormalizing group membership onto the person document.
+                 // For now, we assume groups are smaller than 30.
+                queryConstraints.push(where('__name__', 'in', memberIds));
+            } else {
+                 return { people: [], totalCount: 0 }; // Group has no members
+            }
+        } else {
+             return { people: [], totalCount: 0 }; // Group not found
+        }
+    }
 
-  const peopleMap = new Map<string, Person>();
+    // --- Advanced Filters ---
+    const filterConstraints = filters.map(filter => {
+        const { field, operator, value } = filter;
+        if (operator === 'is_empty') return where(field, '==', '');
+        if (operator === 'is_not_empty') return where(field, '!=', '');
+        // Basic operators for now. More complex ones like 'contains' require more complex solutions (e.g., third-party search).
+        if (operator === 'is') return where(field, '==', value);
+        if (operator === 'is_not') return where(field, '!=', value);
+        if (operator === 'gt') return where(field, '>', value);
+        if (operator === 'lt') return where(field, '<', value);
+        if (operator === 'gte') return where(field, '>=', value);
+        if (operator === 'lte') return where(field, '<=', value);
+        return null;
+    }).filter((c): c is QueryConstraint => c !== null);
 
-  permanentSnapshot.docs.forEach(doc => {
-      peopleMap.set(doc.id, processPersonDoc(doc));
-  });
+    if (filterConstraints.length > 0) {
+        queryConstraints.push(and(...filterConstraints));
+    }
 
-  coEnablerSnapshot.docs.forEach(doc => {
-      if (!peopleMap.has(doc.id)) {
-          peopleMap.set(doc.id, processPersonDoc(doc));
-      }
-  });
-  
-  return Array.from(peopleMap.values());
+    // --- Search Term (simple prefix search on fullName) ---
+    if (searchTerm.trim()) {
+        const term = searchTerm.trim();
+        queryConstraints.push(where('fullName', '>=', term));
+        queryConstraints.push(where('fullName', '<=', term + '\uf8ff'));
+    }
+
+    // --- Create Count and Data Queries ---
+    const countQuery = query(peopleCollection, ...queryConstraints);
+    
+    const sortConstraints = sortDescriptors.map(desc => orderBy(desc.field, desc.direction));
+    let dataQuery = query(peopleCollection, ...queryConstraints, ...sortConstraints, limit(pageSize));
+
+    // --- Pagination ---
+    if (page > 1) {
+        const prevPageQuery = query(peopleCollection, ...queryConstraints, ...sortConstraints, limit((page - 1) * pageSize));
+        const prevPageSnapshot = await getDocs(prevPageQuery);
+        if (!prevPageSnapshot.empty) {
+            const lastVisible = prevPageSnapshot.docs[prevPageSnapshot.docs.length - 1];
+            dataQuery = query(dataQuery, startAfter(lastVisible));
+        }
+    }
+
+    // --- Execute Queries ---
+    const [countSnapshot, dataSnapshot] = await Promise.all([
+        getCountFromServer(countQuery),
+        getDocs(dataQuery)
+    ]);
+    
+    const people = dataSnapshot.docs.map(processPersonDoc);
+    const totalCount = countSnapshot.data().count;
+    
+    return { people, totalCount };
 };
 
 export const getPerson = async (id: string): Promise<Person | null> => {
@@ -137,12 +221,12 @@ export const createPerson = async (
             assignedEnabler = newAssignedEnablerName;
         } catch (e) {
             console.error("Transaction for auto-assignment failed: ", e);
-            // Fallback: assign to the first enabler if transaction fails
-            assignedEnabler = enablers[0].name;
+            // Fallback: assign to the guide themselves if transaction fails
+            assignedEnabler = appUser.name;
         }
     } else {
-        // If no enablers, the contact remains unassigned.
-        assignedEnabler = '';
+        // If no enablers, assign to the guide themselves
+        assignedEnabler = appUser.name;
     }
   } else if (!assignedEnabler && appUser.role.includes('Folk Enabler')) {
     // If an enabler creates a contact without specifying, assign it to them by default.
