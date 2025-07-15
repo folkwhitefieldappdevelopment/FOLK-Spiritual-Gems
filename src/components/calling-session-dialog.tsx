@@ -111,7 +111,7 @@ const CallingSessionDialogComponent = ({
   const { toast } = useToast();
   const { appUser, updateCurrentAppUser } = useAuth();
   const [currentIndex, setCurrentIndex] = React.useState(initialIndex);
-  const [isInitializing, setIsInitializing] = React.useState(false);
+  const [isInitializing, setIsInitializing] = React.useState(true);
   const [currentPeople, setCurrentPeople] = React.useState<Person[]>(people);
   const [isEditingDetails, setIsEditingDetails] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -120,6 +120,9 @@ const CallingSessionDialogComponent = ({
   const [isNotesDirty, setIsNotesDirty] = React.useState(false);
   const [isSavingNotes, setIsSavingNotes] = React.useState(false);
   
+  // Use a ref to track if the session was intentionally closed (paused/ended)
+  const isIntentionalClose = React.useRef(false);
+
   const currentPerson = currentPeople[currentIndex];
   
   const form = useForm<CallFormValues>({
@@ -144,6 +147,7 @@ const CallingSessionDialogComponent = ({
         setCurrentIndex(initialIndex);
         setCurrentPeople(people);
         setIsEditingDetails(false);
+        isIntentionalClose.current = false;
         
         const timer = setTimeout(() => {
           setIsInitializing(false);
@@ -152,6 +156,34 @@ const CallingSessionDialogComponent = ({
         return () => clearTimeout(timer);
     }
   }, [isOpen, people, initialIndex]);
+
+  // Auto-save session on unmount (refresh, close tab, etc.)
+  React.useEffect(() => {
+    return () => {
+        // This is the cleanup function that runs when the component unmounts.
+        // It only runs if the dialog was open and not intentionally closed.
+        if (isOpen && !isIntentionalClose.current && appUser && currentPeople.length > 0) {
+            console.log("Auto-saving session...");
+            const pausedSessionData: PausedSession = {
+                context,
+                peopleIds: currentPeople.map(p => p.id),
+                currentIndex,
+                currentEvent,
+                sessionStartIndex,
+                totalPeopleCount,
+                filters: filterStates.filters,
+                sortDescriptors: filterStates.sortDescriptors,
+                searchTerm: filterStates.searchTerm,
+                selectedGroupId: filterStates.selectedGroupId,
+                columnFilters: filterStates.columnFilters,
+            };
+            // This is a fire-and-forget operation on page unload.
+            updateUser(appUser.id, { pausedSession: pausedSessionData });
+            updateCurrentAppUser({ pausedSession: pausedSessionData });
+        }
+    }
+  }, [isOpen, isIntentionalClose, appUser, context, currentIndex, currentEvent, currentPeople, sessionStartIndex, totalPeopleCount, filterStates, updateCurrentAppUser]);
+
 
   React.useEffect(() => {
     if (!isInitializing && currentPerson) {
@@ -172,6 +204,8 @@ const CallingSessionDialogComponent = ({
     if (currentIndex < currentPeople.length - 1) {
         setCurrentIndex(currentIndex + 1);
     } else {
+        isIntentionalClose.current = true; // Session is complete
+        handleEndAndClearSession(true); // Silently clear session
         toast({
             title: "Calling Session Complete!",
             description: "You have gone through all the contacts in this list.",
@@ -182,7 +216,7 @@ const CallingSessionDialogComponent = ({
   
   const handlePrevious = React.useCallback(() => {
     if (currentIndex > 0) {
-      setCurrentIndex(currentIndex + 1);
+      setCurrentIndex(currentIndex - 1);
     }
   }, [currentIndex]);
   
@@ -211,11 +245,13 @@ const CallingSessionDialogComponent = ({
   }, [currentPerson, onSaveRemark, toast, handleNext]);
 
   const handleCloseDialog = React.useCallback(() => {
+    isIntentionalClose.current = true;
     onClose();
   }, [onClose]);
 
   const handlePauseSession = React.useCallback(async () => {
     if (!appUser) return;
+    isIntentionalClose.current = true;
     const pausedSessionData: PausedSession = {
         context,
         peopleIds: currentPeople.map(p => p.id),
@@ -239,15 +275,20 @@ const CallingSessionDialogComponent = ({
     }
   }, [appUser, context, currentPeople, currentIndex, currentEvent, sessionStartIndex, totalPeopleCount, filterStates, onClose, toast, updateCurrentAppUser]);
 
-  const handleEndAndClearSession = React.useCallback(async () => {
+  const handleEndAndClearSession = React.useCallback(async (silent = false) => {
     if (!appUser) return;
+    isIntentionalClose.current = true;
     try {
         await updateUser(appUser.id, { pausedSession: null }); // Use null to signify deletion
         updateCurrentAppUser({ pausedSession: undefined });
-        toast({ title: "Session Ended", description: "Your paused session has been cleared." });
+        if (!silent) {
+            toast({ title: "Session Ended", description: "Your paused session has been cleared." });
+        }
         onClose();
     } catch (e) {
-        toast({ variant: 'destructive', title: "Error", description: 'Could not end the session.' });
+        if (!silent) {
+            toast({ variant: 'destructive', title: "Error", description: 'Could not end the session.' });
+        }
     }
   }, [appUser, onClose, toast, updateCurrentAppUser]);
 
@@ -514,7 +555,7 @@ const CallingSessionDialogComponent = ({
         <DialogFooter className="flex-shrink-0 p-6 pt-4 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
            <div className="flex items-center gap-2 justify-center sm:justify-start">
                 <Button variant="secondary" size="sm" onClick={handlePauseSession}>
-                    <Pause className="mr-2 h-4 w-4"/> Pause
+                    <Pause className="mr-2 h-4 w-4"/> Pause & Save
                 </Button>
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -531,7 +572,7 @@ const CallingSessionDialogComponent = ({
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleEndAndClearSession} className="bg-destructive hover:bg-destructive/90">
+                            <AlertDialogAction onClick={() => handleEndAndClearSession()} className="bg-destructive hover:bg-destructive/90">
                                 End Session
                             </AlertDialogAction>
                         </AlertDialogFooter>
