@@ -103,11 +103,19 @@ function ContactsPageComponent() {
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
   const [importingStatus, setImportingStatus] = React.useState<string | false>(false);
   const [isExporting, setIsExporting] = React.useState(false);
-  const [view, setView] = React.useState<"card" | "table">("table");
+  const [view, setView] = React.useState<"table" | "table">("table");
   
   const [searchTerm, setSearchTerm] = React.useState("");
   const [filters, setFilters] = React.useState<FilterRule[]>([]);
-  const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([{ field: 'createdAt', direction: 'desc' }]);
+  
+  const getDefaultSort = (): SortDescriptor[] => {
+    if (appUser?.role.includes('Folk Guide') && !appUser.role.includes('Admin')) {
+      return [{ field: 'fullName', direction: 'asc' }];
+    }
+    return [{ field: 'createdAt', direction: 'desc' }];
+  };
+  const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>(getDefaultSort());
+  
   const [columnFilters, setColumnFilters] = React.useState<ColumnFilterState>({});
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
@@ -152,7 +160,7 @@ function ContactsPageComponent() {
       const [enablersData, sourcesData, groupsData, guidesData, customFieldsData] = await Promise.all([
         getEnablers(userInfo, 'filter'),
         getContactSources(userInfo),
-        getAllGroups(userInfo, allFetchedPeople), // Use fetched people for dynamic groups
+        getAllGroups(userInfo),
         getFolkGuides(),
         getCustomPersonFields(userInfo),
       ]);
@@ -172,7 +180,7 @@ function ContactsPageComponent() {
     } finally {
       setIsLoading(false);
     }
-  }, [appUser, currentPage, filters, sortDescriptors, searchTerm, allFetchedPeople]);
+  }, [appUser, currentPage, filters, sortDescriptors, searchTerm]);
 
 
   React.useEffect(() => {
