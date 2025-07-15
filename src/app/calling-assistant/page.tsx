@@ -18,7 +18,7 @@ import { FirebaseConfigError } from "@/components/firebase-config-error";
 import { getPeople, updatePerson, assignCoEnablerToPeople } from "@/services/people-service";
 import { getFolkGuides } from "@/services/user-service";
 import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
-import { getGroups, createGroup, addPeopleToGroup } from "@/services/groups-service";
+import { getAllGroups, createGroup, addPeopleToGroup } from "@/services/groups-service";
 import { updateUser } from "@/services/user-service";
 import { serverTimestamp, arrayUnion } from "firebase/firestore";
 import { useAuth } from "@/contexts/auth-context";
@@ -112,12 +112,12 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
      setIsDataLoading(true);
       setFetchError(null);
       try {
-        const [peopleData, enablersData, sourcesData, customFieldsData, groupsData, guidesData] = await Promise.all([
-          getPeople(appUser),
+        const peopleData = await getPeople(appUser);
+        const [enablersData, sourcesData, customFieldsData, groupsData, guidesData] = await Promise.all([
           getEnablers(appUser, 'filter'),
           getContactSources(appUser),
           getCustomPersonFields(appUser),
-          getGroups(appUser),
+          getAllGroups(appUser, peopleData),
           getFolkGuides(),
         ]);
         setPeople(peopleData);
@@ -466,13 +466,13 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     try {
         await addPeopleToGroup(targetGroupId, Array.from(selectedIds), appUser);
         toast({ title: 'Members Added', description: `${selectedIds.size} contacts have been added to the other group.` });
-        const updatedGroups = await getGroups(appUser);
+        const updatedGroups = await getAllGroups(appUser, people);
         setGroups(updatedGroups);
         setSelectedIds(new Set());
     } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not add contacts to the group.' });
     }
-  }, [selectedIds, appUser, toast]);
+  }, [selectedIds, appUser, toast, people]);
 
   const handleSaveGroupAndAddMembers = React.useCallback(async (groupData: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy">) => {
     if (!appUser) return;
@@ -491,7 +491,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
                 title: "Group Created & Members Added",
                 description: `The group "${newGroup.name}" was created and ${selectedIds.size} contacts were added.`,
             });
-            const updatedGroups = await getGroups(appUser);
+            const updatedGroups = await getAllGroups(appUser, people);
             setGroups(updatedGroups);
             setSelectedIds(new Set());
         } else {
@@ -508,7 +508,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
             description: "Could not create or add members to the new group.",
         });
     }
-  }, [selectedIds, appUser, toast]);
+  }, [selectedIds, appUser, toast, people]);
 
   const handleAssignCoEnabler = React.useCallback(async (coEnabler: AppUser | null) => {
     if (!appUser || selectedIds.size === 0) return;
@@ -584,8 +584,8 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
                                     <Button variant="outline" size="sm"><Users className="mr-2 h-4 w-4" />Add to Group</Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                    {groups.map((g) => <DropdownMenuItem key={g.id} onSelect={() => handleAddToGroup(g.id)}>{g.name}</DropdownMenuItem>)}
-                                    {groups.length > 0 && <DropdownMenuSeparator />}
+                                    {groups.filter(g => !g.isDynamic).map((g) => <DropdownMenuItem key={g.id} onSelect={() => handleAddToGroup(g.id)}>{g.name}</DropdownMenuItem>)}
+                                    {groups.filter(g => !g.isDynamic).length > 0 && <DropdownMenuSeparator />}
                                     <DropdownMenuItem onSelect={() => setIsCreateGroupDialogOpen(true)}>
                                         <PlusCircle className="mr-2 h-4 w-4" />
                                         Create New Group

@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { cn } from '@/lib/utils';
 import { getPerson, updatePerson, deletePerson } from '@/services/people-service';
 import { getCustomPersonFields } from '@/services/settings-service';
-import { getGroups } from '@/services/groups-service';
+import { getStaticGroups } from '@/services/groups-service';
 import { createInitialProgress } from '@/lib/data';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 import { AuthGuard } from '@/components/auth-guard';
@@ -73,7 +73,7 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
       try {
         const [personData, groupsData] = await Promise.all([
             getPerson(personId),
-            getGroups(appUser),
+            getStaticGroups(appUser),
         ]);
         
         setAllGroups(groupsData);

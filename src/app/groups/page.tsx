@@ -1,10 +1,12 @@
 
 "use client";
 import * as React from "react";
-import { PlusCircle, Loader2 } from "lucide-react";
-import type { Group } from "@/lib/types";
+import { PlusCircle, Loader2, Bot } from "lucide-react";
+import type { Group, AppUser, Person } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { getGroups, createGroup, updateGroup, deleteGroup } from "@/services/groups-service";
+import { getAllGroups, createGroup, updateGroup, deleteGroup } from "@/services/groups-service";
+import { getPeople } from "@/services/people-service";
+import { getEnablers, type EnablerOption } from "@/services/settings-service";
 import { FirebaseConfigError } from "@/components/firebase-config-error";
 import { useAuth } from "@/contexts/auth-context";
 
@@ -14,28 +16,44 @@ import { Button } from "@/components/ui/button";
 import { GroupCard } from "@/components/group-card";
 import { CreateUpdateGroupDialog } from "@/components/create-update-group-dialog";
 import { AuthGuard } from "@/components/auth-guard";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
 
 function GroupsPageComponent() {
   const { toast } = useToast();
   const { appUser } = useAuth();
-  const [groups, setGroups] = React.useState<Group[]>([]);
+  
+  const [allGroups, setAllGroups] = React.useState<Group[]>([]);
+  const [people, setPeople] = React.useState<Person[]>([]);
+  
   const [isLoading, setIsLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
+  
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-  const [editingGroup, setEditingGroup] = React.useState<Group | undefined>(
-    undefined
-  );
+  const [editingGroup, setEditingGroup] = React.useState<Group | undefined>(undefined);
+
+  const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
+  const [enablerFilter, setEnablerFilter] = React.useState<string>('all');
+  const [searchTerm, setSearchTerm] = React.useState('');
 
   React.useEffect(() => {
     if (!appUser) return;
-    const fetchGroups = async () => {
+    const fetchData = async () => {
       setIsLoading(true);
       setFetchError(null);
       try {
-        const groupsData = await getGroups(appUser);
-        setGroups(groupsData);
+        const [peopleData, enablersData] = await Promise.all([
+          getPeople(appUser),
+          getEnablers(appUser, 'filter'),
+        ]);
+        setPeople(peopleData);
+        setEnablerOptions(enablersData);
+
+        const groupsData = await getAllGroups(appUser, peopleData);
+        setAllGroups(groupsData);
       } catch (error) {
-        console.error("Failed to fetch groups", error);
+        console.error("Failed to fetch groups and people", error);
         if (error instanceof Error) {
             setFetchError(error);
         } else {
@@ -45,8 +63,35 @@ function GroupsPageComponent() {
         setIsLoading(false);
       }
     };
-    fetchGroups();
+    fetchData();
   }, [appUser]);
+
+  const filteredGroups = React.useMemo(() => {
+    let tempPeople = people;
+    
+    if (enablerFilter && enablerFilter !== 'all') {
+      if (enablerFilter === '__UNASSIGNED__') {
+        tempPeople = tempPeople.filter(p => !p.enablerInTouchWith);
+      } else {
+        tempPeople = tempPeople.filter(p => p.enablerInTouchWith === enablerFilter);
+      }
+    }
+    
+    // Re-calculate dynamic groups based on the filtered people
+    const staticGroups = allGroups.filter(g => !g.isDynamic);
+    const dynamicGroups = getAllGroups(appUser!, tempPeople).filter(g => g.isDynamic);
+
+    let allFilteredGroups = [...staticGroups, ...dynamicGroups];
+
+    if (searchTerm.trim()) {
+      allFilteredGroups = allFilteredGroups.filter(g => 
+        g.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        g.description.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    return allFilteredGroups.sort((a,b) => a.name.localeCompare(b.name));
+  }, [allGroups, people, enablerFilter, searchTerm, appUser]);
 
   const handleCreateGroup = React.useCallback(() => {
     setEditingGroup(undefined);
@@ -62,7 +107,7 @@ function GroupsPageComponent() {
     if (!appUser) return;
     try {
       await deleteGroup(groupId, appUser);
-      setGroups((prev) => prev.filter((g) => g.id !== groupId));
+      setAllGroups((prev) => prev.filter((g) => g.id !== groupId));
       toast({ title: "Group Deleted", description: "The group has been removed." });
     } catch (error) {
        toast({ variant: "destructive", title: "Error", description: "Could not delete group." });
@@ -70,14 +115,14 @@ function GroupsPageComponent() {
   }, [toast, appUser]);
 
   const handleSaveGroup = React.useCallback(async (
-    groupData: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy">
+    groupData: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy" | "creatorRole">
   ) => {
     if (!appUser) return;
     try {
       if (editingGroup) {
         // Update existing group
         await updateGroup(editingGroup.id, groupData, appUser);
-        setGroups((prev) =>
+        setAllGroups((prev) =>
           prev.map((g) =>
             g.id === editingGroup.id ? { ...g, ...groupData } : g
           )
@@ -94,7 +139,7 @@ function GroupsPageComponent() {
           ...groupData,
         };
         const newGroup = await createGroup(newGroupData, appUser);
-        setGroups((prev) => [...prev, newGroup]);
+        setAllGroups((prev) => [...prev, newGroup]);
         toast({
           title: "Group Created",
           description: "The new group has been added.",
@@ -118,18 +163,18 @@ function GroupsPageComponent() {
       return <FirebaseConfigError error={fetchError} />;
     }
 
-    if (groups.length === 0) {
+    if (filteredGroups.length === 0) {
       return (
         <div className="text-center py-12 text-muted-foreground">
-          <p>No groups found.</p>
-          <p className="text-sm">Click "Create Group" to get started.</p>
+          <p>No groups found for the current filters.</p>
+          <p className="text-sm">Try adjusting your filters or click "Create Group" to get started.</p>
         </div>
       );
     }
 
     return (
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {groups.map((group) => (
+        {filteredGroups.map((group) => (
           <GroupCard
             key={group.id}
             group={group}
@@ -147,14 +192,40 @@ function GroupsPageComponent() {
       <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
         <PageHeader
           title="Groups"
-          description={`Manage your created groups. You have ${groups.length} groups.`}
+          description={`Manage your created and smart groups.`}
         >
-          <Button size="sm" onClick={handleCreateGroup}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Create Group
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" onClick={handleCreateGroup}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Create Group
+            </Button>
+          </div>
         </PageHeader>
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0 space-y-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search groups..."
+                className="pl-10 w-full sm:w-64"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <Select value={enablerFilter} onValueChange={setEnablerFilter}>
+              <SelectTrigger className="w-full sm:w-[280px]">
+                <SelectValue placeholder="Filter by enabler..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Enablers' Contacts</SelectItem>
+                {enablerOptions.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           {renderContent()}
         </main>
       </div>

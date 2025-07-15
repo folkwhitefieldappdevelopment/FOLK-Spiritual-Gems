@@ -131,6 +131,7 @@ export type Group = {
   createdBy?: string;
   creatorRole?: UserRole[];
   visibility: UserRole[];
+  isDynamic?: boolean; // Flag for dynamic groups
 };
 
 export type CustomField = {

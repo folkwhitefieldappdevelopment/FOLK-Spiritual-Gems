@@ -21,8 +21,8 @@ import {
 import type { Person, Group, AppUser, CustomField, CallStatus } from '@/lib/types';
 import { occupationStatuses } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { getGroup, updateGroup, addPeopleToGroup, getGroups, removePeopleFromGroup } from '@/services/groups-service';
-import { getPeople, updatePerson, assignCoEnablerToPeople, deletePeople } from '@/services/people-service';
+import { getGroup, getStaticGroups, addPeopleToGroup, removePeopleFromGroup } from '@/services/groups-service';
+import { getPeople, updatePerson, assignCoEnablerToPeople } from '@/services/people-service';
 import { getFolkGuides, updateUser } from '@/services/user-service';
 import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from '@/services/settings-service';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
@@ -40,7 +40,6 @@ import { CreateUpdatePersonDialog } from '@/components/create-update-person-dial
 import { CallingSessionDialog } from '@/components/calling-session-dialog';
 import { ManageGroupMembersDialog } from '@/components/manage-group-members-dialog';
 import { AssignCoEnablerDialog } from '@/components/assign-helper-dialog';
-import { CreateUpdateGroupDialog } from '@/components/create-update-group-dialog';
 import { FilterPopover, type FilterRule, type FilterableField } from '@/components/filter-popover';
 import { SortPopover, type SortDescriptor } from '@/components/sort-popover';
 import {
@@ -112,7 +111,6 @@ function GroupDetailPageComponent() {
   const canAssignCoEnabler = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
   
   const [isManageMembersDialogOpen, setIsManageMembersDialogOpen] = React.useState(false);
-  const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = React.useState(false);
   const [isAssignCoEnablerDialogOpen, setIsAssignCoEnablerDialogOpen] = React.useState(false);
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(undefined);
   const isSelectionActive = selectedIds.size > 0;
@@ -136,15 +134,16 @@ function GroupDetailPageComponent() {
     setIsLoading(true);
     setFetchError(null);
     try {
-      const [groupData, peopleData, allGroupsData, enablersData, sourcesData, guidesData, customFieldsData] = await Promise.all([
-        getGroup(groupId),
+      const [peopleData, allGroupsData, enablersData, sourcesData, guidesData, customFieldsData] = await Promise.all([
         getPeople(appUser),
-        getGroups(appUser),
+        getStaticGroups(appUser),
         getEnablers(appUser, 'filter'),
         getContactSources(appUser),
         getFolkGuides(),
         getCustomPersonFields(appUser),
       ]);
+      
+      const groupData = await getGroup(groupId, peopleData);
 
       setAllPeople(peopleData);
       setAllGroups(allGroupsData);
@@ -297,7 +296,7 @@ function GroupDetailPageComponent() {
   }, []);
   
   const handleRemoveMembers = React.useCallback(async (idsToRemove: string[]) => {
-    if (!group || !appUser) return;
+    if (!group || group.isDynamic || !appUser) return;
     try {
       await removePeopleFromGroup(group.id, idsToRemove, appUser);
       setMembers(prev => prev.filter(m => !idsToRemove.includes(m.id)));
@@ -327,13 +326,14 @@ function GroupDetailPageComponent() {
   }, [editingPerson, allPeople, members, toast, appUser]);
   
   const handleSaveMembers = React.useCallback(async (memberIds: string[]) => {
-    if (!group || !appUser) return;
+    if (!group || group.isDynamic || !appUser) return;
     try {
-      const updatedGroupData = { peopleIds: memberIds, memberCount: memberIds.length };
-      await updateGroup(groupId, updatedGroupData, appUser);
-      const updatedGroup = { ...group, ...updatedGroupData };
-      setGroup(updatedGroup);
-      setMembers(allPeople.filter(p => memberIds.includes(p.id)));
+      await addPeopleToGroup(groupId, memberIds, appUser);
+      const updatedGroup = await getGroup(groupId, allPeople);
+      if (updatedGroup) {
+        setGroup(updatedGroup);
+        setMembers(allPeople.filter(p => updatedGroup.peopleIds.includes(p.id)));
+      }
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not update group members.'});
     }
@@ -489,20 +489,24 @@ function GroupDetailPageComponent() {
               {isSelectionActive ? (
                 <>
                   <span className="text-sm font-semibold">{selectedIds.size} selected</span>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Users className="mr-2 h-4 w-4" /> Add to Group</Button></DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {allGroups.filter(g => g.id !== groupId).map((g) => <DropdownMenuItem key={g.id} onSelect={() => handleAddToGroup(g.id)}>{g.name}</DropdownMenuItem>)}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  {!group.isDynamic && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Users className="mr-2 h-4 w-4" /> Add to Group</Button></DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {allGroups.filter(g => g.id !== groupId).map((g) => <DropdownMenuItem key={g.id} onSelect={() => handleAddToGroup(g.id)}>{g.name}</DropdownMenuItem>)}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                   {canAssignCoEnabler && <Button variant="outline" size="sm" onClick={() => setIsAssignCoEnablerDialogOpen(true)}><UserCheck className="mr-2 h-4 w-4" /> Assign Co-Enabler</Button>}
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild><Button variant="destructive" size="sm"><Trash2 className="mr-2 h-4 w-4" /> Remove from Group</Button></AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will remove the selected {selectedIds.size} contacts from this group. It will not delete them from the app.</AlertDialogDescription></AlertDialogHeader>
-                      <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleRemoveMembers(Array.from(selectedIds))} className="bg-destructive hover:bg-destructive/90">Remove</AlertDialogAction></AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  {!group.isDynamic && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild><Button variant="destructive" size="sm"><Trash2 className="mr-2 h-4 w-4" /> Remove from Group</Button></AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will remove the selected {selectedIds.size} contacts from this group. It will not delete them from the app.</AlertDialogDescription></AlertDialogHeader>
+                        <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleRemoveMembers(Array.from(selectedIds))} className="bg-destructive hover:bg-destructive/90">Remove</AlertDialogAction></AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                 </>
               ) : (
                 <>
@@ -594,7 +598,7 @@ function GroupDetailPageComponent() {
                 <PageHeader title={group.name} description={group.description || 'No description for this group.'}>
                     <div className="flex items-center gap-2">
                       <Button variant="outline" size="sm" className="w-9 sm:w-auto" onClick={() => router.push('/groups')}><ArrowLeft className="h-4 w-4 mr-0 sm:mr-2" /><span className="hidden sm:inline">Back to Groups</span></Button>
-                      <Button size="sm" className="w-9 sm:w-auto" onClick={() => setIsManageMembersDialogOpen(true)}><UserPlus className="h-4 w-4 mr-0 sm:mr-2" /><span className="hidden sm:inline">Manage Members</span></Button>
+                      {!group.isDynamic && <Button size="sm" className="w-9 sm:w-auto" onClick={() => setIsManageMembersDialogOpen(true)}><UserPlus className="h-4 w-4 mr-0 sm:mr-2" /><span className="hidden sm:inline">Manage Members</span></Button>}
                     </div>
                 </PageHeader>
             )}
@@ -606,7 +610,7 @@ function GroupDetailPageComponent() {
         </div>
       
       {editingPerson && <CreateUpdatePersonDialog isOpen={!!editingPerson} setIsOpen={() => setEditingPerson(undefined)} onSave={handleSavePersonDialog} person={editingPerson} allPeople={allPeople} />}
-      {group && <ManageGroupMembersDialog isOpen={isManageMembersDialogOpen} setIsOpen={setIsManageMembersDialogOpen} onSave={handleSaveMembers} group={group} allPeople={allPeople} />}
+      {group && !group.isDynamic && <ManageGroupMembersDialog isOpen={isManageMembersDialogOpen} setIsOpen={setIsManageMembersDialogOpen} onSave={handleSaveMembers} group={group} allPeople={allPeople} />}
       {isAssignCoEnablerDialogOpen && <AssignCoEnablerDialog isOpen={isAssignCoEnablerDialogOpen} setIsOpen={setIsAssignCoEnablerDialogOpen} onSave={handleAssignCoEnabler} peopleCount={selectedIds.size} />}
       <Dialog open={isEventDialogOpen} onOpenChange={setIsEventDialogOpen}>
         <DialogContent>

@@ -69,7 +69,7 @@ import {
   assignCoEnablerToPeople,
   assignEnablerToPeople,
 } from "@/services/people-service";
-import { getGroups, createGroup, addPeopleToGroup } from "@/services/groups-service";
+import { getAllGroups, createGroup, addPeopleToGroup } from "@/services/groups-service";
 import { getFolkGuides } from "@/services/user-service";
 import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
 import { useAuth } from "@/contexts/auth-context";
@@ -129,11 +129,11 @@ function ContactsPageComponent() {
     setIsLoading(true);
     setFetchError(null);
     try {
-      const [peopleData, enablersData, sourcesData, groupsData, guidesData, customFieldsData] = await Promise.all([
-        getPeople(appUser),
+      const peopleData = await getPeople(appUser);
+      const [enablersData, sourcesData, groupsData, guidesData, customFieldsData] = await Promise.all([
         getEnablers(appUser, 'filter'),
         getContactSources(appUser),
-        getGroups(appUser),
+        getAllGroups(appUser, peopleData),
         getFolkGuides(),
         getCustomPersonFields(appUser),
       ]);
@@ -678,7 +678,7 @@ function ContactsPageComponent() {
         title: "Members Added",
         description: `${selectedIds.size} contacts have been added to the group.`,
       });
-      const updatedGroups = await getGroups(appUser);
+      const updatedGroups = await getAllGroups(appUser, people);
       setGroups(updatedGroups);
       setSelectedIds(new Set());
     } catch (error) {
@@ -688,7 +688,7 @@ function ContactsPageComponent() {
         description: "Could not add contacts to the group.",
       });
     }
-  }, [selectedIds, toast, appUser]);
+  }, [selectedIds, toast, appUser, people]);
 
   const handleSaveGroupAndAddMembers = React.useCallback(async (groupData: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy">) => {
     if (!appUser) return;
@@ -707,7 +707,7 @@ function ContactsPageComponent() {
           title: "Group Created & Members Added",
           description: `The group "${newGroup.name}" was created and ${selectedIds.size} contacts were added.`,
         });
-        const updatedGroups = await getGroups(appUser);
+        const updatedGroups = await getAllGroups(appUser, people);
         setGroups(updatedGroups);
         setSelectedIds(new Set());
       } else {
@@ -724,7 +724,7 @@ function ContactsPageComponent() {
         description: "Could not create or add members to the new group.",
       });
     }
-  }, [selectedIds, appUser, toast]);
+  }, [selectedIds, appUser, toast, people]);
   
   const handleAssignCoEnabler = React.useCallback(async (coEnabler: AppUser | null) => {
     if (!appUser || selectedIds.size === 0) return;
@@ -794,7 +794,7 @@ function ContactsPageComponent() {
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                    {groups.map((group) => (
+                                    {groups.filter(g => !g.isDynamic).map((group) => (
                                     <DropdownMenuItem
                                         key={group.id}
                                         onSelect={() => handleAddToGroup(group.id)}
@@ -802,7 +802,7 @@ function ContactsPageComponent() {
                                         {group.name}
                                     </DropdownMenuItem>
                                     ))}
-                                    {groups.length > 0 && <DropdownMenuSeparator />}
+                                    {groups.filter(g => !g.isDynamic).length > 0 && <DropdownMenuSeparator />}
                                     <DropdownMenuItem onSelect={() => setIsCreateGroupDialogOpen(true)}>
                                         <PlusCircle className="mr-2 h-4 w-4" />
                                         Create New Group

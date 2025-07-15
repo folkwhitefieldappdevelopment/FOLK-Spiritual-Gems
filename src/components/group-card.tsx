@@ -2,7 +2,7 @@
 "use client";
 import Link from "next/link";
 import * as React from 'react';
-import { Users, MoreHorizontal, Edit, Trash2, Globe, Lock } from "lucide-react";
+import { Users, MoreHorizontal, Edit, Trash2, Globe, Lock, Bot } from "lucide-react";
 import type { Group } from "@/lib/types";
 
 import {
@@ -51,56 +51,58 @@ const GroupCardComponent = ({ group, onEdit, onDelete }: GroupCardProps) => {
         <CardHeader>
           <div className="flex items-start justify-between">
             <CardTitle>{group.name}</CardTitle>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 -mt-2"
+            {!group.isDynamic && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 -mt-2"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
                   onClick={(e) => e.preventDefault()}
                 >
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                onClick={(e) => e.preventDefault()}
-              >
-                <DropdownMenuItem onClick={() => onEdit()}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit
-                </DropdownMenuItem>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start px-2 py-1.5 text-sm font-normal text-destructive hover:bg-destructive/10 hover:text-destructive relative"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action cannot be undone. This will permanently
-                        delete the group '{group.name}'.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => onDelete()}
-                        className="bg-destructive hover:bg-destructive/90"
+                  <DropdownMenuItem onClick={() => onEdit()}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit
+                  </DropdownMenuItem>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start px-2 py-1.5 text-sm font-normal text-destructive hover:bg-destructive/10 hover:text-destructive relative"
                       >
+                        <Trash2 className="mr-2 h-4 w-4" />
                         Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action cannot be undone. This will permanently
+                          delete the group '{group.name}'.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => onDelete()}
+                          className="bg-destructive hover:bg-destructive/90"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
           <CardDescription className="line-clamp-2">
             {group.description}
@@ -115,7 +117,12 @@ const GroupCardComponent = ({ group, onEdit, onDelete }: GroupCardProps) => {
             </span>
           </div>
           <div className="flex items-center gap-1">
-              {group.visibility?.length > 0 ? (
+              {group.isDynamic ? (
+                <Badge variant="outline" className="flex items-center gap-1">
+                  <Bot className="h-3 w-3" />
+                  Automatic
+                </Badge>
+              ) : group.visibility?.length > 0 ? (
                 group.visibility.map(role => (
                   <Badge key={role} variant="outline" className="flex items-center gap-1">
                     <Globe className="mr-1 h-3 w-3" />

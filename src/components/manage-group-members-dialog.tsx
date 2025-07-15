@@ -63,7 +63,7 @@ export function ManageGroupMembersDialog({
     return allPeople.filter(person => {
       const name = (person.fullName || '').toLowerCase();
       return name.includes(searchTerm.toLowerCase())
-    });
+    }).sort((a,b) => a.fullName.localeCompare(b.fullName));
   }, [allPeople, searchTerm]);
 
   return (

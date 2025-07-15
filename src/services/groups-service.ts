@@ -14,10 +14,20 @@ import {
   type QuerySnapshot,
   type DocumentData,
 } from 'firebase/firestore';
-import type { Group, AppUser, UserRole } from '@/lib/types';
+import type { Group, AppUser, UserRole, Person } from '@/lib/types';
 import { logAudit } from './audit-service';
+import { generateDynamicGroups } from '@/lib/dynamic-groups';
 
-export const getGroups = async (appUser: AppUser): Promise<Group[]> => {
+// This function now fetches BOTH static (Firestore) and dynamic (code-defined) groups
+export const getAllGroups = async (appUser: AppUser, allPeople: Person[]): Promise<Group[]> => {
+  const staticGroups = await getStaticGroups(appUser);
+  const dynamicGroups = generateDynamicGroups(allPeople);
+
+  return [...staticGroups, ...dynamicGroups].sort((a,b) => a.name.localeCompare(b.name));
+};
+
+
+export const getStaticGroups = async (appUser: AppUser): Promise<Group[]> => {
   const groupsCollection = collection(db, 'groups');
   const results = new Map<string, Group>();
   const queries: Promise<QuerySnapshot<DocumentData>>[] = [];
@@ -65,11 +75,16 @@ export const getGroups = async (appUser: AppUser): Promise<Group[]> => {
   return Array.from(results.values()).sort((a,b) => a.name.localeCompare(b.name));
 };
 
-export const getGroup = async (id: string): Promise<Group | null> => {
+export const getGroup = async (id: string, allPeople: Person[] = []): Promise<Group | null> => {
+  if (id.startsWith('dynamic-')) {
+    const dynamicGroups = generateDynamicGroups(allPeople);
+    return dynamicGroups.find(g => g.id === id) || null;
+  }
+
   const docRef = doc(db, 'groups', id);
   const docSnap = await getDoc(docRef);
   if (docSnap.exists()) {
-    const groupData = { id: docSnap.id, ...docSnap.data() } as Group;
+    const groupData = { id: docSnap.id, ...docSnap.data(), isDynamic: false } as Group;
     if (!Array.isArray(groupData.visibility)) {
        // @ts-ignore - backward compatibility
       groupData.visibility = [];
@@ -88,6 +103,7 @@ export const createGroup = async (groupData: Omit<Group, 'id' | 'memberCount' | 
     visibility: groupData.visibility || [],
     memberCount: 0,
     peopleIds: [],
+    isDynamic: false,
   };
   const docRef = await addDoc(groupsCollection, dataToSave);
   await logAudit('Create Group', `Created group: ${groupData.name}`, appUser);
