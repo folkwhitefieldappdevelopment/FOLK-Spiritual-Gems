@@ -25,7 +25,7 @@ import {
   and,
   type QueryConstraint,
 } from 'firebase/firestore';
-import type { Person, AppUser } from '@/lib/types';
+import type { Person, AppUser, UserRole } from '@/lib/types';
 import type { FilterRule } from '@/components/filter-popover';
 import type { SortDescriptor } from '@/components/sort-popover';
 import { logAudit } from './audit-service';
@@ -43,8 +43,15 @@ type GetPeopleResult = {
   totalCount: number;
 };
 
+// Simplified user info to be passed from client to server
+type UserInfo = {
+  id: string;
+  name: string;
+  role: UserRole[];
+};
+
 export const getPeople = async (
-    appUser: AppUser | null,
+    userInfo: UserInfo,
     {
         page = 1,
         pageSize = 10,
@@ -61,21 +68,21 @@ export const getPeople = async (
         groupId?: string;
     }
 ): Promise<GetPeopleResult> => {
-    if (!appUser) return { people: [], totalCount: 0 };
+    if (!userInfo) return { people: [], totalCount: 0 };
 
     const peopleCollection = collection(db, 'people');
     let queryConstraints: QueryConstraint[] = [];
 
     // --- Role-based Access Control ---
-    if (appUser.role.includes('Admin')) {
+    if (userInfo.role.includes('Admin')) {
         // Admin sees all. No additional constraint needed for access.
-    } else if (appUser.role.includes('Folk Guide')) {
-        queryConstraints.push(where('folkGuideId', '==', appUser.id));
+    } else if (userInfo.role.includes('Folk Guide')) {
+        queryConstraints.push(where('folkGuideId', '==', userInfo.id));
     } else { // Folk Enabler
         queryConstraints.push(
             or(
-                where('enablerInTouchWith', '==', appUser.name),
-                where('coEnablerId', '==', appUser.id)
+                where('enablerInTouchWith', '==', userInfo.name),
+                where('coEnablerId', '==', userInfo.id)
             )
         );
     }

@@ -59,8 +59,11 @@ function AssignmentsPageComponent() {
     setIsLoading(true);
     setFetchError(null);
     try {
+      const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
       // Admins see all unassigned, Guides only see unassigned within their folk.
-      const peopleData = await getPeople(appUser);
+      // We still fetch all people and filter client-side for this specific view.
+      // A dedicated server-side query for unassigned people could be an optimization.
+      const { people: peopleData } = await getPeople(userInfo, { pageSize: 5000 }); // Fetch a large number
       let usersToAssign: AppUser[] = [];
 
       if (appUser.role.includes('Admin')) {

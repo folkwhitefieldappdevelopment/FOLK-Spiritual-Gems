@@ -61,15 +61,20 @@ function DashboardPageComponent() {
       setIsLoading(true);
       setFetchError(null);
       try {
-        const promises: (Promise<Person[]> | Promise<AppUser[]>)[] = [getPeople(appUser)];
+        const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+        const peoplePromise = getPeople(userInfo, { pageSize: 5000 }); // Fetch a large number for dashboard stats
 
+        let usersPromise: Promise<AppUser[]> | Promise<void> = Promise.resolve();
         if (appUser.role.includes('Admin')) {
-            promises.push(getUsers());
+            usersPromise = getUsers();
         } else if (appUser.role.includes('Folk Guide')) {
-            promises.push(getEnablersForGuide(appUser.id));
+            usersPromise = getEnablersForGuide(appUser.id);
         }
 
-        const [peopleData, usersData] = await Promise.all(promises);
+        const [{ people: peopleData }, usersData] = await Promise.all([
+          peoplePromise, 
+          usersPromise
+        ]);
         
         setPeople(peopleData as Person[]);
         if (usersData) {

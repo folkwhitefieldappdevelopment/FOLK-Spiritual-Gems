@@ -90,7 +90,8 @@ function ContactsPageComponent() {
   const { toast } = useToast();
   const { appUser } = useAuth();
 
-  const [people, setPeople] = React.useState<Person[]>([]);
+  const [allFetchedPeople, setAllFetchedPeople] = React.useState<Person[]>([]);
+  const [totalPeople, setTotalPeople] = React.useState(0);
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
@@ -129,15 +130,27 @@ function ContactsPageComponent() {
     setIsLoading(true);
     setFetchError(null);
     try {
-      const peopleData = await getPeople(appUser);
+      // Pass a simplified, serializable user object to the server function
+      const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+      const { people: peopleData, totalCount } = await getPeople(userInfo, {
+          page: currentPage,
+          pageSize: ROWS_PER_PAGE,
+          filters,
+          sortDescriptors,
+          searchTerm,
+      });
+      setAllFetchedPeople(peopleData);
+      setTotalPeople(totalCount);
+      
+      // These can still be fetched in parallel as they don't depend on the main data query
       const [enablersData, sourcesData, groupsData, guidesData, customFieldsData] = await Promise.all([
         getEnablers(appUser, 'filter'),
         getContactSources(appUser),
-        getAllGroups(appUser, peopleData),
+        getAllGroups(appUser, allFetchedPeople), // Use fetched people for dynamic groups
         getFolkGuides(),
         getCustomPersonFields(appUser),
       ]);
-      setPeople(peopleData);
+
       setEnablerOptions(enablersData);
       setContactSourceOptions(sourcesData);
       setGroups(groupsData);
@@ -153,7 +166,7 @@ function ContactsPageComponent() {
     } finally {
       setIsLoading(false);
     }
-  }, [appUser]);
+  }, [appUser, currentPage, filters, sortDescriptors, searchTerm, allFetchedPeople]);
 
 
   React.useEffect(() => {
@@ -161,6 +174,14 @@ function ContactsPageComponent() {
         fetchPageData();
     }
   }, [appUser, fetchPageData]);
+  
+  // This effect will re-trigger the fetch when filter/sort/page changes
+  React.useEffect(() => {
+    if (appUser) {
+      fetchPageData();
+    }
+  }, [currentPage, filters, sortDescriptors, searchTerm, appUser, fetchPageData]);
+
 
   const filterableFields: FilterableField[] = React.useMemo(() => {
     const fields: FilterableField[] = [
@@ -182,126 +203,20 @@ function ContactsPageComponent() {
 
     return fields;
   }, [enablerOptions, contactSourceOptions, folkGuides, isAdmin]);
-
+  
   const filteredPeople = React.useMemo(() => {
-    let tempPeople = [...people];
-
-    // Apply search filter
-    if (searchTerm.trim()) {
-        const lowercasedFilter = searchTerm.trim().toLowerCase();
-        tempPeople = tempPeople.filter(person => {
-            return (
-                person.fullName.toLowerCase().includes(lowercasedFilter) ||
-                person.phone.includes(lowercasedFilter)
-            );
-        });
-    }
-
-    // Apply advanced global filters
-    if (filters.length > 0) {
-      tempPeople = tempPeople.filter(person => {
-        return filters.every(filter => {
-          const personValue = person[filter.field as keyof Person];
-
-          if (filter.operator === 'is_empty') {
-            return personValue === null || personValue === undefined || personValue === '';
-          }
-          if (filter.operator === 'is_not_empty') {
-            return personValue !== null && personValue !== undefined && personValue !== '';
-          }
-          
-          if (personValue === null || personValue === undefined) return false;
-
-          const filterValue = filter.value;
-          
-          if (typeof filter.value === 'undefined' || filter.value === null || filter.value === '') return true;
-
-          const personString = String(personValue).toLowerCase();
-          const filterString = String(filterValue).toLowerCase();
-
-          switch (filter.operator) {
-            case 'contains':
-              return personString.includes(filterString);
-            case 'not_contains':
-              return !personString.includes(filterString);
-            case 'is': {
-              if (typeof personValue === 'boolean') {
-                return personValue === (filterValue === 'true' || filterValue === true);
-              }
-              return personString === filterString;
-            }
-            case 'is_not': {
-              if (typeof personValue === 'boolean') {
-                return personValue !== (filterValue === 'true' || filterValue === true);
-              }
-              return personString !== filterString;
-            }
-            case 'eq':
-              return Number(personValue) === Number(filterValue);
-            case 'neq':
-              return Number(personValue) !== Number(filterValue);
-            case 'gt':
-              return Number(personValue) > Number(filterValue);
-            case 'lt':
-              return Number(personValue) < Number(filterValue);
-            case 'gte':
-              return Number(personValue) >= Number(filterValue);
-            case 'lte':
-              return Number(personValue) <= Number(filterValue);
-            default:
-              return true;
-          }
-        });
-      });
-    }
-
-    // Apply column filters
-    tempPeople = applyColumnFilters(tempPeople, columnFilters);
-
-    // Apply sorting
-    return tempPeople.sort((a, b) => {
-      for (const { field, direction } of sortDescriptors) {
-        const valA = a[field as keyof Person];
-        const valB = b[field as keyof Person];
-
-        let comparison = 0;
-
-        if (valA == null && valB != null) {
-          comparison = 1;
-        } else if (valA != null && valB == null) {
-          comparison = -1;
-        } else if (valA == null && valB == null) {
-          comparison = 0;
-        } else if (field === 'createdAt' || field === 'lastCallAt') {
-            const dateA = (valA as any)?.toDate ? (valA as any).toDate() : new Date(0);
-            const dateB = (valB as any)?.toDate ? (valB as any).toDate() : new Date(0);
-            comparison = dateA.getTime() - dateB.getTime();
-        } else if (typeof valA === 'string' && typeof valB === 'string') {
-          comparison = valA.localeCompare(valB, undefined, { numeric: true });
-        } else if (typeof valA === 'number' && typeof valB === 'number') {
-          comparison = valA - valB;
-        }
-
-        if (comparison !== 0) {
-          return direction === 'asc' ? comparison : -comparison;
-        }
-      }
-      return 0;
-    });
-  }, [people, searchTerm, filters, sortDescriptors, columnFilters]);
+    // With server-side filtering, the `allFetchedPeople` is already filtered.
+    // We only need to apply column filters which are client-side for now.
+    return applyColumnFilters(allFetchedPeople, columnFilters);
+  }, [allFetchedPeople, columnFilters]);
 
   // Reset to page 1 whenever filters or data change
   React.useEffect(() => {
     setCurrentPage(1);
     setSelectedIds(new Set());
-  }, [filteredPeople.length, filters, sortDescriptors, searchTerm, view, columnFilters]);
+  }, [filters, sortDescriptors, searchTerm, view, columnFilters]);
   
-  const totalPages = Math.ceil(filteredPeople.length / ROWS_PER_PAGE);
-
-  const paginatedPeople = React.useMemo(() => {
-    const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
-    return filteredPeople.slice(startIndex, startIndex + ROWS_PER_PAGE);
-  }, [filteredPeople, currentPage]);
+  const totalPages = Math.ceil(totalPeople / ROWS_PER_PAGE);
 
   const handleSampleDownload = React.useCallback(() => {
     const baseHeaders = [
@@ -342,7 +257,7 @@ function ContactsPageComponent() {
   }, [customFields]);
 
   const handleExport = React.useCallback(async () => {
-    if (filteredPeople.length === 0 || !appUser) {
+    if (totalPeople === 0 || !appUser) {
       toast({
         variant: "destructive",
         title: "No Contacts to Export",
@@ -352,6 +267,16 @@ function ContactsPageComponent() {
     }
 
     setIsExporting(true);
+    
+    // Fetch all matching people for export
+    const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+    const { people: allMatchingPeople } = await getPeople(userInfo, {
+      pageSize: totalPeople,
+      filters,
+      sortDescriptors,
+      searchTerm,
+    });
+
 
     const zip = new JSZip();
     const photosFolder = zip.folder("photos");
@@ -363,7 +288,7 @@ function ContactsPageComponent() {
         return isNaN(d.getTime()) ? '' : d.toISOString();
     }
 
-    for (const p of filteredPeople) {
+    for (const p of allMatchingPeople) {
       let photoColumnValue = '';
       if (p.photoUrl) {
         if (p.photoUrl.startsWith('data:image')) {
@@ -436,9 +361,9 @@ function ContactsPageComponent() {
 
       toast({
         title: 'Export Successful',
-        description: `Exported ${filteredPeople.length} contacts in contacts_export.zip.`,
+        description: `Exported ${allMatchingPeople.length} contacts in contacts_export.zip.`,
       });
-      await logAudit('Export Contacts', `Exported ${filteredPeople.length} contacts.`, appUser);
+      await logAudit('Export Contacts', `Exported ${allMatchingPeople.length} contacts.`, appUser);
 
     } catch (err) {
       console.error("Failed to generate zip file:", err);
@@ -450,7 +375,7 @@ function ContactsPageComponent() {
     } finally {
       setIsExporting(false);
     }
-  }, [filteredPeople, toast, appUser, customFields]);
+  }, [totalPeople, toast, appUser, customFields, filters, sortDescriptors, searchTerm]);
 
   const handleFileImport = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -468,12 +393,9 @@ function ContactsPageComponent() {
 
         const customFieldMap = new Map(customFields.map(f => [f.label.toLowerCase(), f.id]));
         const totalRows = json.length;
-        const existingPhones = new Set(people.map(p => p.phone));
         
         const allNewPeople: Omit<Person, 'id' | 'createdAt'>[] = [];
         let skippedCount = 0;
-
-        const phonesInThisFile = new Set<string>();
 
         json.forEach((row: any) => {
             const fullName = String(row.fullName || '').trim();
@@ -483,11 +405,6 @@ function ContactsPageComponent() {
                 skippedCount++;
                 return;
             }
-            if (existingPhones.has(phone) || phonesInThisFile.has(phone)) {
-                skippedCount++;
-                return;
-            }
-            phonesInThisFile.add(phone);
 
             const age = parseInt(String(row.age), 10);
             const isValidAge = !isNaN(age) && age >= 16 && age <= 40;
@@ -536,7 +453,7 @@ function ContactsPageComponent() {
             toast({
                 variant: "destructive",
                 title: "Import Failed",
-                description: skippedCount > 0 ? "All contacts in the file were duplicates or invalid." : "No valid contacts found.",
+                description: "No new valid contacts found in the file.",
             });
             setImportingStatus(false);
             return;
@@ -569,7 +486,7 @@ function ContactsPageComponent() {
       }
     };
     reader.readAsArrayBuffer(file);
-  }, [appUser, people, toast, customFields, fetchPageData]);
+  }, [appUser, toast, customFields, fetchPageData]);
 
   const handleAddPerson = React.useCallback(() => {
     setEditingPerson(undefined);
@@ -585,11 +502,11 @@ function ContactsPageComponent() {
     if (!appUser) return;
     try {
       await deletePerson(personId, appUser);
-      setPeople((prev) => prev.filter((p) => p.id !== personId));
       toast({
         title: "Person Deleted",
         description: "The person has been removed from your contacts.",
       });
+      fetchPageData(); // Re-fetch data
     } catch(error) {
       toast({
         variant: "destructive",
@@ -597,18 +514,18 @@ function ContactsPageComponent() {
         description: "Could not delete person.",
       });
     }
-  }, [toast, appUser]);
+  }, [toast, appUser, fetchPageData]);
 
   const handleDeleteSelected = React.useCallback(async () => {
     if (!appUser) return;
     try {
       await deletePeople(Array.from(selectedIds), appUser);
-      setPeople((prev) => prev.filter((p) => !selectedIds.has(p.id)));
       toast({
         title: "Contacts Deleted",
         description: `${selectedIds.size} contacts have been removed.`,
       });
       setSelectedIds(new Set());
+      fetchPageData(); // Re-fetch data
     } catch (error) {
        toast({
         variant: "destructive",
@@ -616,20 +533,14 @@ function ContactsPageComponent() {
         description: "Could not delete the selected contacts.",
       });
     }
-  }, [selectedIds, toast, appUser]);
+  }, [selectedIds, toast, appUser, fetchPageData]);
 
 
   const handleSavePerson = React.useCallback(async (personData: Omit<Person, "id" | "progress" | "createdAt">) => {
     if (!appUser) return;
     try {
       if (editingPerson) {
-        const updatedData = { ...editingPerson, ...personData };
         await updatePerson(editingPerson.id, personData, appUser);
-        setPeople((prev) =>
-          prev.map((p) =>
-            p.id === editingPerson.id ? updatedData : p
-          )
-        );
         toast({
           title: "Person Updated",
           description: "The person's details have been saved.",
@@ -639,13 +550,13 @@ function ContactsPageComponent() {
           ...personData,
           progress: createInitialProgress(),
         };
-        const newPerson = await createPerson(newPersonData as Omit<Person, 'id' | 'createdAt'>, appUser);
-        setPeople((prev) => [newPerson, ...prev]);
+        await createPerson(newPersonData as Omit<Person, 'id' | 'createdAt'>, appUser);
         toast({
           title: "Person Added",
           description: "The new person has been added to your contacts.",
         });
       }
+      fetchPageData();
     } catch(error) {
       console.error("Failed to save person:", error);
       const errorMessage = error instanceof Error ? error.message : "Could not save person.";
@@ -656,7 +567,7 @@ function ContactsPageComponent() {
       });
       throw error; // Re-throw to allow dialog to handle its own state.
     }
-  }, [appUser, toast, editingPerson]);
+  }, [appUser, toast, editingPerson, fetchPageData]);
   
   const handleSelectionChange = React.useCallback((personId: string, checked: boolean) => {
     setSelectedIds(prev => {
@@ -678,8 +589,7 @@ function ContactsPageComponent() {
         title: "Members Added",
         description: `${selectedIds.size} contacts have been added to the group.`,
       });
-      const updatedGroups = await getAllGroups(appUser, people);
-      setGroups(updatedGroups);
+      // Group data is fetched with main data, so no need to refetch separately
       setSelectedIds(new Set());
     } catch (error) {
       toast({
@@ -688,7 +598,7 @@ function ContactsPageComponent() {
         description: "Could not add contacts to the group.",
       });
     }
-  }, [selectedIds, toast, appUser, people]);
+  }, [selectedIds, toast, appUser]);
 
   const handleSaveGroupAndAddMembers = React.useCallback(async (groupData: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy">) => {
     if (!appUser) return;
@@ -699,7 +609,6 @@ function ContactsPageComponent() {
         ...groupData,
       };
       const newGroup = await createGroup(newGroupData, appUser);
-      setGroups((prev) => [...prev, newGroup]);
       
       if (selectedIds.size > 0) {
         await addPeopleToGroup(newGroup.id, Array.from(selectedIds), appUser);
@@ -707,8 +616,6 @@ function ContactsPageComponent() {
           title: "Group Created & Members Added",
           description: `The group "${newGroup.name}" was created and ${selectedIds.size} contacts were added.`,
         });
-        const updatedGroups = await getAllGroups(appUser, people);
-        setGroups(updatedGroups);
         setSelectedIds(new Set());
       } else {
          toast({
@@ -716,6 +623,7 @@ function ContactsPageComponent() {
           description: `The new group "${newGroup.name}" has been added.`,
         });
       }
+      fetchPageData(); // Refetch all data to update groups list
       setIsCreateGroupDialogOpen(false);
     } catch (error) {
        toast({
@@ -724,7 +632,7 @@ function ContactsPageComponent() {
         description: "Could not create or add members to the new group.",
       });
     }
-  }, [selectedIds, appUser, toast, people]);
+  }, [selectedIds, appUser, toast, fetchPageData]);
   
   const handleAssignCoEnabler = React.useCallback(async (coEnabler: AppUser | null) => {
     if (!appUser || selectedIds.size === 0) return;
@@ -921,7 +829,7 @@ function ContactsPageComponent() {
           </div>
         ) : view === "card" ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {paginatedPeople.map((person) => {
+            {filteredPeople.map((person) => {
                 const personGroups = groups.filter(g => g.peopleIds.includes(person.id));
                 return (
                   <PersonCard
@@ -937,8 +845,8 @@ function ContactsPageComponent() {
           </div>
         ) : (
           <PersonTable
-            people={paginatedPeople}
-            allPeople={filteredPeople}
+            people={filteredPeople}
+            allPeople={allFetchedPeople}
             onEdit={handleEditPerson}
             onDelete={handleDeletePerson}
             selectedIds={selectedIds}
@@ -1039,7 +947,7 @@ function ContactsPageComponent() {
         setIsOpen={setIsDialogOpen}
         onSave={handleSavePerson}
         person={editingPerson}
-        allPeople={people}
+        allPeople={allFetchedPeople}
       />
       <CreateUpdateGroupDialog
           isOpen={isCreateGroupDialogOpen}
