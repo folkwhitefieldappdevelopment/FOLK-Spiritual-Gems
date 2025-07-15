@@ -67,8 +67,6 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
   const canEditGoals = React.useMemo(() => {
     return appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
   }, [appUser]);
-  
-  const isSuperAdmin = React.useMemo(() => appUser?.role.includes('Admin'), [appUser]);
 
   React.useEffect(() => {
     if (!personId || !appUser) return;
@@ -215,8 +213,8 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
     return (
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
             <div className="mx-auto max-w-7xl space-y-6">
-              <div className={cn("flex flex-col lg:flex-row gap-6", !isSuperAdmin && "lg:flex-col")}>
-                <div className={cn(isSuperAdmin ? "lg:w-1/3" : "w-full")}>
+              <div className="flex flex-col lg:flex-row gap-6">
+                <div className="lg:w-1/3">
                   <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
                        <div className="space-y-1.5">
@@ -251,15 +249,13 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
                     </CardContent>
                   </Card>
                 </div>
-                {isSuperAdmin && (
-                  <div className="lg:w-2/3">
-                    <ProgressTracker 
-                      progress={person.progress}
-                      onProgressChange={handleProgressChange}
-                      isEditable={canEditGoals}
-                    />
-                  </div>
-                )}
+                <div className="lg:w-2/3">
+                  <ProgressTracker 
+                    progress={person.progress}
+                    onProgressChange={handleProgressChange}
+                    isEditable={canEditGoals}
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <GeneralRemarksCard
