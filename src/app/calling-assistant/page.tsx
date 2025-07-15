@@ -83,7 +83,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   
   const [searchTerm, setSearchTerm] = React.useState("");
   const [filters, setFilters] = React.useState<FilterRule[]>([]);
-  const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([{ field: 'lastCallAt', direction: 'asc' }]);
+  const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([{ field: 'fullName', direction: 'asc' }]);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [columnFilters, setColumnFilters] = React.useState<ColumnFilterState>({});
   const [currentPage, setCurrentPage] = React.useState(1);
