@@ -95,16 +95,18 @@ export const getPeople = async (
     const peopleCollection = collection(db, 'people');
     let queryConstraints: QueryConstraint[] = [];
     let sortDescriptors = initialSortDescriptors;
-    let isDefaultSortDisabled = false;
+    
+    // Flag to disable default sorting if a complex filter is applied
+    let disableDefaultSort = false;
 
     // --- Role-based Access Control ---
     if (userInfo.role.includes('Admin')) {
         // Admin sees all. No additional constraint needed for access.
     } else if (userInfo.role.includes('Folk Guide')) {
         queryConstraints.push(where('folkGuideId', '==', userInfo.id));
-        if (sortDescriptors.length === 0) {
-           isDefaultSortDisabled = true;
-        }
+        // This combination requires an index, so we disable default sorting.
+        // The user can still apply sorting manually.
+        disableDefaultSort = true;
     } else { // Folk Enabler
         queryConstraints.push(
             or(
@@ -112,10 +114,12 @@ export const getPeople = async (
                 where('coEnablerId', '==', userInfo.id)
             )
         );
+        // This is a complex 'OR' query, so we should not apply a default sort.
+        disableDefaultSort = true;
     }
     
     // Set a default sort descriptor if none is provided and not disabled
-    if (sortDescriptors.length === 0 && !isDefaultSortDisabled) {
+    if (sortDescriptors.length === 0 && !disableDefaultSort) {
       sortDescriptors = [{ field: 'createdAt', direction: 'desc' }];
     }
     
@@ -129,7 +133,6 @@ export const getPeople = async (
             if (memberIds.length > 0) {
                  if (memberIds.length > 30) {
                     // If memberIds are more than 30, a single 'in' query won't work.
-                    // This is a limitation we're accepting for now.
                     console.warn(`Group ${groupId} has more than 30 members, which exceeds Firestore's 'in' query limit. Results may be incomplete.`);
                     queryConstraints.push(where('__name__', 'in', memberIds.slice(0, 30)));
                  } else {
