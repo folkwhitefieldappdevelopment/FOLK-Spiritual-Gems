@@ -2,7 +2,7 @@
 "use client";
 import Link from "next/link";
 import * as React from 'react';
-import { Users, MoreHorizontal, Edit, Trash2, Globe, Lock, Bot } from "lucide-react";
+import { Users, MoreHorizontal, Edit, Trash2, Globe, Lock, Bot, User } from "lucide-react";
 import type { Group } from "@/lib/types";
 
 import {
@@ -32,18 +32,16 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 
 type GroupCardProps = {
   group: Group;
   onEdit: () => void;
   onDelete: () => void;
+  ownerName?: string;
 };
 
-const GroupCardComponent = ({ group, onEdit, onDelete }: GroupCardProps) => {
-  const handleAction = (e: React.MouseEvent, action: () => void) => {
-    e.preventDefault();
-    action();
-  };
+const GroupCardComponent = ({ group, onEdit, onDelete, ownerName }: GroupCardProps) => {
 
   return (
     <Link href={`/groups/${group.id}`} className="block h-full">
@@ -109,12 +107,27 @@ const GroupCardComponent = ({ group, onEdit, onDelete }: GroupCardProps) => {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex-grow"></CardContent>
-        <CardFooter className="flex justify-between items-center">
-          <div className="flex items-center text-sm text-muted-foreground">
-            <Users className="mr-2 h-4 w-4" />
-            <span>
-              {group.memberCount} member{group.memberCount !== 1 && "s"}
-            </span>
+        <CardFooter className="flex justify-between items-end">
+          <div className="flex flex-col gap-1 items-start text-xs text-muted-foreground">
+              <div className="flex items-center">
+                  <Users className="mr-2 h-4 w-4" />
+                  <span>{group.memberCount} member{group.memberCount !== 1 && "s"}</span>
+              </div>
+              {!group.isDynamic && ownerName && (
+                  <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                             <div className="flex items-center cursor-default">
+                                <User className="mr-2 h-4 w-4" />
+                                <span className="truncate max-w-[120px]">{ownerName}</span>
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Created by {ownerName}</p>
+                        </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+              )}
           </div>
           <div className="flex items-center gap-1">
               {group.isDynamic ? (
