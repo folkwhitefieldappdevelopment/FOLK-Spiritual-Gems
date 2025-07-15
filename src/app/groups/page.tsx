@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { GroupCard } from "@/components/group-card";
 import { CreateUpdateGroupDialog } from "@/components/create-update-group-dialog";
 import { AuthGuard } from "@/components/auth-guard";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup as UiSelectGroup, SelectLabel } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -74,32 +74,38 @@ function GroupsPageComponent() {
     fetchData();
   }, [appUser]);
   
-  const getUserFilterDataSource = () => {
-    if(isAdmin) return allUsers.filter(u => u.role.includes('Folk Guide'));
-    if(isGuide) return allUsers.filter(u => u.reportsTo?.guideId === appUser?.id);
-    return [];
-  }
+  const { userFilterOptions, guideUserMap } = React.useMemo(() => {
+    const guides = allUsers.filter(u => u.role.includes('Folk Guide')).sort((a,b) => a.name.localeCompare(b.name));
+    const enablers = allUsers.filter(u => u.role.includes('Folk Enabler')).sort((a,b) => a.name.localeCompare(b.name));
+    const guideMap = new Map(guides.map(g => [g.id, g]));
+
+    let options = { guides: [], enablers: [] } as { guides: AppUser[], enablers: AppUser[] };
+
+    if (isAdmin) {
+      options.guides = guides;
+      options.enablers = enablers;
+    } else if (isGuide) {
+      options.enablers = allUsers.filter(u => u.reportsTo?.guideId === appUser?.id);
+    }
+    
+    return { userFilterOptions: options, guideUserMap: guideMap };
+  }, [allUsers, isAdmin, isGuide, appUser?.id]);
 
   const filteredGroups = React.useMemo(() => {
     // 1. Filter people based on the user filter (Guide or Enabler)
     let relevantPeople = people;
     if (userFilterId !== 'all') {
-      if (isAdmin) { // Admin filtering by a Folk Guide
-        const guide = allUsers.find(u => u.id === userFilterId);
-        if (guide) {
-          const enablerIds = allUsers.filter(u => u.reportsTo?.guideId === guide.id).map(u => u.id);
-          const teamIds = new Set([guide.id, ...enablerIds]);
-          relevantPeople = people.filter(p => p.folkGuideId && teamIds.has(p.folkGuideId));
-        }
-      } else if (isGuide) { // Guide filtering by an Enabler
-        if (userFilterId === '__UNASSIGNED__') {
-          relevantPeople = people.filter(p => !p.enablerInTouchWith && p.folkGuideId === appUser?.id);
-        } else {
-          const enabler = allUsers.find(e => e.id === userFilterId);
-          if (enabler) {
-            relevantPeople = people.filter(p => p.enablerInTouchWith === enabler.name);
-          }
-        }
+      const selectedUser = allUsers.find(u => u.id === userFilterId);
+
+      if (selectedUser?.role.includes('Folk Guide')) {
+        // Admin or Guide filtering by a Folk Guide. Get all people under that guide.
+        const enablerIdsUnderGuide = allUsers.filter(u => u.reportsTo?.guideId === selectedUser.id).map(u => u.id);
+        const teamIds = new Set([selectedUser.id, ...enablerIdsUnderGuide]);
+        relevantPeople = people.filter(p => p.folkGuideId && teamIds.has(p.folkGuideId));
+
+      } else if (selectedUser?.role.includes('Folk Enabler')) {
+        // Admin or Guide filtering by an Enabler.
+        relevantPeople = people.filter(p => p.enablerInTouchWith === selectedUser.name);
       }
     }
     const relevantPeopleIds = new Set(relevantPeople.map(p => p.id));
@@ -250,13 +256,12 @@ function GroupsPageComponent() {
   }
   
   const renderUserFilter = () => {
-    const filterOptions = getUserFilterDataSource();
     if (!isAdmin && !isGuide) return null;
 
     let filterLabel = "Filter by User...";
     let Icon = UsersIcon;
     if (isAdmin) {
-      filterLabel = "Filter by Folk Guide...";
+      filterLabel = "Filter by Guide or Enabler...";
       Icon = UsersIcon;
     } else if (isGuide) {
       filterLabel = "Filter by Enabler...";
@@ -274,11 +279,28 @@ function GroupsPageComponent() {
         <SelectContent>
           <SelectItem value="all">All Users</SelectItem>
           {isGuide && <SelectItem value="__UNASSIGNED__">Unassigned Contacts</SelectItem>}
-          {filterOptions.map(u => (
-            <SelectItem key={u.id} value={u.id}>
-              {u.name} {isAdmin && `(${u.fgCode || 'N/A'})`}
-            </SelectItem>
-          ))}
+          
+          {userFilterOptions.guides.length > 0 && (
+            <UiSelectGroup>
+              <SelectLabel>Folk Guides</SelectLabel>
+              {userFilterOptions.guides.map(u => (
+                <SelectItem key={u.id} value={u.id}>
+                  {u.name} {isAdmin && `(${u.fgCode || 'N/A'})`}
+                </SelectItem>
+              ))}
+            </UiSelectGroup>
+          )}
+
+          {userFilterOptions.enablers.length > 0 && (
+            <UiSelectGroup>
+              <SelectLabel>Folk Enablers</SelectLabel>
+              {userFilterOptions.enablers.map(u => (
+                <SelectItem key={u.id} value={u.id}>
+                  {u.name}
+                </SelectItem>
+              ))}
+            </UiSelectGroup>
+          )}
         </SelectContent>
       </Select>
     )
