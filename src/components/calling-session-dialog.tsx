@@ -159,9 +159,7 @@ const CallingSessionDialogComponent = ({
 
   // Auto-save session on unmount (refresh, close tab, etc.)
   React.useEffect(() => {
-    return () => {
-        // This is the cleanup function that runs when the component unmounts.
-        // It only runs if the dialog was open and not intentionally closed.
+    const autoSaveSession = () => {
         if (isOpen && !isIntentionalClose.current && appUser && currentPeople.length > 0) {
             console.log("Auto-saving session...");
             const pausedSessionData: PausedSession = {
@@ -181,6 +179,10 @@ const CallingSessionDialogComponent = ({
             updateUser(appUser.id, { pausedSession: pausedSessionData });
             updateCurrentAppUser({ pausedSession: pausedSessionData });
         }
+    }
+
+    return () => {
+        autoSaveSession();
     }
   }, [isOpen, isIntentionalClose, appUser, context, currentIndex, currentEvent, currentPeople, sessionStartIndex, totalPeopleCount, filterStates, updateCurrentAppUser]);
 

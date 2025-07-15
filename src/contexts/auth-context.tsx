@@ -16,7 +16,9 @@ import {
 import { auth, configError as initialConfigError } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { getUserByEmail } from '@/services/user-service';
-import type { AppUser } from '@/lib/types';
+import type { AppUser, PausedSession } from '@/lib/types';
+import isEqual from 'lodash.isequal';
+
 
 type AuthContextType = {
   user: User | null;
@@ -39,9 +41,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<Error | null>(initialConfigError);
 
-  const updateCurrentAppUser = (updates: Partial<AppUser>) => {
-    setAppUser(prev => prev ? {...prev, ...updates} : null);
-  }
+  const updateCurrentAppUser = React.useCallback((updates: Partial<AppUser>) => {
+    setAppUser(prev => {
+        if (!prev) return null;
+
+        // Check if there's actually a change to avoid infinite loops
+        const hasChanged = Object.keys(updates).some(key => 
+            !isEqual(prev[key as keyof AppUser], updates[key as keyof AppUser])
+        );
+
+        if (hasChanged) {
+            return { ...prev, ...updates };
+        }
+        
+        return prev;
+    });
+  }, []);
 
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, 
