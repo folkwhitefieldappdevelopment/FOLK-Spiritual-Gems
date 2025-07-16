@@ -19,7 +19,6 @@ import { getPeople, updatePerson, assignCoEnablerToPeople } from "@/services/peo
 import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
 import { getFolkGuides, updateUser, getUsers } from "@/services/user-service";
 import { getAllGroups, createGroup, addPeopleToGroup } from "@/services/groups-service";
-import { arrayUnion } from "firebase/firestore";
 import { useAuth } from "@/contexts/auth-context";
 import {
   Dialog,
@@ -248,26 +247,26 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   ) => {
     if (!appUser || !user) return;
     const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-    const callTime = new Date(); // Use a client-side timestamp for the history entry
+    const callTime = new Date();
     
-    const callHistoryEntry: any = {
+    const callHistoryEntry = {
       remark: remark,
-      calledAt: callTime,
+      calledAt: callTime.toISOString(),
       status: status,
       event: currentCallingEvent,
       callerId: appUser.id,
       callerName: appUser.name,
       callerPhotoUrl: user.photoURL || '',
+      ...(sg !== undefined && { sg }),
+      ...(ma !== undefined && { ma }),
+      ...(frp !== undefined && { frp }),
     };
-    if (sg !== undefined) callHistoryEntry.sg = sg;
-    if (ma !== undefined) callHistoryEntry.ma = ma;
-    if (frp !== undefined) callHistoryEntry.frp = frp;
 
     const updateData: any = {
       lastCallRemark: remark,
       lastCallAt: "SERVER_TIMESTAMP",
       lastCallStatus: status,
-      callHistory: arrayUnion(callHistoryEntry),
+      callHistory: callHistoryEntry,
     };
     if (sg !== undefined) updateData.lastSg = sg;
     if (ma !== undefined) updateData.lastMa = ma;
@@ -277,7 +276,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     
     setAllFetchedPeople(prev => prev.map(p => {
         if (p.id === personId) {
-            const newHistory = p.callHistory ? [...p.callHistory, callHistoryEntry] : [callHistoryEntry];
+            const newHistory = [...(p.callHistory || []), callHistoryEntry];
             const updatedPerson = {
                 ...p,
                 callHistory: newHistory,

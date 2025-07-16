@@ -27,7 +27,6 @@ import { getFolkGuides, updateUser } from '@/services/user-service';
 import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from '@/services/settings-service';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 import { useAuth } from '@/contexts/auth-context';
-import { arrayUnion } from 'firebase/firestore';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -331,23 +330,34 @@ function GroupDetailPageComponent() {
     if (!appUser || !user) return;
     const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     const callTime = new Date();
-    const callHistoryEntry: any = {
-      remark: remark, calledAt: callTime, status: status, event: currentCallingEvent,
-      callerId: appUser.id, callerName: appUser.name, callerPhotoUrl: user.photoURL || '',
+    
+    const callHistoryEntry = {
+      remark: remark,
+      calledAt: callTime.toISOString(),
+      status: status,
+      event: currentCallingEvent,
+      callerId: appUser.id,
+      callerName: appUser.name,
+      callerPhotoUrl: user.photoURL || '',
+      ...(sg !== undefined && { sg }),
+      ...(ma !== undefined && { ma }),
+      ...(frp !== undefined && { frp }),
     };
-    if (sg !== undefined) callHistoryEntry.sg = sg;
-    if (ma !== undefined) callHistoryEntry.ma = ma;
-    if (frp !== undefined) callHistoryEntry.frp = frp;
+
     const updateData: any = {
-      lastCallRemark: remark, lastCallAt: "SERVER_TIMESTAMP", lastCallStatus: status, callHistory: arrayUnion(callHistoryEntry),
+      lastCallRemark: remark,
+      lastCallAt: "SERVER_TIMESTAMP",
+      lastCallStatus: status,
+      callHistory: callHistoryEntry,
     };
     if (sg !== undefined) updateData.lastSg = sg;
     if (ma !== undefined) updateData.lastMa = ma;
     if (frp !== undefined) updateData.lastFrp = frp;
+
     await updatePerson(personId, updateData, userInfo);
     setMembers(prev => prev.map(p => {
         if (p.id === personId) {
-            const newHistory = p.callHistory ? [...p.callHistory, callHistoryEntry] : [callHistoryEntry];
+            const newHistory = [...(p.callHistory || []), callHistoryEntry];
             const updatedPerson = { ...p, callHistory: newHistory, lastCallRemark: remark, lastCallAt: callTime.toISOString(), lastCallStatus: status, };
             if (sg !== undefined) updatedPerson.lastSg = sg;
             if (ma !== undefined) updatedPerson.lastMa = ma;

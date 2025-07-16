@@ -25,6 +25,7 @@ import {
   or,
   and,
   type QueryConstraint,
+  arrayUnion,
 } from 'firebase/firestore';
 import type { Person, AppUser, UserRole } from '@/lib/types';
 import type { FilterRule } from '@/components/filter-popover';
@@ -260,9 +261,13 @@ export const updatePerson = async (id: string, personData: Partial<Omit<Person, 
   const docRef = doc(db, 'people', id);
   const dataToUpdate: { [key: string]: any } = { ...personData };
 
-  // Replace placeholder with actual server timestamp
+  // Handle server-side operations based on placeholders
   if (dataToUpdate.lastCallAt === 'SERVER_TIMESTAMP') {
     dataToUpdate.lastCallAt = serverTimestamp();
+  }
+  if (dataToUpdate.callHistory) {
+      const historyEntry = dataToUpdate.callHistory;
+      dataToUpdate.callHistory = arrayUnion(historyEntry);
   }
 
   await updateDoc(docRef, dataToUpdate);
