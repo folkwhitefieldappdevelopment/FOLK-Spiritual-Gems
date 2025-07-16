@@ -7,7 +7,6 @@ import { addDays, format, isWithinInterval, startOfDay, endOfDay } from 'date-fn
 import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import type { Person, AppUser, CallStatus } from '@/lib/types';
-import { callStatuses } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import { Calendar } from './ui/calendar';
@@ -356,5 +355,3 @@ export function CallReport({ people, relatedUsers }: CallReportProps) {
     </Card>
   )
 }
-
-    
