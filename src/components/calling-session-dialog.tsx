@@ -5,7 +5,7 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import type { Person, CallStatus, Group, CustomField, PausedSession } from "@/lib/types";
+import type { Person, CallStatus, Group, CustomField, PausedSession, UserRole } from "@/lib/types";
 import { callStatuses } from "@/lib/data";
 import { Phone, Square, CheckSquare, Loader2, Tags, ArrowLeft, ArrowRight, Edit, Save, XCircle, Pause, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -66,6 +66,12 @@ const callFormSchema = z.object({
 });
 
 type CallFormValues = z.infer<typeof callFormSchema>;
+
+type UserInfo = {
+  id: string;
+  name: string;
+  role: UserRole[];
+};
 
 type CallingSessionDialogProps = {
   isOpen: boolean;
@@ -233,6 +239,11 @@ const CallingSessionDialogComponent = ({
 
     try {
         onSaveRemark(currentPerson.id, data.remark || '', data.status as CallStatus, sg, ma, frp);
+
+        // Also update the local state to reflect the change immediately
+        const updatedPerson = { ...currentPerson, lastCallRemark: data.remark, lastCallStatus: data.status as CallStatus, lastSg: sg, lastMa: ma, lastFrp: frp, lastCallAt: new Date().toISOString() };
+        setCurrentPeople(prev => prev.map(p => p.id === updatedPerson.id ? updatedPerson : p));
+
         toast({
             title: "Call Logged",
             description: `Status for ${fullName} has been updated.`
@@ -295,10 +306,11 @@ const CallingSessionDialogComponent = ({
   }, [appUser, onClose, toast, updateCurrentAppUser]);
 
   const handleSaveDetails = React.useCallback(async (formData: Partial<Person>) => {
-    if (!currentPerson) return;
+    if (!currentPerson || !appUser) return;
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     setIsSubmitting(true);
     try {
-        await updatePerson(currentPerson.id, formData);
+        await updatePerson(currentPerson.id, formData, userInfo);
         
         const updatedPerson = { ...currentPerson, ...formData };
         setCurrentPeople(prev => prev.map(p => p.id === updatedPerson.id ? updatedPerson : p));
@@ -310,13 +322,14 @@ const CallingSessionDialogComponent = ({
     } finally {
         setIsSubmitting(false);
     }
-  }, [currentPerson, toast]);
+  }, [currentPerson, toast, appUser]);
   
   const handleSaveNotes = React.useCallback(async () => {
-    if (!currentPerson || !isNotesDirty) return;
+    if (!currentPerson || !isNotesDirty || !appUser) return;
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     setIsSavingNotes(true);
     try {
-        await updatePerson(currentPerson.id, { generalRemarks: generalRemarks });
+        await updatePerson(currentPerson.id, { generalRemarks: generalRemarks }, userInfo);
         
         const updatedPerson = { ...currentPerson, generalRemarks: generalRemarks };
         setCurrentPeople(prev => prev.map(p => p.id === updatedPerson.id ? updatedPerson : p));
@@ -328,7 +341,7 @@ const CallingSessionDialogComponent = ({
     } finally {
         setIsSavingNotes(false);
     }
-  }, [currentPerson, isNotesDirty, generalRemarks, toast]);
+  }, [currentPerson, isNotesDirty, generalRemarks, toast, appUser]);
 
   if (!isOpen) {
     return null;
