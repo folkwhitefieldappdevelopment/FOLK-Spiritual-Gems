@@ -74,11 +74,11 @@ export function CallReport({ people, relatedUsers }: CallReportProps) {
   const [reportData, setReportData] = React.useState<any>(null);
 
   const generateReport = React.useCallback(() => {
-    if (!date?.from || !date?.to || !appUser) return;
+    if (!date?.from || !appUser) return;
     setIsGenerating(true);
     
     const from = startOfDay(date.from);
-    const to = endOfDay(date.to);
+    const to = endOfDay(date.to || date.from);
     
     const callsInRange = people.flatMap(person => 
         (person.callHistory || [])
@@ -113,10 +113,10 @@ export function CallReport({ people, relatedUsers }: CallReportProps) {
         setReportData({ type: 'enabler', summary: counts });
     }
     else if (appUser.role.includes('Folk Guide') && !appUser.role.includes('Admin')) {
-        const managedEnablerNames = relatedUsers.map(u => u.name);
-        const managedUserNames = new Set([appUser.name, ...managedEnablerNames]);
+        const managedEnablers = relatedUsers;
+        const teamMemberNames = new Set([appUser.name, ...managedEnablers.map(u => u.name)]);
         
-        const teamCalls = callsInRange.filter(c => managedUserNames.has(c.callerName));
+        const teamCalls = callsInRange.filter(c => teamMemberNames.has(c.callerName));
         
         const teamSummary = initialCounts();
         const enablerReportsMap: Record<string, ReportCounts> = {};
@@ -137,34 +137,44 @@ export function CallReport({ people, relatedUsers }: CallReportProps) {
     }
     else if (appUser.role.includes('Admin')) {
         const guides = relatedUsers.filter(u => u.role.includes('Folk Guide'));
-        const guideIdToGuideMap = new Map<string, AppUser>(guides.map(g => [g.id, g]));
+        const enablers = relatedUsers.filter(u => u.role.includes('Folk Enabler'));
 
-        const enablerToGuideIdMap = new Map<string, string>();
-        relatedUsers.forEach(user => {
-            if (user.role.includes('Folk Guide')) {
-                enablerToGuideIdMap.set(user.name, user.id);
-            } else if (user.role.includes('Folk Enabler') && user.reportsTo?.guideId) {
-                enablerToGuideIdMap.set(user.name, user.reportsTo.guideId);
+        const guideMap = new Map<string, AppUser>(guides.map(g => [g.id, g]));
+        const enablerToGuideMap = new Map<string, string>(); // Map enabler name to guide ID
+        enablers.forEach(e => {
+            if (e.reportsTo?.guideId) {
+                enablerToGuideMap.set(e.name, e.reportsTo.guideId);
             }
         });
-
+        
         const totalSummary = initialCounts();
         const guideReportsMap: Record<string, { counts: ReportCounts, enablers: Record<string, ReportCounts> }> = {};
 
         callsInRange.forEach(call => {
             updateCounts(totalSummary, call);
-            const guideId = enablerToGuideIdMap.get(call.callerName);
+
+            let guideId: string | undefined;
+
+            // Check if the caller is a guide
+            const callerAsGuide = guides.find(g => g.name === call.callerName);
+            if (callerAsGuide) {
+                guideId = callerAsGuide.id;
+            } else {
+                // Otherwise, check if they are an enabler under a guide
+                guideId = enablerToGuideMap.get(call.callerName);
+            }
+
             if (guideId) {
-                const guide = guideIdToGuideMap.get(guideId);
+                const guide = guideMap.get(guideId);
                 if (guide) {
-                    if (!guideReportsMap[guide.name]) {
-                        guideReportsMap[guide.name] = { counts: initialCounts(), enablers: {} };
+                    if (!guideReportsMap[guide.id]) {
+                        guideReportsMap[guide.id] = { counts: initialCounts(), enablers: {} };
                     }
-                    if (!guideReportsMap[guide.name].enablers[call.callerName]) {
-                        guideReportsMap[guide.name].enablers[call.callerName] = initialCounts();
+                    if (!guideReportsMap[guide.id].enablers[call.callerName]) {
+                        guideReportsMap[guide.id].enablers[call.callerName] = initialCounts();
                     }
-                    updateCounts(guideReportsMap[guide.name].counts, call);
-                    updateCounts(guideReportsMap[guide.name].enablers[call.callerName], call);
+                    updateCounts(guideReportsMap[guide.id].counts, call);
+                    updateCounts(guideReportsMap[guide.id].enablers[call.callerName], call);
                 }
             }
         });
@@ -172,8 +182,8 @@ export function CallReport({ people, relatedUsers }: CallReportProps) {
         const guideReports: GuideReport[] = guides.map(guide => ({
             name: guide.name,
             fgCode: guide.fgCode || 'N/A',
-            counts: guideReportsMap[guide.name]?.counts || initialCounts(),
-            enablers: Object.entries(guideReportsMap[guide.name]?.enablers || {})
+            counts: guideReportsMap[guide.id]?.counts || initialCounts(),
+            enablers: Object.entries(guideReportsMap[guide.id]?.enablers || {})
                 .map(([name, counts]) => ({ name, counts }))
                 .sort((a,b) => b.counts.total - a.counts.total),
         })).sort((a,b) => b.counts.total - a.counts.total);
