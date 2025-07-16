@@ -445,7 +445,7 @@ function DashboardPageComponent() {
                         <XAxis dataKey="date" tickFormatter={(value) => format(new Date(value), 'MMM d')} />
                         <YAxis allowDecimals={false} />
                         <Tooltip content={<ChartTooltipContent />} />
-                        <ChartLegend content={<ChartLegendContent wrapperStyle={{paddingTop: '24px'}}/>} />
+                        <ChartLegend content={<ChartLegendContent />} />
                         {reportKeys.map((key) => (
                           <Line key={key} type="monotone" dataKey={key} stroke={chartConfig[key]?.color} strokeWidth={2} dot={false} />
                         ))}
@@ -460,7 +460,7 @@ function DashboardPageComponent() {
                         <XAxis dataKey="date" tickFormatter={(value) => format(new Date(value), 'MMM d')} />
                         <YAxis allowDecimals={false} />
                         <Tooltip content={<ChartTooltipContent />} />
-                        <ChartLegend content={<ChartLegendContent wrapperStyle={{paddingTop: '24px'}} />} />
+                        <ChartLegend content={<ChartLegendContent />} />
                         {reportKeys.map((key) => (
                           <Line key={key} type="monotone" dataKey={key} stroke={chartConfig[key]?.color} strokeWidth={2} dot={false} />
                         ))}
@@ -605,3 +605,5 @@ export default function DashboardPage() {
         </AuthGuard>
     )
 }
+
+    
