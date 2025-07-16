@@ -23,8 +23,10 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
 } from '@/components/ui/chart';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart, Cell, Line, LineChart, Tooltip, Legend } from 'recharts';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart, Cell, Line, LineChart, Tooltip } from 'recharts';
 import { CallReport } from '@/components/call-report';
 import { AuthGuard } from '@/components/auth-guard';
 
@@ -54,7 +56,7 @@ function DashboardPageComponent() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
-    from: addDays(new Date(), -7),
+    from: addDays(new Date(), -6), // Past 7 days including today
     to: new Date(),
   });
 
@@ -68,24 +70,19 @@ function DashboardPageComponent() {
       setFetchError(null);
       try {
         const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-        const peoplePromise = getPeople(userInfo, { pageSize: 5000 }); // Fetch a large number for dashboard stats
+        // Fetch up to 5000 people for dashboard stats.
+        // This is a tradeoff for performance vs. comprehensiveness.
+        const { people: peopleData } = await getPeople(userInfo, { pageSize: 5000 }); 
 
-        let usersPromise: Promise<AppUser[]> | Promise<void> = Promise.resolve();
+        let usersData: AppUser[] = [];
         if (appUser.role.includes('Admin')) {
-            usersPromise = getUsers();
+            usersData = await getUsers();
         } else if (appUser.role.includes('Folk Guide')) {
-            usersPromise = getEnablersForGuide(appUser.id);
+            usersData = await getEnablersForGuide(appUser.id);
         }
-
-        const [{ people: peopleData }, usersData] = await Promise.all([
-          peoplePromise, 
-          usersPromise
-        ]);
         
-        setPeople(peopleData as Person[]);
-        if (usersData) {
-            setRelatedUsers(usersData as AppUser[]);
-        }
+        setPeople(peopleData);
+        setRelatedUsers(usersData);
       } catch (error) {
         console.error('Failed to load dashboard data:', error);
         if (error instanceof Error) {
@@ -228,74 +225,99 @@ function DashboardPageComponent() {
             })
             .map(call => ({
                 ...call,
-                enabler: person.enablerInTouchWith || 'Unassigned',
-                guideId: person.folkGuideId || 'Unassigned',
                 date: format(safeDate(call.calledAt)!, 'yyyy-MM-dd')
             }))
     );
   
     const dateInterval = eachDayOfInterval({ start: from, end: to });
-    const dateMap = new Map<string, { date: string; [key: string]: number }>();
-    let keysForReport: string[] = [];
     
     if (appUser.role.includes('Admin')) {
         const guides = relatedUsers.filter(u => u.role.includes('Folk Guide'));
-        keysForReport = guides.map(g => `${g.name} (${g.fgCode || 'N/A'})`);
         const guideIdToNameMap = new Map(guides.map(g => [g.id, `${g.name} (${g.fgCode || 'N/A'})`]));
-
-        dateInterval.forEach(d => {
-            const formattedDate = format(d, 'yyyy-MM-dd');
-            const entry: { date: string; [key: string]: number } = { date: formattedDate };
-            keysForReport.forEach(name => entry[name] = 0);
-            dateMap.set(formattedDate, entry);
-        });
-        const confirmationsDateMap = new Map(JSON.parse(JSON.stringify(Array.from(dateMap))));
+        const enablerIdToGuideIdMap = new Map<string, string>();
+        relatedUsers.filter(u => u.role.includes('Folk Enabler') && u.reportsTo?.guideId)
+            .forEach(e => enablerIdToGuideIdMap.set(e.id, e.reportsTo!.guideId));
         
-        callsInRange.forEach(call => {
-            const guideName = guideIdToNameMap.get(call.guideId);
-            if (guideName) {
-                 if (dateMap.has(call.date)) {
-                    dateMap.get(call.date)![guideName]++;
+        const reportKeys = guides.map(g => `${g.name} (${g.fgCode || 'N/A'})`);
+
+        const dailyData = dateInterval.map(d => {
+            const dateStr = format(d, 'yyyy-MM-dd');
+            const entry: { date: string, [key: string]: number | string } = { date: dateStr };
+            reportKeys.forEach(name => {
+                entry[`${name}_calls`] = 0;
+                entry[`${name}_confirmations`] = 0;
+            });
+            
+            callsInRange.filter(call => call.date === dateStr).forEach(call => {
+                let guideId: string | undefined;
+                if (guideIdToNameMap.has(call.callerId)) { // Caller is a guide
+                    guideId = call.callerId;
+                } else if (enablerIdToGuideIdMap.has(call.callerId)) { // Caller is an enabler
+                    guideId = enablerIdToGuideIdMap.get(call.callerId);
                 }
-                if (confirmationsDateMap.has(call.date) && call.status === 'A1 - Coming') {
-                    confirmationsDateMap.get(call.date)![guideName]++;
+
+                if (guideId && guideIdToNameMap.has(guideId)) {
+                    const guideName = guideIdToNameMap.get(guideId)!;
+                    entry[`${guideName}_calls`]++;
+                    if (call.status === 'A1 - Coming') {
+                        entry[`${guideName}_confirmations`]++;
+                    }
                 }
-            }
+            });
+            return entry;
         });
 
-        return {
-            dailyCallsData: Array.from(dateMap.values()),
-            dailyConfirmationsData: Array.from(confirmationsDateMap.values()),
-            reportKeys: keysForReport,
-        };
-
-    } else if (appUser.role.includes('Folk Guide')) {
-        keysForReport = relatedUsers.map(e => e.name); // Enablers under the guide
-
-        dateInterval.forEach(d => {
-            const formattedDate = format(d, 'yyyy-MM-dd');
-            const entry: { date: string; [key: string]: number } = { date: formattedDate };
-            keysForReport.forEach(name => entry[name] = 0);
-            dateMap.set(formattedDate, entry);
+        const chartData = (type: 'calls' | 'confirmations') => dailyData.map(d => {
+            const entry: { date: string, [key: string]: number } = { date: d.date };
+            reportKeys.forEach(name => {
+                entry[name] = d[`${name}_${type}`] as number;
+            });
+            return entry;
         });
-        const confirmationsDateMap = new Map(JSON.parse(JSON.stringify(Array.from(dateMap))));
+
+        return { dailyCallsData: chartData('calls'), dailyConfirmationsData: chartData('confirmations'), reportKeys };
+    }
+
+    if (appUser.role.includes('Folk Guide')) {
+        const enablers = relatedUsers; // Users managed by the guide
+        const teamMembers = [appUser, ...enablers];
+        const teamMemberIds = new Set(teamMembers.map(u => u.id));
         
-        callsInRange.forEach(call => {
-            if (keysForReport.includes(call.enabler)) {
-                if (dateMap.has(call.date)) {
-                    dateMap.get(call.date)![call.enabler]++;
-                }
-                if (confirmationsDateMap.has(call.date) && call.status === 'A1 - Coming') {
-                    confirmationsDateMap.get(call.date)![call.enabler]++;
-                }
-            }
+        const reportKeys = teamMembers.map(m => m.name);
+
+        const dailyData = dateInterval.map(d => {
+            const dateStr = format(d, 'yyyy-MM-dd');
+            const entry: { date: string, [key: string]: number | string } = { date: dateStr };
+            reportKeys.forEach(name => {
+                entry[name] = 0;
+            });
+
+            callsInRange.filter(call => call.date === dateStr && teamMemberIds.has(call.callerId)).forEach(call => {
+                 const member = teamMembers.find(m => m.id === call.callerId);
+                 if(member) {
+                    entry[member.name] = (entry[member.name] as number) + 1;
+                 }
+            });
+            return entry;
+        });
+        
+        const confirmationData = dateInterval.map(d => {
+            const dateStr = format(d, 'yyyy-MM-dd');
+            const entry: { date: string, [key: string]: number | string } = { date: dateStr };
+            reportKeys.forEach(name => {
+                entry[name] = 0;
+            });
+
+            callsInRange.filter(call => call.date === dateStr && teamMemberIds.has(call.callerId) && call.status === 'A1 - Coming').forEach(call => {
+                 const member = teamMembers.find(m => m.id === call.callerId);
+                 if(member) {
+                    entry[member.name] = (entry[member.name] as number) + 1;
+                 }
+            });
+            return entry;
         });
 
-         return {
-            dailyCallsData: Array.from(dateMap.values()),
-            dailyConfirmationsData: Array.from(confirmationsDateMap.values()),
-            reportKeys: keysForReport,
-        };
+        return { dailyCallsData: dailyData, dailyConfirmationsData: confirmationData, reportKeys };
     }
 
     return { dailyCallsData: [], dailyConfirmationsData: [], reportKeys: [] };
@@ -323,9 +345,17 @@ function DashboardPageComponent() {
         dailyReportTitle = "Daily Activity Report (by Folk Guide)";
         dailyReportDesc = "Calls and confirmations aggregated by Folk Guide over the selected period.";
     } else if (appUser?.role.includes('Folk Guide')) {
-        dailyReportTitle = "Daily Activity Report (by Enabler)";
-        dailyReportDesc = "Calls and confirmations per enabler you manage over the selected period.";
+        dailyReportTitle = "Daily Activity Report (by Team Member)";
+        dailyReportDesc = "Calls and confirmations per enabler you manage (including yourself) over the selected period.";
     }
+    
+    const chartConfig = reportKeys.reduce((config, key, i) => {
+        config[key] = {
+            label: key,
+            color: CHART_COLORS[i % CHART_COLORS.length],
+        };
+        return config;
+    }, {} as any);
 
     return (
        <div className="space-y-6">
@@ -338,7 +368,7 @@ function DashboardPageComponent() {
               </CardHeader>
               <CardContent>
                   <div className="text-2xl font-bold">{totalContacts}</div>
-                  <p className="text-xs text-muted-foreground">All contacts in the system</p>
+                  <p className="text-xs text-muted-foreground">All contacts in your view</p>
               </CardContent>
           </Card>
           <Card>
@@ -408,31 +438,31 @@ function DashboardPageComponent() {
                     </Popover>
                 </div>
                 <div>
-                    <h3 className="text-md font-semibold mb-2">Daily Calls</h3>
-                    <ChartContainer config={{}} className="h-[300px] w-full">
+                    <h3 className="text-md font-semibold mb-4">Daily Calls</h3>
+                    <ChartContainer config={chartConfig} className="h-[300px] w-full">
                     <LineChart data={dailyCallsData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="date" tickFormatter={(value) => format(new Date(value), 'MMM d')} />
                         <YAxis allowDecimals={false} />
                         <Tooltip content={<ChartTooltipContent />} />
-                        <Legend />
-                        {reportKeys.map((key, i) => (
-                        <Line key={key} type="monotone" dataKey={key} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={false} />
+                        <ChartLegend content={<ChartLegendContent wrapperStyle={{paddingTop: '24px'}}/>} />
+                        {reportKeys.map((key) => (
+                          <Line key={key} type="monotone" dataKey={key} stroke={chartConfig[key]?.color} strokeWidth={2} dot={false} />
                         ))}
                     </LineChart>
                     </ChartContainer>
                 </div>
                 <div>
-                    <h3 className="text-md font-semibold mb-2">Daily Confirmations (A1)</h3>
-                    <ChartContainer config={{}} className="h-[300px] w-full">
+                    <h3 className="text-md font-semibold mb-4">Daily Confirmations (A1)</h3>
+                    <ChartContainer config={chartConfig} className="h-[300px] w-full">
                     <LineChart data={dailyConfirmationsData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="date" tickFormatter={(value) => format(new Date(value), 'MMM d')} />
                         <YAxis allowDecimals={false} />
                         <Tooltip content={<ChartTooltipContent />} />
-                        <Legend />
-                        {reportKeys.map((key, i) => (
-                        <Line key={key} type="monotone" dataKey={key} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={false} />
+                        <ChartLegend content={<ChartLegendContent wrapperStyle={{paddingTop: '24px'}} />} />
+                        {reportKeys.map((key) => (
+                          <Line key={key} type="monotone" dataKey={key} stroke={chartConfig[key]?.color} strokeWidth={2} dot={false} />
                         ))}
                     </LineChart>
                     </ChartContainer>
