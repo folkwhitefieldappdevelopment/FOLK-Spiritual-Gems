@@ -27,7 +27,7 @@ import { getFolkGuides, updateUser } from '@/services/user-service';
 import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from '@/services/settings-service';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 import { useAuth } from '@/contexts/auth-context';
-import { serverTimestamp, arrayUnion } from 'firebase/firestore';
+import { arrayUnion } from 'firebase/firestore';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -320,7 +320,7 @@ function GroupDetailPageComponent() {
     }
   }, [selectedIds, toast, fetchPageData, appUser]);
 
-  const handleSessionSave = React.useCallback((
+  const handleSessionSave = React.useCallback(async (
     personId: string, 
     remark: string, 
     status: CallStatus, 
@@ -339,12 +339,12 @@ function GroupDetailPageComponent() {
     if (ma !== undefined) callHistoryEntry.ma = ma;
     if (frp !== undefined) callHistoryEntry.frp = frp;
     const updateData: any = {
-      lastCallRemark: remark, lastCallAt: serverTimestamp(), lastCallStatus: status, callHistory: arrayUnion(callHistoryEntry),
+      lastCallRemark: remark, lastCallAt: "SERVER_TIMESTAMP", lastCallStatus: status, callHistory: arrayUnion(callHistoryEntry),
     };
     if (sg !== undefined) updateData.lastSg = sg;
     if (ma !== undefined) updateData.lastMa = ma;
     if (frp !== undefined) updateData.lastFrp = frp;
-    updatePerson(personId, updateData, userInfo);
+    await updatePerson(personId, updateData, userInfo);
     setMembers(prev => prev.map(p => {
         if (p.id === personId) {
             const newHistory = p.callHistory ? [...p.callHistory, callHistoryEntry] : [callHistoryEntry];

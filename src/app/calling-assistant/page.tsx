@@ -19,7 +19,7 @@ import { getPeople, updatePerson, assignCoEnablerToPeople } from "@/services/peo
 import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
 import { getFolkGuides, updateUser, getUsers } from "@/services/user-service";
 import { getAllGroups, createGroup, addPeopleToGroup } from "@/services/groups-service";
-import { serverTimestamp, arrayUnion } from "firebase/firestore";
+import { arrayUnion } from "firebase/firestore";
 import { useAuth } from "@/contexts/auth-context";
 import {
   Dialog,
@@ -238,7 +238,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     setIsEditingDialogOpen(true);
   }, []);
   
-  const handleSessionSave = React.useCallback((
+  const handleSessionSave = React.useCallback(async (
     personId: string, 
     remark: string, 
     status: CallStatus, 
@@ -265,7 +265,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
     const updateData: any = {
       lastCallRemark: remark,
-      lastCallAt: serverTimestamp(),
+      lastCallAt: "SERVER_TIMESTAMP",
       lastCallStatus: status,
       callHistory: arrayUnion(callHistoryEntry),
     };
@@ -273,7 +273,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     if (ma !== undefined) updateData.lastMa = ma;
     if (frp !== undefined) updateData.lastFrp = frp;
 
-    updatePerson(personId, updateData, userInfo);
+    await updatePerson(personId, updateData, userInfo);
     
     setAllFetchedPeople(prev => prev.map(p => {
         if (p.id === personId) {

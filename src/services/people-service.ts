@@ -258,7 +258,14 @@ export const updatePerson = async (id: string, personData: Partial<Omit<Person, 
     }
   }
   const docRef = doc(db, 'people', id);
-  await updateDoc(docRef, personData);
+  const dataToUpdate: { [key: string]: any } = { ...personData };
+
+  // Replace placeholder with actual server timestamp
+  if (dataToUpdate.lastCallAt === 'SERVER_TIMESTAMP') {
+    dataToUpdate.lastCallAt = serverTimestamp();
+  }
+
+  await updateDoc(docRef, dataToUpdate);
   if (userInfo) {
     const person = await getPerson(id);
     await logAudit('Update Contact', `Updated details for contact: ${person?.fullName} (${id})`, userInfo);
@@ -380,4 +387,3 @@ export const assignEnablerToPeople = async (personIds: string[], enabler: AppUse
         await logAudit('Assign Enabler', `Assigned ${personIds.length} contacts to ${enabler.name}.`, userInfo);
     }
 };
-
