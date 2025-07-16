@@ -262,13 +262,13 @@ const ChartLegend = RechartsPrimitive.Legend
 const ChartLegendContent = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> &
-    Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign"> & {
+    Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign" | "iconSize"> & {
       hideIcon?: boolean
       nameKey?: string
     }
 >(
   (
-    { className, hideIcon = false, payload, verticalAlign = "bottom", nameKey, ...props },
+    { className, hideIcon = false, payload, verticalAlign = "bottom", nameKey, iconSize, ...props },
     ref
   ) => {
     const { config } = useChart()
@@ -365,5 +365,3 @@ export {
   ChartLegendContent,
   ChartStyle,
 }
-
-    
