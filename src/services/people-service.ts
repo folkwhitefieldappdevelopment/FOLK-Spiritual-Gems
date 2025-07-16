@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { db } from '@/lib/firebase';
@@ -310,7 +311,25 @@ export const importPeople = async (
     }
 
     const dataToSave = {
-        ...person,
+        fullName: person.fullName || '',
+        phone: person.phone || '',
+        photoUrl: person.photoUrl || 'https://placehold.co/100x100.png',
+        age: person.age || 18,
+        stayingWith: person.stayingWith || 'Family',
+        occupation: person.occupation || 'Working',
+        organisation: person.organisation || '',
+        rentDetails: person.rentDetails || '',
+        nativePlace: person.nativePlace || '',
+        sgRating: person.sgRating || 0,
+        contactSource: person.contactSource || '',
+        chantingStatus: person.chantingStatus || 0,
+        fromOtherCamp: person.fromOtherCamp || false,
+        progress: person.progress,
+        customData: person.customData || {},
+        enablerInTouchWith: assignedEnabler || '',
+        folkGuide: folkGuide || '',
+        folkGuideId: folkGuideId || '',
+        lastCallRemark: person.lastCallRemark || '',
         createdAt: serverTimestamp()
     };
     await addDoc(peopleCollection, dataToSave);
@@ -361,3 +380,4 @@ export const assignEnablerToPeople = async (personIds: string[], enabler: AppUse
         await logAudit('Assign Enabler', `Assigned ${personIds.length} contacts to ${enabler.name}.`, userInfo);
     }
 };
+
