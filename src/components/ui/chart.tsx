@@ -262,16 +262,20 @@ const ChartLegend = RechartsPrimitive.Legend
 const ChartLegendContent = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> &
-    Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign" | "iconSize"> & {
+    Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign"> & {
       hideIcon?: boolean
       nameKey?: string
     }
 >(
   (
-    { className, hideIcon = false, payload, verticalAlign = "bottom", nameKey, iconSize, ...props },
+    { className, hideIcon = false, payload, verticalAlign = "bottom", nameKey, ...props },
     ref
   ) => {
     const { config } = useChart()
+
+    // Destructure and ignore the props that are not valid for a div
+    const { iconSize, chartWidth, chartHeight, wrapperStyle, ...rest } = props as any;
+
 
     if (!payload?.length) {
       return null
@@ -285,7 +289,7 @@ const ChartLegendContent = React.forwardRef<
           verticalAlign === "top" ? "pb-3" : "pt-3",
           className
         )}
-        {...props}
+        {...rest}
       >
         {payload.map((item) => {
           const key = `${nameKey || item.dataKey || "value"}`
