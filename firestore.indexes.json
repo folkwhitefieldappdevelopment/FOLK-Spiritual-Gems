@@ -5,224 +5,520 @@
       "collectionGroup": "people",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "enablerInTouchWith",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "occupation", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "people",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "folkGuideId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "occupation", "order": "ASCENDING" },
+        { "fieldPath": "lastCallAt", "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "people",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "contactSource",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "fullName",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "occupation", "order": "ASCENDING" },
+        { "fieldPath": "fullName", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "people",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "folkGuideId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "fullName",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "occupation", "order": "ASCENDING" },
+        { "fieldPath": "age", "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "people",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "enablerInTouchWith",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "fullName",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "occupation", "order": "ASCENDING" },
+        { "fieldPath": "sgRating", "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "people",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "occupation",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "occupation", "order": "ASCENDING" },
+        { "fieldPath": "organisation", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "people",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "contactSource",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "contactSource", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "people",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "chantingStatus",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "contactSource", "order": "ASCENDING" },
+        { "fieldPath": "lastCallAt", "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "people",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "stayingWith",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "contactSource", "order": "ASCENDING" },
+        { "fieldPath": "fullName", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "people",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "organisation",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "contactSource", "order": "ASCENDING" },
+        { "fieldPath": "age", "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "people",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "nativePlace",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "contactSource", "order": "ASCENDING" },
+        { "fieldPath": "sgRating", "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "people",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "fromOtherCamp",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "contactSource", "order": "ASCENDING" },
+        { "fieldPath": "organisation", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "people",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "age",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "enablerInTouchWith", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "people",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "sgRating",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "enablerInTouchWith", "order": "ASCENDING" },
+        { "fieldPath": "lastCallAt", "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "people",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "folkGuide",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "enablerInTouchWith", "order": "ASCENDING" },
+        { "fieldPath": "fullName", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "people",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "nativePlace",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "fullName",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "enablerInTouchWith", "order": "ASCENDING" },
+        { "fieldPath": "age", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "enablerInTouchWith", "order": "ASCENDING" },
+        { "fieldPath": "sgRating", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "enablerInTouchWith", "order": "ASCENDING" },
+        { "fieldPath": "organisation", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "chantingStatus", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "chantingStatus", "order": "ASCENDING" },
+        { "fieldPath": "lastCallAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "chantingStatus", "order": "ASCENDING" },
+        { "fieldPath": "fullName", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "chantingStatus", "order": "ASCENDING" },
+        { "fieldPath": "age", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "chantingStatus", "order": "ASCENDING" },
+        { "fieldPath": "sgRating", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "chantingStatus", "order": "ASCENDING" },
+        { "fieldPath": "organisation", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "stayingWith", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "stayingWith", "order": "ASCENDING" },
+        { "fieldPath": "lastCallAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "stayingWith", "order": "ASCENDING" },
+        { "fieldPath": "fullName", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "stayingWith", "order": "ASCENDING" },
+        { "fieldPath": "age", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "stayingWith", "order": "ASCENDING" },
+        { "fieldPath": "sgRating", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "stayingWith", "order": "ASCENDING" },
+        { "fieldPath": "organisation", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organisation", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organisation", "order": "ASCENDING" },
+        { "fieldPath": "lastCallAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organisation", "order": "ASCENDING" },
+        { "fieldPath": "fullName", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organisation", "order": "ASCENDING" },
+        { "fieldPath": "age", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organisation", "order": "ASCENDING" },
+        { "fieldPath": "sgRating", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nativePlace", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nativePlace", "order": "ASCENDING" },
+        { "fieldPath": "lastCallAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nativePlace", "order": "ASCENDING" },
+        { "fieldPath": "fullName", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nativePlace", "order": "ASCENDING" },
+        { "fieldPath": "age", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nativePlace", "order": "ASCENDING" },
+        { "fieldPath": "sgRating", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nativePlace", "order": "ASCENDING" },
+        { "fieldPath": "organisation", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "fromOtherCamp", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "fromOtherCamp", "order": "ASCENDING" },
+        { "fieldPath": "lastCallAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "fromOtherCamp", "order": "ASCENDING" },
+        { "fieldPath": "fullName", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "fromOtherCamp", "order": "ASCENDING" },
+        { "fieldPath": "age", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "fromOtherCamp", "order": "ASCENDING" },
+        { "fieldPath": "sgRating", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "fromOtherCamp", "order": "ASCENDING" },
+        { "fieldPath": "organisation", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "age", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "age", "order": "ASCENDING" },
+        { "fieldPath": "lastCallAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "age", "order": "ASCENDING" },
+        { "fieldPath": "fullName", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "age", "order": "ASCENDING" },
+        { "fieldPath": "sgRating", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "age", "order": "ASCENDING" },
+        { "fieldPath": "organisation", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sgRating", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sgRating", "order": "ASCENDING" },
+        { "fieldPath": "lastCallAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sgRating", "order": "ASCENDING" },
+        { "fieldPath": "fullName", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sgRating", "order": "ASCENDING" },
+        { "fieldPath": "age", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sgRating", "order": "ASCENDING" },
+        { "fieldPath": "organisation", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "folkGuide", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "folkGuide", "order": "ASCENDING" },
+        { "fieldPath": "lastCallAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "folkGuide", "order": "ASCENDING" },
+        { "fieldPath": "fullName", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "folkGuide", "order": "ASCENDING" },
+        { "fieldPath": "age", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "folkGuide", "order": "ASCENDING" },
+        { "fieldPath": "sgRating", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "folkGuide", "order": "ASCENDING" },
+        { "fieldPath": "organisation", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "folkGuideId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "folkGuideId", "order": "ASCENDING" },
+        { "fieldPath": "fullName", "order": "ASCENDING" }
       ]
     }
   ]
