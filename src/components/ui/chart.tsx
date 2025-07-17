@@ -274,7 +274,15 @@ const ChartLegendContent = React.forwardRef<
     const { config } = useChart()
 
     // Destructure and ignore the props that are not valid for a div
-    const { iconSize, chartWidth, chartHeight, wrapperStyle, ...rest } = props as any;
+    const { 
+        iconSize, 
+        chartWidth, 
+        chartHeight, 
+        wrapperStyle, 
+        content,
+        onBBoxUpdate,
+        ...rest 
+    } = props as any;
 
 
     if (!payload?.length) {
