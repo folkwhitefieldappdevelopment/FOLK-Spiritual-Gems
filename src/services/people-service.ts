@@ -139,33 +139,11 @@ export const getPeople = async (
         );
     }
     
-    // --- Group Filter ---
-    if (groupId) {
-        const groupDocRef = doc(db, 'groups', groupId);
-        const groupSnap = await getDoc(groupDocRef);
-        if (groupSnap.exists()) {
-            const memberIds = groupSnap.data().peopleIds || [];
-            if (memberIds.length > 0) {
-                 if (memberIds.length > 30) {
-                    console.warn(`Group ${groupId} has more than 30 members, exceeding Firestore's 'in' query limit. Filtering will be done client-side.`);
-                    // Fetch all and filter in code
-                 } else {
-                    queryConstraints.push(where('__name__', 'in', memberIds));
-                 }
-            } else {
-                 return { people: [], totalCount: 0 };
-            }
-        } else {
-             return { people: [], totalCount: 0 };
-        }
-    }
-    
-    // Since we are moving to client-side filtering, we fetch ALL relevant documents
     const baseQuery = query(peopleCollection, ...queryConstraints);
     const dataSnapshot = await getDocs(baseQuery);
     let allFetchedPeople = dataSnapshot.docs.map(processPersonDoc);
 
-    // Apply group filter client-side if it was too large for a query
+    // Apply group filter client-side if a groupId is provided
     if (groupId) {
        const groupDocRef = doc(db, 'groups', groupId);
        const groupSnap = await getDoc(groupDocRef);
@@ -173,7 +151,13 @@ export const getPeople = async (
            const memberIds = new Set(groupSnap.data().peopleIds || []);
            if (memberIds.size > 0) {
                allFetchedPeople = allFetchedPeople.filter(p => memberIds.has(p.id));
+           } else {
+               // If group has no members, return empty result
+               return { people: [], totalCount: 0 };
            }
+       } else {
+            // If group doesn't exist, return empty
+            return { people: [], totalCount: 0 };
        }
     }
     
