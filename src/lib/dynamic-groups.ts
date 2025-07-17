@@ -14,14 +14,14 @@ export const dynamicGroupDefinitions: DynamicGroupDefinition[] = [
   {
     id: 'dynamic-working-gems',
     name: 'Working Spiritual Gems',
-    description: 'Working contacts with a rating greater than 4.',
-    filter: (p) => (p.sgRating || 0) > 4 && p.occupation === 'Working',
+    description: 'Working contacts with a rating of 4 or greater.',
+    filter: (p) => (p.sgRating || 0) >= 4 && p.occupation === 'Working',
   },
   {
     id: 'dynamic-student-gems',
     name: 'Student Spiritual Gems',
-    description: 'Student contacts with a rating greater than 4.',
-    filter: (p) => (p.sgRating || 0) > 4 && p.occupation === 'Student',
+    description: 'Student contacts with a rating of 4 or greater.',
+    filter: (p) => (p.sgRating || 0) >= 4 && p.occupation === 'Student',
   },
   {
     id: 'dynamic-frp-yes',
