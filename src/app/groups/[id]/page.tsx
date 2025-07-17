@@ -76,6 +76,7 @@ import {
 import { ColumnFilterState, applyColumnFilters } from '@/components/column-header-filter';
 import { AuthGuard } from '@/components/auth-guard';
 import { logAudit } from '@/services/audit-service';
+import { dynamicGroupDefinitions } from '@/lib/dynamic-groups';
 
 const ROWS_PER_PAGE = 10;
 
@@ -141,9 +142,20 @@ function GroupDetailPageComponent() {
     const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     try {
         const groupData = await getGroup(groupId, userInfo);
-        if (groupData) {
-            setGroup(groupData);
-
+        if (!groupData) {
+             toast({ variant: 'destructive', title: 'Group not found' });
+             router.push('/groups');
+             return;
+        }
+        setGroup(groupData);
+        
+        if (groupData.isDynamic) {
+            const { people: allVisiblePeople } = await getPeople(userInfo, { pageSize: 10000 });
+            const dynamicGroupDef = dynamicGroupDefinitions.find(def => def.id === groupId);
+            const dynamicMembers = dynamicGroupDef ? allVisiblePeople.filter(dynamicGroupDef.filter) : [];
+            setMembers(dynamicMembers);
+            setTotalMembers(dynamicMembers.length);
+        } else {
             const { people: membersData, totalCount } = await getPeople(userInfo, { 
                 page: currentPage, 
                 pageSize: ROWS_PER_PAGE, 
@@ -154,12 +166,8 @@ function GroupDetailPageComponent() {
             });
             setMembers(membersData);
             setTotalMembers(totalCount);
-        } else {
-             toast({ variant: 'destructive', title: 'Group not found' });
-             router.push('/groups');
-             return;
         }
-
+        
       const [{people: allPeopleData}, allGroupsData, enablersData, sourcesData, guidesData, customFieldsData] = await Promise.all([
         getPeople(userInfo, { pageSize: 10000 }), // for manage members dialog
         getStaticGroups(userInfo),
@@ -329,11 +337,10 @@ function GroupDetailPageComponent() {
   ) => {
     if (!appUser || !user) return;
     const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-    const callTime = new Date();
     
     const callHistoryEntry = {
       remark: remark,
-      calledAt: callTime.toISOString(),
+      calledAt: new Date().toISOString(),
       status: status,
       event: currentCallingEvent,
       callerId: appUser.id,
@@ -358,7 +365,7 @@ function GroupDetailPageComponent() {
     setMembers(prev => prev.map(p => {
         if (p.id === personId) {
             const newHistory = [...(p.callHistory || []), callHistoryEntry];
-            const updatedPerson = { ...p, callHistory: newHistory, lastCallRemark: remark, lastCallAt: callTime.toISOString(), lastCallStatus: status, };
+            const updatedPerson = { ...p, callHistory: newHistory, lastCallRemark: remark, lastCallAt: new Date().toISOString(), lastCallStatus: status, };
             if (sg !== undefined) updatedPerson.lastSg = sg;
             if (ma !== undefined) updatedPerson.lastMa = ma;
             if (frp !== undefined) updatedPerson.lastFrp = frp;
@@ -683,3 +690,4 @@ export default function GroupDetailPage() {
         </AuthGuard>
     )
 }
+ 
