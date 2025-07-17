@@ -565,45 +565,36 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
             )}
         </div>
         
-        {filteredPeople.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <p>No contacts found.</p>
-            <p className="text-sm">Try adjusting your search or filters.</p>
-          </div>
-        ) : (
-          <>
-            <PersonTable
-              people={paginatedPeople}
-              allPeople={filteredPeople}
-              onEdit={handleEditPerson}
-              onDelete={handleDeletePerson}
-              isCallingAssistantView={true}
-              selectedIds={selectedIds}
-              setSelectedIds={setSelectedIds}
-              isSelectionActive={isSelectionActive}
-              sortDescriptors={sortDescriptors}
-              setSortDescriptors={setSortDescriptors}
-              columnFilters={columnFilters}
-              setColumnFilters={setColumnFilters}
-            />
-            {totalPages > 1 && (
-              <Pagination className="mt-8">
-                  <PaginationContent>
-                      <PaginationItem>
-                          <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }} aria-disabled={currentPage === 1} tabIndex={currentPage === 1 ? -1 : undefined} className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''} />
-                      </PaginationItem>
-                      <PaginationItem>
-                        <span className="p-2 text-sm font-medium">
-                          Page {currentPage} of {totalPages}
-                        </span>
-                      </PaginationItem>
-                      <PaginationItem>
-                          <PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} aria-disabled={currentPage === totalPages} tabIndex={currentPage === totalPages ? -1 : undefined} className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''} />
-                      </PaginationItem>
-                  </PaginationContent>
-              </Pagination>
-            )}
-          </>
+        <PersonTable
+          people={paginatedPeople}
+          allPeople={filteredPeople}
+          onEdit={handleEditPerson}
+          onDelete={handleDeletePerson}
+          isCallingAssistantView={true}
+          selectedIds={selectedIds}
+          setSelectedIds={setSelectedIds}
+          isSelectionActive={isSelectionActive}
+          sortDescriptors={sortDescriptors}
+          setSortDescriptors={setSortDescriptors}
+          columnFilters={columnFilters}
+          setColumnFilters={setColumnFilters}
+        />
+        {totalPages > 1 && (
+          <Pagination className="mt-8">
+              <PaginationContent>
+                  <PaginationItem>
+                      <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }} aria-disabled={currentPage === 1} tabIndex={currentPage === 1 ? -1 : undefined} className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''} />
+                  </PaginationItem>
+                  <PaginationItem>
+                    <span className="p-2 text-sm font-medium">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                  </PaginationItem>
+                  <PaginationItem>
+                      <PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} aria-disabled={currentPage === totalPages} tabIndex={currentPage === totalPages ? -1 : undefined} className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''} />
+                  </PaginationItem>
+              </PaginationContent>
+          </Pagination>
         )}
       </>
     );

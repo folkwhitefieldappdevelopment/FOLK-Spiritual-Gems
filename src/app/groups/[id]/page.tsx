@@ -522,9 +522,7 @@ function GroupDetailPageComponent() {
           </div>
         </div>
 
-        {filteredMembers.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground"><p>No members found.</p><p className="text-sm">Try adjusting your search or filters.</p></div>
-        ) : view === 'table' ? (
+        {view === 'table' ? (
           <PersonTable 
             people={filteredMembers} 
             allPeople={allPeople}
@@ -539,21 +537,25 @@ function GroupDetailPageComponent() {
             setColumnFilters={setColumnFilters}
           />
         ) : (
-           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredMembers.map((person) => {
-                const personGroups = allGroups.filter(g => g.peopleIds.includes(person.id));
-                return (
-                  <PersonCard
-                    key={person.id}
-                    person={person}
-                    isSelected={selectedIds.has(person.id)}
-                    onSelectionChange={handleSelectionChange}
-                    groups={personGroups}
-                    isSelectionActive={isSelectionActive}
-                  />
-                )
-            })}
-          </div>
+           filteredMembers.length > 0 ? (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filteredMembers.map((person) => {
+                  const personGroups = allGroups.filter(g => g.peopleIds.includes(person.id));
+                  return (
+                    <PersonCard
+                      key={person.id}
+                      person={person}
+                      isSelected={selectedIds.has(person.id)}
+                      onSelectionChange={handleSelectionChange}
+                      groups={personGroups}
+                      isSelectionActive={isSelectionActive}
+                    />
+                  )
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground"><p>No members found.</p><p className="text-sm">Try adjusting your search or filters.</p></div>
+          )
         )}
         {totalPages > 1 && (
             <Pagination className="mt-8">
@@ -690,4 +692,3 @@ export default function GroupDetailPage() {
         </AuthGuard>
     )
 }
- 

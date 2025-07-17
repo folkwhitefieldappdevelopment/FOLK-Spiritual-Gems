@@ -675,48 +675,7 @@ function ContactsPageComponent() {
     if (fetchError) {
       return <FirebaseConfigError error={fetchError} />;
     }
-
-    const tableContent = (
-      <PersonTable
-        people={filteredPeople}
-        allPeople={allFetchedPeople}
-        onEdit={handleEditPerson}
-        onDelete={handleDeletePerson}
-        selectedIds={selectedIds}
-        setSelectedIds={setSelectedIds}
-        isSelectionActive={isSelectionActive}
-        sortDescriptors={sortDescriptors}
-        setSortDescriptors={setSortDescriptors}
-        columnFilters={columnFilters}
-        setColumnFilters={setColumnFilters}
-      />
-    );
     
-    const cardContent = (
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {filteredPeople.map((person) => {
-            const personGroups = groups.filter(g => g.peopleIds.includes(person.id));
-            return (
-              <PersonCard
-                key={person.id}
-                person={person}
-                isSelected={selectedIds.has(person.id)}
-                onSelectionChange={(id, checked) => {
-                  setSelectedIds(prev => {
-                    const newSet = new Set(prev);
-                    if (checked) newSet.add(id);
-                    else newSet.delete(id);
-                    return newSet;
-                  });
-                }}
-                groups={personGroups}
-                isSelectionActive={isSelectionActive}
-              />
-            )
-        })}
-      </div>
-    );
-
     return (
       <>
         <div className="mb-6 flex flex-col gap-4">
@@ -854,13 +813,50 @@ function ContactsPageComponent() {
         </div>
         
         {view === 'card' ? (
-          filteredPeople.length > 0 ? cardContent : (
+          filteredPeople.length > 0 ? (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filteredPeople.map((person) => {
+                  const personGroups = groups.filter(g => g.peopleIds.includes(person.id));
+                  return (
+                    <PersonCard
+                      key={person.id}
+                      person={person}
+                      isSelected={selectedIds.has(person.id)}
+                      onSelectionChange={(id, checked) => {
+                        setSelectedIds(prev => {
+                          const newSet = new Set(prev);
+                          if (checked) newSet.add(id);
+                          else newSet.delete(id);
+                          return newSet;
+                        });
+                      }}
+                      groups={personGroups}
+                      isSelectionActive={isSelectionActive}
+                    />
+                  )
+              })}
+            </div>
+          ) : (
             <div className="text-center py-12 text-muted-foreground">
               <p>No contacts found.</p>
               <p className="text-sm">Try adjusting your search or filters.</p>
             </div>
           )
-        ) : tableContent}
+        ) : (
+          <PersonTable
+            people={filteredPeople}
+            allPeople={allFetchedPeople}
+            onEdit={handleEditPerson}
+            onDelete={handleDeletePerson}
+            selectedIds={selectedIds}
+            setSelectedIds={setSelectedIds}
+            isSelectionActive={isSelectionActive}
+            sortDescriptors={sortDescriptors}
+            setSortDescriptors={setSortDescriptors}
+            columnFilters={columnFilters}
+            setColumnFilters={setColumnFilters}
+          />
+        )}
 
         {totalPages > 1 && (
             <Pagination className="mt-8">
