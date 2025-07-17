@@ -67,6 +67,32 @@ type UserInfo = {
   role: UserRole[];
 };
 
+// Helper function to apply filters in code
+const applyClientSideFilters = (people: Person[], filters: FilterRule[]): Person[] => {
+    if (filters.length === 0) return people;
+
+    return people.filter(person => {
+        return filters.every(filter => {
+            const personValue = person[filter.field as keyof Person];
+            const filterValue = filter.value;
+
+            switch (filter.operator) {
+                case 'is': return String(personValue) === String(filterValue);
+                case 'is_not': return String(personValue) !== String(filterValue);
+                case 'contains': return String(personValue).toLowerCase().includes(String(filterValue).toLowerCase());
+                case 'not_contains': return !String(personValue).toLowerCase().includes(String(filterValue).toLowerCase());
+                case 'is_empty': return personValue === null || personValue === undefined || personValue === '';
+                case 'is_not_empty': return personValue !== null && personValue !== undefined && personValue !== '';
+                case 'gt': return Number(personValue) > Number(filterValue);
+                case 'lt': return Number(personValue) < Number(filterValue);
+                case 'gte': return Number(personValue) >= Number(filterValue);
+                case 'lte': return Number(personValue) <= Number(filterValue);
+                default: return true;
+            }
+        });
+    });
+};
+
 export const getPeople = async (
     userInfo: UserInfo,
     options: {
@@ -84,23 +110,19 @@ export const getPeople = async (
         page = 1,
         pageSize = 10,
         filters = [],
-        sortDescriptors: initialSortDescriptors = [],
+        sortDescriptors = [],
         searchTerm = '',
         groupId,
     } = options;
 
     const peopleCollection = collection(db, 'people');
     let queryConstraints: QueryConstraint[] = [];
-    let sortDescriptors = initialSortDescriptors;
     
-    let isComplexQuery = false;
-
     // --- Role-based Access Control ---
     if (userInfo.role.includes('Admin')) {
         // No additional constraints needed.
     } else if (userInfo.role.includes('Folk Guide')) {
         queryConstraints.push(where('folkGuideId', '==', userInfo.id));
-        isComplexQuery = true;
     } else { // Folk Enabler
         queryConstraints.push(
             or(
@@ -108,7 +130,6 @@ export const getPeople = async (
                 where('coEnablerId', '==', userInfo.id)
             )
         );
-        isComplexQuery = true;
     }
     
     // --- Group Filter ---
@@ -132,61 +153,54 @@ export const getPeople = async (
         }
     }
 
-    // --- Advanced Filters ---
-    const filterConstraints = filters.map(filter => {
-        const { field, operator, value } = filter;
-        if (operator === 'is_empty') return where(field, '==', '');
-        if (operator === 'is_not_empty') return where(field, '!=', '');
-        if (operator === 'is') return where(field, '==', value);
-        if (operator === 'is_not') return where(field, '!=', value);
-        if (operator === 'gt') return where(field, '>', value);
-        if (operator === 'lt') return where(field, '<', value);
-        if (operator === 'gte') return where(field, '>=', value);
-        if (operator === 'lte') return where(field, '<=', value);
-        return null;
-    }).filter((c): c is QueryConstraint => c !== null);
-
-    if (filterConstraints.length > 0) {
-        queryConstraints.push(and(...filterConstraints));
-        isComplexQuery = true;
-    }
-
-    // --- Search Term ---
+    // --- Search Term (can be handled by Firestore) ---
     if (searchTerm.trim()) {
         const term = searchTerm.trim();
+        // Since we are now filtering client-side, a simple orderBy is enough for a basic search
+        queryConstraints.push(orderBy('fullName'));
         queryConstraints.push(where('fullName', '>=', term));
         queryConstraints.push(where('fullName', '<=', term + '\uf8ff'));
-        isComplexQuery = true;
     }
 
-    // --- Sorting ---
-    // If no sort is provided and it's not a complex query, apply default.
-    // Otherwise, let Firestore use its default order to avoid index errors.
-    if (sortDescriptors.length === 0 && !isComplexQuery) {
-      sortDescriptors = [{ field: 'createdAt', direction: 'desc' }];
-    }
-    const sortConstraints = sortDescriptors.map(desc => orderBy(desc.field, desc.direction));
-
-    // --- Count Query (without pagination/sorting) ---
-    const countQuery = query(peopleCollection, ...queryConstraints);
-    const countSnapshot = await getCountFromServer(countQuery);
-    const totalCount = countSnapshot.data().count;
-
-    // --- Data Query (with pagination and sorting) ---
-    let dataQuery = query(peopleCollection, ...queryConstraints, ...sortConstraints, limit(pageSize));
-    if (page > 1) {
-        const prevPageQuery = query(peopleCollection, ...queryConstraints, ...sortConstraints, limit((page - 1) * pageSize));
-        const prevPageSnapshot = await getDocs(prevPageQuery);
-        if (!prevPageSnapshot.empty) {
-            const lastVisible = prevPageSnapshot.docs[prevPageSnapshot.docs.length - 1];
-            dataQuery = query(dataQuery, startAfter(lastVisible));
-        }
-    }
+    // Since we are moving to client-side filtering, we fetch ALL relevant documents
+    const baseQuery = query(peopleCollection, ...queryConstraints);
+    const dataSnapshot = await getDocs(baseQuery);
+    const allFetchedPeople = dataSnapshot.docs.map(processPersonDoc);
     
-    const dataSnapshot = await getDocs(dataQuery);
-    const people = dataSnapshot.docs.map(processPersonDoc);
-    
-    return { people, totalCount };
+    // --- Apply Client-Side Filtering ---
+    const filteredPeople = applyClientSideFilters(allFetchedPeople, filters);
+
+    // --- Apply Sorting ---
+    if (sortDescriptors.length > 0) {
+        filteredPeople.sort((a, b) => {
+            for (const desc of sortDescriptors) {
+                const valA = a[desc.field as keyof Person];
+                const valB = b[desc.field as keyof Person];
+                
+                let comparison = 0;
+                if (valA > valB) {
+                    comparison = 1;
+                } else if (valA < valB) {
+                    comparison = -1;
+                }
+
+                if (comparison !== 0) {
+                    return desc.direction === 'asc' ? comparison : -comparison;
+                }
+            }
+            return 0;
+        });
+    } else {
+        // Default sort if none provided
+        filteredPeople.sort((a,b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    }
+
+    // --- Apply Pagination ---
+    const totalCount = filteredPeople.length;
+    const startIndex = (page - 1) * pageSize;
+    const paginatedPeople = filteredPeople.slice(startIndex, startIndex + pageSize);
+
+    return { people: paginatedPeople, totalCount };
 };
 
 export const getPerson = async (id: string): Promise<Person | null> => {
@@ -392,3 +406,5 @@ export const assignEnablerToPeople = async (personIds: string[], enabler: AppUse
         await logAudit('Assign Enabler', `Assigned ${personIds.length} contacts to ${enabler.name}.`, userInfo);
     }
 };
+
+    
