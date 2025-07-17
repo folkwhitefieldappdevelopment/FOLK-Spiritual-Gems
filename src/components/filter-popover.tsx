@@ -59,11 +59,19 @@ type FilterPopoverProps = {
 };
 
 export function FilterPopover({ filters, setFilters, filterableFields }: FilterPopoverProps) {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [localFilters, setLocalFilters] = React.useState<FilterRule[]>(filters);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setLocalFilters(filters);
+    }
+  }, [isOpen, filters]);
     
   const getField = (fieldValue: string) => filterableFields.find(f => f.value === fieldValue);
 
   const handleUpdateFilter = (id: string, key: keyof FilterRule, value: any) => {
-    setFilters(prev =>
+    setLocalFilters(prev =>
       prev.map(f => {
         if (f.id === id) {
           const updatedFilter = { ...f, [key]: value };
@@ -81,7 +89,7 @@ export function FilterPopover({ filters, setFilters, filterableFields }: FilterP
   };
 
   const handleAddFilter = () => {
-    setFilters(prev => [
+    setLocalFilters(prev => [
       ...prev,
       {
         id: crypto.randomUUID(),
@@ -93,12 +101,17 @@ export function FilterPopover({ filters, setFilters, filterableFields }: FilterP
   };
 
   const handleRemoveFilter = (id: string) => {
-    setFilters(prev => prev.filter(f => f.id !== id));
+    setLocalFilters(prev => prev.filter(f => f.id !== id));
   };
 
   const handleClearFilters = () => {
-    setFilters([]);
+    setLocalFilters([]);
   };
+
+  const handleApplyFilters = () => {
+    setFilters(localFilters);
+    setIsOpen(false);
+  }
 
   const renderValueInput = (filter: FilterRule) => {
     const field = getField(filter.field);
@@ -161,7 +174,7 @@ export function FilterPopover({ filters, setFilters, filterableFields }: FilterP
   };
 
   return (
-    <Popover>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button variant="outline">
           <Filter className="mr-2 h-4 w-4" />
@@ -182,7 +195,7 @@ export function FilterPopover({ filters, setFilters, filterableFields }: FilterP
             </p>
           </div>
           <div className="grid gap-2">
-            {filters.map(filter => {
+            {localFilters.length > 0 ? localFilters.map(filter => {
                 const field = getField(filter.field);
                 return (
                     <div key={filter.id} className="flex items-center gap-2">
@@ -219,7 +232,9 @@ export function FilterPopover({ filters, setFilters, filterableFields }: FilterP
                         </Button>
                     </div>
                 )
-            })}
+            }) : (
+              <p className="text-sm text-muted-foreground text-center py-4">No filters applied.</p>
+            )}
           </div>
           <Separator />
           <div className="flex justify-between items-center">
@@ -227,11 +242,14 @@ export function FilterPopover({ filters, setFilters, filterableFields }: FilterP
               <Plus className="mr-2 h-4 w-4" />
               Add Filter
             </Button>
-            {filters.length > 0 && (
-                <Button variant="ghost" size="sm" onClick={handleClearFilters}>
-                    Clear all Filters
+            <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setLocalFilters([])} disabled={localFilters.length === 0}>
+                    Clear all
                 </Button>
-            )}
+                 <Button onClick={handleApplyFilters}>
+                    Apply
+                </Button>
+            </div>
           </div>
         </div>
       </PopoverContent>
