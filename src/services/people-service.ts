@@ -76,6 +76,11 @@ const applyClientSideFilters = (people: Person[], filters: FilterRule[]): Person
             const personValue = person[filter.field as keyof Person];
             const filterValue = filter.value;
 
+            // Handle boolean filter values specifically
+            if (typeof filterValue === 'boolean') {
+              return !!personValue === filterValue;
+            }
+
             switch (filter.operator) {
                 case 'is': return String(personValue) === String(filterValue);
                 case 'is_not': return String(personValue) !== String(filterValue);
@@ -87,6 +92,8 @@ const applyClientSideFilters = (people: Person[], filters: FilterRule[]): Person
                 case 'lt': return Number(personValue) < Number(filterValue);
                 case 'gte': return Number(personValue) >= Number(filterValue);
                 case 'lte': return Number(personValue) <= Number(filterValue);
+                case 'eq': return Number(personValue) === Number(filterValue);
+                case 'neq': return Number(personValue) !== Number(filterValue);
                 default: return true;
             }
         });
@@ -140,8 +147,8 @@ export const getPeople = async (
             const memberIds = groupSnap.data().peopleIds || [];
             if (memberIds.length > 0) {
                  if (memberIds.length > 30) {
-                    console.warn(`Group ${groupId} has more than 30 members, exceeding Firestore's 'in' query limit. Only the first 30 will be shown.`);
-                    queryConstraints.push(where('__name__', 'in', memberIds.slice(0, 30)));
+                    console.warn(`Group ${groupId} has more than 30 members, exceeding Firestore's 'in' query limit. Filtering will be done client-side.`);
+                    // Fetch all and filter in code
                  } else {
                     queryConstraints.push(where('__name__', 'in', memberIds));
                  }
@@ -152,21 +159,33 @@ export const getPeople = async (
              return { people: [], totalCount: 0 };
         }
     }
-
-    // --- Search Term (can be handled by Firestore) ---
-    if (searchTerm.trim()) {
-        const term = searchTerm.trim();
-        // Since we are now filtering client-side, a simple orderBy is enough for a basic search
-        queryConstraints.push(orderBy('fullName'));
-        queryConstraints.push(where('fullName', '>=', term));
-        queryConstraints.push(where('fullName', '<=', term + '\uf8ff'));
-    }
-
+    
     // Since we are moving to client-side filtering, we fetch ALL relevant documents
     const baseQuery = query(peopleCollection, ...queryConstraints);
     const dataSnapshot = await getDocs(baseQuery);
-    const allFetchedPeople = dataSnapshot.docs.map(processPersonDoc);
+    let allFetchedPeople = dataSnapshot.docs.map(processPersonDoc);
+
+    // Apply group filter client-side if it was too large for a query
+    if (groupId) {
+       const groupDocRef = doc(db, 'groups', groupId);
+       const groupSnap = await getDoc(groupDocRef);
+       if (groupSnap.exists()) {
+           const memberIds = new Set(groupSnap.data().peopleIds || []);
+           if (memberIds.size > 0) {
+               allFetchedPeople = allFetchedPeople.filter(p => memberIds.has(p.id));
+           }
+       }
+    }
     
+    // --- Apply Search Term (Client-side) ---
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      allFetchedPeople = allFetchedPeople.filter(p => 
+        p.fullName.toLowerCase().includes(term) ||
+        p.phone.includes(term)
+      );
+    }
+
     // --- Apply Client-Side Filtering ---
     const filteredPeople = applyClientSideFilters(allFetchedPeople, filters);
 
@@ -178,11 +197,10 @@ export const getPeople = async (
                 const valB = b[desc.field as keyof Person];
                 
                 let comparison = 0;
-                if (valA > valB) {
-                    comparison = 1;
-                } else if (valA < valB) {
-                    comparison = -1;
-                }
+                if (valA === null || valA === undefined) comparison = -1;
+                else if (valB === null || valB === undefined) comparison = 1;
+                else if (valA > valB) comparison = 1;
+                else if (valA < valB) comparison = -1;
 
                 if (comparison !== 0) {
                     return desc.direction === 'asc' ? comparison : -comparison;
@@ -406,5 +424,3 @@ export const assignEnablerToPeople = async (personIds: string[], enabler: AppUse
         await logAudit('Assign Enabler', `Assigned ${personIds.length} contacts to ${enabler.name}.`, userInfo);
     }
 };
-
-    
