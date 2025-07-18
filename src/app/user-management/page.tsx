@@ -19,7 +19,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { getUsers, updateUser, getFolkGuides, getEnablersForGuide } from '@/services/user-service';
-import { deleteUserAndAuth } from '@/services/user-actions';
+// import { deleteUserAndAuth } from '@/services/user-actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { userRoles, type UserRole, type AppUser } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -132,12 +132,12 @@ function UserManagementPageComponent() {
     if (!userToDelete || !appUser) return;
     try {
         const actorInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-        await deleteUserAndAuth(userToDelete.id, actorInfo);
+        // await deleteUserAndAuth(userToDelete.id, actorInfo);
         toast({
-            title: 'User Deleted',
-            description: `User ${userToDelete.name} has been completely deleted.`
+            title: 'Action Disabled',
+            description: `User deletion is temporarily disabled. Please use the Firebase Console.`
         });
-        fetchUsersAndGuides();
+        // fetchUsersAndGuides();
     } catch (error) {
         console.error('Failed to delete user:', error);
         toast({
@@ -373,7 +373,7 @@ function UserManagementPageComponent() {
                 <ShieldAlert className="h-4 w-4" />
                 <AlertTitle>Important Note on User Deletion</AlertTitle>
                 <AlertDescription>
-                  Deleting a user is permanent and will remove them from both the application database and Firebase Authentication. They will lose all access immediately.
+                  User deletion is temporarily disabled due to a server configuration issue. To delete a user, please do so from the Firebase Console.
                 </AlertDescription>
               </Alert>
             </div>
