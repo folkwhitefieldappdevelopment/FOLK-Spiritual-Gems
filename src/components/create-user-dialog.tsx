@@ -41,6 +41,7 @@ import { Loader2 } from 'lucide-react';
 import { userRoles, type AppUser, type UserRole } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-context';
 import { updateUser } from '@/services/user-service';
+import { useToast } from '@/hooks/use-toast';
 
 const userFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -78,7 +79,8 @@ type CreateUserDialogProps = {
 };
 
 export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides }: CreateUserDialogProps) {
-  const { appUser, toast } = useAuth();
+  const { appUser } = useAuth();
+  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [availableRoles, setAvailableRoles] = React.useState<UserRole[]>([]);
   
@@ -141,7 +143,6 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides }
         if (user) { // Editing existing user
             await onSave(data, user.id);
         } else { // Creating new user
-            // This now only closes the dialog. Creation must be done in the Firebase Console.
             // This is a workaround for the server environment limitations.
             console.warn("User creation from UI is disabled. Please create users in the Firebase Console.");
             toast({
