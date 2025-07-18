@@ -40,7 +40,6 @@ import {
 import { Loader2 } from 'lucide-react';
 import { userRoles, type AppUser, type UserRole } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-context';
-import { createUserWithAuth } from '@/services/user-actions';
 import { updateUser } from '@/services/user-service';
 
 const userFormSchema = z.object({
@@ -142,12 +141,15 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides }
         if (user) { // Editing existing user
             await onSave(data, user.id);
         } else { // Creating new user
-            await createUserWithAuth(data, { id: appUser.id, name: appUser.name, role: appUser.role });
+            // This now only closes the dialog. Creation must be done in the Firebase Console.
+            // This is a workaround for the server environment limitations.
+            console.warn("User creation from UI is disabled. Please create users in the Firebase Console.");
             toast({
-                title: 'User Created',
-                description: `${data.name} has been created. A password reset link has been sent to their email.`
-            });
-            await onSave(data, undefined); // This now just refreshes the list
+                title: 'Manual Action Required',
+                description: `User record for ${data.name} was not created. Please add the user in the Firebase Console.`,
+                variant: 'destructive',
+                duration: 10000,
+            })
         }
 
         setIsOpen(false);

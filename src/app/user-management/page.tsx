@@ -132,12 +132,13 @@ function UserManagementPageComponent() {
     if (!userToDelete || !appUser) return;
     try {
         const actorInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-        await deleteUserAndAuth(userToDelete.id, actorInfo);
+        // Deleting the user is disabled due to server environment issues.
+        // await deleteUserAndAuth(userToDelete.id, actorInfo);
         toast({
-            title: 'User Record Deleted',
-            description: `The database record for ${userToDelete.name} has been deleted. You must still delete the user from Firebase Authentication.`
+            title: 'Action Disabled',
+            description: `Please delete ${userToDelete.name} from the Firebase Console.`
         });
-        fetchUsersAndGuides();
+        // fetchUsersAndGuides();
     } catch (error) {
         console.error('Failed to delete user:', error);
         toast({
@@ -371,9 +372,13 @@ function UserManagementPageComponent() {
 
               <Alert variant="destructive">
                 <ShieldAlert className="h-4 w-4" />
-                <AlertTitle>Important Note on User Management</AlertTitle>
+                <AlertTitle>Important: Manual User Management Required</AlertTitle>
                 <AlertDescription>
-                  Due to server environment limitations, user creation and deletion are restricted. To add a new user, you must first create their account in the Firebase Console (Authentication section), then add their record here. Deletion only removes the database record; the user must also be deleted from the Authentication section in the console.
+                  Due to server environment limitations, user creation and deletion from this UI are disabled.
+                  <ul className="list-disc pl-5 mt-2 space-y-1">
+                    <li><strong>To Add a User:</strong> First, create their account in the <strong>Firebase Console &gt; Authentication</strong> section. Then, come back here and click "Create User" to add their record to the application database.</li>
+                    <li><strong>To Delete a User:</strong> You must delete the user from both this table AND from the Firebase Console's Authentication section.</li>
+                  </ul>
                 </AlertDescription>
               </Alert>
             </div>
