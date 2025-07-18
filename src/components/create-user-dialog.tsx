@@ -144,10 +144,15 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides }
         if (user) { // Editing existing user
             await onSave(data, user.id);
         } else { // Creating new user
-            await createUserWithAuth(data, appUser);
+            const actorInfo = {
+                id: appUser.id,
+                name: appUser.name,
+                role: appUser.role,
+            };
+            await createUserWithAuth(data, actorInfo);
             toast({
                 title: 'User Creation Initiated',
-                description: `A sign-up link has been sent to ${data.email}. The user record will appear after they sign up.`,
+                description: `An email has been sent to ${data.email} with instructions to set their password. The user record will appear after they sign up.`,
             });
         }
 
