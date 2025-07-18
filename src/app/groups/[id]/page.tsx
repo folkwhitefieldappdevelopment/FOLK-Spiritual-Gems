@@ -19,7 +19,7 @@ import {
   Play,
 } from 'lucide-react';
 import type { Person, Group, AppUser, CustomField, CallStatus, UserRole } from '@/lib/types';
-import { occupationStatuses } from "@/lib/types";
+import { occupationStatuses, callStatuses } from "@/lib/types";
 import { useToast } from '@/hooks/use-toast';
 import { getGroup, getStaticGroups, addPeopleToGroup, removePeopleFromGroup } from '@/services/groups-service';
 import { getPeople, updatePerson, assignCoEnablerToPeople } from '@/services/people-service';
@@ -39,7 +39,7 @@ import { CreateUpdatePersonDialog } from '@/components/create-update-person-dial
 import { CallingSessionDialog } from '@/components/calling-session-dialog';
 import { ManageGroupMembersDialog } from '@/components/manage-group-members-dialog';
 import { AssignCoEnablerDialog } from '@/components/assign-helper-dialog';
-import { FilterPopover, type FilterRule, type FilterableField } from '@/components/filter-popover';
+import { FilterPopover, type FilterRule, type FilterableField, applyClientSideFilters } from '@/components/filter-popover';
 import { SortPopover, type SortDescriptor } from '@/components/sort-popover';
 import {
   Dialog,
@@ -79,6 +79,7 @@ import { logAudit } from '@/services/audit-service';
 import { dynamicGroupDefinitions } from '@/lib/dynamic-groups';
 
 const ROWS_PER_PAGE = 10;
+const FIRESTORE_QUERY_LIMIT = 10000;
 
 type UserInfo = {
   id: string;
@@ -100,7 +101,6 @@ function GroupDetailPageComponent() {
   const [allGroups, setAllGroups] = React.useState<Group[]>([]);
   const [allPeople, setAllPeople] = React.useState<Person[]>([]);
   const [members, setMembers] = React.useState<Person[]>([]);
-  const [totalMembers, setTotalMembers] = React.useState(0);
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   
   const [view, setView] = React.useState<'card' | 'table'>('table');
@@ -149,27 +149,20 @@ function GroupDetailPageComponent() {
         }
         setGroup(groupData);
         
+        const { people: allVisiblePeople } = await getPeople(userInfo, { pageSize: FIRESTORE_QUERY_LIMIT });
+        setAllPeople(allVisiblePeople);
+
+        let memberData: Person[];
         if (groupData.isDynamic) {
-            const { people: allVisiblePeople } = await getPeople(userInfo, { pageSize: 10000 });
             const dynamicGroupDef = dynamicGroupDefinitions.find(def => def.id === groupId);
-            const dynamicMembers = dynamicGroupDef ? allVisiblePeople.filter(dynamicGroupDef.filter) : [];
-            setMembers(dynamicMembers);
-            setTotalMembers(dynamicMembers.length);
+            memberData = dynamicGroupDef ? allVisiblePeople.filter(dynamicGroupDef.filter) : [];
         } else {
-            const { people: membersData, totalCount } = await getPeople(userInfo, { 
-                page: currentPage, 
-                pageSize: ROWS_PER_PAGE, 
-                filters, 
-                sortDescriptors, 
-                searchTerm, 
-                groupId 
-            });
-            setMembers(membersData);
-            setTotalMembers(totalCount);
+            const memberIds = new Set(groupData.peopleIds);
+            memberData = allVisiblePeople.filter(p => memberIds.has(p.id));
         }
+        setMembers(memberData);
         
-      const [{people: allPeopleData}, allGroupsData, enablersData, sourcesData, guidesData, customFieldsData] = await Promise.all([
-        getPeople(userInfo, { pageSize: 10000 }), // for manage members dialog
+      const [allGroupsData, enablersData, sourcesData, guidesData, customFieldsData] = await Promise.all([
         getStaticGroups(userInfo),
         getEnablers(userInfo, 'filter'),
         getContactSources(userInfo),
@@ -177,7 +170,6 @@ function GroupDetailPageComponent() {
         getCustomPersonFields(userInfo),
       ]);
       
-      setAllPeople(allPeopleData);
       setAllGroups(allGroupsData);
       setEnablerOptions(enablersData);
       setContactSourceOptions(sourcesData);
@@ -191,7 +183,7 @@ function GroupDetailPageComponent() {
     } finally {
       setIsLoading(false);
     }
-  }, [groupId, appUser, router, toast, currentPage, filters, sortDescriptors, searchTerm]);
+  }, [groupId, appUser, router, toast]);
 
   React.useEffect(() => {
     if (appUser && groupId) {
@@ -213,14 +205,54 @@ function GroupDetailPageComponent() {
     { value: 'sgRating', label: 'Rating', type: 'number' },
   ], [enablerOptions, contactSourceOptions, folkGuides]);
 
-  const filteredMembers = React.useMemo(() => {
-    return applyColumnFilters(members, columnFilters);
-  }, [members, columnFilters]);
+  const filteredAndSortedMembers = React.useMemo(() => {
+    let people = [...members];
+    
+    // Apply main search term
+    if (searchTerm.trim()) {
+        const lowercasedTerm = searchTerm.toLowerCase();
+        people = people.filter(p => 
+            p.fullName.toLowerCase().includes(lowercasedTerm) || 
+            p.phone.includes(lowercasedTerm)
+        );
+    }
+
+    // Apply advanced filters
+    people = applyClientSideFilters(people, filters);
+
+    // Apply column filters
+    people = applyColumnFilters(people, columnFilters);
+
+    // Apply sorting
+    if (sortDescriptors.length > 0) {
+        people.sort((a, b) => {
+            for (const desc of sortDescriptors) {
+                const valA = a[desc.field as keyof Person];
+                const valB = b[desc.field as keyof Person];
+                let comparison = 0;
+                if (valA === null || valA === undefined) comparison = -1;
+                else if (valB === null || valB === undefined) comparison = 1;
+                else if (valA > valB) comparison = 1;
+                else if (valA < valB) comparison = -1;
+                if (comparison !== 0) {
+                    return desc.direction === 'asc' ? comparison : -comparison;
+                }
+            }
+            return 0;
+        });
+    }
+
+    return people;
+  }, [members, searchTerm, filters, columnFilters, sortDescriptors]);
   
-  const totalPages = Math.ceil(totalMembers / ROWS_PER_PAGE);
+  const totalPages = Math.ceil(filteredAndSortedMembers.length / ROWS_PER_PAGE);
+  const paginatedMembers = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
+    return filteredAndSortedMembers.slice(startIndex, startIndex + ROWS_PER_PAGE);
+  }, [filteredAndSortedMembers, currentPage]);
 
   React.useEffect(() => {
-    if (!isEventDialogOpen || !isStartingSessionFlow || filteredMembers.length === 0) {
+    if (!isEventDialogOpen || !isStartingSessionFlow || filteredAndSortedMembers.length === 0) {
       setCallRangeNames({ from: '', to: '' });
       return;
     }
@@ -228,19 +260,19 @@ function GroupDetailPageComponent() {
         const fromInput = callRange.from.trim();
         const toInput = callRange.to.trim();
         const fromIndex = parseInt(fromInput, 10) - 1;
-        const toIndex = toInput === '' ? filteredMembers.length - 1 : parseInt(toInput, 10) - 1;
+        const toIndex = toInput === '' ? filteredAndSortedMembers.length - 1 : parseInt(toInput, 10) - 1;
         let fromName = '';
-        if (fromInput && !isNaN(fromIndex) && fromIndex >= 0 && fromIndex < filteredMembers.length) {
-          fromName = filteredMembers[fromIndex]?.fullName || '';
+        if (fromInput && !isNaN(fromIndex) && fromIndex >= 0 && fromIndex < filteredAndSortedMembers.length) {
+          fromName = filteredAndSortedMembers[fromIndex]?.fullName || '';
         }
         let toName = '';
-        if (!isNaN(toIndex) && toIndex >= 0 && toIndex < filteredMembers.length) {
-          toName = filteredMembers[toIndex]?.fullName || '';
+        if (!isNaN(toIndex) && toIndex >= 0 && toIndex < filteredAndSortedMembers.length) {
+          toName = filteredAndSortedMembers[toIndex]?.fullName || '';
         }
         setCallRangeNames({ from: fromName, to: toName });
     }, 300);
     return () => clearTimeout(handler);
-  }, [callRange, filteredMembers, isEventDialogOpen, isStartingSessionFlow]);
+  }, [callRange, filteredAndSortedMembers, isEventDialogOpen, isStartingSessionFlow]);
 
   React.useEffect(() => {
     setCurrentPage(1);
@@ -272,14 +304,17 @@ function GroupDetailPageComponent() {
     try {
       const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
       await updatePerson(editingPerson.id, personData, userInfo);
+      
       const updatedPerson = { ...editingPerson, ...personData };
       setMembers(members.map(m => m.id === updatedPerson.id ? updatedPerson : m));
+      setAllPeople(allPeople.map(p => p.id === updatedPerson.id ? updatedPerson : p));
+
       setEditingPerson(undefined);
       toast({ title: 'Person Updated', description: "The person's details have been saved." });
     } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not update person details.'});
     }
-  }, [editingPerson, members, toast, appUser]);
+  }, [editingPerson, members, allPeople, toast, appUser]);
   
   const handleSaveMembers = React.useCallback(async (memberIds: string[]) => {
     if (!group || group.isDynamic || !appUser) return;
@@ -362,7 +397,7 @@ function GroupDetailPageComponent() {
     if (frp !== undefined) updateData.lastFrp = frp;
 
     await updatePerson(personId, updateData, userInfo);
-    setMembers(prev => prev.map(p => {
+    const updateLocalList = (list: Person[]) => list.map(p => {
         if (p.id === personId) {
             const newHistory = [...(p.callHistory || []), callHistoryEntry];
             const updatedPerson = { ...p, callHistory: newHistory, lastCallRemark: remark, lastCallAt: new Date().toISOString(), lastCallStatus: status, };
@@ -372,15 +407,17 @@ function GroupDetailPageComponent() {
             return updatedPerson;
         }
         return p;
-    }));
+    });
+    setMembers(prev => updateLocalList(prev));
+    setAllPeople(prev => updateLocalList(prev));
   }, [appUser, user, currentCallingEvent]);
   
   const handleOpenEventDialog = React.useCallback((isStartingFlow: boolean) => {
     setEditableEventName(currentCallingEvent);
-    setCallRange({ from: '1', to: String(filteredMembers.length) });
+    setCallRange({ from: '1', to: String(filteredAndSortedMembers.length) });
     setIsStartingSessionFlow(isStartingFlow);
     setIsEventDialogOpen(true);
-  }, [currentCallingEvent, filteredMembers.length]);
+  }, [currentCallingEvent, filteredAndSortedMembers.length]);
 
   const handleSaveEventAndContinue = React.useCallback(async () => {
     if (!appUser) return;
@@ -401,20 +438,13 @@ function GroupDetailPageComponent() {
     }
     if (isStartingSessionFlow) {
       const fromIndex = parseInt(callRange.from, 10);
-      const toIndex = callRange.to.trim() === '' ? filteredMembers.length : parseInt(callRange.to, 10);
-      if (isNaN(fromIndex) || isNaN(toIndex) || fromIndex < 1 || toIndex > totalMembers || fromIndex > toIndex) {
-        toast({ variant: 'destructive', title: 'Invalid Range', description: `Please enter a valid range between 1 and ${totalMembers}.` });
+      const toIndex = callRange.to.trim() === '' ? filteredAndSortedMembers.length : parseInt(callRange.to, 10);
+      if (isNaN(fromIndex) || isNaN(toIndex) || fromIndex < 1 || toIndex > filteredAndSortedMembers.length || fromIndex > toIndex) {
+        toast({ variant: 'destructive', title: 'Invalid Range', description: `Please enter a valid range between 1 and ${filteredAndSortedMembers.length}.` });
         return;
       }
       
-      const {people: peopleToCall} = await getPeople(userInfo, {
-          pageSize: toIndex - (fromIndex - 1),
-          page: fromIndex > 1 ? Math.ceil(fromIndex / (toIndex - (fromIndex - 1))) : 1, // Simplified logic
-          filters,
-          sortDescriptors,
-          searchTerm,
-          groupId
-      });
+      const peopleToCall = filteredAndSortedMembers.slice(fromIndex - 1, toIndex);
       
       if (peopleToCall.length === 0) {
         toast({ variant: 'destructive', title: 'No Contacts Selected', description: 'The specified range is empty.' });
@@ -427,40 +457,33 @@ function GroupDetailPageComponent() {
       setIsSessionDialogOpen(true);
     }
     setIsEventDialogOpen(false);
-  }, [appUser, editableEventName, currentCallingEvent, isStartingSessionFlow, callRange, filteredMembers.length, toast, updateCurrentAppUser, group, totalMembers, filters, sortDescriptors, searchTerm, groupId]);
+  }, [appUser, editableEventName, currentCallingEvent, isStartingSessionFlow, callRange, filteredAndSortedMembers, toast, updateCurrentAppUser, group]);
 
   const handleResumeSession = React.useCallback(async () => {
     if (!pausedSession || !canResumeSession || !appUser) return;
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     
-     try {
-      const { people: peopleForPausedSession } = await getPeople(userInfo, {
-        pageSize: pausedSession.peopleIds.length,
-        filters: pausedSession.filters,
-        sortDescriptors: pausedSession.sortDescriptors,
-        searchTerm: pausedSession.searchTerm,
-        groupId: pausedSession.selectedGroupId !== 'all' ? pausedSession.selectedGroupId : undefined,
-      });
+    setFilters(pausedSession.filters);
+    setSortDescriptors(pausedSession.sortDescriptors);
+    setSearchTerm(pausedSession.searchTerm);
+    setColumnFilters(pausedSession.columnFilters);
+    
+    // The main filtered list will re-calculate with the new states.
+    // We need a short delay to ensure the list is updated before opening the dialog.
+    setTimeout(() => {
+        const peopleForPausedSession = filteredAndSortedMembers;
 
-      if (peopleForPausedSession.length === 0) {
-          toast({ variant: 'destructive', title: 'Could not resume session', description: 'The contacts in the paused session no longer match the filter criteria.'});
-          return;
-      }
-      
-      setFilters(pausedSession.filters);
-      setSortDescriptors(pausedSession.sortDescriptors);
-      setSearchTerm(pausedSession.searchTerm);
-      
-      setPeopleForSession(peopleForPausedSession);
-      setSessionStartIndex(pausedSession.sessionStartIndex);
-      setInitialSessionIndex(pausedSession.currentIndex);
-      setIsSessionDialogOpen(true);
+        if (peopleForPausedSession.length === 0) {
+            toast({ variant: 'destructive', title: 'Could not resume session', description: 'The contacts in the paused session no longer match the filter criteria.'});
+            return;
+        }
 
-    } catch (error) {
-        toast({ variant: 'destructive', title: 'Error Resuming', description: 'Could not reload the paused session data.' });
-    }
+        setPeopleForSession(peopleForPausedSession);
+        setSessionStartIndex(pausedSession.sessionStartIndex);
+        setInitialSessionIndex(pausedSession.currentIndex);
+        setIsSessionDialogOpen(true);
+    }, 100);
 
-  }, [pausedSession, canResumeSession, appUser, toast]);
+  }, [pausedSession, canResumeSession, appUser, toast, filteredAndSortedMembers]);
 
   const renderContent = () => {
     if (isLoading) return <div className="flex min-h-[50vh] w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -493,6 +516,7 @@ function GroupDetailPageComponent() {
                       </AlertDialogContent>
                     </AlertDialog>
                   )}
+                  <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>Deselect All</Button>
                 </>
               ) : (
                 <>
@@ -501,7 +525,6 @@ function GroupDetailPageComponent() {
                   <SortPopover sortDescriptors={sortDescriptors} setSortDescriptors={setSortDescriptors} />
                 </>
               )}
-               {totalMembers > 0 && <Button variant="outline" size="sm" onClick={() => { if (selectedIds.size === totalMembers) { setSelectedIds(new Set()); } else { setSelectedIds(new Set(members.map(p => p.id))); } }}>{selectedIds.size === totalMembers ? 'Deselect All' : 'Select All'}</Button>}
             </div>
             <div className="flex items-center gap-2">
               {canResumeSession && (
@@ -510,9 +533,9 @@ function GroupDetailPageComponent() {
                       Resume Session ({pausedSession.currentIndex + 1} / {pausedSession.peopleIds.length})
                   </Button>
               )}
-              <Button size="sm" onClick={() => handleOpenEventDialog(true)} disabled={totalMembers === 0 || isSelectionActive || isLoading}>
+              <Button size="sm" onClick={() => handleOpenEventDialog(true)} disabled={filteredAndSortedMembers.length === 0 || isSelectionActive || isLoading}>
                   <Headset className="mr-2 h-4 w-4" />
-                  Start Calling Session ({isLoading ? '...' : totalMembers})
+                  Start Calling Session ({isLoading ? '...' : filteredAndSortedMembers.length})
               </Button>
               <div className="flex items-center rounded-md bg-muted p-1">
                 <Button variant={view === "card" ? "secondary" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setView("card")} aria-label="Card View"><LayoutGrid className="h-4 w-4" /></Button>
@@ -524,8 +547,8 @@ function GroupDetailPageComponent() {
 
         {view === 'table' ? (
           <PersonTable 
-            people={filteredMembers} 
-            allPeople={allPeople}
+            people={paginatedMembers} 
+            allPeople={filteredAndSortedMembers}
             onEdit={handleEditPerson} 
             onDelete={(id) => handleRemoveMembers([id])} 
             selectedIds={selectedIds} 
@@ -537,9 +560,9 @@ function GroupDetailPageComponent() {
             setColumnFilters={setColumnFilters}
           />
         ) : (
-           filteredMembers.length > 0 ? (
+           paginatedMembers.length > 0 ? (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {filteredMembers.map((person) => {
+              {paginatedMembers.map((person) => {
                   const personGroups = allGroups.filter(g => g.peopleIds.includes(person.id));
                   return (
                     <PersonCard
@@ -631,7 +654,7 @@ function GroupDetailPageComponent() {
                       value={callRange.from}
                       onChange={(e) => setCallRange(prev => ({...prev, from: e.target.value}))}
                       min="1"
-                      max={totalMembers}
+                      max={filteredAndSortedMembers.length}
                   />
                   <span className="text-muted-foreground">to</span>
                   <Input
@@ -640,16 +663,16 @@ function GroupDetailPageComponent() {
                       value={callRange.to}
                       onChange={(e) => setCallRange(prev => ({...prev, to: e.target.value}))}
                       min="1"
-                      max={totalMembers}
+                      max={filteredAndSortedMembers.length}
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                    Select a range from your filtered list of {totalMembers} contacts.
+                    Select a range from your filtered list of {filteredAndSortedMembers.length} contacts.
                 </p>
                 {callRangeNames.from && (
                   <div className="text-xs text-muted-foreground mt-2 border-l-2 border-primary pl-2 space-y-1">
                       <p>From: <strong className="text-foreground">{callRange.from}. {callRangeNames.from}</strong></p>
-                      {callRangeNames.to && <p>To: <strong className="text-foreground">{callRange.to || totalMembers}. {callRangeNames.to}</strong></p>}
+                      {callRangeNames.to && <p>To: <strong className="text-foreground">{callRange.to || filteredAndSortedMembers.length}. {callRangeNames.to}</strong></p>}
                   </div>
                 )}
               </div>
@@ -672,7 +695,7 @@ function GroupDetailPageComponent() {
         customFields={customFields}
         groups={allGroups}
         sessionStartIndex={sessionStartIndex}
-        totalPeopleCount={totalMembers}
+        totalPeopleCount={filteredAndSortedMembers.length}
         initialIndex={initialSessionIndex}
         context="group"
         filters={filters}

@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import type { Person } from '@/lib/types';
 
 export type FilterRule = {
   id: string;
@@ -50,6 +51,41 @@ const operators: Record<FilterableField['type'], Operator[]> = {
     { value: 'is_not', label: 'is not' },
   ],
   boolean: [{ value: 'is', label: 'is' }],
+};
+
+export const applyClientSideFilters = (people: Person[], filters: FilterRule[]): Person[] => {
+    if (filters.length === 0) return people;
+
+    return people.filter(person => {
+        return filters.every(filter => {
+            const personValue = person[filter.field as keyof Person];
+            const filterValue = filter.value;
+
+            if (filter.operator === 'is_empty') return personValue === null || personValue === undefined || personValue === '';
+            if (filter.operator === 'is_not_empty') return personValue !== null && personValue !== undefined && personValue !== '';
+            
+            // Handle boolean filter values specifically
+            if (typeof filterValue === 'boolean') {
+              return !!personValue === filterValue;
+            }
+
+            if (personValue === null || personValue === undefined) return false;
+
+            switch (filter.operator) {
+                case 'is': return String(personValue) === String(filterValue);
+                case 'is_not': return String(personValue) !== String(filterValue);
+                case 'contains': return String(personValue).toLowerCase().includes(String(filterValue).toLowerCase());
+                case 'not_contains': return !String(personValue).toLowerCase().includes(String(filterValue).toLowerCase());
+                case 'gt': return Number(personValue) > Number(filterValue);
+                case 'lt': return Number(personValue) < Number(filterValue);
+                case 'gte': return Number(personValue) >= Number(filterValue);
+                case 'lte': return Number(personValue) <= Number(filterValue);
+                case 'eq': return Number(personValue) === Number(filterValue);
+                case 'neq': return Number(personValue) !== Number(filterValue);
+                default: return true;
+            }
+        });
+    });
 };
 
 type FilterPopoverProps = {

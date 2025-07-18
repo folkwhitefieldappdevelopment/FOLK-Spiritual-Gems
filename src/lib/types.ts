@@ -1,7 +1,8 @@
 
-import type { callStatuses } from './data';
+import type { callStatuses as allCallStatuses } from './data';
 import type { FilterRule } from '@/components/filter-popover';
 import type { SortDescriptor } from '@/components/sort-popover';
+import type { ColumnFilterState } from '@/components/column-header-filter';
 
 export const progressCategories = [
   'Association',
@@ -40,6 +41,21 @@ export type CustomFieldType = (typeof customFieldTypes)[number];
 export const occupationStatuses = ['Working', 'Student', 'Searching for job'] as const;
 export type OccupationStatus = (typeof occupationStatuses)[number];
 
+export const callStatuses = [
+    'A1 - Coming',
+    'A2 - Not Interested',
+    'A3 - Next Week/Upcoming week',
+    'A4 - Tentative',
+    'B - Not Answering',
+    'C - Busy',
+    'D - Wrong Number',
+    'E - Switched Off',
+    'F - Not Reachable',
+    'G - Completely Shifted to Another city',
+    'Y2 - Call me later',
+    'Y3 - Next Month',
+    'Z - Already Attended',
+] as const;
 export type CallStatus = (typeof callStatuses)[number];
 
 export type Person = {
@@ -100,7 +116,7 @@ export type PausedSession = {
   sortDescriptors: SortDescriptor[];
   searchTerm: string;
   selectedGroupId: string;
-  columnFilters: Record<string, any>;
+  columnFilters: ColumnFilterState;
 };
 
 export type AppUser = {

@@ -67,60 +67,13 @@ type UserInfo = {
   role: UserRole[];
 };
 
-// Helper function to apply filters in code
-const applyClientSideFilters = (people: Person[], filters: FilterRule[]): Person[] => {
-    if (filters.length === 0) return people;
-
-    return people.filter(person => {
-        return filters.every(filter => {
-            const personValue = person[filter.field as keyof Person];
-            const filterValue = filter.value;
-
-            // Handle boolean filter values specifically
-            if (typeof filterValue === 'boolean') {
-              return !!personValue === filterValue;
-            }
-
-            switch (filter.operator) {
-                case 'is': return String(personValue) === String(filterValue);
-                case 'is_not': return String(personValue) !== String(filterValue);
-                case 'contains': return String(personValue).toLowerCase().includes(String(filterValue).toLowerCase());
-                case 'not_contains': return !String(personValue).toLowerCase().includes(String(filterValue).toLowerCase());
-                case 'is_empty': return personValue === null || personValue === undefined || personValue === '';
-                case 'is_not_empty': return personValue !== null && personValue !== undefined && personValue !== '';
-                case 'gt': return Number(personValue) > Number(filterValue);
-                case 'lt': return Number(personValue) < Number(filterValue);
-                case 'gte': return Number(personValue) >= Number(filterValue);
-                case 'lte': return Number(personValue) <= Number(filterValue);
-                case 'eq': return Number(personValue) === Number(filterValue);
-                case 'neq': return Number(personValue) !== Number(filterValue);
-                default: return true;
-            }
-        });
-    });
-};
-
 export const getPeople = async (
     userInfo: UserInfo,
-    options: {
-        page?: number;
-        pageSize?: number;
-        filters?: FilterRule[];
-        sortDescriptors?: SortDescriptor[];
-        searchTerm?: string;
-        groupId?: string;
-    } = {}
+    options: { pageSize?: number } = {}
 ): Promise<GetPeopleResult> => {
     if (!userInfo) return { people: [], totalCount: 0 };
     
-    const {
-        page = 1,
-        pageSize = 10,
-        filters = [],
-        sortDescriptors = [],
-        searchTerm = '',
-        groupId,
-    } = options;
+    const { pageSize = 10000 } = options;
 
     const peopleCollection = collection(db, 'people');
     let queryConstraints: QueryConstraint[] = [];
@@ -139,70 +92,13 @@ export const getPeople = async (
         );
     }
     
+    queryConstraints.push(limit(pageSize));
+
     const baseQuery = query(peopleCollection, ...queryConstraints);
     const dataSnapshot = await getDocs(baseQuery);
-    let allFetchedPeople = dataSnapshot.docs.map(processPersonDoc);
+    const allFetchedPeople = dataSnapshot.docs.map(processPersonDoc);
 
-    // Apply group filter client-side if a groupId is provided
-    if (groupId) {
-       const groupDocRef = doc(db, 'groups', groupId);
-       const groupSnap = await getDoc(groupDocRef);
-       if (groupSnap.exists()) {
-           const memberIds = new Set(groupSnap.data().peopleIds || []);
-           if (memberIds.size > 0) {
-               allFetchedPeople = allFetchedPeople.filter(p => memberIds.has(p.id));
-           } else {
-               // If group has no members, return empty result
-               return { people: [], totalCount: 0 };
-           }
-       } else {
-            // If group doesn't exist, return empty
-            return { people: [], totalCount: 0 };
-       }
-    }
-    
-    // --- Apply Search Term (Client-side) ---
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase();
-      allFetchedPeople = allFetchedPeople.filter(p => 
-        p.fullName.toLowerCase().includes(term) ||
-        p.phone.includes(term)
-      );
-    }
-
-    // --- Apply Client-Side Filtering ---
-    const filteredPeople = applyClientSideFilters(allFetchedPeople, filters);
-
-    // --- Apply Sorting ---
-    if (sortDescriptors.length > 0) {
-        filteredPeople.sort((a, b) => {
-            for (const desc of sortDescriptors) {
-                const valA = a[desc.field as keyof Person];
-                const valB = b[desc.field as keyof Person];
-                
-                let comparison = 0;
-                if (valA === null || valA === undefined) comparison = -1;
-                else if (valB === null || valB === undefined) comparison = 1;
-                else if (valA > valB) comparison = 1;
-                else if (valA < valB) comparison = -1;
-
-                if (comparison !== 0) {
-                    return desc.direction === 'asc' ? comparison : -comparison;
-                }
-            }
-            return 0;
-        });
-    } else {
-        // Default sort if none provided
-        filteredPeople.sort((a,b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-    }
-
-    // --- Apply Pagination ---
-    const totalCount = filteredPeople.length;
-    const startIndex = (page - 1) * pageSize;
-    const paginatedPeople = filteredPeople.slice(startIndex, startIndex + pageSize);
-
-    return { people: paginatedPeople, totalCount };
+    return { people: allFetchedPeople, totalCount: allFetchedPeople.length };
 };
 
 export const getPerson = async (id: string): Promise<Person | null> => {

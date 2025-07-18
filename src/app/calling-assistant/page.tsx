@@ -4,8 +4,7 @@
 import * as React from "react";
 import { Headset, Loader2, Edit, Search, Users, UserCheck, PlusCircle, Play, Pause, AlertCircle } from "lucide-react";
 import type { Person, CallStatus, CustomField, Group, AppUser, PausedSession, UserRole } from "@/lib/types";
-import { occupationStatuses } from "@/lib/types";
-import { callStatuses } from "@/lib/data";
+import { occupationStatuses, callStatuses } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -29,7 +28,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { FilterPopover, type FilterRule, type FilterableField } from '@/components/filter-popover';
+import { FilterPopover, type FilterRule, type FilterableField, applyClientSideFilters } from '@/components/filter-popover';
 import {
   Select,
   SelectContent,
@@ -74,8 +73,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   const { appUser, user, updateCurrentAppUser } = useAuth();
 
   const [allFetchedPeople, setAllFetchedPeople] = React.useState<Person[]>([]);
-  const [people, setPeople] = React.useState<Person[]>([]);
-  const [totalPeople, setTotalPeople] = React.useState(0);
   const [peopleForSession, setPeopleForSession] = React.useState<Person[]>([]);
   const [isDataLoading, setIsDataLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
@@ -122,18 +119,8 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       setFetchError(null);
       const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
       try {
-        // Calling assistant needs all matching people for the session.
-        // We respect Firestore's 10,000 limit.
-        const { people: peopleData, totalCount } = await getPeople(userInfo, { 
-            pageSize: FIRESTORE_QUERY_LIMIT, // Fetch up to the max limit
-            filters,
-            sortDescriptors,
-            searchTerm,
-            groupId: selectedGroupId !== 'all' ? selectedGroupId : undefined,
-         });
-
+        const { people: peopleData } = await getPeople(userInfo, { pageSize: FIRESTORE_QUERY_LIMIT });
         setAllFetchedPeople(peopleData);
-        setTotalPeople(totalCount); // Use the length of fetched data for total
 
         const [enablersData, sourcesData, customFieldsData, groupsData, guidesData] = await Promise.all([
           getEnablers(userInfo, 'filter'),
@@ -159,13 +146,12 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       } finally {
         setIsDataLoading(false);
       }
-  }, [appUser, filters, sortDescriptors, searchTerm, selectedGroupId]);
+  }, [appUser]);
 
   React.useEffect(() => {
     if (appUser) {
       fetchPageData();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appUser, fetchPageData]);
   
   React.useEffect(() => {
@@ -190,19 +176,63 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     ]
   }, [enablerOptions, contactSourceOptions, folkGuides]);
 
-  const filteredPeople = React.useMemo(() => {
-    return applyColumnFilters(allFetchedPeople, columnFilters);
-  }, [allFetchedPeople, columnFilters]);
+  const filteredAndSortedPeople = React.useMemo(() => {
+    let people = [...allFetchedPeople];
 
+    // Group filter
+    if (selectedGroupId !== 'all') {
+        const group = groups.find(g => g.id === selectedGroupId);
+        if (group) {
+            const memberIds = new Set(group.peopleIds);
+            people = people.filter(p => memberIds.has(p.id));
+        }
+    }
 
-  const totalPages = Math.ceil(filteredPeople.length / ROWS_PER_PAGE);
+    // Search filter
+    if (searchTerm.trim()) {
+        const lowercasedTerm = searchTerm.toLowerCase();
+        people = people.filter(p => 
+            p.fullName.toLowerCase().includes(lowercasedTerm) || 
+            p.phone.includes(lowercasedTerm)
+        );
+    }
+    
+    // Advanced filters
+    people = applyClientSideFilters(people, filters);
+
+    // Column filters
+    people = applyColumnFilters(people, columnFilters);
+
+    // Sorting
+    if (sortDescriptors.length > 0) {
+        people.sort((a, b) => {
+            for (const desc of sortDescriptors) {
+                const valA = a[desc.field as keyof Person];
+                const valB = b[desc.field as keyof Person];
+                let comparison = 0;
+                if (valA === null || valA === undefined) comparison = -1;
+                else if (valB === null || valB === undefined) comparison = 1;
+                else if (valA > valB) comparison = 1;
+                else if (valA < valB) comparison = -1;
+                if (comparison !== 0) {
+                    return desc.direction === 'asc' ? comparison : -comparison;
+                }
+            }
+            return 0;
+        });
+    }
+
+    return people;
+  }, [allFetchedPeople, columnFilters, filters, sortDescriptors, searchTerm, selectedGroupId, groups]);
+
+  const totalPages = Math.ceil(filteredAndSortedPeople.length / ROWS_PER_PAGE);
   const paginatedPeople = React.useMemo(() => {
     const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
-    return filteredPeople.slice(startIndex, startIndex + ROWS_PER_PAGE);
-  }, [filteredPeople, currentPage]);
+    return filteredAndSortedPeople.slice(startIndex, startIndex + ROWS_PER_PAGE);
+  }, [filteredAndSortedPeople, currentPage]);
 
   React.useEffect(() => {
-    if (!isEventDialogOpen || !isStartingSessionFlow || filteredPeople.length === 0) {
+    if (!isEventDialogOpen || !isStartingSessionFlow || filteredAndSortedPeople.length === 0) {
       setCallRangeNames({ from: '', to: '' });
       return;
     }
@@ -212,16 +242,16 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
         const toInput = callRange.to.trim();
 
         const fromIndex = parseInt(fromInput, 10) - 1;
-        const toIndex = toInput === '' ? filteredPeople.length - 1 : parseInt(toInput, 10) - 1;
+        const toIndex = toInput === '' ? filteredAndSortedPeople.length - 1 : parseInt(toInput, 10) - 1;
 
         let fromName = '';
-        if (fromInput && !isNaN(fromIndex) && fromIndex >= 0 && fromIndex < filteredPeople.length) {
-          fromName = filteredPeople[fromIndex]?.fullName || '';
+        if (fromInput && !isNaN(fromIndex) && fromIndex >= 0 && fromIndex < filteredAndSortedPeople.length) {
+          fromName = filteredAndSortedPeople[fromIndex]?.fullName || '';
         }
 
         let toName = '';
-        if (!isNaN(toIndex) && toIndex >= 0 && toIndex < filteredPeople.length) {
-          toName = filteredPeople[toIndex]?.fullName || '';
+        if (!isNaN(toIndex) && toIndex >= 0 && toIndex < filteredAndSortedPeople.length) {
+          toName = filteredAndSortedPeople[toIndex]?.fullName || '';
         }
 
         setCallRangeNames({ from: fromName, to: toName });
@@ -230,7 +260,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     return () => {
         clearTimeout(handler);
     };
-  }, [callRange, filteredPeople, isEventDialogOpen, isStartingSessionFlow]);
+  }, [callRange, filteredAndSortedPeople, isEventDialogOpen, isStartingSessionFlow]);
 
   const handleEditPerson = React.useCallback((person: Person) => {
     editingPersonRef.current = person;
@@ -302,10 +332,10 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
   const handleOpenEventDialog = React.useCallback((isStartingFlow: boolean) => {
     setEditableEventName(currentCallingEvent);
-    setCallRange({ from: '1', to: String(totalPeople) });
+    setCallRange({ from: '1', to: String(filteredAndSortedPeople.length) });
     setIsStartingSessionFlow(isStartingFlow);
     setIsEventDialogOpen(true);
-  }, [currentCallingEvent, totalPeople]);
+  }, [currentCallingEvent, filteredAndSortedPeople.length]);
 
   const handleSaveEventAndContinue = React.useCallback(async () => {
     if (!appUser) return;
@@ -328,24 +358,24 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
     if (isStartingSessionFlow) {
       const fromIndex = parseInt(callRange.from, 10);
-      const toIndex = callRange.to.trim() === '' ? totalPeople : parseInt(callRange.to, 10);
+      const toIndex = callRange.to.trim() === '' ? filteredAndSortedPeople.length : parseInt(callRange.to, 10);
 
       if (
         isNaN(fromIndex) ||
         isNaN(toIndex) ||
         fromIndex < 1 ||
-        toIndex > totalPeople ||
+        toIndex > filteredAndSortedPeople.length ||
         fromIndex > toIndex
       ) {
         toast({
           variant: 'destructive',
           title: 'Invalid Range',
-          description: `Please enter a valid range between 1 and ${totalPeople}.`,
+          description: `Please enter a valid range between 1 and ${filteredAndSortedPeople.length}.`,
         });
         return;
       }
       
-      const peopleToCall = filteredPeople.slice(fromIndex - 1, toIndex);
+      const peopleToCall = filteredAndSortedPeople.slice(fromIndex - 1, toIndex);
 
       if (peopleToCall.length === 0) {
         toast({
@@ -364,7 +394,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     }
     
     setIsEventDialogOpen(false);
-  }, [appUser, editableEventName, currentCallingEvent, isStartingSessionFlow, callRange, totalPeople, filteredPeople, toast, updateCurrentAppUser]);
+  }, [appUser, editableEventName, currentCallingEvent, isStartingSessionFlow, callRange, filteredAndSortedPeople, toast, updateCurrentAppUser]);
   
   const handleAddToGroup = React.useCallback(async (targetGroupId: string) => {
     if (selectedIds.size === 0 || !appUser) return;
@@ -435,50 +465,38 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
   const handleResumeSession = React.useCallback(async () => {
     if (!pausedSession || !canResumeSession || !appUser) return;
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     
-    try {
-      // Re-fetch the exact list of people from the paused session to ensure data freshness
-      const { people: peopleForPausedSession } = await getPeople(userInfo, {
-        pageSize: pausedSession.peopleIds.length,
-        filters: pausedSession.filters,
-        sortDescriptors: pausedSession.sortDescriptors,
-        searchTerm: pausedSession.searchTerm,
-        groupId: pausedSession.selectedGroupId !== 'all' ? pausedSession.selectedGroupId : undefined,
-      });
+    setFilters(pausedSession.filters);
+    setSortDescriptors(pausedSession.sortDescriptors);
+    setSearchTerm(pausedSession.searchTerm);
+    setSelectedGroupId(pausedSession.selectedGroupId);
+    setColumnFilters(pausedSession.columnFilters);
+    
+    // The main filtered list will re-calculate with the new states.
+    // We need a short delay to ensure the list is updated before opening the dialog.
+    setTimeout(() => {
+        const peopleForPausedSession = filteredAndSortedPeople;
 
-      if (peopleForPausedSession.length === 0) {
-          toast({
-              variant: 'destructive',
-              title: 'Could not resume session',
-              description: 'The contacts in the paused session no longer match the filter criteria.'
-          });
-          return;
-      }
-      
-      setAllFetchedPeople(peopleForPausedSession); // Update main list to reflect resumed session state
-      setFilters(pausedSession.filters);
-      setSortDescriptors(pausedSession.sortDescriptors);
-      setSearchTerm(pausedSession.searchTerm);
-      setSelectedGroupId(pausedSession.selectedGroupId);
-      setColumnFilters(pausedSession.columnFilters);
-      
-      setPeopleForSession(peopleForPausedSession);
-      setSessionStartIndex(pausedSession.sessionStartIndex);
-      setInitialSessionIndex(pausedSession.currentIndex);
-      setIsSessionDialogOpen(true);
+        if (peopleForPausedSession.length === 0) {
+            toast({
+                variant: 'destructive',
+                title: 'Could not resume session',
+                description: 'The contacts in the paused session no longer match the filter criteria.'
+            });
+            return;
+        }
 
-    } catch (error) {
-        toast({ variant: 'destructive', title: 'Error Resuming', description: 'Could not reload the paused session data.' });
-    }
+        setPeopleForSession(peopleForPausedSession);
+        setSessionStartIndex(pausedSession.sessionStartIndex);
+        setInitialSessionIndex(pausedSession.currentIndex);
+        setIsSessionDialogOpen(true);
+    }, 100);
 
-  }, [pausedSession, canResumeSession, appUser, toast]);
+  }, [pausedSession, canResumeSession, appUser, toast, filteredAndSortedPeople]);
+  
+  const showLimitWarning = filteredAndSortedPeople.length > FIRESTORE_QUERY_LIMIT;
 
   const renderContent = () => {
-    if (fetchError) {
-      return <FirebaseConfigError error={fetchError} />;
-    }
-
     if (isDataLoading) {
         return (
             <div className="flex min-h-[50vh] w-full items-center justify-center bg-background">
@@ -486,8 +504,10 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
             </div>
         );
     }
-    
-    const showLimitWarning = totalPeople > FIRESTORE_QUERY_LIMIT;
+
+    if (fetchError) {
+      return <FirebaseConfigError error={fetchError} />;
+    }
 
     return (
       <>
@@ -548,9 +568,9 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
                             Resume Session ({pausedSession.currentIndex + 1} / {pausedSession.peopleIds.length})
                         </Button>
                     )}
-                    <Button size="sm" onClick={() => handleOpenEventDialog(true)} disabled={totalPeople === 0 || isSelectionActive || isDataLoading}>
+                    <Button size="sm" onClick={() => handleOpenEventDialog(true)} disabled={filteredAndSortedPeople.length === 0 || isSelectionActive || isDataLoading}>
                         <Headset className="mr-2 h-4 w-4" />
-                        Start Calling Session ({isDataLoading ? '...' : totalPeople})
+                        Start Calling Session ({isDataLoading ? '...' : filteredAndSortedPeople.length})
                     </Button>
                  </div>
             </div>
@@ -559,7 +579,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Large Dataset</AlertTitle>
                     <AlertDescription>
-                        Your filter matches {totalPeople} contacts. The calling session will be created with the first {FIRESTORE_QUERY_LIMIT} contacts due to system limits. Please use more specific filters to narrow down the list.
+                        Your filter matches {filteredAndSortedPeople.length} contacts. The calling session will be created with the first {FIRESTORE_QUERY_LIMIT} contacts due to system limits. Please use more specific filters to narrow down the list.
                     </AlertDescription>
                 </Alert>
             )}
@@ -567,7 +587,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
         
         <PersonTable
           people={paginatedPeople}
-          allPeople={filteredPeople}
+          allPeople={filteredAndSortedPeople}
           onEdit={handleEditPerson}
           onDelete={handleDeletePerson}
           isCallingAssistantView={true}
@@ -652,7 +672,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
                       value={callRange.from}
                       onChange={(e) => setCallRange(prev => ({...prev, from: e.target.value}))}
                       min="1"
-                      max={totalPeople}
+                      max={filteredAndSortedPeople.length}
                   />
                   <span className="text-muted-foreground">to</span>
                   <Input
@@ -661,16 +681,16 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
                       value={callRange.to}
                       onChange={(e) => setCallRange(prev => ({...prev, to: e.target.value}))}
                       min="1"
-                      max={totalPeople}
+                      max={filteredAndSortedPeople.length}
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                    Select a range from your filtered list of {totalPeople} contacts.
+                    Select a range from your filtered list of {filteredAndSortedPeople.length} contacts.
                 </p>
                 {callRangeNames.from && (
                   <div className="text-xs text-muted-foreground mt-2 border-l-2 border-primary pl-2 space-y-1">
                       <p>From: <strong className="text-foreground">{callRange.from}. {callRangeNames.from}</strong></p>
-                      {callRangeNames.to && <p>To: <strong className="text-foreground">{callRange.to || totalPeople}. {callRangeNames.to}</strong></p>}
+                      {callRangeNames.to && <p>To: <strong className="text-foreground">{callRange.to || filteredAndSortedPeople.length}. {callRangeNames.to}</strong></p>}
                   </div>
                 )}
               </div>
@@ -694,10 +714,10 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
         customFields={customFields}
         groups={groups}
         sessionStartIndex={sessionStartIndex}
-        totalPeopleCount={totalPeople}
+        totalPeopleCount={filteredAndSortedPeople.length}
         initialIndex={initialSessionIndex}
         context="assistant"
-        // Pass all filter/sort states to be saved on pause
+        // Pass all filter states to be saved on pause
         filters={filters}
         sortDescriptors={sortDescriptors}
         searchTerm={searchTerm}
@@ -729,7 +749,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
               if (!appUser) return;
               const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
               await updatePerson(editingPersonRef.current!.id, data, userInfo);
-              // Also update the main people list to reflect changes immediately
               setAllFetchedPeople(prev => prev.map(p => p.id === editingPersonRef.current!.id ? {...p, ...data} : p));
             }}
             person={editingPersonRef.current}
