@@ -82,6 +82,7 @@ import { Input } from "@/components/ui/input";
 import { ColumnFilterState, applyColumnFilters } from "@/components/column-header-filter";
 import { AuthGuard } from "@/components/auth-guard";
 import { logAudit } from '@/services/audit-service';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
 const ROWS_PER_PAGE = 10;
 const FIRESTORE_QUERY_LIMIT = 10000;
@@ -96,6 +97,9 @@ type UserInfo = {
 function ContactsPageComponent() {
   const { toast } = useToast();
   const { appUser } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const [allFetchedPeople, setAllFetchedPeople] = React.useState<Person[]>([]);
   const [groups, setGroups] = React.useState<Group[]>([]);
@@ -103,24 +107,20 @@ function ContactsPageComponent() {
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
   const [importingStatus, setImportingStatus] = React.useState<string | false>(false);
   const [isExporting, setIsExporting] = React.useState(false);
-  const [view, setView] = React.useState<"table" | "card">("table");
   
+  const [view, setView] = React.useState<"table" | "card">("table");
   const [searchTerm, setSearchTerm] = React.useState("");
   const [filters, setFilters] = React.useState<FilterRule[]>([]);
-  
-  const getDefaultSort = (): SortDescriptor[] => [{ field: 'createdAt', direction: 'desc' }];
-  const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>(getDefaultSort());
-  
+  const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFilterState>({});
+  const [currentPage, setCurrentPage] = React.useState(1);
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = React.useState(false);
   const [isAssignCoEnablerDialogOpen, setIsAssignCoEnablerDialogOpen] = React.useState(false);
   const [isAssignEnablerDialogOpen, setIsAssignEnablerDialogOpen] = React.useState(false);
 
-  const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(
-    undefined
-  );
+  const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(undefined);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -129,10 +129,68 @@ function ContactsPageComponent() {
   const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
 
-
-  const [currentPage, setCurrentPage] = React.useState(1);
   const canAssignUsers = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
   const isAdmin = appUser?.role.includes('Admin');
+  
+  // Set initial state from URL search params
+  React.useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    const page = parseInt(params.get('page') || '1', 10);
+    const view = params.get('view') as 'table' | 'card' || 'table';
+    const search = params.get('search') || '';
+    const sort = params.get('sort');
+    const filter = params.get('filters');
+    const colFilters = params.get('colFilters');
+
+    setCurrentPage(page);
+    setView(view);
+    setSearchTerm(search);
+    if (sort) {
+      try { setSortDescriptors(JSON.parse(sort)); } catch(e) {}
+    } else {
+      setSortDescriptors([{ field: 'createdAt', direction: 'desc' }]);
+    }
+    if (filter) {
+      try { setFilters(JSON.parse(filter)); } catch(e) {}
+    }
+    if (colFilters) {
+      try { 
+        const parsed = JSON.parse(colFilters);
+        // Reconstruct Sets from arrays
+        Object.keys(parsed).forEach(key => {
+            if (parsed[key].values) {
+                parsed[key].values = new Set(parsed[key].values);
+            }
+        });
+        setColumnFilters(parsed);
+      } catch(e) {}
+    }
+  }, []); // Run only once on mount
+
+  // Update URL when state changes
+  React.useEffect(() => {
+    const params = new URLSearchParams();
+    if (currentPage > 1) params.set('page', String(currentPage));
+    if (view !== 'table') params.set('view', view);
+    if (searchTerm) params.set('search', searchTerm);
+    if (sortDescriptors.length > 0 && !(sortDescriptors.length === 1 && sortDescriptors[0].field === 'createdAt' && sortDescriptors[0].direction === 'desc')) {
+      params.set('sort', JSON.stringify(sortDescriptors));
+    }
+    if (filters.length > 0) params.set('filters', JSON.stringify(filters));
+    if (Object.keys(columnFilters).length > 0) {
+        // Convert Sets to arrays for JSON serialization
+        const serializableFilters = JSON.parse(JSON.stringify(columnFilters, (key, value) => {
+            if (value instanceof Set) {
+                return Array.from(value);
+            }
+            return value;
+        }));
+        params.set('colFilters', JSON.stringify(serializableFilters));
+    }
+    
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [currentPage, view, searchTerm, sortDescriptors, filters, columnFilters, router, pathname]);
+
 
   const fetchPageData = React.useCallback(async () => {
     if (!appUser) return;
@@ -140,7 +198,6 @@ function ContactsPageComponent() {
     setFetchError(null);
     try {
       const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-      // Fetch ALL people for client-side filtering.
       const { people: peopleData } = await getPeople(userInfo, { pageSize: FIRESTORE_QUERY_LIMIT });
       setAllFetchedPeople(peopleData);
       
@@ -199,7 +256,6 @@ function ContactsPageComponent() {
   const filteredAndSortedPeople = React.useMemo(() => {
     let people = [...allFetchedPeople];
 
-    // Apply main search term
     if (searchTerm.trim()) {
         const lowercasedTerm = searchTerm.toLowerCase();
         people = people.filter(p => 
@@ -208,13 +264,9 @@ function ContactsPageComponent() {
         );
     }
     
-    // Apply advanced filters
     people = applyClientSideFilters(people, filters);
-
-    // Apply column filters from table
     people = applyColumnFilters(people, columnFilters);
 
-    // Apply sorting
     if (sortDescriptors.length > 0) {
         people.sort((a, b) => {
             for (const desc of sortDescriptors) {

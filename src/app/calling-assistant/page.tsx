@@ -57,6 +57,7 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
 
 const ROWS_PER_PAGE = 10;
@@ -71,6 +72,9 @@ type UserInfo = {
 const CallingAssistantPageComponent = React.memo(function CallingAssistantPageComponent() {
   const { toast } = useToast();
   const { appUser, user, updateCurrentAppUser } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const [allFetchedPeople, setAllFetchedPeople] = React.useState<Person[]>([]);
   const [peopleForSession, setPeopleForSession] = React.useState<Person[]>([]);
@@ -79,22 +83,21 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   
   const [searchTerm, setSearchTerm] = React.useState("");
   const [filters, setFilters] = React.useState<FilterRule[]>([]);
-  const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([{ field: 'fullName', direction: 'asc' }]);
+  const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([]);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [columnFilters, setColumnFilters] = React.useState<ColumnFilterState>({});
   const [currentPage, setCurrentPage] = React.useState(1);
+  const [selectedGroupId, setSelectedGroupId] = React.useState<string>('all');
 
   const editingPersonRef = React.useRef<Person | undefined>(undefined);
   const [isEditingDialogOpen, setIsEditingDialogOpen] = React.useState(false);
   const [isSessionDialogOpen, setIsSessionDialogOpen] = React.useState(false);
-
 
   const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
   const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   const [groups, setGroups] = React.useState<Group[]>([]);
-  const [selectedGroupId, setSelectedGroupId] = React.useState<string>('all');
   const currentCallingEvent = appUser?.currentCallingEvent || "Default Event";
   
   const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = React.useState(false);
@@ -112,6 +115,61 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
   const pausedSession = appUser?.pausedSession;
   const canResumeSession = pausedSession?.context === 'assistant';
+
+   // Set initial state from URL search params
+  React.useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    const page = parseInt(params.get('page') || '1', 10);
+    const search = params.get('search') || '';
+    const group = params.get('group') || 'all';
+    const sort = params.get('sort');
+    const filter = params.get('filters');
+    const colFilters = params.get('colFilters');
+
+    setCurrentPage(page);
+    setSelectedGroupId(group);
+    setSearchTerm(search);
+    if (sort) {
+      try { setSortDescriptors(JSON.parse(sort)); } catch(e) {}
+    } else {
+      setSortDescriptors([{ field: 'fullName', direction: 'asc' }]);
+    }
+    if (filter) {
+      try { setFilters(JSON.parse(filter)); } catch(e) {}
+    }
+    if (colFilters) {
+      try {
+        const parsed = JSON.parse(colFilters);
+        // Reconstruct Sets from arrays
+        Object.keys(parsed).forEach(key => {
+            if (parsed[key].values) {
+                parsed[key].values = new Set(parsed[key].values);
+            }
+        });
+        setColumnFilters(parsed);
+      } catch(e) {}
+    }
+  }, []); // Run only once on mount
+
+  // Update URL when state changes
+  React.useEffect(() => {
+    const params = new URLSearchParams();
+    if (currentPage > 1) params.set('page', String(currentPage));
+    if (selectedGroupId !== 'all') params.set('group', selectedGroupId);
+    if (searchTerm) params.set('search', searchTerm);
+    if (sortDescriptors.length > 0 && !(sortDescriptors.length === 1 && sortDescriptors[0].field === 'fullName' && sortDescriptors[0].direction === 'asc')) {
+      params.set('sort', JSON.stringify(sortDescriptors));
+    }
+    if (filters.length > 0) params.set('filters', JSON.stringify(filters));
+    if (Object.keys(columnFilters).length > 0) {
+        const serializableFilters = JSON.parse(JSON.stringify(columnFilters, (key, value) => {
+            if (value instanceof Set) { return Array.from(value); }
+            return value;
+        }));
+        params.set('colFilters', JSON.stringify(serializableFilters));
+    }
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [currentPage, selectedGroupId, searchTerm, sortDescriptors, filters, columnFilters, router, pathname]);
 
   const fetchPageData = React.useCallback(async () => {
     if (!appUser) return;

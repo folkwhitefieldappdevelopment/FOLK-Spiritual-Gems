@@ -285,7 +285,7 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
                       variant="outline"
                       size="sm"
                       className="w-9 sm:w-auto"
-                      onClick={() => router.push('/')}
+                      onClick={() => router.back()}
                   >
                       <ArrowLeft className="h-4 w-4 mr-0 sm:mr-2" />
                       <span className="hidden sm:inline">Back</span>

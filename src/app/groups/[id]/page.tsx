@@ -2,7 +2,6 @@
 'use client';
 
 import * as React from 'react';
-import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   UserPlus,
@@ -77,6 +76,7 @@ import { ColumnFilterState, applyColumnFilters } from '@/components/column-heade
 import { AuthGuard } from '@/components/auth-guard';
 import { logAudit } from '@/services/audit-service';
 import { dynamicGroupDefinitions } from '@/lib/dynamic-groups';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
 const ROWS_PER_PAGE = 10;
 const FIRESTORE_QUERY_LIMIT = 10000;
@@ -93,6 +93,8 @@ function GroupDetailPageComponent() {
   const { toast } = useToast();
   const { appUser, user, updateCurrentAppUser } = useAuth();
   const groupId = params.id as string;
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const [isLoading, setIsLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
@@ -106,7 +108,7 @@ function GroupDetailPageComponent() {
   const [view, setView] = React.useState<'card' | 'table'>('table');
   const [searchTerm, setSearchTerm] = React.useState('');
   const [filters, setFilters] = React.useState<FilterRule[]>([]);
-  const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([{ field: 'createdAt', direction: 'desc' }]);
+  const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([]);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [columnFilters, setColumnFilters] = React.useState<ColumnFilterState>({});
   const [currentPage, setCurrentPage] = React.useState(1);
@@ -134,6 +136,60 @@ function GroupDetailPageComponent() {
   const pausedSession = appUser?.pausedSession;
   const canResumeSession = pausedSession?.context === 'group' && pausedSession.selectedGroupId === groupId;
 
+  // Set initial state from URL search params
+  React.useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    const page = parseInt(params.get('page') || '1', 10);
+    const view = params.get('view') as 'table' | 'card' || 'table';
+    const search = params.get('search') || '';
+    const sort = params.get('sort');
+    const filter = params.get('filters');
+    const colFilters = params.get('colFilters');
+
+    setCurrentPage(page);
+    setView(view);
+    setSearchTerm(search);
+    if (sort) {
+      try { setSortDescriptors(JSON.parse(sort)); } catch(e) {}
+    } else {
+      setSortDescriptors([{ field: 'createdAt', direction: 'desc' }]);
+    }
+    if (filter) {
+      try { setFilters(JSON.parse(filter)); } catch(e) {}
+    }
+    if (colFilters) {
+      try {
+        const parsed = JSON.parse(colFilters);
+        // Reconstruct Sets from arrays
+        Object.keys(parsed).forEach(key => {
+            if (parsed[key].values) {
+                parsed[key].values = new Set(parsed[key].values);
+            }
+        });
+        setColumnFilters(parsed);
+      } catch(e) {}
+    }
+  }, []); // Run only once on mount
+
+  // Update URL when state changes
+  React.useEffect(() => {
+    const params = new URLSearchParams();
+    if (currentPage > 1) params.set('page', String(currentPage));
+    if (view !== 'table') params.set('view', view);
+    if (searchTerm) params.set('search', searchTerm);
+    if (sortDescriptors.length > 0 && !(sortDescriptors.length === 1 && sortDescriptors[0].field === 'createdAt' && sortDescriptors[0].direction === 'desc')) {
+      params.set('sort', JSON.stringify(sortDescriptors));
+    }
+    if (filters.length > 0) params.set('filters', JSON.stringify(filters));
+    if (Object.keys(columnFilters).length > 0) {
+        const serializableFilters = JSON.parse(JSON.stringify(columnFilters, (key, value) => {
+            if (value instanceof Set) { return Array.from(value); }
+            return value;
+        }));
+        params.set('colFilters', JSON.stringify(serializableFilters));
+    }
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [currentPage, view, searchTerm, sortDescriptors, filters, columnFilters, router, pathname]);
 
   const fetchPageData = React.useCallback(async () => {
     if (!groupId || !appUser) return;
@@ -608,7 +664,7 @@ function GroupDetailPageComponent() {
             {group && !fetchError && (
                 <PageHeader title={group.name} description={group.description || 'No description for this group.'}>
                     <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" className="w-9 sm:w-auto" onClick={() => router.push('/groups')}><ArrowLeft className="h-4 w-4 mr-0 sm:mr-2" /><span className="hidden sm:inline">Back to Groups</span></Button>
+                      <Button variant="outline" size="sm" className="w-9 sm:w-auto" onClick={() => router.back()}><ArrowLeft className="h-4 w-4 mr-0 sm:mr-2" /><span className="hidden sm:inline">Back</span></Button>
                       {!group.isDynamic && <Button size="sm" className="w-9 sm:w-auto" onClick={() => setIsManageMembersDialogOpen(true)}><UserPlus className="h-4 w-4 mr-0 sm:mr-2" /><span className="hidden sm:inline">Manage Members</span></Button>}
                     </div>
                 </PageHeader>
