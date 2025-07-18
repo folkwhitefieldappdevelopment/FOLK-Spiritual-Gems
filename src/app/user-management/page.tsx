@@ -19,7 +19,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { getUsers, updateUser, getFolkGuides, getEnablersForGuide } from '@/services/user-service';
-import { deleteUserAndAuth } from '@/services/user-actions';
+import { deleteUserAndAuth, createUserWithAuth } from '@/services/user-actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { userRoles, type UserRole, type AppUser } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -46,6 +46,12 @@ import {
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { AuthGuard } from '@/components/auth-guard';
+
+type UserInfo = {
+  id: string;
+  name: string;
+  role: UserRole[];
+};
 
 function UserManagementPageComponent() {
   const { toast } = useToast();
@@ -75,7 +81,9 @@ function UserManagementPageComponent() {
       if (appUser.role.includes('Admin')) {
         usersPromise = getUsers();
       } else if (appUser.role.includes('Folk Guide')) {
-        usersPromise = getEnablersForGuide(appUser.id);
+        // A guide should see themselves and the enablers they manage
+        const enablers = await getEnablersForGuide(appUser.id);
+        usersPromise = Promise.resolve([appUser, ...enablers]);
       } else {
         usersPromise = Promise.resolve([]);
       }
@@ -131,7 +139,7 @@ function UserManagementPageComponent() {
   const handleDeleteConfirmed = async () => {
     if (!userToDelete || !appUser) return;
     try {
-        const actorInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+        const actorInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
         await deleteUserAndAuth(userToDelete.id, actorInfo);
         toast({
             title: 'User Deleted',
@@ -157,7 +165,7 @@ function UserManagementPageComponent() {
   const handleSaveUser = async (data: UserFormValues, userId?: string) => {
     if (!appUser) return;
     try {
-      const actorInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+      const actorInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
       const userData: { [key: string]: any } = {
         name: data.name,
         email: data.email,
@@ -189,6 +197,13 @@ function UserManagementPageComponent() {
         toast({
           title: 'User Updated',
           description: `${data.name}'s details have been updated.`,
+        });
+        fetchUsersAndGuides();
+      } else {
+        await createUserWithAuth(data, actorInfo);
+        toast({
+            title: 'User Created & Email Sent',
+            description: `Password reset link sent to ${data.email}. The user can now set their password.`,
         });
         fetchUsersAndGuides();
       }
@@ -223,7 +238,7 @@ function UserManagementPageComponent() {
       .sort((a, b) => {
         const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
         const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
-        return dateB.getTime() - a.getTime();
+        return dateB.getTime() - dateA.getTime();
       });
   }, [users, searchTerm, roleFilter]);
 
@@ -262,10 +277,7 @@ function UserManagementPageComponent() {
                     <ShieldAlert className="h-4 w-4" />
                     <AlertTitle>Administrative Action Failed</AlertTitle>
                     <AlertDescription>
-                        User creation and deletion are currently disabled due to a server configuration issue. 
-                        The server's Admin credentials could not be initialized. Please check the server logs for details 
-                        and ensure environment variables (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) 
-                        are correctly set up in your hosting environment.
+                        {adminFeatureError} This usually means the server's Admin credentials are not correctly configured.
                     </AlertDescription>
                  </Alert>
               )}
@@ -328,7 +340,7 @@ function UserManagementPageComponent() {
                                       const isAdmin = appUser?.role.includes('Admin');
 
                                       const canEdit = isAdmin || isManagedByGuide;
-                                      const canDelete = !isSelf && (isAdmin || isManagedByGuide);
+                                      const canDelete = !isSelf && isAdmin; // Only Admin can delete
 
                                       return (
                                       <TableRow key={user.id}>
