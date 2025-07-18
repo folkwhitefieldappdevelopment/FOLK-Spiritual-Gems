@@ -18,8 +18,13 @@ type UserInfo = {
  * Creates a user in Firebase Authentication and a corresponding record in Firestore.
  * @param userData The data for the new user from the form.
  * @param actorInfo Information about the user performing the action.
+ * @returns The authentication link to be sent to the user.
  */
 export async function createUserWithAuth(userData: UserFormValues, actorInfo: UserInfo): Promise<void> {
+  if (!adminAuth) {
+    throw new Error('Firebase Admin SDK is not initialized. User creation is disabled. Check server logs.');
+  }
+
   const usersCollection = collection(db, 'users');
 
   const emailExistsQuery = query(usersCollection, where("email", "==", userData.email));
@@ -32,7 +37,7 @@ export async function createUserWithAuth(userData: UserFormValues, actorInfo: Us
     const fgCodeQuery = query(usersCollection, where("fgCode", "==", userData.fgCode));
     const fgCodeSnapshot = await getDocs(fgCodeQuery);
     if (!fgCodeSnapshot.empty) {
-      throw new Error(`The FG Code "${userData.fgCode}" is already in use.`);
+        throw new Error(`The FG Code "${userData.fgCode}" is already in use.`);
     }
   }
 
@@ -92,6 +97,10 @@ export async function createUserWithAuth(userData: UserFormValues, actorInfo: Us
  * @param actorInfo The user performing the action.
  */
 export async function deleteUserAndAuth(userId: string, actorInfo: UserInfo) {
+  if (!adminAuth) {
+    throw new Error('Firebase Admin SDK is not initialized. User deletion is disabled. Check server logs.');
+  }
+  
   try {
     const userDocRef = doc(db, 'users', userId);
     const userSnap = await getDoc(userDocRef);

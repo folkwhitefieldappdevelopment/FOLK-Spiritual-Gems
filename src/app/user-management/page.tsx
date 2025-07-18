@@ -62,6 +62,7 @@ function UserManagementPageComponent() {
 
   const [searchTerm, setSearchTerm] = React.useState('');
   const [roleFilter, setRoleFilter] = React.useState('');
+  const [adminFeatureError, setAdminFeatureError] = React.useState<string | null>(null);
 
   const fetchUsersAndGuides = React.useCallback(async () => {
     if (!appUser) return;
@@ -139,11 +140,15 @@ function UserManagementPageComponent() {
         fetchUsersAndGuides();
     } catch (error) {
         console.error('Failed to delete user:', error);
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
         toast({
             variant: 'destructive',
             title: 'Error Deleting User',
-            description: error instanceof Error ? error.message : 'An unknown error occurred.',
+            description: errorMessage,
         });
+        if (errorMessage.includes('Admin SDK')) {
+            setAdminFeatureError(errorMessage);
+        }
     } finally {
         setUserToDelete(null);
     }
@@ -185,16 +190,19 @@ function UserManagementPageComponent() {
           title: 'User Updated',
           description: `${data.name}'s details have been updated.`,
         });
+        fetchUsersAndGuides();
       }
-      
-      fetchUsersAndGuides();
     } catch (error) {
       console.error('Failed to save user:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
       toast({
         variant: 'destructive',
         title: 'Error Saving User',
-        description: error instanceof Error ? error.message : 'An unknown error occurred.',
+        description: errorMessage,
       });
+      if (errorMessage.includes('Admin SDK')) {
+        setAdminFeatureError(errorMessage);
+      }
       throw error; 
     }
   };
@@ -215,7 +223,7 @@ function UserManagementPageComponent() {
       .sort((a, b) => {
         const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
         const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
-        return dateB.getTime() - dateA.getTime();
+        return dateB.getTime() - a.getTime();
       });
   }, [users, searchTerm, roleFilter]);
 
@@ -249,6 +257,18 @@ function UserManagementPageComponent() {
           </PageHeader>
           <main className="flex-1 p-4 sm:p-6 sm:pt-0">
             <div className="mx-auto max-w-4xl space-y-6">
+              {adminFeatureError && (
+                 <Alert variant="destructive">
+                    <ShieldAlert className="h-4 w-4" />
+                    <AlertTitle>Administrative Action Failed</AlertTitle>
+                    <AlertDescription>
+                        User creation and deletion are currently disabled due to a server configuration issue. 
+                        The server's Admin credentials could not be initialized. Please check the server logs for details 
+                        and ensure environment variables (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) 
+                        are correctly set up in your hosting environment.
+                    </AlertDescription>
+                 </Alert>
+              )}
               <Card>
                 <CardHeader>
                     <CardTitle>Existing Users</CardTitle>
@@ -380,6 +400,7 @@ function UserManagementPageComponent() {
       onSave={handleSaveUser}
       user={editingUser}
       folkGuides={folkGuides}
+      onAdminActionError={setAdminFeatureError}
     />
     {userToDelete && (
       <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>

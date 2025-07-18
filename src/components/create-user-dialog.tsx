@@ -76,9 +76,10 @@ type CreateUserDialogProps = {
   onSave: (data: UserFormValues, userId?: string) => Promise<void>;
   user?: AppUser;
   folkGuides: AppUser[];
+  onAdminActionError: (error: string | null) => void;
 };
 
-export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides }: CreateUserDialogProps) {
+export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, onAdminActionError }: CreateUserDialogProps) {
   const { appUser } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -132,22 +133,25 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides }
         });
       }
       setIsSubmitting(false);
+      onAdminActionError(null);
     }
-  }, [isOpen, user, form, isCurrentUserGuide, appUser?.id]);
+  }, [isOpen, user, form, isCurrentUserGuide, appUser?.id, onAdminActionError]);
 
   async function onSubmit(data: UserFormValues) {
     setIsSubmitting(true);
+    onAdminActionError(null);
     try {
         if (!appUser) throw new Error("Not authenticated");
         
+        const actorInfo = {
+          id: appUser.id,
+          name: appUser.name,
+          role: appUser.role,
+        };
+
         if (user) { 
             await onSave(data, user.id);
         } else {
-            const actorInfo = {
-                id: appUser.id,
-                name: appUser.name,
-                role: appUser.role,
-            };
             await createUserWithAuth(data, actorInfo);
             toast({
                 title: 'User Created Successfully',
@@ -159,11 +163,15 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides }
         setIsOpen(false);
     } catch (error) {
         console.error("Error in onSubmit:", error);
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
         toast({
             variant: 'destructive',
             title: 'Error Saving User',
-            description: error instanceof Error ? error.message : 'An unknown error occurred.',
+            description: errorMessage,
         });
+        if (errorMessage.includes('Admin SDK')) {
+          onAdminActionError(errorMessage);
+        }
     } finally {
         setIsSubmitting(false);
     }
