@@ -5,7 +5,8 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-
+import { sendSignInLinkToEmail } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 import {
   Dialog,
   DialogContent,
@@ -138,10 +139,24 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides }
   async function onSubmit(data: UserFormValues) {
     setIsSubmitting(true);
     try {
+      // For new users, send the sign-in link from the client
+      if (!user) {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+        const actionCodeSettings = {
+          url: `${appUrl}/login`, 
+          handleCodeInApp: true,
+        };
+        // Store email in localStorage so we can retrieve it on the redirect page.
+        window.localStorage.setItem('emailForSignIn', data.email);
+        await sendSignInLinkToEmail(auth, data.email, actionCodeSettings);
+      }
+      
       await onSave(data, user?.id);
       setIsOpen(false);
     } catch (error) {
       // Error is handled by the parent component's toast.
+      // Make sure to remove the email from local storage on failure
+      window.localStorage.removeItem('emailForSignIn');
     } finally {
       setIsSubmitting(false);
     }

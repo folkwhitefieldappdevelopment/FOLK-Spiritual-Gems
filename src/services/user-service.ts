@@ -24,7 +24,8 @@ type UserInfo = {
 };
 
 /**
- * Creates a user record in the 'users' Firestore collection and sends a sign-in link.
+ * Creates a user record in the 'users' Firestore collection.
+ * The sign-in link is now sent from the client-side component.
  * @param userData - The user data to save.
  */
 export const createUser = async (userData: UserData, actorInfo: UserInfo): Promise<void> => {
@@ -42,25 +43,6 @@ export const createUser = async (userData: UserData, actorInfo: UserInfo): Promi
     if (!fgCodeSnapshot.empty) {
       throw new Error(`The FG Code "${userData.fgCode}" is already in use.`);
     }
-  }
-
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-  const actionCodeSettings = {
-    url: `${appUrl}/login`, 
-    handleCodeInApp: true,
-  };
-
-  try {
-    await sendSignInLinkToEmail(auth, userData.email, actionCodeSettings);
-    // Note: Storing in localStorage is a client-side operation.
-    // This server action should assume the client handles it.
-  } catch (error) {
-    console.error("Failed to send sign-in link:", error);
-    const authError = error as AuthError;
-    if (authError.code === 'auth/operation-not-allowed') {
-      throw new Error('Email link sign-in is disabled. Please enable it in the Firebase Console: Authentication > Sign-in method.');
-    }
-    throw new Error('Failed to send sign-up email. The user was not created.');
   }
 
   const dataToSave = {
