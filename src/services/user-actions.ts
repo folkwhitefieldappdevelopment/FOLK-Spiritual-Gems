@@ -42,12 +42,16 @@ export async function createUserWithAuth(userData: UserFormValues, actorInfo: Us
   }
 
   try {
+    // This creates the user in Firebase Authentication
     const userRecord = await adminAuth.createUser({
       email: userData.email,
       displayName: userData.name,
-      emailVerified: true,
+      emailVerified: true, // Mark as verified since an admin is creating them
       disabled: false,
     });
+    
+    // This sends the initial "set password" email
+    await adminAuth.generatePasswordResetLink(userData.email);
 
     const uid = userRecord.uid;
     const dataToSave: Omit<AppUser, 'id' | 'createdAt'> = {
@@ -71,7 +75,8 @@ export async function createUserWithAuth(userData: UserFormValues, actorInfo: Us
             };
         }
     }
-
+    
+    // This creates the corresponding user record in Firestore, using the Auth UID as the document ID
     await setDoc(doc(db, 'users', uid), {
         ...dataToSave,
         createdAt: serverTimestamp(),
@@ -106,10 +111,10 @@ export async function deleteUserAndAuth(userId: string, actorInfo: UserInfo) {
     const userSnap = await getDoc(userDocRef);
     const userData = userSnap.data();
 
-    // Delete from Firestore first
-    await deleteDoc(userDocRef);
-    // Then delete from Firebase Authentication
+    // Delete from Firebase Authentication first
     await adminAuth.deleteUser(userId);
+    // Then delete from Firestore
+    await deleteDoc(userDocRef);
     
     if (userData) {
       await logAudit('Delete User', `Deleted user: ${userData.name} (${userId}) from Auth and Firestore.`, actorInfo);

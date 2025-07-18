@@ -149,15 +149,15 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
           role: appUser.role,
         };
 
-        if (user) { 
+        if (user) { // Editing existing user
             await onSave(data, user.id);
-        } else {
+        } else { // Creating new user
             await createUserWithAuth(data, actorInfo);
             toast({
                 title: 'User Created & Email Sent',
-                description: `A password reset link has been sent to ${data.email}. The user can now set their password.`,
+                description: `A password reset link has been sent to ${data.email}.`,
             });
-            await onSave(data);
+            await onSave(data); // This re-fetches users on the main page
         }
 
         setIsOpen(false);

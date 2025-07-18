@@ -6,13 +6,11 @@ import admin from 'firebase-admin';
 let adminAuth: admin.auth.Auth | null = null;
 
 try {
-  // In a Google Cloud environment like App Hosting, the SDK will automatically
-  // find the service account credentials if they are configured correctly.
-  // We do not need to manually provide cert() or read from env vars.
+  // In a Google Cloud environment like App Hosting, if the service account
+  // (or GOOGLE_APPLICATION_CREDENTIALS) is configured, the SDK will initialize
+  // without any arguments.
   if (!admin.apps.length) {
-    console.log('Initializing Firebase Admin SDK...');
     admin.initializeApp();
-    console.log('Firebase Admin SDK initialized successfully.');
   }
   adminAuth = admin.auth();
 } catch (error: any) {

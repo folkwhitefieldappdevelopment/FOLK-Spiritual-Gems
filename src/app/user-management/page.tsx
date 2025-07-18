@@ -44,6 +44,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/auth-context';
 import { AuthGuard } from '@/components/auth-guard';
+import { adminAuth } from '@/lib/firebase-admin';
 
 type UserInfo = {
   id: string;
@@ -66,6 +67,21 @@ function UserManagementPageComponent() {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [roleFilter, setRoleFilter] = React.useState('');
   const [adminFeatureError, setAdminFeatureError] = React.useState<string | null>(null);
+  const [isSdkReady, setIsSdkReady] = React.useState(false);
+  
+  React.useEffect(() => {
+    // A simple check to see if the adminAuth object from the server is available.
+    // This is a bit of a trick to know if the server-side init worked.
+    const checkSdk = async () => {
+        try {
+            await adminAuth;
+            setIsSdkReady(true);
+        } catch (e) {
+            setIsSdkReady(false);
+        }
+    }
+    checkSdk();
+  }, []);
 
   const fetchUsersAndGuides = React.useCallback(async () => {
     if (!appUser) return;
@@ -184,15 +200,17 @@ function UserManagementPageComponent() {
         }
       }
       
-      if (userId) {
+      if (userId) { // This is an update
         await updateUser(userId, userData, actorInfo);
         toast({
           title: 'User Updated',
           description: `${data.name}'s details have been updated.`,
         });
-        fetchUsersAndGuides();
       }
-      setIsOpen(false);
+      // Creation is handled in the dialog's onSubmit now
+      
+      fetchUsersAndGuides();
+      setIsFormDialogOpen(false);
     } catch (error) {
       console.error('Failed to save user:', error);
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
@@ -222,8 +240,8 @@ function UserManagementPageComponent() {
         return searchMatch && roleMatch;
       })
       .sort((a, b) => {
-        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
-        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
         return dateB.getTime() - dateA.getTime();
       });
   }, [users, searchTerm, roleFilter]);
@@ -250,7 +268,7 @@ function UserManagementPageComponent() {
             description="Create and manage application users."
           >
             {canCreateUsers && (
-              <Button size="sm" onClick={handleOpenCreateDialog}>
+              <Button size="sm" onClick={handleOpenCreateDialog} disabled={!isSdkReady}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Create User
               </Button>
@@ -258,6 +276,15 @@ function UserManagementPageComponent() {
           </PageHeader>
           <main className="flex-1 p-4 sm:p-6 sm:pt-0">
             <div className="mx-auto max-w-4xl space-y-6">
+              {!isSdkReady && (
+                 <Alert variant="destructive">
+                    <ShieldAlert className="h-4 w-4" />
+                    <AlertTitle>Action Required: Server Configuration Incomplete</AlertTitle>
+                    <AlertDescription>
+                        User creation and deletion are disabled because the server is not configured with the necessary credentials. Please provide your service account key file to enable these features.
+                    </AlertDescription>
+                 </Alert>
+              )}
               {adminFeatureError && (
                  <Alert variant="destructive">
                     <ShieldAlert className="h-4 w-4" />
@@ -326,7 +353,7 @@ function UserManagementPageComponent() {
                                       const isAdmin = appUser?.role.includes('Admin');
 
                                       const canEdit = isAdmin || isManagedByGuide;
-                                      const canDelete = !isSelf && isAdmin; // Only Admin can delete
+                                      const canDelete = !isSelf && isAdmin && isSdkReady; // Only Admin can delete
 
                                       return (
                                       <TableRow key={user.id}>
