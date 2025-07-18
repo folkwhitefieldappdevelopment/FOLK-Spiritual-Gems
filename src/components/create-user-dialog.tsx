@@ -51,7 +51,6 @@ const userFormSchema = z.object({
   fgCode: z.string().optional(),
   guideId: z.string().optional(),
 }).refine(data => {
-    // If Folk Guide role is selected, fgCode must be provided.
     if (data.role.includes('Folk Guide')) {
         return !!data.fgCode && data.fgCode.trim().length > 0;
     }
@@ -60,7 +59,6 @@ const userFormSchema = z.object({
     message: 'FG Code is required for Folk Guides.',
     path: ['fgCode'],
 }).refine(data => {
-    // If Folk Enabler role is selected, guideId must be provided.
     if (data.role.includes('Folk Enabler')) {
         return !!data.guideId;
     }
@@ -139,24 +137,32 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides }
   async function onSubmit(data: UserFormValues) {
     setIsSubmitting(true);
     try {
-      // For new users, send the sign-in link from the client
       if (!user) {
+        // Handle new user creation: Send email first, then save to DB.
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
         const actionCodeSettings = {
           url: `${appUrl}/login`, 
           handleCodeInApp: true,
         };
-        // Store email in localStorage so we can retrieve it on the redirect page.
         window.localStorage.setItem('emailForSignIn', data.email);
         await sendSignInLinkToEmail(auth, data.email, actionCodeSettings);
+        
+        // Only after the email is successfully sent, we create the user record.
+        await onSave(data, undefined);
+
+      } else {
+        // Handle existing user update.
+        await onSave(data, user.id);
       }
       
-      await onSave(data, user?.id);
       setIsOpen(false);
     } catch (error) {
-      // Error is handled by the parent component's toast.
-      // Make sure to remove the email from local storage on failure
-      window.localStorage.removeItem('emailForSignIn');
+      console.error("Error in onSubmit:", error);
+      // The parent component's toast will handle the error message.
+      // Make sure to remove the email from local storage on failure if it was a new user.
+      if (!user) {
+        window.localStorage.removeItem('emailForSignIn');
+      }
     } finally {
       setIsSubmitting(false);
     }
