@@ -18,7 +18,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { getUsers, updateUser, getFolkGuides, getEnablersForGuide } from '@/services/user-service';
-import { deleteUserAndAuth } from '@/services/user-actions';
+import { deleteUserAction } from '@/app/actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { userRoles, type UserRole, type AppUser } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -44,7 +44,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/auth-context';
 import { AuthGuard } from '@/components/auth-guard';
-import { adminAuth } from '@/lib/firebase-admin';
 
 type UserInfo = {
   id: string;
@@ -67,22 +66,7 @@ function UserManagementPageComponent() {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [roleFilter, setRoleFilter] = React.useState('');
   const [adminFeatureError, setAdminFeatureError] = React.useState<string | null>(null);
-  const [isSdkReady, setIsSdkReady] = React.useState(false);
   
-  React.useEffect(() => {
-    // A simple check to see if the adminAuth object from the server is available.
-    // This is a bit of a trick to know if the server-side init worked.
-    const checkSdk = async () => {
-        try {
-            await adminAuth;
-            setIsSdkReady(true);
-        } catch (e) {
-            setIsSdkReady(false);
-        }
-    }
-    checkSdk();
-  }, []);
-
   const fetchUsersAndGuides = React.useCallback(async () => {
     if (!appUser) return;
 
@@ -152,12 +136,17 @@ function UserManagementPageComponent() {
     if (!userToDelete || !appUser) return;
     try {
         const actorInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-        await deleteUserAndAuth(userToDelete.id, actorInfo);
-        toast({
-            title: 'User Deleted',
-            description: `${userToDelete.name} has been deleted successfully.`
-        });
-        fetchUsersAndGuides();
+        const result = await deleteUserAction(userToDelete.id, actorInfo);
+        
+        if (result.success) {
+            toast({
+                title: 'User Deleted',
+                description: `${userToDelete.name} has been deleted successfully.`
+            });
+            fetchUsersAndGuides();
+        } else {
+            throw new Error(result.message);
+        }
     } catch (error) {
         console.error('Failed to delete user:', error);
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
@@ -206,10 +195,9 @@ function UserManagementPageComponent() {
           title: 'User Updated',
           description: `${data.name}'s details have been updated.`,
         });
+        fetchUsersAndGuides();
       }
-      // Creation is handled in the dialog's onSubmit now
       
-      fetchUsersAndGuides();
       setIsFormDialogOpen(false);
     } catch (error) {
       console.error('Failed to save user:', error);
@@ -268,7 +256,7 @@ function UserManagementPageComponent() {
             description="Create and manage application users."
           >
             {canCreateUsers && (
-              <Button size="sm" onClick={handleOpenCreateDialog} disabled={!isSdkReady}>
+              <Button size="sm" onClick={handleOpenCreateDialog}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Create User
               </Button>
@@ -276,21 +264,12 @@ function UserManagementPageComponent() {
           </PageHeader>
           <main className="flex-1 p-4 sm:p-6 sm:pt-0">
             <div className="mx-auto max-w-4xl space-y-6">
-              {!isSdkReady && (
-                 <Alert variant="destructive">
-                    <ShieldAlert className="h-4 w-4" />
-                    <AlertTitle>Action Required: Server Configuration Incomplete</AlertTitle>
-                    <AlertDescription>
-                        User creation and deletion are disabled because the server is not configured with the necessary credentials. Please provide your service account key file to enable these features.
-                    </AlertDescription>
-                 </Alert>
-              )}
               {adminFeatureError && (
                  <Alert variant="destructive">
                     <ShieldAlert className="h-4 w-4" />
                     <AlertTitle>Administrative Action Failed</AlertTitle>
                     <AlertDescription>
-                        {adminFeatureError} This usually means the server's Admin credentials are not correctly configured.
+                        {adminFeatureError} This usually means the server is not configured correctly for administrative tasks. Please contact support or check the server environment setup.
                     </AlertDescription>
                  </Alert>
               )}
@@ -353,7 +332,7 @@ function UserManagementPageComponent() {
                                       const isAdmin = appUser?.role.includes('Admin');
 
                                       const canEdit = isAdmin || isManagedByGuide;
-                                      const canDelete = !isSelf && isAdmin && isSdkReady; // Only Admin can delete
+                                      const canDelete = !isSelf && isAdmin;
 
                                       return (
                                       <TableRow key={user.id}>
@@ -426,6 +405,7 @@ function UserManagementPageComponent() {
       user={editingUser}
       folkGuides={folkGuides}
       onAdminActionError={setAdminFeatureError}
+      onUserCreated={fetchUsersAndGuides}
     />
     {userToDelete && (
       <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>

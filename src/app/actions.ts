@@ -1,10 +1,9 @@
-
 'use server';
 
-import { adminAuth } from '@/lib/firebase-admin';
-import { doc, deleteDoc, getDoc, collection, query, where, getDocs, setDoc, serverTimestamp } from 'firebase/firestore';
+import { admin } from '@/lib/firebase-admin';
+import { doc, setDoc, deleteDoc, getDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { logAudit } from './audit-service';
+import { logAudit } from '@/services/audit-service';
 import type { AppUser, UserRole } from '@/lib/types';
 import type { UserFormValues } from '@/components/create-user-dialog';
 
@@ -14,15 +13,10 @@ type UserInfo = {
   role: UserRole[];
 };
 
-/**
- * Creates a user in Firebase Authentication and a corresponding record in Firestore.
- * @param userData The data for the new user from the form.
- * @param actorInfo Information about the user performing the action.
- * @returns The authentication link to be sent to the user.
- */
-export async function createUserWithAuth(userData: UserFormValues, actorInfo: UserInfo): Promise<void> {
+export async function createUserAction(userData: UserFormValues, actorInfo: UserInfo): Promise<{ success: boolean; message: string }> {
+  const adminAuth = admin.auth();
   if (!adminAuth) {
-    throw new Error('Firebase Admin SDK is not initialized. User creation is disabled. Check server logs.');
+    return { success: false, message: 'Firebase Admin SDK is not initialized. User creation is disabled. Check server logs.' };
   }
 
   const usersCollection = collection(db, 'users');
@@ -30,27 +24,25 @@ export async function createUserWithAuth(userData: UserFormValues, actorInfo: Us
   const emailExistsQuery = query(usersCollection, where("email", "==", userData.email));
   const emailSnapshot = await getDocs(emailExistsQuery);
   if (!emailSnapshot.empty) {
-    throw new Error(`A user with the email ${userData.email} already exists.`);
+    return { success: false, message: `A user with the email ${userData.email} already exists.` };
   }
 
   if (userData.role.includes('Folk Guide') && userData.fgCode) {
     const fgCodeQuery = query(usersCollection, where("fgCode", "==", userData.fgCode));
     const fgCodeSnapshot = await getDocs(fgCodeQuery);
     if (!fgCodeSnapshot.empty) {
-        throw new Error(`The FG Code "${userData.fgCode}" is already in use.`);
+      return { success: false, message: `The FG Code "${userData.fgCode}" is already in use.` };
     }
   }
 
   try {
-    // This creates the user in Firebase Authentication
     const userRecord = await adminAuth.createUser({
       email: userData.email,
       displayName: userData.name,
-      emailVerified: true, // Mark as verified since an admin is creating them
+      emailVerified: true,
       disabled: false,
     });
     
-    // This sends the initial "set password" email
     await adminAuth.generatePasswordResetLink(userData.email);
 
     const uid = userRecord.uid;
@@ -76,14 +68,14 @@ export async function createUserWithAuth(userData: UserFormValues, actorInfo: Us
         }
     }
     
-    // This creates the corresponding user record in Firestore, using the Auth UID as the document ID
     await setDoc(doc(db, 'users', uid), {
         ...dataToSave,
         createdAt: serverTimestamp(),
     });
     
     await logAudit('Create User', `Created user: ${userData.name} (${uid})`, actorInfo);
-    
+    return { success: true, message: 'User created successfully.' };
+
   } catch (error: any) {
     console.error("Error creating user with auth:", error);
     let message = 'Failed to create user. Please check server logs.';
@@ -92,18 +84,14 @@ export async function createUserWithAuth(userData: UserFormValues, actorInfo: Us
     } else if (error.message) {
         message = error.message;
     }
-    throw new Error(message);
+    return { success: false, message: message };
   }
 }
 
-/**
- * Deletes a user from Firebase Authentication and their record from Firestore.
- * @param userId The UID of the user to delete.
- * @param actorInfo The user performing the action.
- */
-export async function deleteUserAndAuth(userId: string, actorInfo: UserInfo) {
+export async function deleteUserAction(userId: string, actorInfo: UserInfo): Promise<{ success: boolean; message: string }> {
+  const adminAuth = admin.auth();
   if (!adminAuth) {
-    throw new Error('Firebase Admin SDK is not initialized. User deletion is disabled. Check server logs.');
+    return { success: false, message: 'Firebase Admin SDK is not initialized. User deletion is disabled. Check server logs.' };
   }
   
   try {
@@ -111,19 +99,19 @@ export async function deleteUserAndAuth(userId: string, actorInfo: UserInfo) {
     const userSnap = await getDoc(userDocRef);
     const userData = userSnap.data();
 
-    // Delete from Firebase Authentication first
     await adminAuth.deleteUser(userId);
-    // Then delete from Firestore
     await deleteDoc(userDocRef);
     
     if (userData) {
       await logAudit('Delete User', `Deleted user: ${userData.name} (${userId}) from Auth and Firestore.`, actorInfo);
     }
+    return { success: true, message: 'User deleted successfully.' };
+
   } catch (error: any) {
     console.error('Error deleting user and auth record:', error);
     const message =
       error.message ||
       'An unexpected error occurred while deleting the user record.';
-    throw new Error(message);
+    return { success: false, message: message };
   }
 }

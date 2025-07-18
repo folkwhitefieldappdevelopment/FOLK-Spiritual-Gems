@@ -41,7 +41,7 @@ import { Loader2 } from 'lucide-react';
 import { userRoles, type AppUser, type UserRole } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { createUserWithAuth } from '@/services/user-actions';
+import { createUserAction } from '@/app/actions';
 
 const userFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -77,9 +77,10 @@ type CreateUserDialogProps = {
   user?: AppUser;
   folkGuides: AppUser[];
   onAdminActionError: (error: string | null) => void;
+  onUserCreated: () => void;
 };
 
-export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, onAdminActionError }: CreateUserDialogProps) {
+export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, onAdminActionError, onUserCreated }: CreateUserDialogProps) {
   const { appUser } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -152,12 +153,16 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
         if (user) { // Editing existing user
             await onSave(data, user.id);
         } else { // Creating new user
-            await createUserWithAuth(data, actorInfo);
-            toast({
-                title: 'User Created & Email Sent',
-                description: `A password reset link has been sent to ${data.email}.`,
-            });
-            await onSave(data); // This re-fetches users on the main page
+            const result = await createUserAction(data, actorInfo);
+            if (result.success) {
+                toast({
+                    title: 'User Created & Email Sent',
+                    description: `A password reset link has been sent to ${data.email}.`,
+                });
+                onUserCreated(); // Re-fetch users on the main page
+            } else {
+                throw new Error(result.message);
+            }
         }
 
         setIsOpen(false);
