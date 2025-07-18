@@ -42,6 +42,7 @@ import { userRoles, type AppUser, type UserRole } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-context';
 import { updateUser } from '@/services/user-service';
 import { useToast } from '@/hooks/use-toast';
+import { createUserWithAuth } from '@/services/user-actions';
 
 const userFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -143,14 +144,11 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides }
         if (user) { // Editing existing user
             await onSave(data, user.id);
         } else { // Creating new user
-            // This is a workaround for the server environment limitations.
-            console.warn("User creation from UI is disabled. Please create users in the Firebase Console.");
+            await createUserWithAuth(data, appUser);
             toast({
-                title: 'Manual Action Required',
-                description: `User record for ${data.name} was not created. Please add the user in the Firebase Console.`,
-                variant: 'destructive',
-                duration: 10000,
-            })
+                title: 'User Creation Initiated',
+                description: `A sign-up link has been sent to ${data.email}. The user record will appear after they sign up.`,
+            });
         }
 
         setIsOpen(false);

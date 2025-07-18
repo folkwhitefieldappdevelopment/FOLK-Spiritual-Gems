@@ -24,45 +24,6 @@ type UserInfo = {
 };
 
 /**
- * Creates a user record in the 'users' Firestore collection.
- * This function is now only responsible for creating the Firestore record.
- * The Authentication user is created via a separate admin action.
- * @param userData - The user data to save.
- */
-export const createUser = async (userData: UserData, actorInfo: UserInfo): Promise<void> => {
-  const usersCollection = collection(db, 'users');
-  
-  const q = query(usersCollection, where("email", "==", userData.email));
-  const querySnapshot = await getDocs(q);
-  if (!querySnapshot.empty) {
-    throw new Error(`A user with the email ${userData.email} already exists.`);
-  }
-
-  if (userData.fgCode) {
-    const fgCodeQuery = query(usersCollection, where("fgCode", "==", userData.fgCode));
-    const fgCodeSnapshot = await getDocs(fgCodeQuery);
-    if (!fgCodeSnapshot.empty) {
-      throw new Error(`The FG Code "${userData.fgCode}" is already in use.`);
-    }
-  }
-
-  const dataToSave = {
-    ...userData,
-    createdAt: serverTimestamp(),
-  };
-
-  try {
-      // This part is now handled by the admin action `createUserWithAuth`
-      // await addDoc(usersCollection, dataToSave);
-      // await logAudit('Create User', `Created new user: ${userData.name} (${userData.email})`, actorInfo);
-      console.log("createUser function in user-service is now primarily for updates. Creation is handled by server action.");
-  } catch (dbError) {
-      console.error("Failed to create user in Firestore:", dbError);
-      throw new Error("Failed to save user to the database. Please check Firestore permissions or try again.");
-  }
-};
-
-/**
  * Updates a user record in the 'users' Firestore collection.
  * @param id The ID of the user to update.
  * @param userData The data to update.
@@ -112,7 +73,14 @@ export const updateUser = async (id: string, userData: { [key: string]: any }, a
 export const getUsers = async (): Promise<AppUser[]> => {
     const usersCollection = collection(db, 'users');
     const snapshot = await getDocs(usersCollection);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppUser));
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      return { 
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date()
+      } as AppUser;
+    });
 }
 
 /**

@@ -1,4 +1,4 @@
-// This file is intentionally left blank to prevent server-side crashes
-// related to Firebase Admin SDK initialization in this environment.
-// Administrative actions should be performed via the Firebase Console
-// or a separate, properly configured admin environment.
+// This file is intentionally left blank.
+// The Firebase Admin SDK for App Hosting will automatically initialize
+// with the correct credentials from the environment.
+// Explicit initialization is not required and can cause issues.
