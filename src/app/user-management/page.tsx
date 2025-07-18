@@ -4,7 +4,6 @@
 import * as React from 'react';
 import { Loader2, ShieldAlert, Search, PlusCircle, MoreHorizontal, Edit, Trash2, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
-import { deleteField } from 'firebase/firestore';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -19,7 +18,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { getUsers, updateUser, getFolkGuides, getEnablersForGuide } from '@/services/user-service';
-import { deleteUserAndAuth, createUserWithAuth } from '@/services/user-actions';
+import { deleteUserAndAuth } from '@/services/user-actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { userRoles, type UserRole, type AppUser } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -44,7 +43,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/auth-context';
-import { useRouter } from 'next/navigation';
 import { AuthGuard } from '@/components/auth-guard';
 
 type UserInfo = {
@@ -56,7 +54,6 @@ type UserInfo = {
 function UserManagementPageComponent() {
   const { toast } = useToast();
   const { appUser } = useAuth();
-  const router = useRouter();
   const [users, setUsers] = React.useState<AppUser[]>([]);
   const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = React.useState(true);
@@ -81,7 +78,6 @@ function UserManagementPageComponent() {
       if (appUser.role.includes('Admin')) {
         usersPromise = getUsers();
       } else if (appUser.role.includes('Folk Guide')) {
-        // A guide should see themselves and the enablers they manage
         const enablers = await getEnablersForGuide(appUser.id);
         usersPromise = Promise.resolve([appUser, ...enablers]);
       } else {
@@ -175,8 +171,6 @@ function UserManagementPageComponent() {
 
       if (data.role.includes('Folk Guide') && data.fgCode) {
         userData.fgCode = data.fgCode;
-      } else if (userId) {
-        userData.fgCode = deleteField();
       }
 
       if (data.role.includes('Folk Enabler') && data.guideId) {
@@ -188,8 +182,6 @@ function UserManagementPageComponent() {
             guideFgCode: guide.fgCode || '',
           };
         }
-      } else if (userId) {
-        userData.reportsTo = deleteField();
       }
       
       if (userId) {
@@ -199,14 +191,8 @@ function UserManagementPageComponent() {
           description: `${data.name}'s details have been updated.`,
         });
         fetchUsersAndGuides();
-      } else {
-        await createUserWithAuth(data, actorInfo);
-        toast({
-            title: 'User Created & Email Sent',
-            description: `Password reset link sent to ${data.email}. The user can now set their password.`,
-        });
-        fetchUsersAndGuides();
       }
+      setIsOpen(false);
     } catch (error) {
       console.error('Failed to save user:', error);
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';

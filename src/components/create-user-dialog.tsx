@@ -143,7 +143,7 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
     try {
         if (!appUser) throw new Error("Not authenticated");
         
-        const actorInfo = {
+        const actorInfo: { id: string; name: string; role: UserRole[] } = {
           id: appUser.id,
           name: appUser.name,
           role: appUser.role,
@@ -154,8 +154,8 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
         } else {
             await createUserWithAuth(data, actorInfo);
             toast({
-                title: 'User Created Successfully',
-                description: `An initial password has not been set. Please instruct the user to use the "Forgot Password" link on the login page to set their password.`,
+                title: 'User Created & Email Sent',
+                description: `A password reset link has been sent to ${data.email}. The user can now set their password.`,
             });
             await onSave(data);
         }
@@ -183,7 +183,7 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
         <DialogHeader>
           <DialogTitle>{user ? 'Edit User' : 'Create New User'}</DialogTitle>
           <DialogDescription>
-            {user ? "Update the user's details below." : 'Fill out the form below to add a new user to the system.'}
+            {user ? "Update the user's details below." : 'A password reset link will be sent to the user to set their initial password.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

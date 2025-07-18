@@ -2,7 +2,7 @@
 'use server';
 
 import { adminAuth } from '@/lib/firebase-admin';
-import { doc, deleteDoc, getDoc, collection, query, where, getDocs, setDoc } from 'firebase/firestore';
+import { doc, deleteDoc, getDoc, collection, query, where, getDocs, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { logAudit } from './audit-service';
 import type { AppUser, UserRole } from '@/lib/types';
@@ -74,7 +74,7 @@ export async function createUserWithAuth(userData: UserFormValues, actorInfo: Us
 
     await setDoc(doc(db, 'users', uid), {
         ...dataToSave,
-        createdAt: new Date(),
+        createdAt: serverTimestamp(),
     });
     
     await logAudit('Create User', `Created user: ${userData.name} (${uid})`, actorInfo);
