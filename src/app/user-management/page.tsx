@@ -76,19 +76,18 @@ function UserManagementPageComponent() {
       } else if (appUser.role.includes('Folk Guide')) {
         usersPromise = getEnablersForGuide(appUser.id);
       } else {
-        // This case should be handled by the page guard, but as a fallback.
         usersPromise = Promise.resolve([]);
       }
       
       const [usersData, guidesData] = await Promise.all([
         usersPromise,
-        getFolkGuides(), // All roles might need this for the dialog
+        getFolkGuides(),
       ]);
 
       const sanitizedUsers = usersData.map(u => {
         const userWithArrayRole = { ...u };
         if (typeof userWithArrayRole.role === 'string') {
-          // @ts-ignore - for backward compatibility
+          // @ts-ignore
           userWithArrayRole.role = [userWithArrayRole.role];
         } else if (!Array.isArray(userWithArrayRole.role)) {
           userWithArrayRole.role = [];
@@ -187,8 +186,7 @@ function UserManagementPageComponent() {
           description: `${data.name}'s details have been updated.`,
         });
       }
-      // Creation is now handled by the dialog's server action.
-      // We call fetchUsersAndGuides after the dialog closes to refresh.
+      
       fetchUsersAndGuides();
     } catch (error) {
       console.error('Failed to save user:', error);
@@ -197,7 +195,7 @@ function UserManagementPageComponent() {
         title: 'Error Saving User',
         description: error instanceof Error ? error.message : 'An unknown error occurred.',
       });
-      throw error; // Rethrow to keep the dialog open on failure
+      throw error; 
     }
   };
   

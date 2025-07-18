@@ -40,7 +40,6 @@ import {
 import { Loader2 } from 'lucide-react';
 import { userRoles, type AppUser, type UserRole } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-context';
-import { updateUser } from '@/services/user-service';
 import { useToast } from '@/hooks/use-toast';
 import { createUserWithAuth } from '@/services/user-actions';
 
@@ -141,9 +140,9 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides }
     try {
         if (!appUser) throw new Error("Not authenticated");
         
-        if (user) { // Editing existing user
+        if (user) { 
             await onSave(data, user.id);
-        } else { // Creating new user
+        } else {
             const actorInfo = {
                 id: appUser.id,
                 name: appUser.name,
@@ -151,9 +150,10 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides }
             };
             await createUserWithAuth(data, actorInfo);
             toast({
-                title: 'User Creation Initiated',
-                description: `An email has been sent to ${data.email} with instructions to set their password. The user record will appear after they sign up.`,
+                title: 'User Created Successfully',
+                description: `An initial password has not been set. Please instruct the user to use the "Forgot Password" link on the login page to set their password.`,
             });
+            await onSave(data);
         }
 
         setIsOpen(false);
