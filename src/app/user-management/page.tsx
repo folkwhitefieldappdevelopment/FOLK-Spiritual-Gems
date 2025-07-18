@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { createUser, getUsers, updateUser, getFolkGuides, getEnablersForGuide } from '@/services/user-service';
+import { getUsers, updateUser, getFolkGuides, getEnablersForGuide } from '@/services/user-service';
 import { deleteUserAndAuth } from '@/services/user-actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { userRoles, type UserRole, type AppUser } from '@/lib/types';
@@ -134,8 +134,8 @@ function UserManagementPageComponent() {
         const actorInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
         await deleteUserAndAuth(userToDelete.id, actorInfo);
         toast({
-            title: 'User Record Deleted',
-            description: `User ${userToDelete.name}'s record has been deleted. They can still log in.`
+            title: 'User Deleted',
+            description: `User ${userToDelete.name} has been completely deleted.`
         });
         fetchUsersAndGuides();
     } catch (error) {
@@ -187,11 +187,8 @@ function UserManagementPageComponent() {
           description: `${data.name}'s details have been updated.`,
         });
       } else {
-        await createUser(userData as Omit<AppUser, 'id' | 'createdAt'>, actorInfo);
-        toast({
-          title: 'User Created & Invite Sent',
-          description: `${data.name} has been added and a sign-up link has been sent to their email.`,
-        });
+        // Creation is now handled by the dialog's server action,
+        // so this call is just to refresh the list.
       }
       fetchUsersAndGuides();
     } catch (error) {
@@ -376,7 +373,7 @@ function UserManagementPageComponent() {
                 <ShieldAlert className="h-4 w-4" />
                 <AlertTitle>Important Note on User Deletion</AlertTitle>
                 <AlertDescription>
-                  This page manages user records in the application database. Deleting a user here only removes their record from this app, not their login credentials from Firebase Authentication.
+                  Deleting a user is permanent and will remove them from both the application database and Firebase Authentication. They will lose all access immediately.
                 </AlertDescription>
               </Alert>
             </div>
@@ -396,7 +393,7 @@ function UserManagementPageComponent() {
             <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-                This will remove the user record for {userToDelete.name} from the application database. It will NOT remove their login credentials, so they will still be able to sign in. This action cannot be undone.
+                This action is permanent and cannot be undone. This will delete the user {userToDelete.name} from both the application and Firebase Authentication, revoking all access.
             </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -405,7 +402,7 @@ function UserManagementPageComponent() {
                 onClick={handleDeleteConfirmed}
                 className="bg-destructive hover:bg-destructive/90"
             >
-                Delete User Record
+                Delete User Permanently
             </AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>

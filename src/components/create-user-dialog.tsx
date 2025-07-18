@@ -5,8 +5,6 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { sendSignInLinkToEmail } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
 import {
   Dialog,
   DialogContent,
@@ -42,6 +40,8 @@ import {
 import { Loader2 } from 'lucide-react';
 import { userRoles, type AppUser, type UserRole } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-context';
+import { createUserWithAuth } from '@/services/user-actions';
+import { updateUser } from '@/services/user-service';
 
 const userFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -79,7 +79,7 @@ type CreateUserDialogProps = {
 };
 
 export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides }: CreateUserDialogProps) {
-  const { appUser } = useAuth();
+  const { appUser, toast } = useAuth();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [availableRoles, setAvailableRoles] = React.useState<UserRole[]>([]);
   
@@ -137,34 +137,29 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides }
   async function onSubmit(data: UserFormValues) {
     setIsSubmitting(true);
     try {
-      if (!user) {
-        // Handle new user creation: Send email first, then save to DB.
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-        const actionCodeSettings = {
-          url: `${appUrl}/login`, 
-          handleCodeInApp: true,
-        };
-        window.localStorage.setItem('emailForSignIn', data.email);
-        await sendSignInLinkToEmail(auth, data.email, actionCodeSettings);
+        if (!appUser) throw new Error("Not authenticated");
         
-        // Only after the email is successfully sent, we create the user record.
-        await onSave(data, undefined);
+        if (user) { // Editing existing user
+            await onSave(data, user.id);
+        } else { // Creating new user
+            await createUserWithAuth(data, { id: appUser.id, name: appUser.name, role: appUser.role });
+            toast({
+                title: 'User Created',
+                description: `${data.name} has been created. A password reset link has been sent to their email.`
+            });
+            await onSave(data, undefined); // This now just refreshes the list
+        }
 
-      } else {
-        // Handle existing user update.
-        await onSave(data, user.id);
-      }
-      
-      setIsOpen(false);
+        setIsOpen(false);
     } catch (error) {
-      console.error("Error in onSubmit:", error);
-      // The parent component's toast will handle the error message.
-      // Make sure to remove the email from local storage on failure if it was a new user.
-      if (!user) {
-        window.localStorage.removeItem('emailForSignIn');
-      }
+        console.error("Error in onSubmit:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Error Saving User',
+            description: error instanceof Error ? error.message : 'An unknown error occurred.',
+        });
     } finally {
-      setIsSubmitting(false);
+        setIsSubmitting(false);
     }
   }
 

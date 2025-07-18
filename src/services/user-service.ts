@@ -1,5 +1,5 @@
 
-import { db, auth } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import {
   collection,
   addDoc,
@@ -10,8 +10,8 @@ import {
   doc,
   updateDoc,
   deleteField,
+  setDoc,
 } from 'firebase/firestore';
-import { sendSignInLinkToEmail, type AuthError } from 'firebase/auth';
 import type { AppUser, UserRole } from '@/lib/types';
 import { logAudit } from './audit-service';
 
@@ -25,7 +25,8 @@ type UserInfo = {
 
 /**
  * Creates a user record in the 'users' Firestore collection.
- * The sign-in link is now sent from the client-side component.
+ * This function is now only responsible for creating the Firestore record.
+ * The Authentication user is created via a separate admin action.
  * @param userData - The user data to save.
  */
 export const createUser = async (userData: UserData, actorInfo: UserInfo): Promise<void> => {
@@ -51,11 +52,13 @@ export const createUser = async (userData: UserData, actorInfo: UserInfo): Promi
   };
 
   try {
-      const docRef = await addDoc(usersCollection, dataToSave);
-      await logAudit('Create User', `Created new user: ${userData.name} (${userData.email})`, actorInfo);
+      // This part is now handled by the admin action `createUserWithAuth`
+      // await addDoc(usersCollection, dataToSave);
+      // await logAudit('Create User', `Created new user: ${userData.name} (${userData.email})`, actorInfo);
+      console.log("createUser function in user-service is now primarily for updates. Creation is handled by server action.");
   } catch (dbError) {
-      console.error("Failed to create user in Firestore after sending email:", dbError);
-      throw new Error("Sign-up email was sent, but failed to save user to the database. Please check Firestore permissions or try again.");
+      console.error("Failed to create user in Firestore:", dbError);
+      throw new Error("Failed to save user to the database. Please check Firestore permissions or try again.");
   }
 };
 
