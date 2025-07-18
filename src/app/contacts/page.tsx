@@ -77,7 +77,7 @@ import { CreateUpdateGroupDialog } from "@/components/create-update-group-dialog
 import { AssignCoEnablerDialog } from "@/components/assign-helper-dialog";
 import { AssignEnablerDialog } from "@/components/assign-enabler-dialog";
 import { SortPopover, type SortDescriptor } from "@/components/sort-popover";
-import { FilterPopover, type FilterRule, type FilterableField } from "@/components/filter-popover";
+import { FilterPopover, type FilterRule, type FilterableField, applyClientSideFilters } from "@/components/filter-popover";
 import { Input } from "@/components/ui/input";
 import { ColumnFilterState, applyColumnFilters } from "@/components/column-header-filter";
 import { AuthGuard } from "@/components/auth-guard";
