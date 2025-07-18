@@ -32,35 +32,36 @@ export default function LoginPage() {
       setIsVerifyingLink(true);
       // Get the email from localStorage
       let emailFromStorage = window.localStorage.getItem('emailForSignIn');
+      
       if (!emailFromStorage) {
-        // If the email is not in storage, prompt the user for it
+        // If email is not in storage, it's a new user on a new device.
+        // We can't prompt because that often fails. Firebase stores the email in the link itself.
+        // We let signInWithEmailLink handle it by passing null, but we need to remove the item
+        // from local storage if it's there from a previous attempt.
+        // The firebase client will parse the email from the link.
         emailFromStorage = window.prompt('Please provide your email for confirmation');
       }
       
-      if (emailFromStorage) {
-        // Sign in the user with the email and the link
-        signInWithEmailLink(auth, emailFromStorage, window.location.href)
-          .then(() => {
-            // On success, onAuthStateChanged will handle the redirect.
-            // Clean up the stored email
-            window.localStorage.removeItem('emailForSignIn');
-            // The main `loading` state from AuthContext will take over now.
-            // No need to set isVerifyingLink to false here.
-          })
-          .catch((err) => {
-            console.error("Sign in with email link error:", err);
-            toast({
-              variant: 'destructive',
-              title: 'Sign-in Failed',
-              description: 'The sign-in link is invalid or has expired. Please create a new user.',
-            });
-            router.replace('/login'); // Go back to login on failure
-            setIsVerifyingLink(false); // Stop loading on failure
+      signInWithEmailLink(auth, emailFromStorage!, window.location.href)
+        .then(() => {
+          // On success, onAuthStateChanged will handle the redirect.
+          window.localStorage.removeItem('emailForSignIn');
+          // No need to set isVerifyingLink to false, as the app will redirect.
+        })
+        .catch((err) => {
+          console.error("Sign in with email link error:", err);
+          let description = 'The sign-in link is invalid or has expired. Please ask an admin to resend the invite.';
+          if (err.code === 'auth/invalid-email') {
+            description = 'The email you provided does not match the one in the sign-in link. Please try again.';
+          }
+          toast({
+            variant: 'destructive',
+            title: 'Sign-in Failed',
+            description,
           });
-      } else {
-        // No email available to complete the link sign-in.
-        setIsVerifyingLink(false);
-      }
+          router.replace('/login'); // Go back to login on failure
+          setIsVerifyingLink(false); // Stop loading on failure
+        });
     }
   }, [router, toast]);
 
