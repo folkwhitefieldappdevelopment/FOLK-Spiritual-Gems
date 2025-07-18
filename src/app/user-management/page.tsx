@@ -19,7 +19,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { getUsers, updateUser, getFolkGuides, getEnablersForGuide } from '@/services/user-service';
-// import { deleteUserAndAuth } from '@/services/user-actions';
+import { deleteUserAndAuth } from '@/services/user-actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { userRoles, type UserRole, type AppUser } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -132,12 +132,12 @@ function UserManagementPageComponent() {
     if (!userToDelete || !appUser) return;
     try {
         const actorInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-        // await deleteUserAndAuth(userToDelete.id, actorInfo);
+        await deleteUserAndAuth(userToDelete.id, actorInfo);
         toast({
-            title: 'Action Disabled',
-            description: `User deletion is temporarily disabled. Please use the Firebase Console.`
+            title: 'User Record Deleted',
+            description: `The database record for ${userToDelete.name} has been deleted. You must still delete the user from Firebase Authentication.`
         });
-        // fetchUsersAndGuides();
+        fetchUsersAndGuides();
     } catch (error) {
         console.error('Failed to delete user:', error);
         toast({
@@ -187,8 +187,8 @@ function UserManagementPageComponent() {
           description: `${data.name}'s details have been updated.`,
         });
       } else {
-        // Creation is now handled by the dialog's server action,
-        // so this call is just to refresh the list.
+        // Creation is now handled by the dialog's server action.
+        // We call fetchUsersAndGuides after the dialog closes to refresh.
       }
       fetchUsersAndGuides();
     } catch (error) {
@@ -371,9 +371,9 @@ function UserManagementPageComponent() {
 
               <Alert variant="destructive">
                 <ShieldAlert className="h-4 w-4" />
-                <AlertTitle>Important Note on User Deletion</AlertTitle>
+                <AlertTitle>Important Note on User Management</AlertTitle>
                 <AlertDescription>
-                  User deletion is temporarily disabled due to a server configuration issue. To delete a user, please do so from the Firebase Console.
+                  Due to server environment limitations, user creation and deletion are restricted. To add a new user, you must first create their account in the Firebase Console (Authentication section), then add their record here. Deletion only removes the database record; the user must also be deleted from the Authentication section in the console.
                 </AlertDescription>
               </Alert>
             </div>
@@ -393,7 +393,7 @@ function UserManagementPageComponent() {
             <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-                This action is permanent and cannot be undone. This will delete the user {userToDelete.name} from both the application and Firebase Authentication, revoking all access.
+                This will only delete the user's data record from this application. It will NOT delete their login from Firebase Authentication. This action is permanent.
             </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -402,7 +402,7 @@ function UserManagementPageComponent() {
                 onClick={handleDeleteConfirmed}
                 className="bg-destructive hover:bg-destructive/90"
             >
-                Delete User Permanently
+                Delete User Record
             </AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
