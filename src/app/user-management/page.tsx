@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -140,8 +139,8 @@ function UserManagementPageComponent() {
         
         if (result.success) {
             toast({
-                title: 'User Deleted',
-                description: `${userToDelete.name} has been deleted successfully.`
+                title: 'User Record Deleted',
+                description: `${userToDelete.name} has been deleted. Please remove them from Firebase Authentication manually.`
             });
             fetchUsersAndGuides();
         } else {
@@ -228,8 +227,8 @@ function UserManagementPageComponent() {
         return searchMatch && roleMatch;
       })
       .sort((a, b) => {
-        const dateA = new Date(a.createdAt || 0);
-        const dateB = new Date(b.createdAt || 0);
+        const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+        const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
         return dateB.getTime() - dateA.getTime();
       });
   }, [users, searchTerm, roleFilter]);
@@ -267,9 +266,9 @@ function UserManagementPageComponent() {
               {adminFeatureError && (
                  <Alert variant="destructive">
                     <ShieldAlert className="h-4 w-4" />
-                    <AlertTitle>Administrative Action Failed</AlertTitle>
+                    <AlertTitle>Administrative Action Disabled</AlertTitle>
                     <AlertDescription>
-                        {adminFeatureError} This usually means the server is not configured correctly for administrative tasks. Please contact support or check the server environment setup.
+                        User creation and deletion from the UI are disabled because the server environment is not configured for administrative tasks. Please create and delete users directly in the Firebase Authentication console.
                     </AlertDescription>
                  </Alert>
               )}
@@ -374,7 +373,7 @@ function UserManagementPageComponent() {
                                                   </DropdownMenuItem>
                                               )}
                                               {canDelete && (
-                                                  <DropdownMenuItem onSelect={() => setUserToDelete(user)} className="text-destructive focus:text-destructive">
+                                                  <DropdownMenuItem onSelect={() => setUserToDelete(user)} className="text-destructive focus:text-destructive" disabled={!!adminFeatureError}>
                                                       <Trash2 className="mr-2 h-4 w-4" />
                                                       Delete
                                                   </DropdownMenuItem>
@@ -413,7 +412,7 @@ function UserManagementPageComponent() {
             <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the user {userToDelete.name} from both the application and the authentication system.
+                This action cannot be undone. This will permanently delete the user {userToDelete.name}. Please note this action might fail if the server is not configured correctly.
             </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

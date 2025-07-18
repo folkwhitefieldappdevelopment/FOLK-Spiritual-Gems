@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -188,7 +187,9 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
         <DialogHeader>
           <DialogTitle>{user ? 'Edit User' : 'Create New User'}</DialogTitle>
           <DialogDescription>
-            {user ? "Update the user's details below." : 'A password reset link will be sent to the user to set their initial password.'}
+            {user
+              ? "Update the user's details below."
+              : 'Add a new user to the application. This action might fail if the server environment is not configured correctly.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
