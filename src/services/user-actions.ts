@@ -1,7 +1,7 @@
 
 'use server';
 
-import { doc, deleteDoc, getDoc, collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
+import { doc, deleteDoc, getDoc, collection, addDoc, serverTimestamp, query, where, getDocs, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { adminAuth } from '@/lib/firebase-admin';
 import { logAudit } from './audit-service';
@@ -21,16 +21,13 @@ export async function createUserWithAuth(userData: UserFormValues, actorInfo: Us
       email: userData.email,
       emailVerified: false,
       displayName: userData.name,
-      // You can set a temporary random password, but it's better to use email link
     });
 
     // 2. Generate a password reset link (which acts as the sign-up link)
     const actionLink = await adminAuth.generatePasswordResetLink(userData.email);
 
     // This is a simplified version. For production, you'd use a transactional email service.
-    // For now, the user record is created and the link must be sent manually or via another mechanism.
-    // The key part is that the user now EXISTS in Firebase Auth.
-    console.log(`Password reset link for ${userData.email}: ${actionLink}`);
+    console.log(`Password reset/sign-up link for ${userData.email}: ${actionLink}`);
     
     // 3. Create the user record in Firestore
     const usersCollection = collection(db, 'users');
@@ -77,8 +74,7 @@ export async function createUserWithAuth(userData: UserFormValues, actorInfo: Us
 }
 
 /**
- * Deletes a user record from Firestore.
- * This does NOT delete the user from Firebase Authentication.
+ * Deletes a user record from Firestore and Firebase Authentication.
  * This is a server action and requires admin privileges.
  * @param userId The Firestore document ID of the user.
  * @param actorInfo The user performing the action.
@@ -89,10 +85,10 @@ export async function deleteUserAndAuth(userId: string, actorInfo: UserInfo) {
     const userSnap = await getDoc(userDocRef);
     const userData = userSnap.data();
 
-    // Delete from Auth
+    // Delete from Auth first
     await adminAuth.deleteUser(userId);
 
-    // Delete from Firestore
+    // Then delete from Firestore
     await deleteDoc(userDocRef);
     
     if (userData) {
