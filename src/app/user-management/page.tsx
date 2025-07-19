@@ -64,7 +64,6 @@ function UserManagementPageComponent() {
 
   const [searchTerm, setSearchTerm] = React.useState('');
   const [roleFilter, setRoleFilter] = React.useState('');
-  const [adminFeatureError, setAdminFeatureError] = React.useState<string | null>(null);
   
   const fetchUsersAndGuides = React.useCallback(async () => {
     if (!appUser) return;
@@ -140,7 +139,7 @@ function UserManagementPageComponent() {
         if (result.success) {
             toast({
                 title: 'User Record Deleted',
-                description: `${userToDelete.name} has been deleted. Please remove them from Firebase Authentication manually.`
+                description: result.message
             });
             fetchUsersAndGuides();
         } else {
@@ -154,9 +153,6 @@ function UserManagementPageComponent() {
             title: 'Error Deleting User',
             description: errorMessage,
         });
-        if (errorMessage.includes('Admin SDK')) {
-            setAdminFeatureError(errorMessage);
-        }
     } finally {
         setUserToDelete(null);
     }
@@ -206,9 +202,6 @@ function UserManagementPageComponent() {
         title: 'Error Saving User',
         description: errorMessage,
       });
-      if (errorMessage.includes('Admin SDK')) {
-        setAdminFeatureError(errorMessage);
-      }
       throw error; 
     }
   };
@@ -263,15 +256,13 @@ function UserManagementPageComponent() {
           </PageHeader>
           <main className="flex-1 p-4 sm:p-6 sm:pt-0">
             <div className="mx-auto max-w-4xl space-y-6">
-              {adminFeatureError && (
                  <Alert variant="destructive">
                     <ShieldAlert className="h-4 w-4" />
-                    <AlertTitle>Administrative Action Disabled</AlertTitle>
+                    <AlertTitle>Administrative Action Required in Firebase Console</AlertTitle>
                     <AlertDescription>
-                        User creation and deletion from the UI are disabled because the server environment is not configured for administrative tasks. Please create and delete users directly in the Firebase Authentication console.
+                        User creation and complete deletion from the UI are disabled because the server environment is not configured for administrative tasks. User records here are synced with Firestore, but authentication must be managed in the Firebase Console.
                     </AlertDescription>
                  </Alert>
-              )}
               <Card>
                 <CardHeader>
                     <CardTitle>Existing Users</CardTitle>
@@ -373,7 +364,7 @@ function UserManagementPageComponent() {
                                                   </DropdownMenuItem>
                                               )}
                                               {canDelete && (
-                                                  <DropdownMenuItem onSelect={() => setUserToDelete(user)} className="text-destructive focus:text-destructive" disabled={!!adminFeatureError}>
+                                                  <DropdownMenuItem onSelect={() => setUserToDelete(user)} className="text-destructive focus:text-destructive">
                                                       <Trash2 className="mr-2 h-4 w-4" />
                                                       Delete
                                                   </DropdownMenuItem>
@@ -403,7 +394,6 @@ function UserManagementPageComponent() {
       onSave={handleSaveUser}
       user={editingUser}
       folkGuides={folkGuides}
-      onAdminActionError={setAdminFeatureError}
       onUserCreated={fetchUsersAndGuides}
     />
     {userToDelete && (
@@ -412,7 +402,7 @@ function UserManagementPageComponent() {
             <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the user {userToDelete.name}. Please note this action might fail if the server is not configured correctly.
+                This will delete the user {userToDelete.name} from the app's database, but you must still delete them from Firebase Authentication manually. This action cannot be undone.
             </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

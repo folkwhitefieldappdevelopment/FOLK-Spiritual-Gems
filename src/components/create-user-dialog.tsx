@@ -75,11 +75,10 @@ type CreateUserDialogProps = {
   onSave: (data: UserFormValues, userId?: string) => Promise<void>;
   user?: AppUser;
   folkGuides: AppUser[];
-  onAdminActionError: (error: string | null) => void;
   onUserCreated: () => void;
 };
 
-export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, onAdminActionError, onUserCreated }: CreateUserDialogProps) {
+export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, onUserCreated }: CreateUserDialogProps) {
   const { appUser } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -133,13 +132,11 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
         });
       }
       setIsSubmitting(false);
-      onAdminActionError(null);
     }
-  }, [isOpen, user, form, isCurrentUserGuide, appUser?.id, onAdminActionError]);
+  }, [isOpen, user, form, isCurrentUserGuide, appUser?.id]);
 
   async function onSubmit(data: UserFormValues) {
     setIsSubmitting(true);
-    onAdminActionError(null);
     try {
         if (!appUser) throw new Error("Not authenticated");
         
@@ -155,12 +152,17 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
             const result = await createUserAction(data, actorInfo);
             if (result.success) {
                 toast({
-                    title: 'User Created & Email Sent',
-                    description: `A password reset link has been sent to ${data.email}.`,
+                    title: 'User Action Successful',
+                    description: result.message,
                 });
                 onUserCreated(); // Re-fetch users on the main page
             } else {
-                throw new Error(result.message);
+                toast({
+                    variant: 'destructive',
+                    title: 'User Creation Failed',
+                    description: result.message,
+                    duration: 8000,
+                });
             }
         }
 
@@ -173,9 +175,6 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
             title: 'Error Saving User',
             description: errorMessage,
         });
-        if (errorMessage.includes('Admin SDK')) {
-          onAdminActionError(errorMessage);
-        }
     } finally {
         setIsSubmitting(false);
     }
