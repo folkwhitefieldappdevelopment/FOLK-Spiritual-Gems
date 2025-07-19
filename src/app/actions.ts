@@ -16,14 +16,12 @@ type UserInfo = {
 export async function createUserAction(userData: UserFormValues, actorInfo: UserInfo): Promise<{ success: boolean; message: string }> {
     const usersCollection = collection(db, 'users');
     
-    // Check if user with that email already exists in Firestore
     const emailQuery = query(usersCollection, where("email", "==", userData.email));
     const emailSnapshot = await getDocs(emailQuery);
     if (!emailSnapshot.empty) {
         return { success: false, message: `A user with email ${userData.email} already exists.` };
     }
     
-    // Check if FG Code is unique if provided
     if (userData.fgCode) {
         const fgCodeQuery = query(usersCollection, where("fgCode", "==", userData.fgCode));
         const fgCodeSnapshot = await getDocs(fgCodeQuery);
@@ -50,10 +48,12 @@ export async function createUserAction(userData: UserFormValues, actorInfo: User
             if (guideDoc.exists()) {
                 const guide = guideDoc.data() as AppUser;
                 dataToSave.reportsTo = {
-                    guideId: guide.id,
+                    guideId: guideDoc.id, // Use guideDoc.id to ensure it's not undefined
                     guideName: guide.name,
                     guideFgCode: guide.fgCode || '',
                 };
+            } else {
+                 return { success: false, message: `Could not find the assigned Folk Guide.` };
             }
         }
         
