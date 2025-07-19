@@ -41,6 +41,8 @@ import { userRoles, type AppUser, type UserRole } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { createUserAction } from '@/app/actions';
+import { auth } from '@/lib/firebase';
+import { sendSignInLinkToEmail } from 'firebase/auth';
 
 const userFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -151,18 +153,23 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
         } else { // Creating new user
             const result = await createUserAction(data, actorInfo);
             if (result.success) {
+                const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+                const actionCodeSettings = {
+                    url: `${appUrl}/login`,
+                    handleCodeInApp: true,
+                };
+                
+                // This does NOT send an email. It just generates the link.
+                await sendSignInLinkToEmail(auth, data.email, actionCodeSettings);
+
                 toast({
-                    title: 'User Action Successful',
-                    description: result.message,
+                    title: 'User Record Created',
+                    description: `Record for ${data.name} saved. Please manually send the sign-in link to their email from your email client. The user must click the link to gain access.`,
+                    duration: 10000,
                 });
-                onUserCreated(); // Re-fetch users on the main page
+                onUserCreated();
             } else {
-                toast({
-                    variant: 'destructive',
-                    title: 'User Creation Failed',
-                    description: result.message,
-                    duration: 8000,
-                });
+                throw new Error(result.message);
             }
         }
 
@@ -188,7 +195,7 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
           <DialogDescription>
             {user
               ? "Update the user's details below."
-              : 'Add a new user to the application. This action might fail if the server environment is not configured correctly.'}
+              : 'Add a new user to the application. A sign-in link will be generated for you to send manually.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

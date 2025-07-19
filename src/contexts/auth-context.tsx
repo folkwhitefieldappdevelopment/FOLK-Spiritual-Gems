@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -84,11 +83,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setUser(user);
               setAppUser(appUserData);
             } else {
-              // User not in our DB, deny access by showing a generic error.
+              // User not in our DB, deny access by signing them out.
               toast({
                 variant: 'destructive',
-                title: 'Sign-in Failed',
-                description: 'Invalid email or password.',
+                title: 'Access Denied',
+                description: 'Your user record was not found in the application database. Please contact an administrator.',
               });
               await firebaseSignOut(auth);
               setUser(null);

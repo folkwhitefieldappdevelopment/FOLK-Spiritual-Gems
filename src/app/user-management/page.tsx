@@ -182,6 +182,8 @@ function UserManagementPageComponent() {
             guideFgCode: guide.fgCode || '',
           };
         }
+      } else {
+        userData.reportsTo = null; // Remove this field if user is not an enabler
       }
       
       if (userId) { // This is an update
@@ -258,9 +260,9 @@ function UserManagementPageComponent() {
             <div className="mx-auto max-w-4xl space-y-6">
                  <Alert variant="destructive">
                     <ShieldAlert className="h-4 w-4" />
-                    <AlertTitle>Administrative Action Required in Firebase Console</AlertTitle>
+                    <AlertTitle>Manual Action Required in Firebase Console</AlertTitle>
                     <AlertDescription>
-                        User creation and complete deletion from the UI are disabled because the server environment is not configured for administrative tasks. User records here are synced with Firestore, but authentication must be managed in the Firebase Console.
+                       To grant access, you must create a user record here and then **manually send the generated sign-in link** to their email. To fully revoke access, you must delete the user here **and** from the Firebase Authentication console.
                     </AlertDescription>
                  </Alert>
               <Card>
@@ -402,7 +404,7 @@ function UserManagementPageComponent() {
             <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-                This will delete the user {userToDelete.name} from the app's database, but you must still delete them from Firebase Authentication manually. This action cannot be undone.
+                This will delete the user {userToDelete.name} from this application's database. To fully revoke access, you must also delete them from the Firebase Authentication console. This action cannot be undone.
             </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
