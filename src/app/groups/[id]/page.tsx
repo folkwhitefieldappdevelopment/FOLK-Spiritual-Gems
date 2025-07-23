@@ -550,37 +550,10 @@ function GroupDetailPageComponent() {
       <>
         <div className="mb-6 flex flex-col gap-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2 flex-wrap">
-              {isSelectionActive ? (
-                <>
-                  <span className="text-sm font-semibold">{selectedIds.size} selected</span>
-                  {!group.isDynamic && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Users className="mr-2 h-4 w-4" /> Add to Group</Button></DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {allGroups.filter(g => g.id !== groupId && !g.isDynamic).map((g) => <DropdownMenuItem key={g.id} onSelect={() => handleAddToGroup(g.id)}>{g.name}</DropdownMenuItem>)}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                  {canAssignCoEnabler && <Button variant="outline" size="sm" onClick={() => setIsAssignCoEnablerDialogOpen(true)}><UserCheck className="mr-2 h-4 w-4" /> Assign Co-Enabler</Button>}
-                  {!group.isDynamic && (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild><Button variant="destructive" size="sm"><Trash2 className="mr-2 h-4 w-4" /> Remove from Group</Button></AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will remove the selected {selectedIds.size} contacts from this group. It will not delete them from the app.</AlertDialogDescription></AlertDialogHeader>
-                        <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleRemoveMembers(Array.from(selectedIds))} className="bg-destructive hover:bg-destructive/90">Remove</AlertDialogAction></AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  )}
-                  <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>Deselect All</Button>
-                </>
-              ) : (
-                <>
-                  <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by name or phone..." className="pl-10 w-full sm:w-64" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
-                  <FilterPopover filters={filters} setFilters={setFilters} filterableFields={filterableFields} />
-                  <SortPopover sortDescriptors={sortDescriptors} setSortDescriptors={setSortDescriptors} />
-                </>
-              )}
+            <div className="flex items-center gap-2 flex-wrap flex-1">
+              <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by name or phone..." className="pl-10 w-full sm:w-64" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+              <FilterPopover filters={filters} setFilters={setFilters} filterableFields={filterableFields} />
+              <SortPopover sortDescriptors={sortDescriptors} setSortDescriptors={setSortDescriptors} />
             </div>
             <div className="flex items-center gap-2">
               {canResumeSession && (
@@ -599,6 +572,30 @@ function GroupDetailPageComponent() {
               </div>
             </div>
           </div>
+          {isSelectionActive && (
+              <div className="flex flex-wrap items-center gap-2 p-3 bg-muted rounded-lg border">
+                <span className="text-sm font-semibold">{selectedIds.size} selected</span>
+                {!group.isDynamic && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Users className="mr-2 h-4 w-4" /> Add to Group</Button></DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {allGroups.filter(g => g.id !== groupId && !g.isDynamic).map((g) => <DropdownMenuItem key={g.id} onSelect={() => handleAddToGroup(g.id)}>{g.name}</DropdownMenuItem>)}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                {canAssignCoEnabler && <Button variant="outline" size="sm" onClick={() => setIsAssignCoEnablerDialogOpen(true)}><UserCheck className="mr-2 h-4 w-4" /> Assign Co-Enabler</Button>}
+                {!group.isDynamic && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild><Button variant="destructive" size="sm"><Trash2 className="mr-2 h-4 w-4" /> Remove from Group</Button></AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will remove the selected {selectedIds.size} contacts from this group. It will not delete them from the app.</AlertDialogDescription></AlertDialogHeader>
+                      <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleRemoveMembers(Array.from(selectedIds))} className="bg-destructive hover:bg-destructive/90">Remove</AlertDialogAction></AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+                <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())} className="ml-auto">Deselect All</Button>
+              </div>
+          )}
         </div>
 
         {view === 'table' ? (
