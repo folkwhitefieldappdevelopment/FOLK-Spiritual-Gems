@@ -76,7 +76,7 @@ import { ColumnFilterState, applyColumnFilters } from '@/components/column-heade
 import { AuthGuard } from '@/components/auth-guard';
 import { logAudit } from '@/services/audit-service';
 import { dynamicGroupDefinitions } from '@/lib/dynamic-groups';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname, useParams } from 'next/navigation';
 
 const ROWS_PER_PAGE = 10;
 const FIRESTORE_QUERY_LIMIT = 10000;
