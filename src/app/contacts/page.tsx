@@ -290,7 +290,6 @@ function ContactsPageComponent() {
 
   React.useEffect(() => {
     setCurrentPage(1);
-    setSelectedIds(new Set());
   }, [filters, sortDescriptors, searchTerm, view, columnFilters]);
   
   const totalPages = Math.ceil(filteredAndSortedPeople.length / ROWS_PER_PAGE);
@@ -757,99 +756,25 @@ function ContactsPageComponent() {
       <>
         <div className="mb-6 flex flex-col gap-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2 flex-wrap">
-                    {isSelectionActive ? (
-                        <>
-                            <span className="text-sm font-semibold">{selectedIds.size} selected</span>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" size="sm">
-                                    <Users className="mr-2 h-4 w-4" />
-                                    Add to Group
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    {groups.filter(g => !g.isDynamic).map((group) => (
-                                    <DropdownMenuItem
-                                        key={group.id}
-                                        onSelect={() => handleAddToGroup(group.id)}
-                                    >
-                                        {group.name}
-                                    </DropdownMenuItem>
-                                    ))}
-                                    {groups.filter(g => !g.isDynamic).length > 0 && <DropdownMenuSeparator />}
-                                    <DropdownMenuItem onSelect={() => setIsCreateGroupDialogOpen(true)}>
-                                        <PlusCircle className="mr-2 h-4 w-4" />
-                                        Create New Group
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-
-                            {canAssignUsers && (
-                              <>
-                                <Button variant="outline" size="sm" onClick={() => setIsAssignEnablerDialogOpen(true)}>
-                                  <UserPlus className="mr-2 h-4 w-4" />
-                                  Assign Enabler
-                                </Button>
-                                <Button variant="outline" size="sm" onClick={() => setIsAssignCoEnablerDialogOpen(true)}>
-                                  <UserCheck className="mr-2 h-4 w-4" />
-                                  Assign Co-Enabler
-                                </Button>
-                              </>
-                            )}
-
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="destructive" size="sm">
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        This will permanently delete the selected {selectedIds.size} contacts. This action cannot be undone.
-                                    </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleDeleteSelected} className="bg-destructive hover:bg-destructive/90">
-                                        Delete
-                                    </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                             <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setSelectedIds(new Set())}
-                            >
-                                Deselect All
-                            </Button>
-                        </>
-                    ) : (
-                        <>
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    placeholder="Search by name or phone..."
-                                    className="pl-10 w-full sm:w-64"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
-                            </div>
-                            <FilterPopover 
-                                filters={filters}
-                                setFilters={setFilters}
-                                filterableFields={filterableFields}
-                            />
-                            <SortPopover
-                                sortDescriptors={sortDescriptors}
-                                setSortDescriptors={setSortDescriptors}
-                            />
-                        </>
-                    )}
+                <div className="flex items-center gap-2 flex-wrap flex-1">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search by name or phone..."
+                            className="pl-10 w-full sm:w-64"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <FilterPopover 
+                        filters={filters}
+                        setFilters={setFilters}
+                        filterableFields={filterableFields}
+                    />
+                    <SortPopover
+                        sortDescriptors={sortDescriptors}
+                        setSortDescriptors={setSortDescriptors}
+                    />
                 </div>
                 <div className="flex items-center gap-2">
                     <div className="flex items-center rounded-md bg-muted p-1">
@@ -874,6 +799,79 @@ function ContactsPageComponent() {
                     </div>
                 </div>
             </div>
+
+            {isSelectionActive && (
+                 <div className="flex flex-wrap items-center gap-2 p-3 bg-muted rounded-lg border">
+                    <span className="text-sm font-semibold mr-4">{selectedIds.size} selected</span>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm">
+                            <Users className="mr-2 h-4 w-4" />
+                            Add to Group
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            {groups.filter(g => !g.isDynamic).map((group) => (
+                            <DropdownMenuItem
+                                key={group.id}
+                                onSelect={() => handleAddToGroup(group.id)}
+                            >
+                                {group.name}
+                            </DropdownMenuItem>
+                            ))}
+                            {groups.filter(g => !g.isDynamic).length > 0 && <DropdownMenuSeparator />}
+                            <DropdownMenuItem onSelect={() => setIsCreateGroupDialogOpen(true)}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Create New Group
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {canAssignUsers && (
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => setIsAssignEnablerDialogOpen(true)}>
+                          <UserPlus className="mr-2 h-4 w-4" />
+                          Assign Enabler
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => setIsAssignCoEnablerDialogOpen(true)}>
+                          <UserCheck className="mr-2 h-4 w-4" />
+                          Assign Co-Enabler
+                        </Button>
+                      </>
+                    )}
+
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm">
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This will permanently delete the selected {selectedIds.size} contacts. This action cannot be undone.
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteSelected} className="bg-destructive hover:bg-destructive/90">
+                                Delete
+                            </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                     <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedIds(new Set())}
+                        className="ml-auto"
+                    >
+                        Deselect All
+                    </Button>
+                </div>
+            )}
         </div>
         
         {view === 'card' ? (
