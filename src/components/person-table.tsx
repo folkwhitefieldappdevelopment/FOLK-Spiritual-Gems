@@ -31,7 +31,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   Tooltip,
@@ -42,6 +41,8 @@ import {
 import { Checkbox } from './ui/checkbox';
 import type { SortDescriptor } from './sort-popover';
 import { ColumnHeaderFilter, type ColumnFilterState } from './column-header-filter';
+import { useAuth } from '@/contexts/auth-context';
+import { getWhatsAppTemplate } from '@/services/settings-service';
 
 type PersonTableProps = {
   people?: Person[];
@@ -79,6 +80,19 @@ export function PersonTable({
   setColumnFilters = () => {},
 }: PersonTableProps) {
   
+  const { appUser } = useAuth();
+  const [whatsAppTemplate, setWhatsAppTemplate] = React.useState('');
+
+  React.useEffect(() => {
+    const fetchTemplate = async () => {
+        if (appUser) {
+            const template = await getWhatsAppTemplate(appUser);
+            setWhatsAppTemplate(template);
+        }
+    };
+    fetchTemplate();
+  }, [appUser]);
+
   const isSelectionEnabled = !!selectedIds && !!setSelectedIds;
 
   const handleSelectAll = React.useCallback((checked: boolean) => {
@@ -208,13 +222,15 @@ export function PersonTable({
                         )
                         );
                     case 'phone':
+                        const message = whatsAppTemplate.replace('{name}', fullName);
+                        const link = `https://wa.me/91${person.phone.replace(/\s+/g, '')}?text=${encodeURIComponent(message)}`;
                         return (
                             <div className="flex items-center gap-3">
                                 <a href={`tel:${person.phone}`} className="flex items-center gap-2 text-sm text-primary hover:underline">
                                 <Phone className="h-4 w-4 shrink-0" />
                                 {person.phone}
                                 </a>
-                                <a href={`https://wa.me/91${person.phone.replace(/\s+/g, '')}`} target="_blank" rel="noopener noreferrer" aria-label="Open WhatsApp chat">
+                                <a href={link} target="_blank" rel="noopener noreferrer" aria-label="Open WhatsApp chat">
                                     <svg
                                         role="img"
                                         viewBox="0 0 24 24"

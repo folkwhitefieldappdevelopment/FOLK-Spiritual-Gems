@@ -1,4 +1,5 @@
 
+
 import { db } from '@/lib/firebase';
 import {
   doc,
@@ -41,10 +42,15 @@ const ensureSettingsDoc = async (userInfo: UserInfo) => {
         needsUpdate = true;
         updates.contactSources = defaultContactSources;
         updates.customPersonFields = [];
+        updates.whatsAppTemplate = "Hare Krishna {name}, ..."
     } else {
         if (!data.customPersonFields) {
             needsUpdate = true;
             updates.customPersonFields = [];
+        }
+        if (!data.whatsAppTemplate) {
+            needsUpdate = true;
+            updates.whatsAppTemplate = "Hare Krishna {name}, ..."
         }
     }
     
@@ -57,6 +63,7 @@ const ensureSettingsDoc = async (userInfo: UserInfo) => {
     return {
         contactSources: finalData.contactSources || defaultContactSources,
         customPersonFields: finalData.customPersonFields || [],
+        whatsAppTemplate: finalData.whatsAppTemplate || "Hare Krishna {name}, ...",
     };
 }
 
@@ -204,3 +211,16 @@ export const saveCustomPersonFields = async (fields: CustomField[], userInfo: Us
     await setDoc(settingsDocRef, { customPersonFields: fields }, { merge: true });
     await logAudit('Update Custom Fields', `Updated custom fields definition.`, userInfo);
 };
+
+// WhatsApp Template
+export const getWhatsAppTemplate = async (userInfo: UserInfo): Promise<string> => {
+    const settings = await ensureSettingsDoc(userInfo);
+    return settings.whatsAppTemplate;
+}
+
+export const saveWhatsAppTemplate = async (template: string, userInfo: UserInfo): Promise<void> => {
+    if (!userInfo) throw new Error("Authentication required.");
+    const settingsDocRef = doc(db, 'settings', 'options');
+    await setDoc(settingsDocRef, { whatsAppTemplate: template }, { merge: true });
+    await logAudit('Update WhatsApp Template', `Updated WhatsApp message template.`, userInfo);
+}

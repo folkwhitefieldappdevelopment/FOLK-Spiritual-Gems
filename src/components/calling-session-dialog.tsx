@@ -49,6 +49,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "./ui/separator";
 import { updatePerson } from "@/services/people-service";
+import { getWhatsAppTemplate } from "@/services/settings-service";
 import { updateUser } from "@/services/user-service";
 import { EditablePersonDetailsForm } from "./editable-person-details-form";
 import { useAuth } from "@/contexts/auth-context";
@@ -121,6 +122,7 @@ const CallingSessionDialogComponent = ({
   const [currentPeople, setCurrentPeople] = React.useState<Person[]>(people);
   const [isEditingDetails, setIsEditingDetails] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [whatsAppTemplate, setWhatsAppTemplate] = React.useState('');
 
   const [generalRemarks, setGeneralRemarks] = React.useState('');
   const [isNotesDirty, setIsNotesDirty] = React.useState(false);
@@ -154,6 +156,14 @@ const CallingSessionDialogComponent = ({
         setCurrentPeople(people);
         setIsEditingDetails(false);
         isIntentionalClose.current = false;
+
+        const fetchTemplate = async () => {
+            if (appUser) {
+                const template = await getWhatsAppTemplate(appUser);
+                setWhatsAppTemplate(template);
+            }
+        };
+        fetchTemplate();
         
         const timer = setTimeout(() => {
           setIsInitializing(false);
@@ -161,7 +171,7 @@ const CallingSessionDialogComponent = ({
 
         return () => clearTimeout(timer);
     }
-  }, [isOpen, people, initialIndex]);
+  }, [isOpen, people, initialIndex, appUser]);
 
   // Auto-save session on unmount (refresh, close tab, etc.)
   React.useEffect(() => {
@@ -347,6 +357,12 @@ const CallingSessionDialogComponent = ({
     return null;
   }
   
+  const whatsAppLink = () => {
+    if (!currentPerson) return '#';
+    const message = whatsAppTemplate.replace('{name}', currentPerson.fullName);
+    return `https://wa.me/91${currentPerson.phone.replace(/\s+/g, '')}?text=${encodeURIComponent(message)}`;
+  };
+  
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleCloseDialog()}>
       <DialogContent className="sm:max-w-4xl flex flex-col max-h-[90vh] p-0" onPointerDownOutside={(e) => e.preventDefault()}>
@@ -379,7 +395,7 @@ const CallingSessionDialogComponent = ({
                                 <a href={`tel:${currentPerson.phone}`}>Call Now</a>
                               </Button>
                               <Button asChild variant="outline" size="icon" aria-label="Open WhatsApp chat">
-                                <a href={`https://wa.me/91${currentPerson.phone.replace(/\s+/g, '')}`} target="_blank" rel="noopener noreferrer">
+                                <a href={whatsAppLink()} target="_blank" rel="noopener noreferrer">
                                     <svg
                                         role="img"
                                         viewBox="0 0 24 24"

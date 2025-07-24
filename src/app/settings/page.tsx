@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 import { useAuth } from '@/contexts/auth-context';
@@ -39,15 +39,55 @@ import {
   deleteContactSource,
   getCustomPersonFields,
   saveCustomPersonFields,
+  getWhatsAppTemplate,
+  saveWhatsAppTemplate,
 } from '@/services/settings-service';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { CustomField, CustomFieldType } from '@/lib/types';
 import { customFieldTypes } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AuthGuard } from '@/components/auth-guard';
+import { Textarea } from '@/components/ui/textarea';
 
 type DialogMode = 'add' | 'edit';
 type ItemType = 'source' | 'customField';
+
+function WhatsAppTemplateCard({ initialTemplate, onSave }: { initialTemplate: string, onSave: (template: string) => Promise<void> }) {
+  const [template, setTemplate] = React.useState(initialTemplate);
+  const [isSaving, setIsSaving] = React.useState(false);
+  const isDirty = template !== initialTemplate;
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    await onSave(template);
+    setIsSaving(false);
+  };
+
+  return (
+     <Card>
+      <CardHeader>
+        <CardTitle>WhatsApp Message Template</CardTitle>
+        <CardDescription>
+          Set a default message to pre-fill when clicking the WhatsApp icon. Use <code className="bg-muted px-1 py-0.5 rounded-sm">{'{name}'}</code> as a placeholder for the contact's name.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Textarea
+          value={template}
+          onChange={(e) => setTemplate(e.target.value)}
+          placeholder="e.g., Hare Krishna {name}, ..."
+          className="min-h-[120px]"
+        />
+        <div className="flex justify-end">
+          <Button onClick={handleSave} disabled={isSaving || !isDirty}>
+            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save Template
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 function SettingsPageComponent() {
   const { toast } = useToast();
@@ -57,6 +97,7 @@ function SettingsPageComponent() {
 
   const [sources, setSources] = React.useState<string[]>([]);
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
+  const [whatsAppTemplate, setWhatsAppTemplate] = React.useState('');
   
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [dialogMode, setDialogMode] = React.useState<DialogMode>('add');
@@ -77,12 +118,14 @@ function SettingsPageComponent() {
       setFetchError(null);
       try {
         const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-        const [sourcesData, customFieldsData] = await Promise.all([
+        const [sourcesData, customFieldsData, templateData] = await Promise.all([
           getContactSources(userInfo),
           getCustomPersonFields(userInfo),
+          getWhatsAppTemplate(userInfo),
         ]);
         setSources(sourcesData);
         setCustomFields(customFieldsData);
+        setWhatsAppTemplate(templateData);
       } catch (error) {
         console.error('Failed to load settings data', error);
         if (error instanceof Error) {
@@ -187,6 +230,18 @@ function SettingsPageComponent() {
       }
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not delete the item.' });
+    }
+  };
+
+  const handleSaveWhatsAppTemplate = async (template: string) => {
+    if (!appUser) return;
+    try {
+        const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+        await saveWhatsAppTemplate(template, userInfo);
+        setWhatsAppTemplate(template);
+        toast({ title: 'WhatsApp Template Saved' });
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not save the template.' });
     }
   };
   
@@ -386,6 +441,7 @@ function SettingsPageComponent() {
                 <FirebaseConfigError error={fetchError} />
             ) : (
               <div className="mx-auto max-w-4xl space-y-8">
+                <WhatsAppTemplateCard initialTemplate={whatsAppTemplate} onSave={handleSaveWhatsAppTemplate} />
                 <div>
                     <div className="flex justify-end mb-4">
                         <Button onClick={() => openDialog('add', 'source')}>
