@@ -50,7 +50,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
   Pagination,
@@ -70,7 +69,7 @@ import {
   assignEnablerToPeople,
 } from "@/services/people-service";
 import { getAllGroups, createGroup, addPeopleToGroup } from "@/services/groups-service";
-import { getFolkGuides } from "@/services/user-service";
+import { getFolkGuides, getEnablersForGuide, getUsers } from "@/services/user-service";
 import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
 import { useAuth } from "@/contexts/auth-context";
 import { CreateUpdateGroupDialog } from "@/components/create-update-group-dialog";
@@ -102,6 +101,7 @@ function ContactsPageComponent() {
   const searchParams = useSearchParams();
 
   const [allFetchedPeople, setAllFetchedPeople] = React.useState<Person[]>([]);
+  const [allUsers, setAllUsers] = React.useState<AppUser[]>([]);
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
@@ -131,7 +131,8 @@ function ContactsPageComponent() {
 
   const canAssignUsers = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
   const isAdmin = appUser?.role.includes('Admin');
-  const isEnablerOnly = appUser?.role.includes('Folk Enabler') && !appUser?.role.includes('Admin') && !appUser?.role.includes('Folk Guide');
+  const isGuide = appUser?.role.includes('Folk Guide');
+  const isEnablerOnly = appUser?.role.includes('Folk Enabler') && !isAdmin && !isGuide;
   
   // Set initial state from URL search params
   React.useEffect(() => {
@@ -202,14 +203,15 @@ function ContactsPageComponent() {
       const { people: peopleData } = await getPeople(userInfo, { pageSize: FIRESTORE_QUERY_LIMIT });
       setAllFetchedPeople(peopleData);
       
-      const [enablersData, sourcesData, groupsData, guidesData, customFieldsData] = await Promise.all([
+      const [allUsersData, enablersData, sourcesData, groupsData, guidesData, customFieldsData] = await Promise.all([
+        getUsers(),
         getEnablers(userInfo, 'filter'),
         getContactSources(userInfo),
         getAllGroups(userInfo),
         getFolkGuides(),
         getCustomPersonFields(userInfo),
       ]);
-
+      setAllUsers(allUsersData);
       setEnablerOptions(enablersData);
       setContactSourceOptions(sourcesData);
       setGroups(groupsData);
@@ -248,7 +250,7 @@ function ContactsPageComponent() {
     ];
 
     if (isAdmin) {
-        fields.push({ value: 'folkGuide', label: 'Folk Guide', type: 'enum', options: folkGuides.map(g => ({ value: g.name, label: `${g.name} (${g.fgCode || 'N/A'})` })) });
+        fields.push({ value: 'folkGuide', label: 'Folk Guide', type: 'enum', options: folkGuides.map(g => ({ value: `${g.name} (${g.fgCode || 'N/A'})`, label: `${g.name} (${g.fgCode || 'N/A'})` })) });
     }
 
     return fields;
@@ -299,7 +301,13 @@ function ContactsPageComponent() {
     return filteredAndSortedPeople.slice(startIndex, startIndex + ROWS_PER_PAGE);
   }, [filteredAndSortedPeople, currentPage]);
 
-  const handleSampleDownload = React.useCallback(() => {
+  const handleSampleDownload = React.useCallback(async () => {
+    if (!appUser) return;
+    let enablersUnderGuide: AppUser[] = [];
+    if (isGuide) {
+      enablersUnderGuide = await getEnablersForGuide(appUser.id);
+    }
+    
     const baseHeaders = [
       "fullName", "phone", "photoUrl", "age", "stayingWith",
       "occupation", "organisation", "rentDetails", "nativePlace", "sgRating",
@@ -309,7 +317,10 @@ function ContactsPageComponent() {
 
     let fullHeaders = [...baseHeaders];
     if (!isEnablerOnly) {
-      fullHeaders.push("enablerInTouchWith", "folkGuide");
+      fullHeaders.push("enablerInTouchWith");
+    }
+    if (isAdmin) {
+      fullHeaders.push("folkGuide");
     }
 
     const customHeaders = customFields.map(f => f.label);
@@ -322,9 +333,12 @@ function ContactsPageComponent() {
       chantingStatus: 4, fromOtherCamp: false,
       generalRemarks: "Is progressing well in spiritual life.", lastCallRemark: "Confirmed for Sunday feast.",
     };
+
     if (!isEnablerOnly) {
-      dummyContact.enablerInTouchWith = "Sarthak";
-      dummyContact.folkGuide = "Guide Name (FG01)";
+      dummyContact.enablerInTouchWith = isGuide ? (enablersUnderGuide[0]?.name || appUser.name) : (allUsers.find(u => u.role.includes('Folk Enabler'))?.name || '');
+    }
+    if (isAdmin) {
+      dummyContact.folkGuide = `${folkGuides[0]?.name} (${folkGuides[0]?.fgCode || 'N/A'})` || '';
     }
 
     customFields.forEach(f => {
@@ -332,6 +346,41 @@ function ContactsPageComponent() {
     });
 
     const worksheet = utils.json_to_sheet([dummyContact], { header: headers });
+    
+    // Add data validation (dropdowns)
+    const enablerCol = utils.encode_col(headers.indexOf("enablerInTouchWith"));
+    const guideCol = utils.encode_col(headers.indexOf("folkGuide"));
+    
+    worksheet["!dataValidation"] = [];
+
+    if (!isEnablerOnly) {
+      let enablerList: string[] = [];
+      if (isAdmin) {
+        enablerList = allUsers
+          .filter(u => u.role.includes('Folk Enabler') || u.role.includes('Folk Guide'))
+          .map(u => u.name)
+          .sort();
+      } else if (isGuide) {
+        enablerList = [appUser.name, ...enablersUnderGuide.map(e => e.name)].sort();
+      }
+      if (enablerList.length > 0) {
+        worksheet["!dataValidation"].push({
+          sqref: `${enablerCol}2:${enablerCol}1048576`, // Apply to whole column
+          validation: { type: "list", allowBlank: "1", formulae: [`"${enablerList.join(',')}"`]}
+        });
+      }
+    }
+
+    if (isAdmin) {
+      const guideList = folkGuides.map(g => `${g.name} (${g.fgCode || 'N/A'})`).sort();
+      if (guideList.length > 0) {
+        worksheet["!dataValidation"].push({
+            sqref: `${guideCol}2:${guideCol}1048576`,
+            validation: { type: "list", allowBlank: "1", formulae: [`"${guideList.join(',')}"`] }
+        });
+      }
+    }
+
     const workbook = utils.book_new();
     utils.book_append_sheet(workbook, worksheet, "Contacts");
     
@@ -345,7 +394,7 @@ function ContactsPageComponent() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(link.href);
-  }, [customFields, isEnablerOnly]);
+  }, [customFields, isEnablerOnly, isAdmin, isGuide, appUser, folkGuides, allUsers]);
 
   const handleExport = React.useCallback(async () => {
     if (filteredAndSortedPeople.length === 0 || !appUser) {
@@ -412,6 +461,7 @@ function ContactsPageComponent() {
         chantingStatus: p.chantingStatus,
         fromOtherCamp: p.fromOtherCamp,
         enablerInTouchWith: p.enablerInTouchWith,
+        folkGuide: p.folkGuide,
         generalRemarks: p.generalRemarks || '',
         lastCallRemark: p.lastCallRemark || '',
         lastCallStatus: p.lastCallStatus || '',
@@ -766,7 +816,7 @@ function ContactsPageComponent() {
     return (
       <>
         <div className="mb-6 flex flex-col gap-4">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex items-center gap-2 flex-wrap flex-1">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -996,7 +1046,7 @@ function ContactsPageComponent() {
                           <TooltipContent side="bottom" className="max-w-xs">
                               <p className="font-semibold">Import/Export Guide</p>
                               <ul className="list-disc pl-4 mt-2 space-y-1 text-xs">
-                                  <li>Put your contacts in the sample Excel file to import.</li>
+                                  <li>Use "Download Sample Excel" to get a template with dropdowns for easy assignment.</li>
                                   <li>Export is best for up to 500 contacts with photos, or thousands without.</li>
                                   <li>Import can handle up to 10,000 contacts at once.</li>
                               </ul>
