@@ -16,6 +16,7 @@ import {
   Headset,
   Edit,
   Play,
+  Share2,
 } from 'lucide-react';
 import type { Person, Group, AppUser, CustomField, CallStatus, UserRole } from '@/lib/types';
 import { occupationStatuses, callStatuses } from "@/lib/types";
@@ -77,6 +78,7 @@ import { AuthGuard } from '@/components/auth-guard';
 import { logAudit } from '@/services/audit-service';
 import { dynamicGroupDefinitions } from '@/lib/dynamic-groups';
 import { useRouter, useSearchParams, usePathname, useParams } from 'next/navigation';
+import { ShareGroupDialog } from '@/components/share-group-dialog';
 
 const ROWS_PER_PAGE = 10;
 const FIRESTORE_QUERY_LIMIT = 10000;
@@ -120,6 +122,7 @@ function GroupDetailPageComponent() {
   
   const [isManageMembersDialogOpen, setIsManageMembersDialogOpen] = React.useState(false);
   const [isAssignCoEnablerDialogOpen, setIsAssignCoEnablerDialogOpen] = React.useState(false);
+  const [isShareGroupDialogOpen, setIsShareGroupDialogOpen] = React.useState(false);
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(undefined);
   const isSelectionActive = selectedIds.size > 0;
   
@@ -663,6 +666,7 @@ function GroupDetailPageComponent() {
                     <div className="flex items-center gap-2">
                       <Button variant="outline" size="sm" className="w-9 sm:w-auto" onClick={() => router.back()}><ArrowLeft className="h-4 w-4 mr-0 sm:mr-2" /><span className="hidden sm:inline">Back</span></Button>
                       {!group.isDynamic && <Button size="sm" className="w-9 sm:w-auto" onClick={() => setIsManageMembersDialogOpen(true)}><UserPlus className="h-4 w-4 mr-0 sm:mr-2" /><span className="hidden sm:inline">Manage Members</span></Button>}
+                      <Button size="sm" variant="outline" className="w-9 sm:w-auto" onClick={() => setIsShareGroupDialogOpen(true)}><Share2 className="h-4 w-4 mr-0 sm:mr-2" /><span className="hidden sm:inline">Share</span></Button>
                     </div>
                 </PageHeader>
             )}
@@ -676,6 +680,7 @@ function GroupDetailPageComponent() {
       {editingPerson && <CreateUpdatePersonDialog isOpen={!!editingPerson} setIsOpen={() => setEditingPerson(undefined)} onSave={handleSavePersonDialog} person={editingPerson} allPeople={allPeople} />}
       {group && !group.isDynamic && <ManageGroupMembersDialog isOpen={isManageMembersDialogOpen} setIsOpen={setIsManageMembersDialogOpen} onSave={handleSaveMembers} group={group} allPeople={allPeople} />}
       {isAssignCoEnablerDialogOpen && <AssignCoEnablerDialog isOpen={isAssignCoEnablerDialogOpen} setIsOpen={setIsAssignCoEnablerDialogOpen} onSave={handleAssignCoEnabler} peopleCount={selectedIds.size} />}
+      {group && <ShareGroupDialog isOpen={isShareGroupDialogOpen} setIsOpen={setIsShareGroupDialogOpen} group={group} members={members} />}
       <Dialog open={isEventDialogOpen} onOpenChange={setIsEventDialogOpen}>
         <DialogContent>
           <DialogHeader>
