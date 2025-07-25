@@ -15,7 +15,7 @@ import {
   Info,
   UserPlus,
 } from "lucide-react";
-import { read, utils, write } from "xlsx";
+import { read, utils, write, type WorkSheet } from "xlsx";
 import JSZip from "jszip";
 import { createInitialProgress } from "@/lib/data";
 import type { Person, Group, AppUser, CustomField, UserRole } from "@/lib/types";
@@ -345,40 +345,47 @@ function ContactsPageComponent() {
       dummyContact[f.label] = f.type === 'number' ? 123 : f.type === 'boolean' ? true : `Sample ${f.type} data`;
     });
 
-    const worksheet = utils.json_to_sheet([dummyContact], { header: headers });
+    const worksheet: WorkSheet = utils.json_to_sheet([dummyContact], { header: headers });
     
-    // Add data validation (dropdowns)
-    const enablerCol = utils.encode_col(headers.indexOf("enablerInTouchWith"));
-    const guideCol = utils.encode_col(headers.indexOf("folkGuide"));
-    
-    worksheet["!dataValidation"] = [];
+    // Correctly apply data validation (dropdowns)
+    const MAX_ROWS = 1000; // Apply validation for a reasonable number of rows
+    if (!worksheet['!dataValidation']) worksheet['!dataValidation'] = [];
 
     if (!isEnablerOnly) {
-      let enablerList: string[] = [];
-      if (isAdmin) {
-        enablerList = allUsers
-          .filter(u => u.role.includes('Folk Enabler') || u.role.includes('Folk Guide'))
-          .map(u => u.name)
-          .sort();
-      } else if (isGuide) {
-        enablerList = [appUser.name, ...enablersUnderGuide.map(e => e.name)].sort();
-      }
-      if (enablerList.length > 0) {
-        worksheet["!dataValidation"].push({
-          sqref: `${enablerCol}2:${enablerCol}1048576`, // Apply to whole column
-          validation: { type: "list", allowBlank: "1", formulae: [`"${enablerList.join(',')}"`]}
-        });
-      }
+        let enablerList: string[] = [];
+        if (isAdmin) {
+            enablerList = allUsers
+              .filter(u => u.role.includes('Folk Enabler') || u.role.includes('Folk Guide'))
+              .map(u => u.name)
+              .sort();
+        } else if (isGuide) {
+            enablerList = [appUser.name, ...enablersUnderGuide.map(e => e.name)].sort();
+        }
+
+        if (enablerList.length > 0) {
+            const enablerColIndex = headers.indexOf("enablerInTouchWith");
+            if (enablerColIndex !== -1) {
+                const enablerCol = utils.encode_col(enablerColIndex);
+                worksheet['!dataValidation'].push({
+                    sqref: `${enablerCol}2:${enablerCol}${MAX_ROWS}`,
+                    validation: { type: "list", allowBlank: true, showDropDown: true, formulae: [`"${enablerList.join(',')}"`]}
+                });
+            }
+        }
     }
 
     if (isAdmin) {
-      const guideList = folkGuides.map(g => `${g.name} (${g.fgCode || 'N/A'})`).sort();
-      if (guideList.length > 0) {
-        worksheet["!dataValidation"].push({
-            sqref: `${guideCol}2:${guideCol}1048576`,
-            validation: { type: "list", allowBlank: "1", formulae: [`"${guideList.join(',')}"`] }
-        });
-      }
+        const guideList = folkGuides.map(g => `${g.name} (${g.fgCode || 'N/A'})`).sort();
+        if (guideList.length > 0) {
+            const guideColIndex = headers.indexOf("folkGuide");
+            if (guideColIndex !== -1) {
+                const guideCol = utils.encode_col(guideColIndex);
+                worksheet['!dataValidation'].push({
+                    sqref: `${guideCol}2:${guideCol}${MAX_ROWS}`,
+                    validation: { type: "list", allowBlank: true, showDropDown: true, formulae: [`"${guideList.join(',')}"`]}
+                });
+            }
+        }
     }
 
     const workbook = utils.book_new();
@@ -596,7 +603,7 @@ function ContactsPageComponent() {
         for (let i = 0; i < allNewPeople.length; i += IMPORT_BATCH_SIZE) {
             const batch = allNewPeople.slice(i, i + IMPORT_BATCH_SIZE);
             setImportingStatus(`Importing ${i + batch.length} of ${allNewPeople.length}...`);
-            await importPeople(batch, userInfo);
+            await importPeople(batch, appUser);
         }
 
         await fetchPageData();
