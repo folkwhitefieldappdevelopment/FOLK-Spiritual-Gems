@@ -358,10 +358,44 @@ function ContactsPageComponent() {
       dummyContact[f.label] = f.type === 'number' ? 123 : f.type === 'boolean' ? true : `Sample ${f.type} data`;
     });
 
+    const workbook = utils.book_new();
+
+    // 1. Create Instructions Sheet
+    const instructionsData = [
+        { Column: 'fullName', Instruction: 'Required. Full name of the contact.', Example: 'John Doe' },
+        { Column: 'phone', Instruction: 'Required. 10-digit Indian mobile number without country code.', Example: '9876543210' },
+        { Column: 'photoUrl', Instruction: 'Optional. A public URL to an image.', Example: 'https://placehold.co/100x100.png' },
+        { Column: 'age', Instruction: 'Optional. A number between 16 and 40.', Example: '25' },
+        { Column: 'stayingWith', Instruction: 'Optional. Must be one of: PG / Hostel, Flat, Family.', Example: 'PG / Hostel' },
+        { Column: 'occupation', Instruction: 'Optional. Must be one of: Working, Student, Searching for job.', Example: 'Working' },
+        { Column: 'organisation', Instruction: 'Optional. Name of company or college.', Example: 'Acme Inc.' },
+        { Column: 'rentDetails', Instruction: 'Optional. Text field for rent details.', Example: '7000/month' },
+        { Column: 'nativePlace', Instruction: 'Optional. Text field for native place.', Example: 'Mumbai' },
+        { Column: 'sgRating', Instruction: 'Optional. A number from 0 to 5.', Example: '4' },
+        { Column: 'contactSource', Instruction: 'Optional. Source from where contact was acquired.', Example: 'Govinda Temple' },
+        { Column: 'chantingStatus', Instruction: 'Optional. Number of rounds chanted per day.', Example: '4' },
+        { Column: 'fromOtherCamp', Instruction: 'Optional. Enter TRUE or FALSE.', Example: 'FALSE' },
+        { Column: 'generalRemarks', Instruction: 'Optional. Any general notes about the contact.', Example: 'Is progressing well.' },
+        { Column: 'lastCallRemark', Instruction: 'Optional. Remark from the most recent call.', Example: 'Confirmed for Sunday feast.' },
+    ];
+    if (!isEnablerOnly) {
+        instructionsData.push({ Column: 'enablerInTouchWith', Instruction: 'Optional. Must be an exact name from the "Dropdown Values" sheet.', Example: enablerList[0] || 'Enabler Name' });
+    }
+    if (isAdmin) {
+        instructionsData.push({ Column: 'folkGuide', Instruction: 'Optional. Must be an exact name from the "Dropdown Values" sheet.', Example: guideList[0] || 'Guide Name (FG01)' });
+    }
+    customFields.forEach(f => {
+        instructionsData.push({ Column: f.label, Instruction: `Optional. Custom field of type: ${f.type}.`, Example: `Sample ${f.type} data` });
+    });
+    
+    const instructionsSheet = utils.json_to_sheet(instructionsData);
+    instructionsSheet['!cols'] = [{ wch: 20 }, { wch: 80 }, { wch: 30 }];
+    utils.book_append_sheet(workbook, instructionsSheet, "Instructions");
+
+    // 2. Create Contacts Sheet
     const worksheet: WorkSheet = utils.json_to_sheet([dummyContact], { header: headers });
     
-    // Correctly apply data validation (dropdowns)
-    const MAX_ROWS = 1000; // Apply validation for a reasonable number of rows
+    const MAX_ROWS = 1000;
     if (!worksheet['!dataValidation']) worksheet['!dataValidation'] = [];
 
     if (!isEnablerOnly && enablerList.length > 0) {
@@ -370,7 +404,7 @@ function ContactsPageComponent() {
             const enablerCol = utils.encode_col(enablerColIndex);
             worksheet['!dataValidation'].push({
                 sqref: `${enablerCol}2:${enablerCol}${MAX_ROWS}`,
-                validation: { type: "list", allowBlank: true, showDropDown: true, formulae: [`"${enablerList.join(',')}"`]}
+                validation: { type: "list", allowBlank: true, showDropDown: true, formulae: [`"=""&INDIRECT("'Dropdown Values'!B2:B${enablerList.length + 1}")`]}
             });
         }
     }
@@ -381,15 +415,14 @@ function ContactsPageComponent() {
             const guideCol = utils.encode_col(guideColIndex);
             worksheet['!dataValidation'].push({
                 sqref: `${guideCol}2:${guideCol}${MAX_ROWS}`,
-                validation: { type: "list", allowBlank: true, showDropDown: true, formulae: [`"${guideList.join(',')}"`]}
+                validation: { type: "list", allowBlank: true, showDropDown: true, formulae: [`"=""&INDIRECT("'Dropdown Values'!A2:A${guideList.length + 1}")`]}
             });
         }
     }
-
-    const workbook = utils.book_new();
+    
     utils.book_append_sheet(workbook, worksheet, "Contacts");
     
-    // Create the second sheet for dropdown values
+    // 3. Create Dropdown Values Sheet
     if (enablerList.length > 0 || guideList.length > 0) {
         const maxLength = Math.max(guideList.length, enablerList.length);
         const dropdownSheetData = [];
@@ -400,11 +433,13 @@ function ContactsPageComponent() {
             });
         }
         const dropdownWorksheet = utils.json_to_sheet(dropdownSheetData);
-        // Adjust column widths for better readability
         dropdownWorksheet['!cols'] = [{ wch: 30 }, { wch: 30 }];
         utils.book_append_sheet(workbook, dropdownWorksheet, "Dropdown Values");
     }
-    
+
+    // Reorder sheets to put Instructions first
+    workbook.SheetNames.unshift(workbook.SheetNames.pop()!); // Move last sheet (Instructions) to front
+
     const excelBuffer = write(workbook, { bookType: "xlsx", type: "array" });
     const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8" });
     
@@ -542,7 +577,10 @@ function ContactsPageComponent() {
       try {
         const data = e.target?.result;
         const workbook = read(data, { type: "array" });
-        const sheetName = workbook.SheetNames[0];
+        const sheetName = workbook.SheetNames.find(name => name === 'Contacts');
+        if (!sheetName) {
+            throw new Error("Could not find a 'Contacts' sheet in the imported file.");
+        }
         const worksheet = workbook.Sheets[sheetName];
         const json = utils.sheet_to_json<any>(worksheet);
 
