@@ -131,6 +131,7 @@ function ContactsPageComponent() {
 
   const canAssignUsers = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
   const isAdmin = appUser?.role.includes('Admin');
+  const isEnablerOnly = appUser?.role.includes('Folk Enabler') && !appUser?.role.includes('Admin') && !appUser?.role.includes('Folk Guide');
   
   // Set initial state from URL search params
   React.useEffect(() => {
@@ -302,19 +303,29 @@ function ContactsPageComponent() {
     const baseHeaders = [
       "fullName", "phone", "photoUrl", "age", "stayingWith",
       "occupation", "organisation", "rentDetails", "nativePlace", "sgRating",
-      "contactSource", "chantingStatus", "fromOtherCamp", "enablerInTouchWith",
+      "contactSource", "chantingStatus", "fromOtherCamp",
       "generalRemarks", "lastCallRemark",
     ];
+
+    let fullHeaders = [...baseHeaders];
+    if (!isEnablerOnly) {
+      fullHeaders.push("enablerInTouchWith", "folkGuide");
+    }
+
     const customHeaders = customFields.map(f => f.label);
-    const headers = [...baseHeaders, ...customHeaders];
+    const headers = [...fullHeaders, ...customHeaders];
 
     const dummyContact: {[key: string]: any} = {
       fullName: "John Doe", phone: "9876543210", photoUrl: "https://placehold.co/100x100.png",
       age: 25, stayingWith: "PG / Hostel", occupation: "Working", organisation: "Acme Inc.",
       rentDetails: "7000/month", nativePlace: "Mumbai", sgRating: 4, contactSource: "Govinda Temple",
-      chantingStatus: 4, fromOtherCamp: false, enablerInTouchWith: "Sarthak",
+      chantingStatus: 4, fromOtherCamp: false,
       generalRemarks: "Is progressing well in spiritual life.", lastCallRemark: "Confirmed for Sunday feast.",
     };
+    if (!isEnablerOnly) {
+      dummyContact.enablerInTouchWith = "Sarthak";
+      dummyContact.folkGuide = "Guide Name (FG01)";
+    }
 
     customFields.forEach(f => {
       dummyContact[f.label] = f.type === 'number' ? 123 : f.type === 'boolean' ? true : `Sample ${f.type} data`;
@@ -334,7 +345,7 @@ function ContactsPageComponent() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(link.href);
-  }, [customFields]);
+  }, [customFields, isEnablerOnly]);
 
   const handleExport = React.useCallback(async () => {
     if (filteredAndSortedPeople.length === 0 || !appUser) {
@@ -486,7 +497,6 @@ function ContactsPageComponent() {
             const occupation = ["Working", "Student", "Searching for job"].includes(row.occupation) ? row.occupation : "Working";
             const photoUrlValue = String(row.photoUrl || '').trim();
             const isValidPhotoUrl = photoUrlValue.startsWith('http') || photoUrlValue.startsWith('data:image');
-            const enablerValue = String(row.enablerInTouchWith || '').trim();
             const chantingStatus = parseInt(String(row.chantingStatus), 10);
             const isValidChanting = !isNaN(chantingStatus) && chantingStatus >= 0;
 
@@ -512,7 +522,8 @@ function ContactsPageComponent() {
               contactSource: String(row.contactSource || ""),
               chantingStatus: isValidChanting ? chantingStatus : 0,
               fromOtherCamp: String(row.fromOtherCamp).toLowerCase() === 'yes' || String(row.fromOtherCamp) === 'true',
-              enablerInTouchWith: enablerValue,
+              enablerInTouchWith: String(row.enablerInTouchWith || '').trim(),
+              folkGuide: String(row.folkGuide || '').trim(),
               photoUrl: isValidPhotoUrl ? photoUrlValue : `https://placehold.co/100x100.png`,
               progress: createInitialProgress(),
               customData: rowCustomData,

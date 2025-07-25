@@ -211,55 +211,55 @@ export const deletePeople = async (ids: string[], userInfo: UserInfo): Promise<v
 
 export const importPeople = async (
     people: Omit<Person, 'id' | 'createdAt'>[],
-    userInfo: UserInfo
+    appUser: AppUser
 ): Promise<void> => {
   if (people.length === 0) return;
 
-  const peopleCollection = collection(db, 'people');
+  const batch = writeBatch(db);
   for (const person of people) {
+    const peopleCollection = collection(db, 'people');
     const q = query(peopleCollection, where("phone", "==", person.phone));
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
         console.warn(`Skipping import for duplicate phone number: ${person.phone}`);
         continue;
     }
-
+    
+    const docRef = doc(collection(db, 'people'));
     let assignedEnabler = person.enablerInTouchWith;
     let { folkGuide, folkGuideId } = person;
 
-    if (!folkGuideId && !folkGuide) {
-      if (userInfo.role.includes('Folk Guide')) {
-        folkGuideId = userInfo.id;
-        folkGuide = `${userInfo.name}`;
+    // Auto-assign Folk Guide and Enabler if importer is an enabler
+    if (appUser.role.includes('Folk Enabler') && !appUser.role.includes('Admin') && !appUser.role.includes('Folk Guide')) {
+      assignedEnabler = appUser.name;
+      if (appUser.reportsTo) {
+          folkGuideId = appUser.reportsTo.guideId;
+          folkGuide = `${appUser.reportsTo.guideName} (${appUser.reportsTo.guideFgCode || 'N/A'})`;
+      } else {
+        folkGuide = '';
+        folkGuideId = '';
+      }
+    } else { // For Admins and Guides, trust the sheet, but fall back if needed
+      if (!folkGuideId && !folkGuide) {
+        if (appUser.role.includes('Folk Guide')) {
+          folkGuideId = appUser.id;
+          folkGuide = `${appUser.name} (${appUser.fgCode || 'N/A'})`;
+        }
       }
     }
-
+    
     const dataToSave = {
-        fullName: person.fullName || '',
-        phone: person.phone || '',
-        photoUrl: person.photoUrl || 'https://placehold.co/100x100.png',
-        age: person.age || 18,
-        stayingWith: person.stayingWith || 'Family',
-        occupation: person.occupation || 'Working',
-        organisation: person.organisation || '',
-        rentDetails: person.rentDetails || '',
-        nativePlace: person.nativePlace || '',
-        sgRating: person.sgRating || 0,
-        contactSource: person.contactSource || '',
-        chantingStatus: person.chantingStatus || 0,
-        fromOtherCamp: person.fromOtherCamp || false,
-        progress: person.progress,
-        customData: person.customData || {},
+        ...person,
         enablerInTouchWith: assignedEnabler || '',
         folkGuide: folkGuide || '',
         folkGuideId: folkGuideId || '',
-        lastCallRemark: person.lastCallRemark || '',
         createdAt: serverTimestamp()
     };
-    await addDoc(peopleCollection, dataToSave);
+    batch.set(docRef, dataToSave);
   }
   
-  await logAudit('Import Contacts', `Imported ${people.length} contacts from a file.`, userInfo);
+  await batch.commit();
+  await logAudit('Import Contacts', `Imported ${people.length} contacts from a file.`, appUser);
 };
 
 export const assignCoEnablerToPeople = async (personIds: string[], coEnabler: AppUser | null, userInfo: UserInfo): Promise<void> => {
