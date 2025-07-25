@@ -334,11 +334,24 @@ function ContactsPageComponent() {
       generalRemarks: "Is progressing well in spiritual life.", lastCallRemark: "Confirmed for Sunday feast.",
     };
 
+    let enablerList: string[] = [];
+    let guideList: string[] = [];
+
     if (!isEnablerOnly) {
-      dummyContact.enablerInTouchWith = isGuide ? (enablersUnderGuide[0]?.name || appUser.name) : (allUsers.find(u => u.role.includes('Folk Enabler'))?.name || '');
+      if (isAdmin) {
+          enablerList = allUsers
+            .filter(u => u.role.includes('Folk Enabler') || u.role.includes('Folk Guide'))
+            .map(u => u.name)
+            .sort();
+      } else if (isGuide) {
+          enablerList = [appUser.name, ...enablersUnderGuide.map(e => e.name)].sort();
+      }
+      dummyContact.enablerInTouchWith = enablerList[0] || '';
     }
+    
     if (isAdmin) {
-      dummyContact.folkGuide = `${folkGuides[0]?.name} (${folkGuides[0]?.fgCode || 'N/A'})` || '';
+      guideList = folkGuides.map(g => `${g.name} (${g.fgCode || 'N/A'})`).sort();
+      dummyContact.folkGuide = guideList[0] || '';
     }
 
     customFields.forEach(f => {
@@ -351,45 +364,46 @@ function ContactsPageComponent() {
     const MAX_ROWS = 1000; // Apply validation for a reasonable number of rows
     if (!worksheet['!dataValidation']) worksheet['!dataValidation'] = [];
 
-    if (!isEnablerOnly) {
-        let enablerList: string[] = [];
-        if (isAdmin) {
-            enablerList = allUsers
-              .filter(u => u.role.includes('Folk Enabler') || u.role.includes('Folk Guide'))
-              .map(u => u.name)
-              .sort();
-        } else if (isGuide) {
-            enablerList = [appUser.name, ...enablersUnderGuide.map(e => e.name)].sort();
-        }
-
-        if (enablerList.length > 0) {
-            const enablerColIndex = headers.indexOf("enablerInTouchWith");
-            if (enablerColIndex !== -1) {
-                const enablerCol = utils.encode_col(enablerColIndex);
-                worksheet['!dataValidation'].push({
-                    sqref: `${enablerCol}2:${enablerCol}${MAX_ROWS}`,
-                    validation: { type: "list", allowBlank: true, showDropDown: true, formulae: [`"${enablerList.join(',')}"`]}
-                });
-            }
+    if (!isEnablerOnly && enablerList.length > 0) {
+        const enablerColIndex = headers.indexOf("enablerInTouchWith");
+        if (enablerColIndex !== -1) {
+            const enablerCol = utils.encode_col(enablerColIndex);
+            worksheet['!dataValidation'].push({
+                sqref: `${enablerCol}2:${enablerCol}${MAX_ROWS}`,
+                validation: { type: "list", allowBlank: true, showDropDown: true, formulae: [`"${enablerList.join(',')}"`]}
+            });
         }
     }
 
-    if (isAdmin) {
-        const guideList = folkGuides.map(g => `${g.name} (${g.fgCode || 'N/A'})`).sort();
-        if (guideList.length > 0) {
-            const guideColIndex = headers.indexOf("folkGuide");
-            if (guideColIndex !== -1) {
-                const guideCol = utils.encode_col(guideColIndex);
-                worksheet['!dataValidation'].push({
-                    sqref: `${guideCol}2:${guideCol}${MAX_ROWS}`,
-                    validation: { type: "list", allowBlank: true, showDropDown: true, formulae: [`"${guideList.join(',')}"`]}
-                });
-            }
+    if (isAdmin && guideList.length > 0) {
+        const guideColIndex = headers.indexOf("folkGuide");
+        if (guideColIndex !== -1) {
+            const guideCol = utils.encode_col(guideColIndex);
+            worksheet['!dataValidation'].push({
+                sqref: `${guideCol}2:${guideCol}${MAX_ROWS}`,
+                validation: { type: "list", allowBlank: true, showDropDown: true, formulae: [`"${guideList.join(',')}"`]}
+            });
         }
     }
 
     const workbook = utils.book_new();
     utils.book_append_sheet(workbook, worksheet, "Contacts");
+    
+    // Create the second sheet for dropdown values
+    if (enablerList.length > 0 || guideList.length > 0) {
+        const maxLength = Math.max(guideList.length, enablerList.length);
+        const dropdownSheetData = [];
+        for (let i = 0; i < maxLength; i++) {
+            dropdownSheetData.push({
+                "Valid Folk Guides": guideList[i] || '',
+                "Valid Enablers": enablerList[i] || '',
+            });
+        }
+        const dropdownWorksheet = utils.json_to_sheet(dropdownSheetData);
+        // Adjust column widths for better readability
+        dropdownWorksheet['!cols'] = [{ wch: 30 }, { wch: 30 }];
+        utils.book_append_sheet(workbook, dropdownWorksheet, "Dropdown Values");
+    }
     
     const excelBuffer = write(workbook, { bookType: "xlsx", type: "array" });
     const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8" });
@@ -823,7 +837,7 @@ function ContactsPageComponent() {
     return (
       <>
         <div className="mb-6 flex flex-col gap-4">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2 flex-wrap flex-1">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
