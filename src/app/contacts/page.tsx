@@ -50,6 +50,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
   Pagination,
@@ -438,7 +439,13 @@ function ContactsPageComponent() {
     }
 
     // Reorder sheets to put Instructions first
-    workbook.SheetNames.unshift(workbook.SheetNames.pop()!); // Move last sheet (Instructions) to front
+    if(workbook.SheetNames.length > 1) {
+      const instructionsIndex = workbook.SheetNames.indexOf('Instructions');
+      if (instructionsIndex > 0) {
+        const instructionsSheetName = workbook.SheetNames.splice(instructionsIndex, 1)[0];
+        workbook.SheetNames.unshift(instructionsSheetName);
+      }
+    }
 
     const excelBuffer = write(workbook, { bookType: "xlsx", type: "array" });
     const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8" });
