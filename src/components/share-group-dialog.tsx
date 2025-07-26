@@ -16,7 +16,6 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Input } from "./ui/input";
-import { Textarea } from "./ui/textarea";
 import { Copy, Share } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -43,29 +42,44 @@ export function ShareGroupDialog({
       toast({ title: "Copied to clipboard!" });
     });
   };
+  
+  const handleCopyAllNumbers = () => {
+    if (members.length === 0) {
+      toast({ variant: 'destructive', title: "No numbers to copy" });
+      return;
+    }
+    const allNumbers = members.map(p => p.phone).join(', ');
+    copyToClipboard(allNumbers);
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Share to WhatsApp</DialogTitle>
+          <DialogTitle>Share or Add to WhatsApp Group</DialogTitle>
           <DialogDescription>
-            WhatsApp does not allow adding members directly. Instead, you can share the group's invite link with members individually.
+            Copy all numbers to add members directly, or share the invite link individually.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">
+          <div className="space-y-2 p-4 border rounded-lg bg-muted/50">
+            <Label htmlFor="add-members">1. Add all members to a new group</Label>
+            <p className="text-xs text-muted-foreground">Click to copy all {members.length} phone numbers. Then, in WhatsApp, create a group and paste this list into the 'Add participants' field.</p>
+            <Button onClick={handleCopyAllNumbers} disabled={members.length === 0}>
+                <Copy className="mr-2 h-4 w-4" /> Copy All Numbers
+            </Button>
+          </div>
           <div className="space-y-2">
-            <Label htmlFor="invite-link">1. Paste your WhatsApp Group Invite Link</Label>
+            <Label htmlFor="invite-link">2. Or, share an invite link individually</Label>
             <Input
               id="invite-link"
-              placeholder="https://chat.whatsapp.com/..."
+              placeholder="Paste your WhatsApp Group Invite Link here, e.g., https://chat.whatsapp.com/..."
               value={inviteLink}
               onChange={(e) => setInviteLink(e.target.value)}
             />
           </div>
           <div className="space-y-2">
-            <Label>2. Share with Members</Label>
-            <p className="text-xs text-muted-foreground">Click "Share" to open a pre-filled WhatsApp message for each member.</p>
+            <Label>Share link with members</Label>
             <ScrollArea className="h-60 w-full rounded-md border">
               <div className="p-4 space-y-2">
                 {members.map((person) => {
@@ -91,7 +105,7 @@ export function ShareGroupDialog({
                         disabled={!inviteLink}
                       >
                         <a href={whatsAppLink} target="_blank" rel="noopener noreferrer">
-                          <Share className="mr-2 h-4 w-4" /> Share
+                          <Share className="mr-2 h-4 w-4" /> Share Link
                         </a>
                       </Button>
                     </div>
