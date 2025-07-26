@@ -14,6 +14,7 @@ import {
   Search,
   Info,
   UserPlus,
+  Contact,
 } from "lucide-react";
 import { read, utils, write, type WorkSheet } from "xlsx";
 import JSZip from "jszip";
@@ -50,7 +51,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
   Pagination,
@@ -573,6 +573,70 @@ function ContactsPageComponent() {
     }
   }, [filteredAndSortedPeople, toast, appUser, customFields]);
 
+  const handleExportForGoogle = React.useCallback(() => {
+    const peopleToExport = Array.from(selectedIds)
+      .map(id => allFetchedPeople.find(p => p.id === id))
+      .filter(p => p !== undefined) as Person[];
+
+    if (peopleToExport.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'No Selection',
+        description: 'Please select contacts to export.',
+      });
+      return;
+    }
+
+    setIsExporting(true);
+
+    // Google Contacts CSV format
+    const headers = [
+      'Name',
+      'Given Name',
+      'Family Name',
+      'Group Membership',
+      'Phone 1 - Type',
+      'Phone 1 - Value',
+      'Notes',
+    ];
+
+    const csvData = peopleToExport.map(p => {
+      const nameParts = p.fullName.trim().split(/\s+/);
+      const givenName = nameParts[0] || '';
+      const familyName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+      
+      const personGroups = groups.filter(g => g.peopleIds.includes(p.id)).map(g => g.name).join(' ::: ');
+      const notes = `Occupation: ${p.occupation}\nOrganisation: ${p.organisation}\nSource: ${p.contactSource}\nRating: ${p.sgRating}/5`;
+
+      return {
+        'Name': p.fullName,
+        'Given Name': givenName,
+        'Family Name': familyName,
+        'Group Membership': personGroups || '* myContacts',
+        'Phone 1 - Type': 'Mobile',
+        'Phone 1 - Value': p.phone,
+        'Notes': notes,
+      };
+    });
+
+    const worksheet = utils.json_to_sheet(csvData, { header: headers });
+    const csvString = utils.sheet_to_csv(worksheet);
+
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', 'google_contacts.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setIsExporting(false);
+    toast({
+      title: 'Export Successful',
+      description: `${peopleToExport.length} contacts exported for Google Contacts.`,
+    });
+  }, [selectedIds, allFetchedPeople, groups, toast]);
+
   const handleFileImport = React.useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !appUser) return;
@@ -594,14 +658,12 @@ function ContactsPageComponent() {
         const customFieldMap = new Map(customFields.map(f => [f.label.toLowerCase(), f.id]));
         
         const allNewPeople: Omit<Person, 'id' | 'createdAt'>[] = [];
-        let skippedCount = 0;
 
         for (const row of json) {
             const fullName = String(row.fullName || '').trim();
             const phone = String(row.phone || '').replace(/\s+/g, '');
 
             if (!fullName || !phone) {
-                skippedCount++;
                 continue;
             }
 
@@ -669,7 +731,7 @@ function ContactsPageComponent() {
 
         toast({
           title: "Import Successful",
-          description: `${allNewPeople.length} new contacts added. ${skippedCount > 0 ? `${skippedCount} duplicates/invalid rows skipped.` : ''}`,
+          description: `${allNewPeople.length} new contacts added.`,
         });
       } catch (error) {
         console.error("Error importing file:", error);
@@ -882,123 +944,123 @@ function ContactsPageComponent() {
     return (
       <>
         <div className="mb-6 flex flex-col gap-4">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2 flex-wrap flex-1">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Search by name or phone..."
-                            className="pl-10 w-full sm:w-64"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-                    <FilterPopover 
-                        filters={filters}
-                        setFilters={setFilters}
-                        filterableFields={filterableFields}
-                    />
-                    <SortPopover
-                        sortDescriptors={sortDescriptors}
-                        setSortDescriptors={setSortDescriptors}
-                    />
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="flex items-center rounded-md bg-muted p-1">
-                    <Button
-                        variant={view === "card" ? "secondary" : "ghost"}
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setView("card")}
-                        aria-label="Card View"
-                    >
-                        <LayoutGrid className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant={view === "table" ? "secondary" : "ghost"}
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setView("table")}
-                        aria-label="Table View"
-                    >
-                        <List className="h-4 w-4" />
-                    </Button>
-                    </div>
-                </div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 flex-wrap flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name or phone..."
+                  className="pl-10 w-full sm:w-64"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <FilterPopover 
+                filters={filters}
+                setFilters={setFilters}
+                filterableFields={filterableFields}
+              />
+              <SortPopover
+                sortDescriptors={sortDescriptors}
+                setSortDescriptors={setSortDescriptors}
+              />
             </div>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center rounded-md bg-muted p-1">
+              <Button
+                variant={view === "card" ? "secondary" : "ghost"}
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setView("card")}
+                aria-label="Card View"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={view === "table" ? "secondary" : "ghost"}
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setView("table")}
+                aria-label="Table View"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+              </div>
+            </div>
+          </div>
 
-            {isSelectionActive && (
-                 <div className="flex flex-wrap items-center gap-2 p-3 bg-muted rounded-lg border">
-                    <span className="text-sm font-semibold mr-4">{selectedIds.size} selected</span>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm">
-                            <Users className="mr-2 h-4 w-4" />
-                            Add to Group
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            {groups.filter(g => !g.isDynamic).map((group) => (
-                            <DropdownMenuItem
-                                key={group.id}
-                                onSelect={() => handleAddToGroup(group.id)}
-                            >
-                                {group.name}
-                            </DropdownMenuItem>
-                            ))}
-                            {groups.filter(g => !g.isDynamic).length > 0 && <DropdownMenuSeparator />}
-                            <DropdownMenuItem onSelect={() => setIsCreateGroupDialogOpen(true)}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Create New Group
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+          {isSelectionActive && (
+               <div className="flex flex-wrap items-center gap-2 p-3 bg-muted rounded-lg border">
+                  <span className="text-sm font-semibold mr-4">{selectedIds.size} selected</span>
+                  <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm">
+                          <Users className="mr-2 h-4 w-4" />
+                          Add to Group
+                          </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                          {groups.filter(g => !g.isDynamic).map((group) => (
+                          <DropdownMenuItem
+                              key={group.id}
+                              onSelect={() => handleAddToGroup(group.id)}
+                          >
+                              {group.name}
+                          </DropdownMenuItem>
+                          ))}
+                          {groups.filter(g => !g.isDynamic).length > 0 && <DropdownMenuSeparator />}
+                          <DropdownMenuItem onSelect={() => setIsCreateGroupDialogOpen(true)}>
+                              <PlusCircle className="mr-2 h-4 w-4" />
+                              Create New Group
+                          </DropdownMenuItem>
+                      </DropdownMenuContent>
+                  </DropdownMenu>
 
-                    {canAssignUsers && (
-                      <>
-                        <Button variant="outline" size="sm" onClick={() => setIsAssignEnablerDialogOpen(true)}>
-                          <UserPlus className="mr-2 h-4 w-4" />
-                          Assign Enabler
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => setIsAssignCoEnablerDialogOpen(true)}>
-                          <UserCheck className="mr-2 h-4 w-4" />
-                          Assign Co-Enabler
-                        </Button>
-                      </>
-                    )}
+                  {canAssignUsers && (
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => setIsAssignEnablerDialogOpen(true)}>
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Assign Enabler
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => setIsAssignCoEnablerDialogOpen(true)}>
+                        <UserCheck className="mr-2 h-4 w-4" />
+                        Assign Co-Enabler
+                      </Button>
+                    </>
+                  )}
 
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="sm">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                This will permanently delete the selected {selectedIds.size} contacts. This action cannot be undone.
-                            </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDeleteSelected} className="bg-destructive hover:bg-destructive/90">
-                                Delete
-                            </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                     <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedIds(new Set())}
-                        className="ml-auto"
-                    >
-                        Deselect All
-                    </Button>
-                </div>
-            )}
+                  <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm">
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                          </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                          <AlertDialogHeader>
+                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                              This will permanently delete the selected {selectedIds.size} contacts. This action cannot be undone.
+                          </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleDeleteSelected} className="bg-destructive hover:bg-destructive/90">
+                              Delete
+                          </AlertDialogAction>
+                          </AlertDialogFooter>
+                      </AlertDialogContent>
+                  </AlertDialog>
+                   <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedIds(new Set())}
+                      className="ml-auto"
+                  >
+                      Deselect All
+                  </Button>
+              </div>
+          )}
         </div>
         
         {view === 'card' ? (
@@ -1092,14 +1154,20 @@ function ContactsPageComponent() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
                             <DropdownMenuItem onSelect={() => fileInputRef.current?.click()} disabled={isLoadingAction}>
-                            Import from Excel
+                              <Upload className="mr-2 h-4 w-4" />
+                              Import from Excel
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={handleExport} disabled={isLoadingAction}>
-                            Export to Excel
+                              <LayoutGrid className="mr-2 h-4 w-4" />
+                              Export to Excel/Zip
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={handleExportForGoogle} disabled={isExporting || selectedIds.size === 0}>
+                              <Contact className="mr-2 h-4 w-4" />
+                              Export for Google
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={handleSampleDownload} disabled={isLoadingAction}>
-                            Download Sample Excel
+                              Download Sample Excel
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                         </DropdownMenu>
@@ -1113,7 +1181,8 @@ function ContactsPageComponent() {
                               <p className="font-semibold">Import/Export Guide</p>
                               <ul className="list-disc pl-4 mt-2 space-y-1 text-xs">
                                   <li>Use "Download Sample Excel" to get a template with dropdowns for easy assignment.</li>
-                                  <li>Export is best for up to 500 contacts with photos, or thousands without.</li>
+                                  <li>"Export for Google" creates a CSV of selected contacts to import into Google Contacts.</li>
+                                  <li>"Export to Excel/Zip" is best for full backups, including photos.</li>
                                   <li>Import can handle up to 10,000 contacts at once.</li>
                               </ul>
                           </TooltipContent>
@@ -1173,3 +1242,5 @@ export default function ContactsPage() {
         </AuthGuard>
     )
 }
+
+    
