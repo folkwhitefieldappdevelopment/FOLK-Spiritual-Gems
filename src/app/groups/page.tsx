@@ -105,6 +105,8 @@ function GroupsPageComponent() {
         relevantPeople = people.filter(p => p.folkGuideId && p.folkGuideId === selectedUser.id);
       } else if (selectedUser?.role.includes('Folk Enabler')) {
         relevantPeople = people.filter(p => p.enablerInTouchWith === selectedUser.name);
+      } else if (userFilterId === '__UNASSIGNED__') {
+        relevantPeople = people.filter(p => !p.enablerInTouchWith);
       }
     }
     const relevantPeopleIds = new Set(relevantPeople.map(p => p.id));
@@ -225,9 +227,10 @@ function GroupsPageComponent() {
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {filteredGroups.map((group) => {
           const owner = allUsers.find(u => u.id === group.createdBy);
-          const memberCount = userFilterId === 'all' || group.isDynamic
+          const memberCount = group.isDynamic
               ? group.memberCount
-              : group.filteredMemberCount;
+              : group.filteredMemberCount ?? group.memberCount;
+          
           const totalCount = group.isDynamic ? undefined : group.memberCount;
 
           return (
