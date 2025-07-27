@@ -590,47 +590,39 @@ function ContactsPageComponent() {
 
     setIsExporting(true);
 
-    const headers = [
-      'Name',
-      'Given Name',
-      'Family Name',
-      'Group Membership',
-      'Phone 1 - Type',
-      'Phone 1 - Value',
-      'Notes',
-    ];
-
-    const csvData = peopleToExport.map(p => {
+    let vcfString = '';
+    
+    peopleToExport.forEach(p => {
       const nameParts = p.fullName.trim().split(/\s+/);
       const givenName = nameParts[0] || '';
       const familyName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
       
       const personGroups = groups.filter(g => g.peopleIds.includes(p.id));
-      const groupNames = personGroups.map(g => g.name).join(' ::: ');
       
-      // Append the first group name to the contact's full name
-      const contactName = personGroups.length > 0 ? `${p.fullName}_${personGroups[0].name.replace(/\s+/g, '')}` : p.fullName;
+      const contactName = personGroups.length > 0 
+        ? `${p.fullName}_${personGroups[0].name.replace(/\s+/g, '')}` 
+        : p.fullName;
       
-      const notes = `Occupation: ${p.occupation}\nOrganisation: ${p.organisation}\nSource: ${p.contactSource}\nRating: ${p.sgRating}/5`;
+      const notes = [
+        `Occupation: ${p.occupation || 'N/A'}`,
+        `Organisation: ${p.organisation || 'N/A'}`,
+        `Source: ${p.contactSource || 'N/A'}`,
+        `Rating: ${p.sgRating || '0'}/5`,
+      ].join('\\n');
 
-      return {
-        'Name': contactName,
-        'Given Name': givenName,
-        'Family Name': familyName,
-        'Group Membership': groupNames || '* myContacts',
-        'Phone 1 - Type': 'Mobile',
-        'Phone 1 - Value': p.phone,
-        'Notes': notes,
-      };
+      vcfString += `BEGIN:VCARD\n`;
+      vcfString += `VERSION:3.0\n`;
+      vcfString += `FN:${contactName}\n`;
+      vcfString += `N:${familyName};${givenName};;;\n`;
+      vcfString += `TEL;TYPE=CELL:${p.phone}\n`;
+      vcfString += `NOTE:${notes}\n`;
+      vcfString += `END:VCARD\n`;
     });
 
-    const worksheet = utils.json_to_sheet(csvData, { header: headers });
-    const csvString = utils.sheet_to_csv(worksheet);
-
-    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([vcfString], { type: 'text/vcard;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', 'google_contacts.csv');
+    link.setAttribute('download', 'google_contacts.vcf');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -638,7 +630,7 @@ function ContactsPageComponent() {
     setIsExporting(false);
     toast({
       title: 'Export Successful',
-      description: `${peopleToExport.length} contacts exported for Google Contacts.`,
+      description: `${peopleToExport.length} contacts exported as a VCF file.`,
     });
   }, [selectedIds, allFetchedPeople, groups, toast]);
 
