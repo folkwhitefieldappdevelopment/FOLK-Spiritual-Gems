@@ -590,7 +590,6 @@ function ContactsPageComponent() {
 
     setIsExporting(true);
 
-    // Google Contacts CSV format
     const headers = [
       'Name',
       'Given Name',
@@ -606,14 +605,19 @@ function ContactsPageComponent() {
       const givenName = nameParts[0] || '';
       const familyName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
       
-      const personGroups = groups.filter(g => g.peopleIds.includes(p.id)).map(g => g.name).join(' ::: ');
+      const personGroups = groups.filter(g => g.peopleIds.includes(p.id));
+      const groupNames = personGroups.map(g => g.name).join(' ::: ');
+      
+      // Append the first group name to the contact's full name
+      const contactName = personGroups.length > 0 ? `${p.fullName}_${personGroups[0].name.replace(/\s+/g, '')}` : p.fullName;
+      
       const notes = `Occupation: ${p.occupation}\nOrganisation: ${p.organisation}\nSource: ${p.contactSource}\nRating: ${p.sgRating}/5`;
 
       return {
-        'Name': p.fullName,
+        'Name': contactName,
         'Given Name': givenName,
         'Family Name': familyName,
-        'Group Membership': personGroups || '* myContacts',
+        'Group Membership': groupNames || '* myContacts',
         'Phone 1 - Type': 'Mobile',
         'Phone 1 - Value': p.phone,
         'Notes': notes,
