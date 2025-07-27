@@ -211,9 +211,12 @@ export const deletePeople = async (ids: string[], userInfo: UserInfo): Promise<v
 
 export const importPeople = async (
     people: Omit<Person, 'id' | 'createdAt'>[],
-    appUser: AppUser
+    userInfo: UserInfo
 ): Promise<void> => {
   if (people.length === 0) return;
+
+  const users = await getUsers();
+  const guideMap = new Map<string, AppUser>(users.filter(u => u.role.includes('Folk Guide')).map(g => [g.id, g]));
 
   const batch = writeBatch(db);
   for (const person of people) {
@@ -229,21 +232,24 @@ export const importPeople = async (
     let assignedEnabler = person.enablerInTouchWith;
     let { folkGuide, folkGuideId } = person;
 
-    // Auto-assign Folk Guide and Enabler if importer is an enabler
-    if (appUser.role.includes('Folk Enabler') && !appUser.role.includes('Admin') && !appUser.role.includes('Folk Guide')) {
-      assignedEnabler = appUser.name;
-      if (appUser.reportsTo) {
-          folkGuideId = appUser.reportsTo.guideId;
-          folkGuide = `${appUser.reportsTo.guideName} (${appUser.reportsTo.guideFgCode || 'N/A'})`;
+    if (userInfo.role.includes('Folk Enabler') && !userInfo.role.includes('Admin') && !userInfo.role.includes('Folk Guide')) {
+      const enablerUser = users.find(u => u.id === userInfo.id);
+      assignedEnabler = userInfo.name;
+      if (enablerUser?.reportsTo?.guideId) {
+          folkGuideId = enablerUser.reportsTo.guideId;
+          const guide = guideMap.get(folkGuideId);
+          if (guide) {
+              folkGuide = `${guide.name} (${guide.fgCode || 'N/A'})`;
+          }
       } else {
         folkGuide = '';
         folkGuideId = '';
       }
-    } else { // For Admins and Guides, trust the sheet, but fall back if needed
+    } else {
       if (!folkGuideId && !folkGuide) {
-        if (appUser.role.includes('Folk Guide')) {
-          folkGuideId = appUser.id;
-          folkGuide = `${appUser.name} (${appUser.fgCode || 'N/A'})`;
+        if (userInfo.role.includes('Folk Guide')) {
+          folkGuideId = userInfo.id;
+          folkGuide = `${userInfo.name} (${guideMap.get(userInfo.id)?.fgCode || 'N/A'})`;
         }
       }
     }
@@ -259,7 +265,7 @@ export const importPeople = async (
   }
   
   await batch.commit();
-  await logAudit('Import Contacts', `Imported ${people.length} contacts from a file.`, appUser);
+  await logAudit('Import Contacts', `Imported ${people.length} contacts from a file.`, userInfo);
 };
 
 export const assignCoEnablerToPeople = async (personIds: string[], coEnabler: AppUser | null, userInfo: UserInfo): Promise<void> => {
@@ -304,3 +310,9 @@ export const assignEnablerToPeople = async (personIds: string[], enabler: AppUse
         await logAudit('Assign Enabler', `Assigned ${personIds.length} contacts to ${enabler.name}.`, userInfo);
     }
 };
+
+async function getUsers(): Promise<AppUser[]> {
+    const usersCollection = collection(db, 'users');
+    const snapshot = await getDocs(usersCollection);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppUser));
+}

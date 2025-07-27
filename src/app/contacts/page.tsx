@@ -647,7 +647,13 @@ function ContactsPageComponent() {
     if (!file || !appUser) return;
 
     setImportingStatus("Reading file...");
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+
+    const userInfo: UserInfo = {
+      id: appUser.id,
+      name: appUser.name,
+      role: appUser.role,
+    };
+    
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
@@ -729,7 +735,7 @@ function ContactsPageComponent() {
         for (let i = 0; i < allNewPeople.length; i += IMPORT_BATCH_SIZE) {
             const batch = allNewPeople.slice(i, i + IMPORT_BATCH_SIZE);
             setImportingStatus(`Importing ${i + batch.length} of ${allNewPeople.length}...`);
-            await importPeople(batch, appUser);
+            await importPeople(batch, userInfo);
         }
 
         await fetchPageData();
