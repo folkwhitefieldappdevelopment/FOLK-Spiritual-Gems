@@ -27,6 +27,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button } from "@/components/ui/button";
 import {
@@ -186,13 +187,13 @@ const CallingSessionDialogComponent = ({
         if (!silent) {
             toast({ title: "Session Ended", description: "Your paused session has been cleared." });
         }
-        handleCloseDialog();
+        onClose();
     } catch (e) {
         if (!silent) {
             toast({ variant: 'destructive', title: "Error", description: 'Could not end the session.' });
         }
     }
-  }, [appUser, handleCloseDialog, toast, updateCurrentAppUser]);
+  }, [appUser, onClose, toast, updateCurrentAppUser]);
 
   // Auto-save session on unmount (refresh, close tab, etc.)
   React.useEffect(() => {
