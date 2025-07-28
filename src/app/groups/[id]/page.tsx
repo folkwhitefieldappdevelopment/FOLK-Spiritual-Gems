@@ -17,11 +17,14 @@ import {
   Edit,
   Play,
   Share2,
+  Upload,
 } from 'lucide-react';
+import { read, utils, write, type WorkSheet } from "xlsx";
 import type { Person, Group, AppUser, CustomField, CallStatus, UserRole } from '@/lib/types';
 import { occupationStatuses, callStatuses } from "@/lib/types";
 import { useToast } from '@/hooks/use-toast';
 import { getGroup, getStaticGroups, addPeopleToGroup, removePeopleFromGroup } from '@/services/groups-service';
+import { addPeopleToGroupByPhone } from '@/services/groups-actions';
 import { getPeople, updatePerson, assignCoEnablerToPeople } from '@/services/people-service';
 import { getFolkGuides, updateUser } from '@/services/user-service';
 import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from '@/services/settings-service';
@@ -139,6 +142,8 @@ function GroupDetailPageComponent() {
   const [initialSessionIndex, setInitialSessionIndex] = React.useState(0);
   const pausedSession = appUser?.pausedSession;
   const canResumeSession = pausedSession?.context === 'group' && pausedSession.selectedGroupId === groupId;
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [isImporting, setIsImporting] = React.useState(false);
 
   // Set initial state from URL search params
   React.useEffect(() => {
@@ -545,6 +550,63 @@ function GroupDetailPageComponent() {
 
   }, [pausedSession, canResumeSession, appUser, toast, filteredAndSortedMembers]);
 
+  const handleExportMembers = React.useCallback(() => {
+    if (!group || members.length === 0) return;
+    const dataToExport = members.map(m => ({ fullName: m.fullName, phone: m.phone }));
+    const worksheet = utils.json_to_sheet(dataToExport);
+    const workbook = utils.book_new();
+    utils.book_append_sheet(workbook, worksheet, 'Members');
+    write(workbook, { bookType: 'xlsx', type: 'buffer' });
+    write(workbook, { bookType: 'xlsx', type: 'binary' });
+    utils.writeFile(workbook, `${group.name}_members.xlsx`);
+    toast({ title: 'Export Complete', description: `${members.length} members exported.`});
+  }, [group, members, toast]);
+
+  const handleImportMembers = React.useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !appUser || !group) return;
+    
+    setIsImporting(true);
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+    
+    try {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const data = e.target?.result;
+                const workbook = read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const json = utils.sheet_to_json<any>(worksheet);
+                const phoneNumbers = json.map(row => String(row.phone).trim()).filter(Boolean);
+
+                if (phoneNumbers.length === 0) {
+                    throw new Error("No phone numbers found in the file.");
+                }
+                
+                const result = await addPeopleToGroupByPhone(groupId, phoneNumbers, userInfo);
+
+                toast({
+                    title: 'Import Complete',
+                    description: `${result.addedCount} new members added to the group. ${result.existingCount} were already members. ${result.notFoundCount} phone numbers were not found.`
+                });
+                await fetchPageData(); // Refresh data
+
+            } catch(err) {
+                toast({ variant: 'destructive', title: 'Import Failed', description: err instanceof Error ? err.message : 'Could not process file.' });
+            } finally {
+                setIsImporting(false);
+                if (event.target) event.target.value = ''; // Reset file input
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    } catch(err) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not read the file.' });
+        setIsImporting(false);
+    }
+
+  }, [appUser, group, groupId, toast, fetchPageData]);
+
   const renderContent = () => {
     if (isLoading) return <div className="flex min-h-[50vh] w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     if (fetchError) return <FirebaseConfigError error={fetchError} />;
@@ -666,6 +728,20 @@ function GroupDetailPageComponent() {
                 <PageHeader title={group.name} description={group.description || 'No description for this group.'}>
                     <div className="flex items-center gap-2">
                       <Button variant="outline" size="sm" className="w-9 sm:w-auto" onClick={() => router.back()}><ArrowLeft className="h-4 w-4 mr-0 sm:mr-2" /><span className="hidden sm:inline">Back</span></Button>
+                      {!group.isDynamic && 
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button size="sm" variant="outline" disabled={isImporting}>
+                                    {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                                    Import/Export
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <DropdownMenuItem onSelect={() => fileInputRef.current?.click()}>Import Members</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={handleExportMembers}>Export Members</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                      }
                       {!group.isDynamic && <Button size="sm" className="w-9 sm:w-auto" onClick={() => setIsManageMembersDialogOpen(true)}><UserPlus className="h-4 w-4 mr-0 sm:mr-2" /><span className="hidden sm:inline">Manage Members</span></Button>}
                       <Button size="sm" variant="outline" className="w-9 sm:w-auto" onClick={() => setIsShareGroupDialogOpen(true)}><Share2 className="h-4 w-4 mr-0 sm:mr-2" /><span className="hidden sm:inline">Share</span></Button>
                     </div>
@@ -678,6 +754,7 @@ function GroupDetailPageComponent() {
             </main>
         </div>
       
+      <input type="file" ref={fileInputRef} onChange={handleImportMembers} className="hidden" accept=".xlsx, .xls" />
       {editingPerson && <CreateUpdatePersonDialog isOpen={!!editingPerson} setIsOpen={() => setEditingPerson(undefined)} onSave={handleSavePersonDialog} person={editingPerson} allPeople={allPeople} />}
       {group && !group.isDynamic && <ManageGroupMembersDialog isOpen={isManageMembersDialogOpen} setIsOpen={setIsManageMembersDialogOpen} onSave={handleSaveMembers} group={group} allPeople={allPeople} />}
       {isAssignCoEnablerDialogOpen && <AssignCoEnablerDialog isOpen={isAssignCoEnablerDialogOpen} setIsOpen={setIsAssignCoEnablerDialogOpen} onSave={handleAssignCoEnabler} peopleCount={selectedIds.size} />}
