@@ -55,14 +55,20 @@ export function ShareGroupDialog({
         <DialogHeader>
           <DialogTitle>Share or Add to WhatsApp Group</DialogTitle>
           <DialogDescription>
-            Copy all numbers to add members directly, or share the invite link individually.
+            Copy all numbers to add members directly, or share an invite link individually.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">
           <div className="space-y-2 p-4 border rounded-lg bg-muted/50">
-            <Label htmlFor="add-members">1. Add all members to a new group</Label>
-            <p className="text-xs text-muted-foreground">Select and copy the numbers below. Then, in WhatsApp, create a group and paste this list into the 'Add participants' field.</p>
+            <Label htmlFor="add-members" className="font-semibold">1. Add all members to a new group</Label>
+            <div className="text-xs text-muted-foreground space-y-1">
+                <p>1. Select and copy the numbers from the box below.</p>
+                <p>2. Open WhatsApp and tap on **"New Group"**.</p>
+                <p>3. In the "Add participants" screen, **paste the list** into the search field.</p>
+                <p>4. WhatsApp will then display the contacts for you to add.</p>
+            </div>
              <Textarea
+                id="add-members"
                 readOnly
                 value={allNumbersString}
                 className="h-24 bg-background font-mono text-xs"
@@ -70,7 +76,7 @@ export function ShareGroupDialog({
               />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="invite-link">2. Or, share an invite link individually</Label>
+            <Label htmlFor="invite-link" className="font-semibold">2. Or, share an invite link individually</Label>
             <Input
               id="invite-link"
               placeholder="Paste your WhatsApp Group Invite Link here, e.g., https://chat.whatsapp.com/..."
@@ -82,35 +88,39 @@ export function ShareGroupDialog({
             <Label>Share link with members</Label>
             <ScrollArea className="h-60 w-full rounded-md border">
               <div className="p-4 space-y-2">
-                {members.map((person) => {
-                  const message = inviteMessage.replace('{name}', person.fullName);
-                  const whatsAppLink = `https://wa.me/91${person.phone.replace(/\s+/g, '')}?text=${encodeURIComponent(message)}`;
-                  
-                  return (
-                    <div key={person.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9">
-                          <AvatarImage src={person.photoUrl} alt={person.fullName} />
-                          <AvatarFallback>{person.fullName.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{person.fullName}</p>
-                          <p className="text-xs text-muted-foreground">{person.phone}</p>
+                {members.length > 0 ? (
+                    members.map((person) => {
+                    const message = inviteMessage.replace('{name}', person.fullName);
+                    const whatsAppLink = `https://wa.me/91${person.phone.replace(/\s+/g, '')}?text=${encodeURIComponent(message)}`;
+                    
+                    return (
+                        <div key={person.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                        <div className="flex items-center gap-3">
+                            <Avatar className="h-9 w-9">
+                            <AvatarImage src={person.photoUrl} alt={person.fullName} />
+                            <AvatarFallback>{person.fullName.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                            <p className="font-medium">{person.fullName}</p>
+                            <p className="text-xs text-muted-foreground">{person.phone}</p>
+                            </div>
                         </div>
-                      </div>
-                      <Button
-                        asChild
-                        size="sm"
-                        variant="outline"
-                        disabled={!inviteLink}
-                      >
-                        <a href={whatsAppLink} target="_blank" rel="noopener noreferrer">
-                          <Share className="mr-2 h-4 w-4" /> Share Link
-                        </a>
-                      </Button>
-                    </div>
-                  );
-                })}
+                        <Button
+                            asChild
+                            size="sm"
+                            variant="outline"
+                            disabled={!inviteLink}
+                        >
+                            <a href={whatsAppLink} target="_blank" rel="noopener noreferrer">
+                            <Share className="mr-2 h-4 w-4" /> Share Link
+                            </a>
+                        </Button>
+                        </div>
+                    );
+                    })
+                ) : (
+                    <p className="text-center text-sm text-muted-foreground pt-4">This group has no members to share with.</p>
+                )}
               </div>
             </ScrollArea>
           </div>
