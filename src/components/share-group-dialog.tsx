@@ -46,7 +46,7 @@ export function ShareGroupDialog({
   
   const allNumbersString = React.useMemo(() => {
       if (members.length === 0) return "";
-      return members.map(p => p.phone).join(', ');
+      return members.map(p => p.phone).join('\n');
   }, [members]);
 
   return (
