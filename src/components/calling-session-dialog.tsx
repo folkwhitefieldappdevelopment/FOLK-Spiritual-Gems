@@ -27,7 +27,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button } from "@/components/ui/button";
 import {
@@ -279,14 +278,21 @@ const CallingSessionDialogComponent = ({
             title: "Call Logged",
             description: `Status for ${fullName} has been updated.`
         });
-        handleNext();
+        return true; // Indicate success
     } catch (e) {
         toast({ variant: 'destructive', title: "Error", description: 'Could not save the call log.' });
+        return false; // Indicate failure
     } finally {
         setIsSubmitting(false);
     }
+  }, [currentPerson, onSaveRemark, toast]);
 
-  }, [currentPerson, onSaveRemark, toast, handleNext]);
+  const handleSaveAndNext = async () => {
+    const success = await form.handleSubmit(onSubmit)();
+    if (success) {
+      handleNext();
+    }
+  };
 
   const handlePauseSession = React.useCallback(async () => {
     if (!appUser) return;
@@ -585,12 +591,12 @@ const CallingSessionDialogComponent = ({
         <DialogFooter className="flex-shrink-0 p-6 pt-4 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
            <div className="flex items-center gap-2 justify-center sm:justify-start">
                 <Button variant="secondary" size="sm" onClick={handlePauseSession}>
-                    <Pause className="mr-2 h-4 w-4"/> Pause & Save
+                    <Pause className="mr-2 h-4 w-4"/> Pause &amp; Save
                 </Button>
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button variant="destructive" size="sm">
-                            <Trash2 className="mr-2 h-4 w-4"/> End & Clear
+                            <Trash2 className="mr-2 h-4 w-4"/> End &amp; Clear
                         </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
@@ -629,14 +635,13 @@ const CallingSessionDialogComponent = ({
                     <ArrowRight className="h-4 w-4" />
                 </Button>
                 <Button
-                    type="submit"
-                    form="call-form"
+                    onClick={handleSaveAndNext}
                     disabled={isSubmitting || isInitializing}
                     className="min-w-[140px]"
                 >
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     <CheckSquare className="mr-2 h-4 w-4"/>
-                    Save & Next
+                    Save &amp; Next
                 </Button>
            </div>
         </DialogFooter>
