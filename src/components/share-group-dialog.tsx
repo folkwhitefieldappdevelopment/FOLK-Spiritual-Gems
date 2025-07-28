@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Input } from "./ui/input";
 import { Copy, Share } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Textarea } from "./ui/textarea";
 
 type ShareGroupDialogProps = {
   isOpen: boolean;
@@ -43,14 +44,10 @@ export function ShareGroupDialog({
     });
   };
   
-  const handleCopyAllNumbers = () => {
-    if (members.length === 0) {
-      toast({ variant: 'destructive', title: "No numbers to copy" });
-      return;
-    }
-    const allNumbers = members.map(p => p.phone).join(', ');
-    copyToClipboard(allNumbers);
-  };
+  const allNumbersString = React.useMemo(() => {
+      if (members.length === 0) return "";
+      return members.map(p => p.phone).join(', ');
+  }, [members]);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -64,10 +61,13 @@ export function ShareGroupDialog({
         <div className="py-4 space-y-4">
           <div className="space-y-2 p-4 border rounded-lg bg-muted/50">
             <Label htmlFor="add-members">1. Add all members to a new group</Label>
-            <p className="text-xs text-muted-foreground">Click to copy all {members.length} phone numbers. Then, in WhatsApp, create a group and paste this list into the 'Add participants' field.</p>
-            <Button onClick={handleCopyAllNumbers} disabled={members.length === 0}>
-                <Copy className="mr-2 h-4 w-4" /> Copy All Numbers
-            </Button>
+            <p className="text-xs text-muted-foreground">Select and copy the numbers below. Then, in WhatsApp, create a group and paste this list into the 'Add participants' field.</p>
+             <Textarea
+                readOnly
+                value={allNumbersString}
+                className="h-24 bg-background font-mono text-xs"
+                placeholder="No members in this group to copy numbers from."
+              />
           </div>
           <div className="space-y-2">
             <Label htmlFor="invite-link">2. Or, share an invite link individually</Label>
