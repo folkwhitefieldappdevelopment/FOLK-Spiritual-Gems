@@ -173,6 +173,23 @@ const CallingSessionDialogComponent = ({
     }
   }, [isOpen, people, initialIndex, appUser]);
 
+  const handleEndAndClearSession = React.useCallback(async (silent = false) => {
+    if (!appUser) return;
+    isIntentionalClose.current = true;
+    try {
+        await updateUser(appUser.id, { pausedSession: null }); // Use null to signify deletion
+        updateCurrentAppUser({ pausedSession: undefined });
+        if (!silent) {
+            toast({ title: "Session Ended", description: "Your paused session has been cleared." });
+        }
+        onClose();
+    } catch (e) {
+        if (!silent) {
+            toast({ variant: 'destructive', title: "Error", description: 'Could not end the session.' });
+        }
+    }
+  }, [appUser, onClose, toast, updateCurrentAppUser]);
+
   // Auto-save session on unmount (refresh, close tab, etc.)
   React.useEffect(() => {
     const autoSaveSession = () => {
@@ -230,7 +247,7 @@ const CallingSessionDialogComponent = ({
         });
         onClose();
     }
-  }, [currentIndex, currentPeople.length, toast, onClose]);
+  }, [currentIndex, currentPeople.length, toast, onClose, handleEndAndClearSession]);
   
   const handlePrevious = React.useCallback(() => {
     if (currentIndex > 0) {
@@ -297,23 +314,6 @@ const CallingSessionDialogComponent = ({
         toast({ variant: 'destructive', title: "Error", description: 'Could not pause the session.' });
     }
   }, [appUser, context, currentPeople, currentIndex, currentEvent, sessionStartIndex, totalPeopleCount, filterStates, onClose, toast, updateCurrentAppUser]);
-
-  const handleEndAndClearSession = React.useCallback(async (silent = false) => {
-    if (!appUser) return;
-    isIntentionalClose.current = true;
-    try {
-        await updateUser(appUser.id, { pausedSession: null }); // Use null to signify deletion
-        updateCurrentAppUser({ pausedSession: undefined });
-        if (!silent) {
-            toast({ title: "Session Ended", description: "Your paused session has been cleared." });
-        }
-        onClose();
-    } catch (e) {
-        if (!silent) {
-            toast({ variant: 'destructive', title: "Error", description: 'Could not end the session.' });
-        }
-    }
-  }, [appUser, onClose, toast, updateCurrentAppUser]);
 
   const handleSaveDetails = React.useCallback(async (formData: Partial<Person>) => {
     if (!currentPerson || !appUser) return;
