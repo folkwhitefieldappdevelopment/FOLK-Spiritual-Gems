@@ -173,6 +173,11 @@ const CallingSessionDialogComponent = ({
     }
   }, [isOpen, people, initialIndex, appUser]);
 
+  const handleCloseDialog = React.useCallback(() => {
+    isIntentionalClose.current = true;
+    onClose();
+  }, [onClose]);
+
   const handleEndAndClearSession = React.useCallback(async (silent = false) => {
     if (!appUser) return;
     isIntentionalClose.current = true;
@@ -182,13 +187,13 @@ const CallingSessionDialogComponent = ({
         if (!silent) {
             toast({ title: "Session Ended", description: "Your paused session has been cleared." });
         }
-        onClose();
+        handleCloseDialog();
     } catch (e) {
         if (!silent) {
             toast({ variant: 'destructive', title: "Error", description: 'Could not end the session.' });
         }
     }
-  }, [appUser, onClose, toast, updateCurrentAppUser]);
+  }, [appUser, handleCloseDialog, toast, updateCurrentAppUser]);
 
   // Auto-save session on unmount (refresh, close tab, etc.)
   React.useEffect(() => {
@@ -245,9 +250,8 @@ const CallingSessionDialogComponent = ({
             title: "Calling Session Complete!",
             description: "You have gone through all the contacts in this list.",
         });
-        onClose();
     }
-  }, [currentIndex, currentPeople.length, toast, onClose, handleEndAndClearSession]);
+  }, [currentIndex, currentPeople.length, toast, handleEndAndClearSession]);
   
   const handlePrevious = React.useCallback(() => {
     if (currentIndex > 0) {
@@ -284,11 +288,6 @@ const CallingSessionDialogComponent = ({
 
   }, [currentPerson, onSaveRemark, toast, handleNext]);
 
-  const handleCloseDialog = React.useCallback(() => {
-    isIntentionalClose.current = true;
-    onClose();
-  }, [onClose]);
-
   const handlePauseSession = React.useCallback(async () => {
     if (!appUser) return;
     isIntentionalClose.current = true;
@@ -309,11 +308,11 @@ const CallingSessionDialogComponent = ({
         await updateUser(appUser.id, { pausedSession: pausedSessionData });
         updateCurrentAppUser({ pausedSession: pausedSessionData });
         toast({ title: "Session Paused", description: "Your progress has been saved." });
-        onClose();
+        handleCloseDialog();
     } catch (e) {
         toast({ variant: 'destructive', title: "Error", description: 'Could not pause the session.' });
     }
-  }, [appUser, context, currentPeople, currentIndex, currentEvent, sessionStartIndex, totalPeopleCount, filterStates, onClose, toast, updateCurrentAppUser]);
+  }, [appUser, context, currentPeople, currentIndex, currentEvent, sessionStartIndex, totalPeopleCount, filterStates, handleCloseDialog, toast, updateCurrentAppUser]);
 
   const handleSaveDetails = React.useCallback(async (formData: Partial<Person>) => {
     if (!currentPerson || !appUser) return;
