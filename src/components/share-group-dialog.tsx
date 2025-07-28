@@ -46,7 +46,8 @@ export function ShareGroupDialog({
   
   const allNumbersString = React.useMemo(() => {
       if (members.length === 0) return "";
-      return members.map(p => p.phone).join('\n');
+      // Prepend +91 country code and separate with newlines for better compatibility
+      return members.map(p => `+91${p.phone}`).join('\n');
   }, [members]);
 
   return (
@@ -55,7 +56,7 @@ export function ShareGroupDialog({
         <DialogHeader>
           <DialogTitle>Share or Add to WhatsApp Group</DialogTitle>
           <DialogDescription>
-            Copy all numbers to add members directly, or share an invite link individually.
+            Use one of the methods below to add members to a WhatsApp group.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">
@@ -63,7 +64,7 @@ export function ShareGroupDialog({
             <Label htmlFor="add-members" className="font-semibold">1. Add all members to a new group</Label>
             <div className="text-xs text-muted-foreground space-y-1">
                 <p>1. Select and copy the numbers from the box below.</p>
-                <p>2. Open WhatsApp and tap on **"New Group"**.</p>
+                <p>2. Open WhatsApp (desktop is recommended) and tap on **"New Group"**.</p>
                 <p>3. In the "Add participants" screen, **paste the list** into the search field.</p>
                 <p>4. WhatsApp will then display the contacts for you to add.</p>
             </div>
