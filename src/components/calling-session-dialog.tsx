@@ -242,7 +242,6 @@ const CallingSessionDialogComponent = ({
   
   const handleNext = React.useCallback(() => {
     if (currentIndex < currentPeople.length - 1) {
-        // Use functional update to ensure we always have the latest state
         setCurrentIndex(prev => prev + 1);
     } else {
         isIntentionalClose.current = true; // Session is complete
@@ -253,6 +252,12 @@ const CallingSessionDialogComponent = ({
         });
     }
   }, [currentIndex, currentPeople.length, toast, handleEndAndClearSession]);
+  
+  const handlePrevious = React.useCallback(() => {
+    if (currentIndex > 0) {
+      setCurrentIndex(prev => prev - 1);
+    }
+  }, [currentIndex]);
   
   const onSubmit = React.useCallback(async (data: CallFormValues) => {
     if (!currentPerson) return;
@@ -282,13 +287,6 @@ const CallingSessionDialogComponent = ({
         setIsSubmitting(false);
     }
   }, [currentPerson, onSaveRemark, toast]);
-
-  const handleSaveAndNext = async () => {
-    const success = await form.handleSubmit(onSubmit)();
-    if (success) {
-      handleNext();
-    }
-  };
 
   const handlePauseSession = React.useCallback(async () => {
     if (!appUser) return;
@@ -612,14 +610,16 @@ const CallingSessionDialogComponent = ({
                 </AlertDialog>
            </div>
            <div className="flex items-center gap-2 justify-center sm:justify-end">
-                <Button
-                    onClick={handleSaveAndNext}
-                    disabled={isSubmitting || isInitializing}
-                    className="min-w-[140px]"
-                >
+                <Button variant="outline" size="icon" onClick={handlePrevious} disabled={currentIndex === 0 || isSubmitting || isInitializing}>
+                    <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <Button type="submit" form="call-form" disabled={isSubmitting || isInitializing} className="min-w-[120px]">
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     <CheckSquare className="mr-2 h-4 w-4"/>
-                    Save &amp; Next
+                    Save
+                </Button>
+                <Button variant="outline" size="icon" onClick={handleNext} disabled={isSubmitting || isInitializing}>
+                    <ArrowRight className="h-4 w-4" />
                 </Button>
            </div>
         </DialogFooter>
