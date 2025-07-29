@@ -171,6 +171,7 @@ const CallingSessionDialogComponent = ({
   }, [appUser, handleCloseDialog, toast, updateCurrentAppUser]);
   
   const handleNext = React.useCallback(() => {
+    console.log("handleNext called. currentIndex:", currentIndex, "Total people:", currentPeople.length);
     if (currentIndex < currentPeople.length - 1) {
         setCurrentIndex(prevIndex => prevIndex + 1);
     } else {
@@ -271,8 +272,9 @@ const CallingSessionDialogComponent = ({
             title: "Call Logged",
             description: `Status for ${fullName} has been updated.`
         });
-        handleNext(); // Move to next contact after successful save
+        handleNext();
     } catch (e) {
+        console.error("Error in onSubmit:", e);
         toast({ variant: 'destructive', title: "Error", description: 'Could not save the call log.' });
     } finally {
         setIsSubmitting(false);
