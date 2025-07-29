@@ -254,12 +254,6 @@ const CallingSessionDialogComponent = ({
     }
   }, [currentIndex, currentPeople.length, toast, handleEndAndClearSession]);
   
-  const handlePrevious = React.useCallback(() => {
-    if (currentIndex > 0) {
-      setCurrentIndex(prev => prev - 1);
-    }
-  }, [currentIndex]);
-  
   const onSubmit = React.useCallback(async (data: CallFormValues) => {
     if (!currentPerson) return;
     
@@ -618,24 +612,6 @@ const CallingSessionDialogComponent = ({
                 </AlertDialog>
            </div>
            <div className="flex items-center gap-2 justify-center sm:justify-end">
-                <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={handlePrevious}
-                    disabled={currentIndex === 0 || isInitializing}
-                    aria-label="Previous Contact"
-                >
-                    <ArrowLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={handleNext}
-                    disabled={isInitializing}
-                    aria-label="Next Contact (Skip)"
-                >
-                    <ArrowRight className="h-4 w-4" />
-                </Button>
                 <Button
                     onClick={handleSaveAndNext}
                     disabled={isSubmitting || isInitializing}
