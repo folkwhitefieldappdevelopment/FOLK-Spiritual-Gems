@@ -68,7 +68,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
   Pagination,
@@ -622,16 +621,6 @@ function GroupDetailPageComponent() {
               <SortPopover sortDescriptors={sortDescriptors} setSortDescriptors={setSortDescriptors} />
             </div>
             <div className="flex items-center gap-2">
-              {canResumeSession && (
-                  <Button size="sm" onClick={handleResumeSession} variant="outline">
-                      <Play className="mr-2 h-4 w-4" />
-                      Resume Session ({pausedSession.currentIndex + 1} / {pausedSession.peopleIds.length})
-                  </Button>
-              )}
-              <Button size="sm" onClick={() => handleOpenEventDialog(true)} disabled={filteredAndSortedMembers.length === 0 || isSelectionActive || isLoading}>
-                  <Headset className="mr-2 h-4 w-4" />
-                  Start Calling Session ({isLoading ? '...' : filteredAndSortedMembers.length})
-              </Button>
               <div className="flex items-center rounded-md bg-muted p-1">
                 <Button variant={view === "card" ? "secondary" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setView("card")} aria-label="Card View"><LayoutGrid className="h-4 w-4" /></Button>
                 <Button variant={view === "table" ? "secondary" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setView("table")} aria-label="Table View"><List className="h-4 w-4" /></Button>

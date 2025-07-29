@@ -598,16 +598,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
                     <SortPopover sortDescriptors={sortDescriptors} setSortDescriptors={setSortDescriptors} />
                 </div>
                  <div className="flex items-center gap-2">
-                    {canResumeSession && (
-                        <Button size="sm" onClick={handleResumeSession} variant="outline">
-                            <Play className="mr-2 h-4 w-4" />
-                            Resume Session ({pausedSession.currentIndex + 1} / {pausedSession.peopleIds.length})
-                        </Button>
-                    )}
-                    <Button size="sm" onClick={() => handleOpenEventDialog(true)} disabled={filteredAndSortedPeople.length === 0 || isSelectionActive || isDataLoading}>
-                        <Headset className="mr-2 h-4 w-4" />
-                        Start Calling Session ({isDataLoading ? '...' : filteredAndSortedPeople.length})
-                    </Button>
                  </div>
             </div>
             {isSelectionActive && (
