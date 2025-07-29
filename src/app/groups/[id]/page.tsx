@@ -82,6 +82,7 @@ import { logAudit } from '@/services/audit-service';
 import { dynamicGroupDefinitions } from '@/lib/dynamic-groups';
 import { useRouter, useSearchParams, usePathname, useParams } from 'next/navigation';
 import { ShareGroupDialog } from '@/components/share-group-dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const ROWS_PER_PAGE = 10;
 const FIRESTORE_QUERY_LIMIT = 10000;
@@ -621,12 +622,25 @@ function GroupDetailPageComponent() {
               <SortPopover sortDescriptors={sortDescriptors} setSortDescriptors={setSortDescriptors} />
             </div>
             <div className="flex items-center gap-2">
-              <div className="flex items-center rounded-md bg-muted p-1">
-                <Button variant={view === "card" ? "secondary" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setView("card")} aria-label="Card View"><LayoutGrid className="h-4 w-4" /></Button>
-                <Button variant={view === "table" ? "secondary" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setView("table")} aria-label="Table View"><List className="h-4 w-4" /></Button>
-              </div>
+                <Button onClick={() => handleOpenEventDialog(true)} disabled={filteredAndSortedMembers.length === 0}>
+                    <Headset className="mr-2 h-4 w-4" /> Start Calling Session
+                </Button>
+                <div className="flex items-center rounded-md bg-muted p-1">
+                    <Button variant={view === "card" ? "secondary" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setView("card")} aria-label="Card View"><LayoutGrid className="h-4 w-4" /></Button>
+                    <Button variant={view === "table" ? "secondary" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setView("table")} aria-label="Table View"><List className="h-4 w-4" /></Button>
+                </div>
             </div>
           </div>
+          {canResumeSession && (
+             <Alert variant="default" className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800/50">
+                <Play className="h-4 w-4 !text-blue-600 dark:!text-blue-400" />
+                <AlertTitle className="text-blue-800 dark:text-blue-300">You have a paused session!</AlertTitle>
+                <AlertDescription className="flex items-center justify-between">
+                    <span className="text-blue-700 dark:text-blue-400/80">You can resume your last calling session for this group.</span>
+                    <Button size="sm" onClick={handleResumeSession} variant="secondary">Resume Session</Button>
+                </AlertDescription>
+            </Alert>
+          )}
           {isSelectionActive && (
               <div className="flex flex-wrap items-center gap-2 p-3 bg-muted rounded-lg border">
                 <span className="text-sm font-semibold">{selectedIds.size} selected</span>

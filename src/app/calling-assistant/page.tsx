@@ -598,8 +598,23 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
                     <SortPopover sortDescriptors={sortDescriptors} setSortDescriptors={setSortDescriptors} />
                 </div>
                  <div className="flex items-center gap-2">
+                    <Button onClick={() => handleOpenEventDialog(true)} disabled={filteredAndSortedPeople.length === 0}>
+                        <Headset className="mr-2 h-4 w-4" /> Start Calling Session
+                    </Button>
                  </div>
             </div>
+
+            {canResumeSession && (
+                <Alert variant="default" className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800/50">
+                    <Play className="h-4 w-4 !text-blue-600 dark:!text-blue-400" />
+                    <AlertTitle className="text-blue-800 dark:text-blue-300">You have a paused session!</AlertTitle>
+                    <AlertDescription className="flex items-center justify-between">
+                        <span className="text-blue-700 dark:text-blue-400/80">You can resume your last calling session.</span>
+                        <Button size="sm" onClick={handleResumeSession} variant="secondary">Resume Session</Button>
+                    </AlertDescription>
+                </Alert>
+            )}
+
             {isSelectionActive && (
               <div className="flex flex-wrap items-center gap-2 p-3 bg-muted rounded-lg border">
                 <span className="text-sm font-semibold">{selectedIds.size} selected</span>
