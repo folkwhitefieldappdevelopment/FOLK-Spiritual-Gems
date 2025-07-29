@@ -148,6 +148,40 @@ const CallingSessionDialogComponent = ({
     return groups.filter(g => g.peopleIds.includes(currentPerson.id));
   }, [currentPerson, groups]);
   
+  const handleCloseDialog = React.useCallback(() => {
+    isIntentionalClose.current = true;
+    onClose();
+  }, [onClose]);
+
+  const handleEndAndClearSession = React.useCallback(async (silent = false) => {
+    if (!appUser) return;
+    isIntentionalClose.current = true;
+    try {
+        await updateUser(appUser.id, { pausedSession: null }); // Use null to signify deletion
+        updateCurrentAppUser({ pausedSession: undefined });
+        if (!silent) {
+            toast({ title: "Session Ended", description: "Your paused session has been cleared." });
+        }
+        handleCloseDialog();
+    } catch (e) {
+        if (!silent) {
+            toast({ variant: 'destructive', title: "Error", description: 'Could not end the session.' });
+        }
+    }
+  }, [appUser, handleCloseDialog, toast, updateCurrentAppUser]);
+  
+  const handleNext = React.useCallback(() => {
+    if (currentIndex < currentPeople.length - 1) {
+        setCurrentIndex(prevIndex => prevIndex + 1);
+    } else {
+        toast({
+            title: "Calling Session Complete!",
+            description: "You have gone through all the contacts in this list.",
+        });
+        handleEndAndClearSession(true); // Silently clear session
+    }
+  }, [currentIndex, currentPeople.length, handleEndAndClearSession, toast]);
+
   React.useEffect(() => {
     if (isOpen) {
         setIsInitializing(true);
@@ -171,28 +205,6 @@ const CallingSessionDialogComponent = ({
         return () => clearTimeout(timer);
     }
   }, [isOpen, people, initialIndex, appUser]);
-
-  const handleCloseDialog = React.useCallback(() => {
-    isIntentionalClose.current = true;
-    onClose();
-  }, [onClose]);
-
-  const handleEndAndClearSession = React.useCallback(async (silent = false) => {
-    if (!appUser) return;
-    isIntentionalClose.current = true;
-    try {
-        await updateUser(appUser.id, { pausedSession: null }); // Use null to signify deletion
-        updateCurrentAppUser({ pausedSession: undefined });
-        if (!silent) {
-            toast({ title: "Session Ended", description: "Your paused session has been cleared." });
-        }
-        onClose();
-    } catch (e) {
-        if (!silent) {
-            toast({ variant: 'destructive', title: "Error", description: 'Could not end the session.' });
-        }
-    }
-  }, [appUser, onClose, toast, updateCurrentAppUser]);
 
   // Auto-save session on unmount (refresh, close tab, etc.)
   React.useEffect(() => {
@@ -239,24 +251,8 @@ const CallingSessionDialogComponent = ({
     }
   }, [currentPerson, form, isInitializing]);
   
-  const handleNext = React.useCallback(() => {
-    setCurrentIndex(prevIndex => {
-        if (prevIndex < currentPeople.length - 1) {
-            return prevIndex + 1;
-        } else {
-            isIntentionalClose.current = true; // Session is complete
-            handleEndAndClearSession(true); // Silently clear session
-            toast({
-                title: "Calling Session Complete!",
-                description: "You have gone through all the contacts in this list.",
-            });
-            return prevIndex; // Return same index to avoid invalid state before close
-        }
-    });
-  }, [currentPeople.length, handleEndAndClearSession, toast]);
-  
-  const onSubmit = React.useCallback(async (data: CallFormValues): Promise<boolean> => {
-    if (!currentPerson) return false;
+  const onSubmit = React.useCallback(async (data: CallFormValues) => {
+    if (!currentPerson) return;
     
     setIsSubmitting(true);
     const sg = data.sg === 'yes' ? true : data.sg === 'no' ? false : undefined;
@@ -275,21 +271,13 @@ const CallingSessionDialogComponent = ({
             title: "Call Logged",
             description: `Status for ${fullName} has been updated.`
         });
-        return true; // Indicate success
+        handleNext(); // Move to next contact after successful save
     } catch (e) {
         toast({ variant: 'destructive', title: "Error", description: 'Could not save the call log.' });
-        return false; // Indicate failure
     } finally {
         setIsSubmitting(false);
     }
-  }, [currentPerson, onSaveRemark, toast]);
-
-  const handleSaveAndNext = React.useCallback(async () => {
-    const isSuccess = await form.handleSubmit(onSubmit)();
-    if (isSuccess) {
-      handleNext();
-    }
-  }, [form, onSubmit, handleNext]);
+  }, [currentPerson, onSaveRemark, toast, handleNext]);
 
   const handlePauseSession = React.useCallback(async () => {
     if (!appUser) return;
@@ -420,7 +408,7 @@ const CallingSessionDialogComponent = ({
                         )}
 
                         <Form {...form}>
-                            <form id="call-form" className="space-y-4">
+                            <form id="call-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                                 <FormField
                                     control={form.control}
                                     name="status"
@@ -613,7 +601,7 @@ const CallingSessionDialogComponent = ({
                 </AlertDialog>
            </div>
            <div className="flex items-center gap-2 justify-center sm:justify-end">
-                <Button onClick={handleSaveAndNext} disabled={isSubmitting || isInitializing} className="min-w-[120px]">
+                <Button onClick={form.handleSubmit(onSubmit)} disabled={isSubmitting || isInitializing} className="min-w-[120px]">
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     <CheckSquare className="mr-2 h-4 w-4"/>
                     Save &amp; Next
@@ -626,3 +614,5 @@ const CallingSessionDialogComponent = ({
 };
 
 export const CallingSessionDialog = React.memo(CallingSessionDialogComponent);
+
+    
