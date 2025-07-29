@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import type { Person, CallStatus, Group, CustomField, PausedSession, UserRole } from "@/lib/types";
 import { callStatuses } from "@/lib/data";
-import { Phone, Square, CheckSquare, Loader2, Tags, ArrowLeft, ArrowRight, Edit, Save, XCircle, Pause, Trash2 } from "lucide-react";
+import { Phone, CheckSquare, Loader2, Edit, Save, XCircle, Pause, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 import {
@@ -128,7 +128,6 @@ const CallingSessionDialogComponent = ({
   const [isNotesDirty, setIsNotesDirty] = React.useState(false);
   const [isSavingNotes, setIsSavingNotes] = React.useState(false);
   
-  // Use a ref to track if the session was intentionally closed (paused/ended)
   const isIntentionalClose = React.useRef(false);
 
   const currentPerson = currentPeople[currentIndex];
@@ -241,26 +240,23 @@ const CallingSessionDialogComponent = ({
   }, [currentPerson, form, isInitializing]);
   
   const handleNext = React.useCallback(() => {
-    if (currentIndex < currentPeople.length - 1) {
-        setCurrentIndex(prev => prev + 1);
-    } else {
-        isIntentionalClose.current = true; // Session is complete
-        handleEndAndClearSession(true); // Silently clear session
-        toast({
-            title: "Calling Session Complete!",
-            description: "You have gone through all the contacts in this list.",
-        });
-    }
-  }, [currentIndex, currentPeople.length, toast, handleEndAndClearSession]);
+    setCurrentIndex(prevIndex => {
+        if (prevIndex < currentPeople.length - 1) {
+            return prevIndex + 1;
+        } else {
+            isIntentionalClose.current = true; // Session is complete
+            handleEndAndClearSession(true); // Silently clear session
+            toast({
+                title: "Calling Session Complete!",
+                description: "You have gone through all the contacts in this list.",
+            });
+            return prevIndex; // Return same index to avoid invalid state before close
+        }
+    });
+  }, [currentPeople.length, handleEndAndClearSession, toast]);
   
-  const handlePrevious = React.useCallback(() => {
-    if (currentIndex > 0) {
-      setCurrentIndex(prev => prev - 1);
-    }
-  }, [currentIndex]);
-  
-  const onSubmit = React.useCallback(async (data: CallFormValues) => {
-    if (!currentPerson) return;
+  const onSubmit = React.useCallback(async (data: CallFormValues): Promise<boolean> => {
+    if (!currentPerson) return false;
     
     setIsSubmitting(true);
     const sg = data.sg === 'yes' ? true : data.sg === 'no' ? false : undefined;
@@ -269,7 +265,7 @@ const CallingSessionDialogComponent = ({
     const fullName = currentPerson.fullName || '';
 
     try {
-        onSaveRemark(currentPerson.id, data.remark || '', data.status as CallStatus, sg, ma, frp);
+        await onSaveRemark(currentPerson.id, data.remark || '', data.status as CallStatus, sg, ma, frp);
 
         // Also update the local state to reflect the change immediately
         const updatedPerson = { ...currentPerson, lastCallRemark: data.remark, lastCallStatus: data.status as CallStatus, lastSg: sg, lastMa: ma, lastFrp: frp, lastCallAt: new Date().toISOString() };
@@ -287,6 +283,13 @@ const CallingSessionDialogComponent = ({
         setIsSubmitting(false);
     }
   }, [currentPerson, onSaveRemark, toast]);
+
+  const handleSaveAndNext = React.useCallback(async () => {
+    const isSuccess = await form.handleSubmit(onSubmit)();
+    if (isSuccess) {
+      handleNext();
+    }
+  }, [form, onSubmit, handleNext]);
 
   const handlePauseSession = React.useCallback(async () => {
     if (!appUser) return;
@@ -417,7 +420,7 @@ const CallingSessionDialogComponent = ({
                         )}
 
                         <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} id="call-form" className="space-y-4">
+                            <form id="call-form" className="space-y-4">
                                 <FormField
                                     control={form.control}
                                     name="status"
@@ -610,16 +613,10 @@ const CallingSessionDialogComponent = ({
                 </AlertDialog>
            </div>
            <div className="flex items-center gap-2 justify-center sm:justify-end">
-                <Button variant="outline" size="icon" onClick={handlePrevious} disabled={currentIndex === 0 || isSubmitting || isInitializing}>
-                    <ArrowLeft className="h-4 w-4" />
-                </Button>
-                <Button type="submit" form="call-form" disabled={isSubmitting || isInitializing} className="min-w-[120px]">
+                <Button onClick={handleSaveAndNext} disabled={isSubmitting || isInitializing} className="min-w-[120px]">
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     <CheckSquare className="mr-2 h-4 w-4"/>
-                    Save
-                </Button>
-                <Button variant="outline" size="icon" onClick={handleNext} disabled={isSubmitting || isInitializing}>
-                    <ArrowRight className="h-4 w-4" />
+                    Save &amp; Next
                 </Button>
            </div>
         </DialogFooter>
