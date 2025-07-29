@@ -242,7 +242,8 @@ const CallingSessionDialogComponent = ({
   
   const handleNext = React.useCallback(() => {
     if (currentIndex < currentPeople.length - 1) {
-        setCurrentIndex(currentIndex + 1);
+        // Use functional update to ensure we always have the latest state
+        setCurrentIndex(prev => prev + 1);
     } else {
         isIntentionalClose.current = true; // Session is complete
         handleEndAndClearSession(true); // Silently clear session
@@ -255,7 +256,7 @@ const CallingSessionDialogComponent = ({
   
   const handlePrevious = React.useCallback(() => {
     if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
+      setCurrentIndex(prev => prev - 1);
     }
   }, [currentIndex]);
   
