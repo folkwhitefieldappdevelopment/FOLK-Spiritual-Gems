@@ -1,7 +1,7 @@
 
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
-import { getFirestore, type Firestore } from "firebase/firestore";
+import { getFirestore, type Firestore, enableIndexedDbPersistence } from "firebase/firestore";
 import { getAuth, type Auth } from "firebase/auth";
 
 // Your web app's Firebase configuration is read from environment variables.
@@ -36,6 +36,16 @@ try {
   // otherwise connect to the default database.
   db = getFirestore(app, process.env.NEXT_PUBLIC_FIREBASE_DATABASE_ID);
   auth = getAuth(app);
+
+  // Enable offline persistence
+  enableIndexedDbPersistence(db).catch((err) => {
+    if (err.code == 'failed-precondition') {
+      console.warn('Firestore persistence failed: Multiple tabs open, persistence can only be enabled in one tab at a time.');
+    } else if (err.code == 'unimplemented') {
+      console.warn('Firestore persistence failed: The current browser does not support all of the features required to enable persistence.');
+    }
+  });
+
 } catch (error) {
   console.error("Firebase Initialization Error:", error);
   if (error instanceof Error) {
