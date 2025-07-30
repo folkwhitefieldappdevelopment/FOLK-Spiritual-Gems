@@ -12,7 +12,7 @@ import {
   deleteField,
   setDoc,
 } from 'firebase/firestore';
-import type { AppUser, UserRole } from '@/lib/types';
+import type { AppUser, UserRole, PausedSession } from '@/lib/types';
 import { logAudit } from './audit-service';
 
 type UserData = Omit<AppUser, 'id' | 'createdAt'>;
@@ -51,6 +51,9 @@ export const updateUser = async (id: string, userData: { [key: string]: any }, a
   const dataToUpdate = { ...userData };
    if (dataToUpdate.reportsTo === null) {
     dataToUpdate.reportsTo = deleteField();
+  }
+  if (dataToUpdate.pausedSession === null) {
+    dataToUpdate.pausedSession = deleteField();
   }
 
 

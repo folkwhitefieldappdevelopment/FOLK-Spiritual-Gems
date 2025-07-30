@@ -2,8 +2,8 @@
 'use client';
 
 import * as React from "react";
-import { Loader2, Edit, Search, Users, UserCheck, PlusCircle, AlertCircle, PhoneCall } from "lucide-react";
-import type { Person, CallStatus, CustomField, Group, AppUser, UserRole } from "@/lib/types";
+import { Loader2, Edit, Search, Users, UserCheck, PlusCircle, AlertCircle, PhoneCall, Play } from "lucide-react";
+import type { Person, CallStatus, CustomField, Group, AppUser, UserRole, PausedSession } from "@/lib/types";
 import { occupationStatuses } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import { CreateUpdatePersonDialog } from "@/components/create-update-person-dial
 import { FirebaseConfigError } from "@/components/firebase-config-error";
 import { getPeople, updatePerson, assignCoEnablerToPeople } from "@/services/people-service";
 import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
-import { getFolkGuides, updateUser, getUsers } from "@/services/user-service";
+import { getFolkGuides, updateUser } from "@/services/user-service";
 import { getAllGroups, createGroup, addPeopleToGroup } from "@/services/groups-service";
 import { useAuth } from "@/contexts/auth-context";
 import {
@@ -370,9 +370,10 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     setSessionCurrentIndex(0);
     setIsCallingSessionDialogOpen(true);
     setIsConfirmSessionDialogOpen(false);
-  }, [filteredAndSortedPeople]);
-
-  const handleSaveAndNext = React.useCallback(async (
+    if(appUser) updateCurrentAppUser({ currentCallingEvent: eventName });
+  }, [filteredAndSortedPeople, appUser, updateCurrentAppUser]);
+  
+  const handleSessionSave = React.useCallback(async (
     personId: string,
     remark: string,
     status: CallStatus,
@@ -421,24 +422,62 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
           }
           return p;
       }));
-
-      if (sessionCurrentIndex < sessionPeople.length - 1) {
-          setSessionCurrentIndex(prev => prev + 1);
-      } else {
-          toast({
-              title: "Calling Session Complete!",
-              description: "You have gone through all the contacts in this list.",
-          });
-          setIsCallingSessionDialogOpen(false);
-      }
     } catch (error) {
       console.error("Failed to save session update:", error);
       toast({ variant: 'destructive', title: "Error", description: 'Could not save the call log.' });
+      throw error;
     }
-  }, [appUser, sessionEvent, user, sessionCurrentIndex, sessionPeople.length, toast]);
+  }, [appUser, sessionEvent, user, toast]);
 
-  const handleSessionClose = () => {
-      setIsCallingSessionDialogOpen(false);
+  const handleSessionNavigate = React.useCallback((direction: 'next' | 'prev') => {
+    if (direction === 'next') {
+        setSessionCurrentIndex(prev => Math.min(prev + 1, sessionPeople.length - 1));
+    } else {
+        setSessionCurrentIndex(prev => Math.max(prev - 1, 0));
+    }
+  }, [sessionPeople.length]);
+
+  const handleEndAndClearSession = React.useCallback(async (isSilent = false) => {
+    setIsCallingSessionDialogOpen(false);
+    if (appUser?.id) {
+        await updateUser(appUser.id, { pausedSession: null });
+        updateCurrentAppUser({ pausedSession: null });
+        if (!isSilent) {
+          toast({ title: 'Session Ended', description: 'Your calling session has been cleared.' });
+        }
+    }
+  }, [appUser, toast, updateCurrentAppUser]);
+
+  const handleSessionCloseDialog = React.useCallback(() => {
+    if (!appUser) {
+        setIsCallingSessionDialogOpen(false);
+        return;
+    }
+    const pausedData: PausedSession = {
+        eventName: sessionEvent,
+        peopleIds: sessionPeople.map(p => p.id),
+        currentIndex: sessionCurrentIndex,
+    };
+    updateUser(appUser.id, { pausedSession: pausedData });
+    updateCurrentAppUser({ pausedSession: pausedData });
+    setIsCallingSessionDialogOpen(false);
+    toast({ title: 'Session Paused', description: 'Your session has been saved. You can resume it from this page later.' });
+  }, [appUser, sessionEvent, sessionPeople, sessionCurrentIndex, updateCurrentAppUser, toast]);
+
+  const handleResumeSession = () => {
+    if (!appUser?.pausedSession) return;
+    const { eventName, peopleIds, currentIndex } = appUser.pausedSession;
+    const resumedPeople = peopleIds.map(id => allFetchedPeople.find(p => p.id === id)).filter(p => p !== undefined) as Person[];
+    
+    if (resumedPeople.length > 0) {
+        setSessionEvent(eventName);
+        setSessionPeople(resumedPeople);
+        setSessionCurrentIndex(currentIndex);
+        setIsCallingSessionDialogOpen(true);
+    } else {
+        toast({ variant: 'destructive', title: 'Error Resuming', description: 'Could not find the contacts for the paused session.' });
+        handleEndAndClearSession(true); // Clear invalid session
+    }
   };
   
   const showLimitWarning = filteredAndSortedPeople.length > FIRESTORE_QUERY_LIMIT;
@@ -458,6 +497,19 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
     return (
       <>
+        {appUser?.pausedSession && (
+             <Alert className="mb-4">
+                <Play className="h-4 w-4" />
+                <AlertTitle>Resume Paused Session</AlertTitle>
+                <AlertDescription className="flex items-center justify-between">
+                    You have a paused calling session for "{appUser.pausedSession.eventName}".
+                    <div>
+                        <Button variant="outline" size="sm" className="mr-2" onClick={() => handleEndAndClearSession()}>Clear</Button>
+                        <Button size="sm" onClick={handleResumeSession}>Resume</Button>
+                    </div>
+                </AlertDescription>
+            </Alert>
+        )}
         <div className="mb-6 flex flex-col gap-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -613,10 +665,12 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       {isCallingSessionDialogOpen && sessionPeople.length > 0 && (
          <CallingSessionDialog
             isOpen={isCallingSessionDialogOpen}
-            onClose={handleSessionClose}
+            onClose={handleSessionCloseDialog}
+            onEndSession={handleEndAndClearSession}
             person={sessionPeople[sessionCurrentIndex]}
             currentEvent={sessionEvent}
-            onSave={handleSaveAndNext}
+            onSaveAndNext={handleSessionSave}
+            onNavigate={handleSessionNavigate}
             sessionCurrentNumber={sessionCurrentIndex + 1}
             sessionTotalCount={sessionPeople.length}
             customFields={customFields}

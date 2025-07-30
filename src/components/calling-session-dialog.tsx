@@ -5,9 +5,9 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import type { Person, CallStatus, Group, CustomField, UserRole } from "@/lib/types";
+import type { Person, CallStatus, Group, CustomField, UserRole, PausedSession } from "@/lib/types";
 import { callStatuses } from "@/lib/data";
-import { Phone, CheckSquare, Loader2, Edit, Save, XCircle } from "lucide-react";
+import { Phone, CheckSquare, Loader2, Edit, Save, XCircle, ArrowLeft, ArrowRight, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 import {
@@ -34,6 +34,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "./ui/separator";
@@ -61,7 +72,8 @@ type UserInfo = {
 type CallingSessionDialogProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (
+  onEndSession: (isSilent?: boolean) => void;
+  onSaveAndNext: (
     personId: string, 
     remark: string, 
     status: CallStatus,
@@ -69,6 +81,7 @@ type CallingSessionDialogProps = {
     ma: boolean | undefined,
     frp: boolean | undefined
   ) => Promise<void>;
+  onNavigate: (direction: 'next' | 'prev') => void;
   person: Person;
   currentEvent: string;
   sessionCurrentNumber: number;
@@ -81,7 +94,9 @@ type CallingSessionDialogProps = {
 const CallingSessionDialogComponent = ({
   isOpen,
   onClose,
-  onSave,
+  onEndSession,
+  onSaveAndNext,
+  onNavigate,
   person,
   currentEvent,
   sessionCurrentNumber,
@@ -149,7 +164,8 @@ const CallingSessionDialogComponent = ({
     const frp = data.frp === 'yes' ? true : data.frp === 'no' ? false : undefined;
 
     try {
-      await onSave(person.id, data.remark || '', data.status as CallStatus, sg, ma, frp);
+      await onSaveAndNext(person.id, data.remark || '', data.status as CallStatus, sg, ma, frp);
+      onNavigate('next');
     } catch (e) {
       // Errors are toasted in the parent
     } finally {
@@ -406,10 +422,36 @@ const CallingSessionDialogComponent = ({
         </div>
 
         <DialogFooter className="flex-shrink-0 p-6 pt-4 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-           <Button variant="outline" onClick={onClose}>
-                End Session
-           </Button>
+           <div>
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm">
+                        <Trash2 className="mr-2 h-4 w-4"/> End & Clear
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>End Calling Session?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will end the current session. You can start a new one from the Calling Assistant page.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => onEndSession()}>End Session</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+           </div>
            <div className="flex items-center gap-2 justify-center sm:justify-end">
+                <Button variant="outline" size="icon" onClick={() => onNavigate('prev')} disabled={sessionCurrentNumber <= 1}>
+                    <ArrowLeft className="h-4 w-4"/>
+                    <span className="sr-only">Previous Contact</span>
+                </Button>
+                <Button variant="outline" size="icon" onClick={() => onNavigate('next')} disabled={sessionCurrentNumber >= sessionTotalCount}>
+                    <ArrowRight className="h-4 w-4"/>
+                    <span className="sr-only">Next Contact</span>
+                </Button>
                 <Button onClick={form.handleSubmit(onSubmit)} disabled={isSubmitting} className="min-w-[120px]">
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     <CheckSquare className="mr-2 h-4 w-4"/>

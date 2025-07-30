@@ -58,6 +58,12 @@ export const callStatuses = [
 ] as const;
 export type CallStatus = (typeof callStatuses)[number];
 
+export type PausedSession = {
+  eventName: string;
+  peopleIds: string[];
+  currentIndex: number;
+};
+
 export type Person = {
   id: string;
   fullName: string;
@@ -120,6 +126,7 @@ export type AppUser = {
   };
   lastAssignedEnablerIndex?: number;
   currentCallingEvent?: string;
+  pausedSession?: PausedSession | null;
   photoUrl?: string;
 };
 
