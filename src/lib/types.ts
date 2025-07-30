@@ -105,20 +105,6 @@ export type Person = {
 export const userRoles = ['Admin', 'Folk Guide', 'Folk Enabler'] as const;
 export type UserRole = (typeof userRoles)[number];
 
-export type PausedSession = {
-    context: 'assistant' | 'group';
-    peopleIds: string[];
-    currentIndex: number;
-    currentEvent: string;
-    sessionStartIndex: number;
-    totalPeopleCount: number;
-    filters: FilterRule[];
-    sortDescriptors: SortDescriptor[];
-    searchTerm: string;
-    selectedGroupId: string;
-    columnFilters: ColumnFilterState;
-};
-
 export type AppUser = {
   id: string;
   name: string;
@@ -135,7 +121,6 @@ export type AppUser = {
   lastAssignedEnablerIndex?: number;
   currentCallingEvent?: string;
   photoUrl?: string;
-  pausedSession?: PausedSession;
 };
 
 export type Group = {

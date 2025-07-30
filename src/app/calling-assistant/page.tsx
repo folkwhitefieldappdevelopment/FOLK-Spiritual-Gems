@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Loader2, Edit, Search, Users, UserCheck, PlusCircle, AlertCircle, PhoneCall } from "lucide-react";
 import type { Person, CallStatus, CustomField, Group, AppUser, PausedSession, UserRole } from "@/lib/types";
-import { occupationStatuses, callStatuses } from "@/lib/types";
+import { occupationStatuses } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -72,7 +72,7 @@ type UserInfo = {
 
 const CallingAssistantPageComponent = React.memo(function CallingAssistantPageComponent() {
   const { toast } = useToast();
-  const { appUser, user } = useAuth();
+  const { appUser, user, updateCurrentAppUser } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -92,10 +92,13 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   const editingPersonRef = React.useRef<Person | undefined>(undefined);
   const [isEditingDialogOpen, setIsEditingDialogOpen] = React.useState(false);
   const [isConfirmSessionDialogOpen, setIsConfirmSessionDialogOpen] = React.useState(false);
+  
+  // Calling Session State
   const [isCallingSessionDialogOpen, setIsCallingSessionDialogOpen] = React.useState(false);
   const [sessionPeople, setSessionPeople] = React.useState<Person[]>([]);
   const [sessionEvent, setSessionEvent] = React.useState('');
-  const [sessionStartIndex, setSessionStartIndex] = React.useState(0);
+  const [sessionCurrentIndex, setSessionCurrentIndex] = React.useState(0);
+
 
   const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
@@ -212,7 +215,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   const filterableFields: FilterableField[] = React.useMemo(() => {
     return [
       { value: 'nativePlace', label: 'Native Place', type: 'string' },
-      { value: 'lastCallStatus', label: 'Call Status', type: 'enum', options: callStatuses.map(s => ({ value: s, label: s })) },
       { value: 'enablerInTouchWith', label: 'Enabler', type: 'enum', options: enablerOptions },
       { value: 'occupation', label: 'Occupation', type: 'enum', options: occupationStatuses.map(s => ({ value: s, label: s })) },
       { value: 'lastSg', label: 'SG', type: 'boolean' },
@@ -360,16 +362,24 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     }
   }, [selectedIds, toast, appUser, fetchPageData]);
 
+  // --- Calling Session Logic ---
   const handleStartSession = React.useCallback((eventName: string, start: number, end: number) => {
     const peopleForSession = filteredAndSortedPeople.slice(start - 1, end);
     setSessionPeople(peopleForSession);
     setSessionEvent(eventName);
-    setSessionStartIndex(start - 1);
+    setSessionCurrentIndex(0);
     setIsCallingSessionDialogOpen(true);
     setIsConfirmSessionDialogOpen(false);
   }, [filteredAndSortedPeople]);
 
-  const handleSessionSave = React.useCallback(async (personId: string, remark: string, status: CallStatus, sg?: boolean, ma?: boolean, frp?: boolean) => {
+  const handleSaveAndNext = React.useCallback(async (
+    personId: string,
+    remark: string,
+    status: CallStatus,
+    sg?: boolean,
+    ma?: boolean,
+    frp?: boolean
+  ) => {
     if (!appUser) return;
     const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     
@@ -380,7 +390,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       sg,
       ma,
       frp,
-      calledAt: 'SERVER_TIMESTAMP', // Placeholder for server timestamp
+      calledAt: 'SERVER_TIMESTAMP',
       callerId: appUser.id,
       callerName: appUser.name,
       callerPhotoUrl: user?.photoURL || '',
@@ -399,11 +409,29 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
     try {
       await updatePerson(personId, updates, userInfo);
+      toast({
+          title: "Call Logged",
+          description: `Status for the contact has been updated.`
+      });
+
+      if (sessionCurrentIndex < sessionPeople.length - 1) {
+          setSessionCurrentIndex(prev => prev + 1);
+      } else {
+          toast({
+              title: "Calling Session Complete!",
+              description: "You have gone through all the contacts in this list.",
+          });
+          setIsCallingSessionDialogOpen(false);
+      }
     } catch (error) {
       console.error("Failed to save session update:", error);
-      throw error; // Re-throw to be caught in the dialog
+      toast({ variant: 'destructive', title: "Error", description: 'Could not save the call log.' });
     }
-  }, [appUser, sessionEvent, user]);
+  }, [appUser, sessionEvent, user, sessionCurrentIndex, sessionPeople.length, toast]);
+
+  const handleSessionClose = () => {
+      setIsCallingSessionDialogOpen(false);
+  };
   
   const showLimitWarning = filteredAndSortedPeople.length > FIRESTORE_QUERY_LIMIT;
 
@@ -574,23 +602,20 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
         onStartSession={handleStartSession}
       />
 
-      <CallingSessionDialog
-          isOpen={isCallingSessionDialogOpen}
-          onClose={() => setIsCallingSessionDialogOpen(false)}
-          people={sessionPeople}
-          currentEvent={sessionEvent}
-          groups={groups}
-          customFields={customFields}
-          onSaveRemark={handleSessionSave}
-          totalPeopleCount={filteredAndSortedPeople.length}
-          sessionStartIndex={sessionStartIndex}
-          context="assistant"
-          filters={filters}
-          sortDescriptors={sortDescriptors}
-          columnFilters={columnFilters}
-          searchTerm={searchTerm}
-          selectedGroupId={selectedGroupId}
-        />
+      {isCallingSessionDialogOpen && sessionPeople.length > 0 && (
+         <CallingSessionDialog
+            isOpen={isCallingSessionDialogOpen}
+            onClose={handleSessionClose}
+            person={sessionPeople[sessionCurrentIndex]}
+            currentEvent={sessionEvent}
+            onSave={handleSaveAndNext}
+            sessionCurrentNumber={sessionCurrentIndex + 1}
+            sessionTotalCount={sessionPeople.length}
+            customFields={customFields}
+            groups={groups}
+            allPeople={allPeople}
+          />
+      )}
     </div>
   );
 });
@@ -603,5 +628,3 @@ export default function CallingAssistantPage() {
         </AuthGuard>
     );
 }
-
-    
