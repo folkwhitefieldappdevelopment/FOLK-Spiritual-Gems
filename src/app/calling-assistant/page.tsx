@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from "react";
-import { Loader2, Edit, Search, Users, UserCheck, PlusCircle, AlertCircle, PhonePlay } from "lucide-react";
+import { Loader2, Edit, Search, Users, UserCheck, PlusCircle, AlertCircle, PhoneCall } from "lucide-react";
 import type { Person, CallStatus, CustomField, Group, AppUser, PausedSession, UserRole } from "@/lib/types";
 import { occupationStatuses, callStatuses } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -450,7 +450,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
                     <FilterPopover filters={filters} setFilters={setFilters} filterableFields={filterableFields} />
                     <SortPopover sortDescriptors={sortDescriptors} setSortDescriptors={setSortDescriptors} />
                     <Button onClick={() => setIsConfirmSessionDialogOpen(true)} disabled={filteredAndSortedPeople.length === 0}>
-                        <PhonePlay className="mr-2 h-4 w-4"/>
+                        <PhoneCall className="mr-2 h-4 w-4"/>
                         Begin Call Session
                     </Button>
                 </div>
@@ -603,3 +603,5 @@ export default function CallingAssistantPage() {
         </AuthGuard>
     );
 }
+
+    
