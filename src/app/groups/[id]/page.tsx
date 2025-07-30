@@ -55,6 +55,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
   Pagination,
@@ -584,3 +585,5 @@ export default function GroupDetailPage() {
         </AuthGuard>
     )
 }
+
+    
