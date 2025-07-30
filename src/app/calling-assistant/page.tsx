@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from "react";
-import { Loader2, Edit, Search, Users, UserCheck, PlusCircle, AlertCircle } from "lucide-react";
+import { Loader2, Edit, Search, Users, UserCheck, PlusCircle, AlertCircle, PhonePlay } from "lucide-react";
 import type { Person, CallStatus, CustomField, Group, AppUser, PausedSession, UserRole } from "@/lib/types";
 import { occupationStatuses, callStatuses } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -57,6 +57,8 @@ import {
 } from '@/components/ui/pagination';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { CallingSessionDialog } from '@/components/calling-session-dialog';
+import { ConfirmSessionDialog } from '@/components/confirm-session-dialog';
 
 
 const ROWS_PER_PAGE = 10;
@@ -85,10 +87,15 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [columnFilters, setColumnFilters] = React.useState<ColumnFilterState>({});
   const [currentPage, setCurrentPage] = React.useState(1);
-  const [selectedGroupId, setSelectedGroupId] = React.useState<string>('all');
+  const [selectedGroupId, setSelectedGroupId] = React.useState('all');
 
   const editingPersonRef = React.useRef<Person | undefined>(undefined);
   const [isEditingDialogOpen, setIsEditingDialogOpen] = React.useState(false);
+  const [isConfirmSessionDialogOpen, setIsConfirmSessionDialogOpen] = React.useState(false);
+  const [isCallingSessionDialogOpen, setIsCallingSessionDialogOpen] = React.useState(false);
+  const [sessionPeople, setSessionPeople] = React.useState<Person[]>([]);
+  const [sessionEvent, setSessionEvent] = React.useState('');
+  const [sessionStartIndex, setSessionStartIndex] = React.useState(0);
 
   const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
@@ -352,6 +359,51 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
         toast({ variant: "destructive", title: "Error", description: "Could not assign co-enabler." });
     }
   }, [selectedIds, toast, appUser, fetchPageData]);
+
+  const handleStartSession = React.useCallback((eventName: string, start: number, end: number) => {
+    const peopleForSession = filteredAndSortedPeople.slice(start - 1, end);
+    setSessionPeople(peopleForSession);
+    setSessionEvent(eventName);
+    setSessionStartIndex(start - 1);
+    setIsCallingSessionDialogOpen(true);
+    setIsConfirmSessionDialogOpen(false);
+  }, [filteredAndSortedPeople]);
+
+  const handleSessionSave = React.useCallback(async (personId: string, remark: string, status: CallStatus, sg?: boolean, ma?: boolean, frp?: boolean) => {
+    if (!appUser) return;
+    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+    
+    const callLog = {
+      remark,
+      status,
+      event: sessionEvent,
+      sg,
+      ma,
+      frp,
+      calledAt: 'SERVER_TIMESTAMP', // Placeholder for server timestamp
+      callerId: appUser.id,
+      callerName: appUser.name,
+      callerPhotoUrl: user?.photoURL || '',
+    };
+    
+    const updates: Partial<Person> = {
+      lastCallRemark: remark,
+      lastCallStatus: status,
+      lastCallAt: 'SERVER_TIMESTAMP',
+      lastSg: sg,
+      lastMa: ma,
+      lastFrp: frp,
+      // @ts-ignore
+      callHistory: callLog,
+    };
+
+    try {
+      await updatePerson(personId, updates, userInfo);
+    } catch (error) {
+      console.error("Failed to save session update:", error);
+      throw error; // Re-throw to be caught in the dialog
+    }
+  }, [appUser, sessionEvent, user]);
   
   const showLimitWarning = filteredAndSortedPeople.length > FIRESTORE_QUERY_LIMIT;
 
@@ -397,6 +449,10 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
                     </Select>
                     <FilterPopover filters={filters} setFilters={setFilters} filterableFields={filterableFields} />
                     <SortPopover sortDescriptors={sortDescriptors} setSortDescriptors={setSortDescriptors} />
+                    <Button onClick={() => setIsConfirmSessionDialogOpen(true)} disabled={filteredAndSortedPeople.length === 0}>
+                        <PhonePlay className="mr-2 h-4 w-4"/>
+                        Begin Call Session
+                    </Button>
                 </div>
             </div>
 
@@ -510,6 +566,31 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
             allPeople={allFetchedPeople}
         />
       )}
+
+      <ConfirmSessionDialog
+        isOpen={isConfirmSessionDialogOpen}
+        setIsOpen={setIsConfirmSessionDialogOpen}
+        people={filteredAndSortedPeople}
+        onStartSession={handleStartSession}
+      />
+
+      <CallingSessionDialog
+          isOpen={isCallingSessionDialogOpen}
+          onClose={() => setIsCallingSessionDialogOpen(false)}
+          people={sessionPeople}
+          currentEvent={sessionEvent}
+          groups={groups}
+          customFields={customFields}
+          onSaveRemark={handleSessionSave}
+          totalPeopleCount={filteredAndSortedPeople.length}
+          sessionStartIndex={sessionStartIndex}
+          context="assistant"
+          filters={filters}
+          sortDescriptors={sortDescriptors}
+          columnFilters={columnFilters}
+          searchTerm={searchTerm}
+          selectedGroupId={selectedGroupId}
+        />
     </div>
   );
 });

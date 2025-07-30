@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import type { Person, CallStatus, Group, CustomField, PausedSession, UserRole } from "@/lib/types";
 import { callStatuses } from "@/lib/data";
-import { Phone, CheckSquare, Loader2, Edit, Save, XCircle, Pause, Trash2 } from "lucide-react";
+import { Phone, CheckSquare, Loader2, Edit, Save, XCircle, Pause, Trash2, ArrowLeft, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 import {
@@ -27,7 +27,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button } from "@/components/ui/button";
 import {
@@ -84,7 +83,7 @@ type CallingSessionDialogProps = {
     sg: boolean | undefined,
     ma: boolean | undefined,
     frp: boolean | undefined
-  ) => void;
+  ) => Promise<void>;
   people: Person[];
   currentEvent: string;
   customFields: CustomField[];
@@ -171,7 +170,6 @@ const CallingSessionDialogComponent = ({
   }, [appUser, handleCloseDialog, toast, updateCurrentAppUser]);
   
   const handleNext = React.useCallback(() => {
-    console.log("handleNext called. currentIndex:", currentIndex, "Total people:", currentPeople.length);
     if (currentIndex < currentPeople.length - 1) {
         setCurrentIndex(prevIndex => prevIndex + 1);
     } else {
@@ -182,6 +180,13 @@ const CallingSessionDialogComponent = ({
         handleEndAndClearSession(true); // Silently clear session
     }
   }, [currentIndex, currentPeople.length, handleEndAndClearSession, toast]);
+  
+  const handlePrevious = React.useCallback(() => {
+    if (currentIndex > 0) {
+        setCurrentIndex(prevIndex => prevIndex - 1);
+    }
+  }, [currentIndex]);
+
 
   React.useEffect(() => {
     if (isOpen) {
@@ -211,7 +216,6 @@ const CallingSessionDialogComponent = ({
   React.useEffect(() => {
     const autoSaveSession = () => {
         if (isOpen && !isIntentionalClose.current && appUser && currentPeople.length > 0) {
-            console.log("Auto-saving session...");
             const pausedSessionData: PausedSession = {
                 context,
                 peopleIds: currentPeople.map(p => p.id),
@@ -263,8 +267,7 @@ const CallingSessionDialogComponent = ({
 
     try {
         await onSaveRemark(currentPerson.id, data.remark || '', data.status as CallStatus, sg, ma, frp);
-
-        // Also update the local state to reflect the change immediately
+        
         const updatedPerson = { ...currentPerson, lastCallRemark: data.remark, lastCallStatus: data.status as CallStatus, lastSg: sg, lastMa: ma, lastFrp: frp, lastCallAt: new Date().toISOString() };
         setCurrentPeople(prev => prev.map(p => p.id === updatedPerson.id ? updatedPerson : p));
 
@@ -578,12 +581,12 @@ const CallingSessionDialogComponent = ({
         <DialogFooter className="flex-shrink-0 p-6 pt-4 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
            <div className="flex items-center gap-2 justify-center sm:justify-start">
                 <Button variant="secondary" size="sm" onClick={handlePauseSession}>
-                    <Pause className="mr-2 h-4 w-4"/> Pause &amp; Save
+                    <Pause className="mr-2 h-4 w-4"/> Pause & Save
                 </Button>
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button variant="destructive" size="sm">
-                            <Trash2 className="mr-2 h-4 w-4"/> End &amp; Clear
+                            <Trash2 className="mr-2 h-4 w-4"/> End & Clear
                         </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
@@ -603,10 +606,16 @@ const CallingSessionDialogComponent = ({
                 </AlertDialog>
            </div>
            <div className="flex items-center gap-2 justify-center sm:justify-end">
+                <Button variant="ghost" size="icon" onClick={handlePrevious} disabled={currentIndex === 0}>
+                    <ArrowLeft className="h-4 w-4" />
+                </Button>
                 <Button onClick={form.handleSubmit(onSubmit)} disabled={isSubmitting || isInitializing} className="min-w-[120px]">
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     <CheckSquare className="mr-2 h-4 w-4"/>
-                    Save &amp; Next
+                    Save & Next
+                </Button>
+                 <Button variant="ghost" size="icon" onClick={handleNext} disabled={currentIndex >= currentPeople.length - 1}>
+                    <ArrowRight className="h-4 w-4" />
                 </Button>
            </div>
         </DialogFooter>
@@ -616,5 +625,3 @@ const CallingSessionDialogComponent = ({
 };
 
 export const CallingSessionDialog = React.memo(CallingSessionDialogComponent);
-
-    
