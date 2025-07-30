@@ -13,14 +13,11 @@ import {
   Trash2,
   Search,
   PlusCircle,
-  Headset,
-  Edit,
-  Play,
   Share2,
   Upload,
 } from 'lucide-react';
 import { read, utils, write, type WorkSheet } from "xlsx";
-import type { Person, Group, AppUser, CustomField, CallStatus, UserRole } from '@/lib/types';
+import type { Person, Group, AppUser, CustomField, UserRole } from '@/lib/types';
 import { occupationStatuses, callStatuses } from "@/lib/types";
 import { useToast } from '@/hooks/use-toast';
 import { getGroup, getStaticGroups, addPeopleToGroup, removePeopleFromGroup } from '@/services/groups-service';
@@ -35,23 +32,13 @@ import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { PersonTable } from '@/components/person-table';
 import { PersonCard } from '@/components/person-card';
 import { CreateUpdatePersonDialog } from '@/components/create-update-person-dialog';
-import { CallingSessionDialog } from '@/components/calling-session-dialog';
 import { ManageGroupMembersDialog } from '@/components/manage-group-members-dialog';
 import { AssignCoEnablerDialog } from '@/components/assign-helper-dialog';
 import { FilterPopover, type FilterRule, type FilterableField, applyClientSideFilters } from '@/components/filter-popover';
 import { SortPopover, type SortDescriptor } from '@/components/sort-popover';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -78,11 +65,9 @@ import {
 } from '@/components/ui/pagination';
 import { ColumnFilterState, applyColumnFilters } from '@/components/column-header-filter';
 import { AuthGuard } from '@/components/auth-guard';
-import { logAudit } from '@/services/audit-service';
 import { dynamicGroupDefinitions } from '@/lib/dynamic-groups';
 import { useRouter, useSearchParams, usePathname, useParams } from 'next/navigation';
 import { ShareGroupDialog } from '@/components/share-group-dialog';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const ROWS_PER_PAGE = 10;
 const FIRESTORE_QUERY_LIMIT = 10000;
@@ -97,7 +82,7 @@ function GroupDetailPageComponent() {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
-  const { appUser, user, updateCurrentAppUser } = useAuth();
+  const { appUser } = useAuth();
   const groupId = params.id as string;
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -109,7 +94,6 @@ function GroupDetailPageComponent() {
   const [allGroups, setAllGroups] = React.useState<Group[]>([]);
   const [allPeople, setAllPeople] = React.useState<Person[]>([]);
   const [members, setMembers] = React.useState<Person[]>([]);
-  const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   
   const [view, setView] = React.useState<'card' | 'table'>('table');
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -130,18 +114,6 @@ function GroupDetailPageComponent() {
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(undefined);
   const isSelectionActive = selectedIds.size > 0;
   
-  const currentCallingEvent = appUser?.currentCallingEvent || "Default Event";
-  const [isSessionDialogOpen, setIsSessionDialogOpen] = React.useState(false);
-  const [peopleForSession, setPeopleForSession] = React.useState<Person[]>([]);
-  const [isEventDialogOpen, setIsEventDialogOpen] = React.useState(false);
-  const [isStartingSessionFlow, setIsStartingSessionFlow] = React.useState(false);
-  const [editableEventName, setEditableEventName] = React.useState(currentCallingEvent);
-  const [callRange, setCallRange] = React.useState({ from: '1', to: '' });
-  const [callRangeNames, setCallRangeNames] = React.useState({ from: '', to: '' });
-  const [sessionStartIndex, setSessionStartIndex] = React.useState(0);
-  const [initialSessionIndex, setInitialSessionIndex] = React.useState(0);
-  const pausedSession = appUser?.pausedSession;
-  const canResumeSession = pausedSession?.context === 'group' && pausedSession.selectedGroupId === groupId;
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = React.useState(false);
 
@@ -227,19 +199,17 @@ function GroupDetailPageComponent() {
         }
         setMembers(memberData);
         
-      const [allGroupsData, enablersData, sourcesData, guidesData, customFieldsData] = await Promise.all([
+      const [allGroupsData, enablersData, sourcesData, guidesData] = await Promise.all([
         getStaticGroups(userInfo),
         getEnablers(userInfo, 'filter'),
         getContactSources(userInfo),
         getFolkGuides(),
-        getCustomPersonFields(userInfo),
       ]);
       
       setAllGroups(allGroupsData);
       setEnablerOptions(enablersData);
       setContactSourceOptions(sourcesData);
       setFolkGuides(guidesData);
-      setCustomFields(customFieldsData);
 
     } catch (error) {
       console.error('Failed to load group data', error);
@@ -315,29 +285,6 @@ function GroupDetailPageComponent() {
     const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
     return filteredAndSortedMembers.slice(startIndex, startIndex + ROWS_PER_PAGE);
   }, [filteredAndSortedMembers, currentPage]);
-
-  React.useEffect(() => {
-    if (!isEventDialogOpen || !isStartingSessionFlow || filteredAndSortedMembers.length === 0) {
-      setCallRangeNames({ from: '', to: '' });
-      return;
-    }
-    const handler = setTimeout(() => {
-        const fromInput = callRange.from.trim();
-        const toInput = callRange.to.trim();
-        const fromIndex = parseInt(fromInput, 10) - 1;
-        const toIndex = toInput === '' ? filteredAndSortedMembers.length - 1 : parseInt(toInput, 10) - 1;
-        let fromName = '';
-        if (fromInput && !isNaN(fromIndex) && fromIndex >= 0 && fromIndex < filteredAndSortedMembers.length) {
-          fromName = filteredAndSortedMembers[fromIndex]?.fullName || '';
-        }
-        let toName = '';
-        if (!isNaN(toIndex) && toIndex >= 0 && toIndex < filteredAndSortedMembers.length) {
-          toName = filteredAndSortedMembers[toIndex]?.fullName || '';
-        }
-        setCallRangeNames({ from: fromName, to: toName });
-    }, 300);
-    return () => clearTimeout(handler);
-  }, [callRange, filteredAndSortedMembers, isEventDialogOpen, isStartingSessionFlow]);
 
   React.useEffect(() => {
     setCurrentPage(1);
@@ -427,129 +374,6 @@ function GroupDetailPageComponent() {
     }
   }, [selectedIds, toast, fetchPageData, appUser]);
 
-  const handleSessionSave = React.useCallback(async (
-    personId: string, 
-    remark: string, 
-    status: CallStatus, 
-    sg: boolean | undefined, 
-    ma: boolean | undefined, 
-    frp: boolean | undefined
-  ) => {
-    if (!appUser || !user) return;
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-    
-    const callHistoryEntry = {
-      remark: remark,
-      calledAt: new Date().toISOString(),
-      status: status,
-      event: currentCallingEvent,
-      callerId: appUser.id,
-      callerName: appUser.name,
-      callerPhotoUrl: user.photoURL || '',
-      ...(sg !== undefined && { sg }),
-      ...(ma !== undefined && { ma }),
-      ...(frp !== undefined && { frp }),
-    };
-
-    const updateData: any = {
-      lastCallRemark: remark,
-      lastCallAt: "SERVER_TIMESTAMP",
-      lastCallStatus: status,
-      callHistory: callHistoryEntry,
-    };
-    if (sg !== undefined) updateData.lastSg = sg;
-    if (ma !== undefined) updateData.lastMa = ma;
-    if (frp !== undefined) updateData.lastFrp = frp;
-
-    await updatePerson(personId, updateData, userInfo);
-    const updateLocalList = (list: Person[]) => list.map(p => {
-        if (p.id === personId) {
-            const newHistory = [...(p.callHistory || []), callHistoryEntry];
-            const updatedPerson = { ...p, callHistory: newHistory, lastCallRemark: remark, lastCallAt: new Date().toISOString(), lastCallStatus: status, };
-            if (sg !== undefined) updatedPerson.lastSg = sg;
-            if (ma !== undefined) updatedPerson.lastMa = ma;
-            if (frp !== undefined) updatedPerson.lastFrp = frp;
-            return updatedPerson;
-        }
-        return p;
-    });
-    setMembers(prev => updateLocalList(prev));
-    setAllPeople(prev => updateLocalList(prev));
-  }, [appUser, user, currentCallingEvent]);
-  
-  const handleOpenEventDialog = React.useCallback((isStartingFlow: boolean) => {
-    setEditableEventName(currentCallingEvent);
-    setCallRange({ from: '1', to: String(filteredAndSortedMembers.length) });
-    setIsStartingSessionFlow(isStartingFlow);
-    setIsEventDialogOpen(true);
-  }, [currentCallingEvent, filteredAndSortedMembers.length]);
-
-  const handleSaveEventAndContinue = React.useCallback(async () => {
-    if (!appUser) return;
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-    if (!editableEventName.trim()) {
-      toast({ variant: 'destructive', title: 'Event name cannot be empty.' });
-      return;
-    }
-    if (editableEventName !== currentCallingEvent) {
-      try {
-        await updateUser(appUser.id, { currentCallingEvent: editableEventName }, userInfo);
-        updateCurrentAppUser({ currentCallingEvent: editableEventName });
-        toast({ title: 'Calling Event Updated' });
-      } catch (error) {
-        toast({ variant: 'destructive', title: 'Error updating event.' });
-        return; 
-      }
-    }
-    if (isStartingSessionFlow) {
-      const fromIndex = parseInt(callRange.from, 10);
-      const toIndex = callRange.to.trim() === '' ? filteredAndSortedMembers.length : parseInt(callRange.to, 10);
-      if (isNaN(fromIndex) || isNaN(toIndex) || fromIndex < 1 || toIndex > filteredAndSortedMembers.length || fromIndex > toIndex) {
-        toast({ variant: 'destructive', title: 'Invalid Range', description: `Please enter a valid range between 1 and ${filteredAndSortedMembers.length}.` });
-        return;
-      }
-      
-      const peopleToCall = filteredAndSortedMembers.slice(fromIndex - 1, toIndex);
-      
-      if (peopleToCall.length === 0) {
-        toast({ variant: 'destructive', title: 'No Contacts Selected', description: 'The specified range is empty.' });
-        return;
-      }
-      await logAudit('Start Calling Session', `Started session for group "${group?.name}" with ${peopleToCall.length} contacts.`, userInfo);
-      setSessionStartIndex(fromIndex - 1);
-      setInitialSessionIndex(0); // Always start new session from beginning
-      setPeopleForSession(peopleToCall);
-      setIsSessionDialogOpen(true);
-    }
-    setIsEventDialogOpen(false);
-  }, [appUser, editableEventName, currentCallingEvent, isStartingSessionFlow, callRange, filteredAndSortedMembers, toast, updateCurrentAppUser, group]);
-
-  const handleResumeSession = React.useCallback(async () => {
-    if (!pausedSession || !canResumeSession || !appUser) return;
-    
-    setFilters(pausedSession.filters);
-    setSortDescriptors(pausedSession.sortDescriptors);
-    setSearchTerm(pausedSession.searchTerm);
-    setColumnFilters(pausedSession.columnFilters);
-    
-    // The main filtered list will re-calculate with the new states.
-    // We need a short delay to ensure the list is updated before opening the dialog.
-    setTimeout(() => {
-        const peopleForPausedSession = filteredAndSortedMembers;
-
-        if (peopleForPausedSession.length === 0) {
-            toast({ variant: 'destructive', title: 'Could not resume session', description: 'The contacts in the paused session no longer match the filter criteria.'});
-            return;
-        }
-
-        setPeopleForSession(peopleForPausedSession);
-        setSessionStartIndex(pausedSession.sessionStartIndex);
-        setInitialSessionIndex(pausedSession.currentIndex);
-        setIsSessionDialogOpen(true);
-    }, 100);
-
-  }, [pausedSession, canResumeSession, appUser, toast, filteredAndSortedMembers]);
-
   const handleExportMembers = React.useCallback(() => {
     if (!group || members.length === 0) return;
     const dataToExport = members.map(m => ({ fullName: m.fullName, phone: m.phone }));
@@ -622,25 +446,12 @@ function GroupDetailPageComponent() {
               <SortPopover sortDescriptors={sortDescriptors} setSortDescriptors={setSortDescriptors} />
             </div>
             <div className="flex items-center gap-2">
-                <Button onClick={() => handleOpenEventDialog(true)} disabled={filteredAndSortedMembers.length === 0}>
-                    <Headset className="mr-2 h-4 w-4" /> Start Calling Session
-                </Button>
                 <div className="flex items-center rounded-md bg-muted p-1">
                     <Button variant={view === "card" ? "secondary" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setView("card")} aria-label="Card View"><LayoutGrid className="h-4 w-4" /></Button>
                     <Button variant={view === "table" ? "secondary" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setView("table")} aria-label="Table View"><List className="h-4 w-4" /></Button>
                 </div>
             </div>
           </div>
-          {canResumeSession && (
-             <Alert variant="default" className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800/50">
-                <Play className="h-4 w-4 !text-blue-600 dark:!text-blue-400" />
-                <AlertTitle className="text-blue-800 dark:text-blue-300">You have a paused session!</AlertTitle>
-                <AlertDescription className="flex items-center justify-between">
-                    <span className="text-blue-700 dark:text-blue-400/80">You can resume your last calling session for this group.</span>
-                    <Button size="sm" onClick={handleResumeSession} variant="secondary">Resume Session</Button>
-                </AlertDescription>
-            </Alert>
-          )}
           {isSelectionActive && (
               <div className="flex flex-wrap items-center gap-2 p-3 bg-muted rounded-lg border">
                 <span className="text-sm font-semibold">{selectedIds.size} selected</span>
@@ -762,87 +573,6 @@ function GroupDetailPageComponent() {
       {group && !group.isDynamic && <ManageGroupMembersDialog isOpen={isManageMembersDialogOpen} setIsOpen={setIsManageMembersDialogOpen} onSave={handleSaveMembers} group={group} allPeople={allPeople} />}
       {isAssignCoEnablerDialogOpen && <AssignCoEnablerDialog isOpen={isAssignCoEnablerDialogOpen} setIsOpen={setIsAssignCoEnablerDialogOpen} onSave={handleAssignCoEnabler} peopleCount={selectedIds.size} />}
       {group && <ShareGroupDialog isOpen={isShareGroupDialogOpen} setIsOpen={setIsShareGroupDialogOpen} group={group} members={members} />}
-      <Dialog open={isEventDialogOpen} onOpenChange={setIsEventDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{isStartingSessionFlow ? 'Confirm Calling Event' : 'Edit Calling Event'}</DialogTitle>
-            <DialogDescription>
-              {isStartingSessionFlow
-                ? 'Confirm the event and optionally specify a range of contacts to call.'
-                : 'Update the name of the current calling event.'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label htmlFor="eventName">Event Name</Label>
-              <Input
-                id="eventName"
-                value={editableEventName}
-                onChange={(e) => setEditableEventName(e.target.value)}
-                className="mt-1"
-                placeholder="e.g., Spiritual Camp - July 2024"
-              />
-            </div>
-            {isStartingSessionFlow && (
-              <div className="space-y-2">
-                <Label>Calling Range</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                      type="number"
-                      placeholder="From"
-                      value={callRange.from}
-                      onChange={(e) => setCallRange(prev => ({...prev, from: e.target.value}))}
-                      min="1"
-                      max={filteredAndSortedMembers.length}
-                  />
-                  <span className="text-muted-foreground">to</span>
-                  <Input
-                      type="number"
-                      placeholder="To"
-                      value={callRange.to}
-                      onChange={(e) => setCallRange(prev => ({...prev, to: e.target.value}))}
-                      min="1"
-                      max={filteredAndSortedMembers.length}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                    Select a range from your filtered list of {filteredAndSortedMembers.length} contacts.
-                </p>
-                {callRangeNames.from && (
-                  <div className="text-xs text-muted-foreground mt-2 border-l-2 border-primary pl-2 space-y-1">
-                      <p>From: <strong className="text-foreground">{callRange.from}. {callRangeNames.from}</strong></p>
-                      {callRangeNames.to && <p>To: <strong className="text-foreground">{callRange.to || filteredAndSortedMembers.length}. {callRangeNames.to}</strong></p>}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEventDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveEventAndContinue}>
-              {isStartingSessionFlow ? 'Start Session' : 'Save'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <CallingSessionDialog
-        isOpen={isSessionDialogOpen}
-        onClose={() => setIsSessionDialogOpen(false)}
-        people={peopleForSession}
-        onSaveRemark={handleSessionSave}
-        currentEvent={currentCallingEvent}
-        customFields={customFields}
-        groups={allGroups}
-        sessionStartIndex={sessionStartIndex}
-        totalPeopleCount={filteredAndSortedMembers.length}
-        initialIndex={initialSessionIndex}
-        context="group"
-        filters={filters}
-        sortDescriptors={sortDescriptors}
-        searchTerm={searchTerm}
-        selectedGroupId={groupId}
-        columnFilters={columnFilters}
-      />
     </div>
   );
 }

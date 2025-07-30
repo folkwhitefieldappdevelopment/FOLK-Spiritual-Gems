@@ -49,9 +49,6 @@ export const updateUser = async (id: string, userData: { [key: string]: any }, a
   }
 
   const dataToUpdate = { ...userData };
-  if (dataToUpdate.pausedSession === null || dataToUpdate.pausedSession === undefined) {
-    dataToUpdate.pausedSession = deleteField();
-  }
    if (dataToUpdate.reportsTo === null) {
     dataToUpdate.reportsTo = deleteField();
   }
@@ -60,13 +57,7 @@ export const updateUser = async (id: string, userData: { [key: string]: any }, a
   await updateDoc(userDocRef, dataToUpdate);
   
   if (actorInfo) {
-    if (userData.pausedSession) {
-        await logAudit('Pause Calling Session', `Paused session for event: ${userData.pausedSession.currentEvent}`, actorInfo);
-    } else if (userData.hasOwnProperty('pausedSession')) {
-        await logAudit('End Calling Session', `Ended/cleared paused session.`, actorInfo);
-    } else {
-        await logAudit('Update User', `Updated user: ${userData.name || id}`, actorInfo);
-    }
+    await logAudit('Update User', `Updated user: ${userData.name || id}`, actorInfo);
   }
 };
 

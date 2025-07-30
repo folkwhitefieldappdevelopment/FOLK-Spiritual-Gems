@@ -50,7 +50,6 @@ type PersonTableProps = {
   allPeople: Person[]; // The full list for context
   onEdit: (person: Person) => void;
   onDelete: (personId: string) => void;
-  isCallingAssistantView?: boolean;
   isSelectionActive?: boolean;
   selectedIds?: Set<string>;
   setSelectedIds?: React.Dispatch<React.SetStateAction<Set<string>>>;
@@ -71,7 +70,6 @@ export function PersonTable({
   allPeople,
   onEdit, 
   onDelete, 
-  isCallingAssistantView = false, 
   isSelectionActive = false, 
   selectedIds, 
   setSelectedIds,
@@ -124,20 +122,14 @@ export function PersonTable({
   const rowCount = allPeople.length;
   
   const columns: { key: keyof Person, label: string }[] = React.useMemo(() => {
-    const baseColumns: { key: keyof Person, label: string }[] = [
+    return [
       { key: 'fullName', label: 'Name' },
       { key: 'phone', label: 'Phone' },
       { key: 'enablerInTouchWith', label: 'Assignments' },
-    ];
-    if (isCallingAssistantView) {
-      baseColumns.push({ key: 'lastCallStatus', label: 'Call Status' });
-    }
-    baseColumns.push(
       { key: 'lastCallAt', label: 'Last Called' },
       { key: 'lastCallRemark', label: 'Last Remark' }
-    );
-    return baseColumns;
-  }, [isCallingAssistantView]);
+    ];
+  }, []);
 
 
   return (
@@ -254,18 +246,6 @@ export function PersonTable({
                             )}
                         </div>
                         );
-                    case 'lastCallStatus':
-                        return (
-                            <Tooltip>
-                            <TooltipTrigger asChild>
-                                <span className="flex items-center gap-2 truncate text-sm text-muted-foreground">
-                                <CheckCircle2 className="h-4 w-4 shrink-0" />
-                                <span className="truncate">{person.lastCallStatus || 'Not Called'}</span>
-                                </span>
-                            </TooltipTrigger>
-                            {person.lastCallStatus && <TooltipContent><p>{person.lastCallStatus}</p></TooltipContent>}
-                            </Tooltip>
-                        );
                     case 'lastCallAt':
                         const lastCallDate = safeDate(person.lastCallAt);
                         return (
@@ -339,9 +319,8 @@ export function PersonTable({
                         <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => onEdit(person)}>
                             <Edit className="mr-2 h-4 w-4" />
-                            {isCallingAssistantView ? 'View/Edit Details' : 'Edit'}
+                            Edit
                             </DropdownMenuItem>
-                            {!isCallingAssistantView && (
                             <AlertDialogTrigger asChild>
                                 <Button
                                 variant="ghost"
@@ -351,7 +330,6 @@ export function PersonTable({
                                 Delete
                                 </Button>
                             </AlertDialogTrigger>
-                            )}
                         </DropdownMenuContent>
                         </DropdownMenu>
                         <AlertDialogContent>

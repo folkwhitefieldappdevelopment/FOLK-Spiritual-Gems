@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -15,7 +16,7 @@ import {
 import { auth, configError as initialConfigError } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { getUserByEmail } from '@/services/user-service';
-import type { AppUser, PausedSession } from '@/lib/types';
+import type { AppUser } from '@/lib/types';
 import isEqual from 'lodash.isequal';
 
 

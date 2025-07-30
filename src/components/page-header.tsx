@@ -29,7 +29,6 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/contacts", label: "Contacts", icon: Users },
       { href: "/groups", label: "Groups", icon: UserSquare },
-      { href: "/calling-assistant", label: "Calling Assistant", icon: Headset },
       { href: "/assignments", label: "Assignments", icon: UsersRound, adminOnly: true },
       { href: "/user-management", label: "User Management", icon: UserCog, adminOnly: true },
       { href: "/user-audit", label: "User Audit", icon: History, adminOnly: true },
