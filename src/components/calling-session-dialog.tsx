@@ -27,6 +27,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button } from "@/components/ui/button";
 import {
@@ -170,6 +171,7 @@ const CallingSessionDialogComponent = ({
   }, [appUser, handleCloseDialog, toast, updateCurrentAppUser]);
   
   const handleNext = React.useCallback(() => {
+    console.log("handleNext called", currentIndex, currentPeople.length);
     if (currentIndex < currentPeople.length - 1) {
         setCurrentIndex(prevIndex => prevIndex + 1);
     } else {
@@ -277,7 +279,7 @@ const CallingSessionDialogComponent = ({
         });
         handleNext();
     } catch (e) {
-        console.error("Error in onSubmit:", e);
+        console.error(e);
         toast({ variant: 'destructive', title: "Error", description: 'Could not save the call log.' });
     } finally {
         setIsSubmitting(false);
@@ -606,16 +608,10 @@ const CallingSessionDialogComponent = ({
                 </AlertDialog>
            </div>
            <div className="flex items-center gap-2 justify-center sm:justify-end">
-                <Button variant="ghost" size="icon" onClick={handlePrevious} disabled={currentIndex === 0}>
-                    <ArrowLeft className="h-4 w-4" />
-                </Button>
                 <Button onClick={form.handleSubmit(onSubmit)} disabled={isSubmitting || isInitializing} className="min-w-[120px]">
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     <CheckSquare className="mr-2 h-4 w-4"/>
                     Save & Next
-                </Button>
-                 <Button variant="ghost" size="icon" onClick={handleNext} disabled={currentIndex >= currentPeople.length - 1}>
-                    <ArrowRight className="h-4 w-4" />
                 </Button>
            </div>
         </DialogFooter>
