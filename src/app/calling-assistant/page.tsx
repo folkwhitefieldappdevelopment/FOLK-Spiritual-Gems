@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { Loader2, Edit, Search, Users, UserCheck, PlusCircle, AlertCircle, PhoneCall } from "lucide-react";
-import type { Person, CallStatus, CustomField, Group, AppUser, PausedSession, UserRole } from "@/lib/types";
+import type { Person, CallStatus, CustomField, Group, AppUser, UserRole } from "@/lib/types";
 import { occupationStatuses } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -376,11 +376,11 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     personId: string,
     remark: string,
     status: CallStatus,
-    sg?: boolean,
-    ma?: boolean,
-    frp?: boolean
+    sg: boolean | undefined,
+    ma: boolean | undefined,
+    frp: boolean | undefined
   ) => {
-    if (!appUser) return;
+    if (!appUser || !user) return;
     const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     
     const callLog = {
@@ -393,7 +393,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       calledAt: 'SERVER_TIMESTAMP',
       callerId: appUser.id,
       callerName: appUser.name,
-      callerPhotoUrl: user?.photoURL || '',
+      callerPhotoUrl: user.photoURL || '',
     };
     
     const updates: Partial<Person> = {
@@ -413,6 +413,14 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
           title: "Call Logged",
           description: `Status for the contact has been updated.`
       });
+      
+      // Update local state for immediate feedback
+      setAllFetchedPeople(prev => prev.map(p => {
+          if (p.id === personId) {
+              return { ...p, ...updates, lastCallAt: new Date().toISOString() };
+          }
+          return p;
+      }));
 
       if (sessionCurrentIndex < sessionPeople.length - 1) {
           setSessionCurrentIndex(prev => prev + 1);
@@ -613,7 +621,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
             sessionTotalCount={sessionPeople.length}
             customFields={customFields}
             groups={groups}
-            allPeople={allPeople}
+            allPeople={allFetchedPeople}
           />
       )}
     </div>
