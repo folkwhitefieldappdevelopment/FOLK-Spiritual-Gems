@@ -20,6 +20,7 @@ export function AppSidebar() {
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/contacts", label: "Contacts", icon: Users },
+    { href: "/calling-assistant", label: "Calling Assistant", icon: Headset },
     { href: "/groups", label: "Groups", icon: UserSquare },
     { href: "/assignments", label: "Assignments", icon: UsersRound, adminOnly: true },
     { href: "/user-management", label: "User Management", icon: UserCog, adminOnly: true },

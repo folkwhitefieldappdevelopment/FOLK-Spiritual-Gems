@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from "react";
-import { Headset, Loader2, Edit, Search, Users, UserCheck, PlusCircle, Play, Pause, AlertCircle } from "lucide-react";
+import { Loader2, Edit, Search, Users, UserCheck, PlusCircle, AlertCircle } from "lucide-react";
 import type { Person, CallStatus, CustomField, Group, AppUser, PausedSession, UserRole } from "@/lib/types";
 import { occupationStatuses, callStatuses } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,6 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { PageHeader } from "@/components/page-header";
 import { PersonTable } from "@/components/person-table";
 import { CreateUpdatePersonDialog } from "@/components/create-update-person-dialog";
-import { CallingSessionDialog } from "@/components/calling-session-dialog";
 import { FirebaseConfigError } from "@/components/firebase-config-error";
 import { getPeople, updatePerson, assignCoEnablerToPeople } from "@/services/people-service";
 import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
@@ -71,13 +70,12 @@ type UserInfo = {
 
 const CallingAssistantPageComponent = React.memo(function CallingAssistantPageComponent() {
   const { toast } = useToast();
-  const { appUser, user, updateCurrentAppUser } = useAuth();
+  const { appUser, user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const [allFetchedPeople, setAllFetchedPeople] = React.useState<Person[]>([]);
-  const [peopleForSession, setPeopleForSession] = React.useState<Person[]>([]);
   const [isDataLoading, setIsDataLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
   
@@ -91,30 +89,17 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
   const editingPersonRef = React.useRef<Person | undefined>(undefined);
   const [isEditingDialogOpen, setIsEditingDialogOpen] = React.useState(false);
-  const [isSessionDialogOpen, setIsSessionDialogOpen] = React.useState(false);
 
   const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
   const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   const [groups, setGroups] = React.useState<Group[]>([]);
-  const currentCallingEvent = appUser?.currentCallingEvent || "Default Event";
   
   const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = React.useState(false);
   const [isAssignCoEnablerDialogOpen, setIsAssignCoEnablerDialogOpen] = React.useState(false);
   const isSelectionActive = selectedIds.size > 0;
   const canAssignCoEnabler = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
-
-  const [isEventDialogOpen, setIsEventDialogOpen] = React.useState(false);
-  const [isStartingSessionFlow, setIsStartingSessionFlow] = React.useState(false);
-  const [editableEventName, setEditableEventName] = React.useState(currentCallingEvent);
-  const [callRange, setCallRange] = React.useState({ from: '1', to: '' });
-  const [callRangeNames, setCallRangeNames] = React.useState({ from: '', to: '' });
-  const [sessionStartIndex, setSessionStartIndex] = React.useState(0);
-  const [initialSessionIndex, setInitialSessionIndex] = React.useState(0);
-
-  const pausedSession = appUser?.pausedSession;
-  const canResumeSession = pausedSession?.context === 'assistant';
 
    // Set initial state from URL search params
   React.useEffect(() => {
@@ -289,97 +274,10 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     return filteredAndSortedPeople.slice(startIndex, startIndex + ROWS_PER_PAGE);
   }, [filteredAndSortedPeople, currentPage]);
 
-  React.useEffect(() => {
-    if (!isEventDialogOpen || !isStartingSessionFlow || filteredAndSortedPeople.length === 0) {
-      setCallRangeNames({ from: '', to: '' });
-      return;
-    }
-
-    const handler = setTimeout(() => {
-        const fromInput = callRange.from.trim();
-        const toInput = callRange.to.trim();
-
-        const fromIndex = parseInt(fromInput, 10) - 1;
-        const toIndex = toInput === '' ? filteredAndSortedPeople.length - 1 : parseInt(toInput, 10) - 1;
-
-        let fromName = '';
-        if (fromInput && !isNaN(fromIndex) && fromIndex >= 0 && fromIndex < filteredAndSortedPeople.length) {
-          fromName = filteredAndSortedPeople[fromIndex]?.fullName || '';
-        }
-
-        let toName = '';
-        if (!isNaN(toIndex) && toIndex >= 0 && toIndex < filteredAndSortedPeople.length) {
-          toName = filteredAndSortedPeople[toIndex]?.fullName || '';
-        }
-
-        setCallRangeNames({ from: fromName, to: toName });
-    }, 300); // Debounce for 300ms
-
-    return () => {
-        clearTimeout(handler);
-    };
-  }, [callRange, filteredAndSortedPeople, isEventDialogOpen, isStartingSessionFlow]);
-
   const handleEditPerson = React.useCallback((person: Person) => {
     editingPersonRef.current = person;
     setIsEditingDialogOpen(true);
   }, []);
-  
-  const handleSessionSave = React.useCallback(async (
-    personId: string, 
-    remark: string, 
-    status: CallStatus, 
-    sg: boolean | undefined, 
-    ma: boolean | undefined, 
-    frp: boolean | undefined
-  ) => {
-    if (!appUser || !user) return;
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-    const callTime = new Date();
-    
-    const callHistoryEntry = {
-      remark: remark,
-      calledAt: callTime.toISOString(),
-      status: status,
-      event: currentCallingEvent,
-      callerId: appUser.id,
-      callerName: appUser.name,
-      callerPhotoUrl: user.photoURL || '',
-      ...(sg !== undefined && { sg }),
-      ...(ma !== undefined && { ma }),
-      ...(frp !== undefined && { frp }),
-    };
-
-    const updateData: any = {
-      lastCallRemark: remark,
-      lastCallAt: "SERVER_TIMESTAMP",
-      lastCallStatus: status,
-      callHistory: callHistoryEntry,
-    };
-    if (sg !== undefined) updateData.lastSg = sg;
-    if (ma !== undefined) updateData.lastMa = ma;
-    if (frp !== undefined) updateData.lastFrp = frp;
-
-    await updatePerson(personId, updateData, userInfo);
-    
-    setAllFetchedPeople(prev => prev.map(p => {
-        if (p.id === personId) {
-            const newHistory = [...(p.callHistory || []), callHistoryEntry];
-            const updatedPerson = {
-                ...p,
-                callHistory: newHistory,
-                lastCallRemark: remark,
-                lastCallAt: callTime.toISOString(),
-                lastCallStatus: status,
-            };
-            if (sg !== undefined) updatedPerson.lastSg = sg;
-            if (ma !== undefined) updatedPerson.lastMa = ma;
-            if (frp !== undefined) updatedPerson.lastFrp = frp;
-            return updatedPerson;
-        }
-        return p;
-    }));
-  }, [appUser, user, currentCallingEvent]);
   
   const handleDeletePerson = React.useCallback(() => {
     toast({
@@ -387,72 +285,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
         description: "Please go to the main Contacts page to delete a contact.",
     });
   }, [toast]);
-
-  const handleOpenEventDialog = React.useCallback((isStartingFlow: boolean) => {
-    setEditableEventName(currentCallingEvent);
-    setCallRange({ from: '1', to: String(filteredAndSortedPeople.length) });
-    setIsStartingSessionFlow(isStartingFlow);
-    setIsEventDialogOpen(true);
-  }, [currentCallingEvent, filteredAndSortedPeople.length]);
-
-  const handleSaveEventAndContinue = React.useCallback(async () => {
-    if (!appUser) return;
-    if (!editableEventName.trim()) {
-      toast({ variant: 'destructive', title: 'Event name cannot be empty.' });
-      return;
-    }
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-
-    if (editableEventName !== currentCallingEvent) {
-      try {
-        await updateUser(appUser.id, { currentCallingEvent: editableEventName }, userInfo);
-        updateCurrentAppUser({ currentCallingEvent: editableEventName });
-        toast({ title: 'Calling Event Updated' });
-      } catch (error) {
-        toast({ variant: 'destructive', title: 'Error updating event.' });
-        return; 
-      }
-    }
-
-    if (isStartingSessionFlow) {
-      const fromIndex = parseInt(callRange.from, 10);
-      const toIndex = callRange.to.trim() === '' ? filteredAndSortedPeople.length : parseInt(callRange.to, 10);
-
-      if (
-        isNaN(fromIndex) ||
-        isNaN(toIndex) ||
-        fromIndex < 1 ||
-        toIndex > filteredAndSortedPeople.length ||
-        fromIndex > toIndex
-      ) {
-        toast({
-          variant: 'destructive',
-          title: 'Invalid Range',
-          description: `Please enter a valid range between 1 and ${filteredAndSortedPeople.length}.`,
-        });
-        return;
-      }
-      
-      const peopleToCall = filteredAndSortedPeople.slice(fromIndex - 1, toIndex);
-
-      if (peopleToCall.length === 0) {
-        toast({
-          variant: 'destructive',
-          title: 'No Contacts Selected',
-          description: 'The specified range is empty.',
-        });
-        return;
-      }
-      
-      await logAudit('Start Calling Session', `Started session for event "${editableEventName}" with ${peopleToCall.length} contacts.`, userInfo);
-      setSessionStartIndex(fromIndex - 1);
-      setInitialSessionIndex(0); // Always start new session from beginning
-      setPeopleForSession(peopleToCall);
-      setIsSessionDialogOpen(true);
-    }
-    
-    setIsEventDialogOpen(false);
-  }, [appUser, editableEventName, currentCallingEvent, isStartingSessionFlow, callRange, filteredAndSortedPeople, toast, updateCurrentAppUser]);
   
   const handleAddToGroup = React.useCallback(async (targetGroupId: string) => {
     if (selectedIds.size === 0 || !appUser) return;
@@ -520,37 +352,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
         toast({ variant: "destructive", title: "Error", description: "Could not assign co-enabler." });
     }
   }, [selectedIds, toast, appUser, fetchPageData]);
-
-  const handleResumeSession = React.useCallback(async () => {
-    if (!pausedSession || !canResumeSession || !appUser) return;
-    
-    setFilters(pausedSession.filters);
-    setSortDescriptors(pausedSession.sortDescriptors);
-    setSearchTerm(pausedSession.searchTerm);
-    setSelectedGroupId(pausedSession.selectedGroupId);
-    setColumnFilters(pausedSession.columnFilters);
-    
-    // The main filtered list will re-calculate with the new states.
-    // We need a short delay to ensure the list is updated before opening the dialog.
-    setTimeout(() => {
-        const peopleForPausedSession = filteredAndSortedPeople;
-
-        if (peopleForPausedSession.length === 0) {
-            toast({
-                variant: 'destructive',
-                title: 'Could not resume session',
-                description: 'The contacts in the paused session no longer match the filter criteria.'
-            });
-            return;
-        }
-
-        setPeopleForSession(peopleForPausedSession);
-        setSessionStartIndex(pausedSession.sessionStartIndex);
-        setInitialSessionIndex(pausedSession.currentIndex);
-        setIsSessionDialogOpen(true);
-    }, 100);
-
-  }, [pausedSession, canResumeSession, appUser, toast, filteredAndSortedPeople]);
   
   const showLimitWarning = filteredAndSortedPeople.length > FIRESTORE_QUERY_LIMIT;
 
@@ -597,23 +398,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
                     <FilterPopover filters={filters} setFilters={setFilters} filterableFields={filterableFields} />
                     <SortPopover sortDescriptors={sortDescriptors} setSortDescriptors={setSortDescriptors} />
                 </div>
-                 <div className="flex items-center gap-2">
-                    <Button onClick={() => handleOpenEventDialog(true)} disabled={filteredAndSortedPeople.length === 0}>
-                        <Headset className="mr-2 h-4 w-4" /> Start Calling Session
-                    </Button>
-                 </div>
             </div>
-
-            {canResumeSession && (
-                <Alert variant="default" className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800/50">
-                    <Play className="h-4 w-4 !text-blue-600 dark:!text-blue-400" />
-                    <AlertTitle className="text-blue-800 dark:text-blue-300">You have a paused session!</AlertTitle>
-                    <AlertDescription className="flex items-center justify-between">
-                        <span className="text-blue-700 dark:text-blue-400/80">You can resume your last calling session.</span>
-                        <Button size="sm" onClick={handleResumeSession} variant="secondary">Resume Session</Button>
-                    </AlertDescription>
-                </Alert>
-            )}
 
             {isSelectionActive && (
               <div className="flex flex-wrap items-center gap-2 p-3 bg-muted rounded-lg border">
@@ -653,7 +438,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
           allPeople={filteredAndSortedPeople}
           onEdit={handleEditPerson}
           onDelete={handleDeletePerson}
-          isCallingAssistantView={true}
           selectedIds={selectedIds}
           setSelectedIds={setSelectedIds}
           isSelectionActive={isSelectionActive}
@@ -689,104 +473,12 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
           <PageHeader
             title="Calling Assistant"
-            description={
-              <span className="flex items-center gap-1">
-                A focused view to call contacts for:
-                <strong className="text-foreground ml-1">{currentCallingEvent}</strong>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleOpenEventDialog(false)}>
-                  <Edit className="h-3 w-3" />
-                </Button>
-              </span>
-            }
+            description="A focused view to help you call contacts efficiently."
           />
           <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
             {renderContent()}
           </main>
       </div>
-      
-      <Dialog open={isEventDialogOpen} onOpenChange={setIsEventDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{isStartingSessionFlow ? 'Confirm Calling Event' : 'Edit Calling Event'}</DialogTitle>
-            <DialogDescription>
-              {isStartingSessionFlow
-                ? 'Confirm the event and optionally specify a range of contacts to call.'
-                : 'Update the name of the current calling event.'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label htmlFor="eventName">Event Name</Label>
-              <Input
-                id="eventName"
-                value={editableEventName}
-                onChange={(e) => setEditableEventName(e.target.value)}
-                className="mt-1"
-                placeholder="e.g., Spiritual Camp - July 2024"
-              />
-            </div>
-            {isStartingSessionFlow && (
-              <div className="space-y-2">
-                <Label>Calling Range</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                      type="number"
-                      placeholder="From"
-                      value={callRange.from}
-                      onChange={(e) => setCallRange(prev => ({...prev, from: e.target.value}))}
-                      min="1"
-                      max={filteredAndSortedPeople.length}
-                  />
-                  <span className="text-muted-foreground">to</span>
-                  <Input
-                      type="number"
-                      placeholder="To"
-                      value={callRange.to}
-                      onChange={(e) => setCallRange(prev => ({...prev, to: e.target.value}))}
-                      min="1"
-                      max={filteredAndSortedPeople.length}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                    Select a range from your filtered list of {filteredAndSortedPeople.length} contacts.
-                </p>
-                {callRangeNames.from && (
-                  <div className="text-xs text-muted-foreground mt-2 border-l-2 border-primary pl-2 space-y-1">
-                      <p>From: <strong className="text-foreground">{callRange.from}. {callRangeNames.from}</strong></p>
-                      {callRangeNames.to && <p>To: <strong className="text-foreground">{callRange.to || filteredAndSortedPeople.length}. {callRangeNames.to}</strong></p>}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEventDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveEventAndContinue}>
-              {isStartingSessionFlow ? 'Start Session' : 'Save'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <CallingSessionDialog
-        isOpen={isSessionDialogOpen}
-        onClose={() => setIsSessionDialogOpen(false)}
-        people={peopleForSession}
-        onSaveRemark={handleSessionSave}
-        currentEvent={currentCallingEvent}
-        customFields={customFields}
-        groups={groups}
-        sessionStartIndex={sessionStartIndex}
-        totalPeopleCount={filteredAndSortedPeople.length}
-        initialIndex={initialSessionIndex}
-        context="assistant"
-        // Pass all filter states to be saved on pause
-        filters={filters}
-        sortDescriptors={sortDescriptors}
-        searchTerm={searchTerm}
-        selectedGroupId={selectedGroupId}
-        columnFilters={columnFilters}
-      />
       
       <CreateUpdateGroupDialog
           isOpen={isCreateGroupDialogOpen}
