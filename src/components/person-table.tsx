@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import * as React from 'react';
-import { MoreHorizontal, Phone, Edit, Trash2, MessageSquare, Clock, CheckCircle2 } from "lucide-react";
+import { MoreHorizontal, Phone, Edit, Trash2, MessageSquare, Clock } from "lucide-react";
 import { formatDistanceToNow } from 'date-fns';
 import type { Person } from "@/lib/types";
 import {
@@ -31,7 +31,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   Tooltip,
@@ -40,23 +39,17 @@ import {
   TooltipTrigger,
 } from "./ui/tooltip";
 import { Checkbox } from './ui/checkbox';
-import type { SortDescriptor } from './sort-popover';
-import { ColumnHeaderFilter, type ColumnFilterState } from './column-header-filter';
 import { useAuth } from '@/contexts/auth-context';
 import { getWhatsAppTemplate } from '@/services/settings-service';
 
 type PersonTableProps = {
   people?: Person[];
-  allPeople: Person[]; // The full list for context
+  allPeopleCount: number;
   onEdit: (person: Person) => void;
   onDelete: (personId: string) => void;
   isSelectionActive?: boolean;
   selectedIds?: Set<string>;
   setSelectedIds?: React.Dispatch<React.SetStateAction<Set<string>>>;
-  sortDescriptors?: SortDescriptor[];
-  setSortDescriptors?: React.Dispatch<React.SetStateAction<SortDescriptor[]>>;
-  columnFilters?: ColumnFilterState;
-  setColumnFilters?: React.Dispatch<React.SetStateAction<ColumnFilterState>>;
 };
 
 const safeDate = (timestamp: any): Date | null => {
@@ -67,16 +60,12 @@ const safeDate = (timestamp: any): Date | null => {
 
 export function PersonTable({ 
   people = [], 
-  allPeople,
+  allPeopleCount,
   onEdit, 
   onDelete, 
   isSelectionActive = false, 
   selectedIds, 
   setSelectedIds,
-  sortDescriptors = [],
-  setSortDescriptors = () => {},
-  columnFilters = {},
-  setColumnFilters = () => {},
 }: PersonTableProps) {
   
   const { appUser } = useAuth();
@@ -96,13 +85,14 @@ export function PersonTable({
 
   const handleSelectAll = React.useCallback((checked: boolean) => {
     if (isSelectionEnabled && setSelectedIds) {
+      toast({ title: "Note", description: "Select All only works for contacts currently loaded on the page. To perform bulk actions on all contacts, please export, modify, and re-import."});
       if (checked) {
-        setSelectedIds(new Set(allPeople.map(p => p.id)));
+        setSelectedIds(new Set(people.map(p => p.id)));
       } else {
         setSelectedIds(new Set());
       }
     }
-  }, [isSelectionEnabled, setSelectedIds, allPeople]);
+  }, [isSelectionEnabled, setSelectedIds, people]);
 
   const handleSelectOne = React.useCallback((personId: string, checked: boolean) => {
     if (isSelectionEnabled && setSelectedIds) {
@@ -119,7 +109,6 @@ export function PersonTable({
   }, [isSelectionEnabled, setSelectedIds]);
 
   const numSelected = selectedIds ? selectedIds.size : 0;
-  const rowCount = allPeople.length;
   
   const columns: { key: keyof Person, label: string }[] = React.useMemo(() => {
     return [
@@ -141,23 +130,16 @@ export function PersonTable({
               {isSelectionEnabled && (
                 <TableHead className="w-[50px]">
                   <Checkbox
-                    checked={numSelected === rowCount && rowCount > 0}
+                    checked={numSelected === people.length && people.length > 0}
                     onCheckedChange={(checked) => handleSelectAll(!!checked)}
-                    aria-label="Select all"
-                    data-state={numSelected > 0 && numSelected < rowCount ? 'indeterminate' : undefined}
+                    aria-label="Select all on page"
+                    data-state={numSelected > 0 && numSelected < people.length ? 'indeterminate' : undefined}
                   />
                 </TableHead>
               )}
               {columns.map(column => (
                 <TableHead key={column.key} className={column.key === 'fullName' ? 'min-w-[200px]' : ''}>
-                  <ColumnHeaderFilter 
-                    column={column}
-                    sortDescriptors={sortDescriptors}
-                    setSortDescriptors={setSortDescriptors}
-                    columnFilters={columnFilters}
-                    setColumnFilters={setColumnFilters}
-                    data={allPeople}
-                  />
+                    {column.label}
                 </TableHead>
               ))}
               <TableHead className="w-[50px] text-right">Actions</TableHead>

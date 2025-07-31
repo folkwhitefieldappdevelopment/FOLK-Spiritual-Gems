@@ -17,15 +17,13 @@ import { Button } from './ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from './ui/form';
 import { Input } from './ui/input';
 import { useToast } from '@/hooks/use-toast';
-import type { Person } from '@/lib/types';
-import { Alert, AlertDescription, AlertTitle } from './ui/alert';
-import { AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
+import { getPeople } from '@/services/people-service';
 
 const createFormSchema = (max: number) => z.object({
   eventName: z.string().min(1, 'Event name is required.'),
-  startIndex: z.coerce.number().min(1, "Start index must be at least 1.").max(max, `Start index cannot be more than ${max}.`),
-  endIndex: z.coerce.number().min(1, "End index must be at least 1.").max(max, `End index cannot be more than ${max}.`),
+  startIndex: z.coerce.number().min(1, "Start index must be at least 1.").max(max > 0 ? max : 1, `Start index cannot be more than ${max}.`),
+  endIndex: z.coerce.number().min(1, "End index must be at least 1.").max(max > 0 ? max : 1, `End index cannot be more than ${max}.`),
 }).refine(data => data.endIndex >= data.startIndex, {
   message: 'End index must be greater than or equal to start index.',
   path: ['endIndex'],
@@ -34,23 +32,23 @@ const createFormSchema = (max: number) => z.object({
 type ConfirmSessionDialogProps = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  people: Person[];
+  totalCount: number;
   onStartSession: (eventName: string, startIndex: number, endIndex: number) => void;
+  searchTerm: string;
 };
 
-export function ConfirmSessionDialog({ isOpen, setIsOpen, people, onStartSession }: ConfirmSessionDialogProps) {
-  const { toast } = useToast();
+export function ConfirmSessionDialog({ isOpen, setIsOpen, totalCount, onStartSession, searchTerm }: ConfirmSessionDialogProps) {
   const { appUser } = useAuth();
   
-  const formSchema = createFormSchema(people.length);
+  const formSchema = createFormSchema(totalCount);
   type FormValues = z.infer<typeof formSchema>;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      eventName: appUser?.currentCallingEvent || '',
+      eventName: '',
       startIndex: 1,
-      endIndex: people.length,
+      endIndex: totalCount,
     },
   });
   
@@ -59,20 +57,14 @@ export function ConfirmSessionDialog({ isOpen, setIsOpen, people, onStartSession
       form.reset({
         eventName: appUser?.currentCallingEvent || '',
         startIndex: 1,
-        endIndex: people.length,
+        endIndex: totalCount,
       });
     }
-  }, [isOpen, people.length, form, appUser]);
+  }, [isOpen, totalCount, form, appUser]);
   
   const onSubmit = (data: FormValues) => {
     onStartSession(data.eventName, data.startIndex, data.endIndex);
   };
-
-  const startIndex = form.watch('startIndex');
-  const endIndex = form.watch('endIndex');
-
-  const startPerson = people[startIndex - 1]?.fullName;
-  const endPerson = people[endIndex - 1]?.fullName;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -80,7 +72,7 @@ export function ConfirmSessionDialog({ isOpen, setIsOpen, people, onStartSession
         <DialogHeader>
           <DialogTitle>Confirm Calling Event</DialogTitle>
           <DialogDescription>
-            Confirm the event and optionally specify a range of contacts to call.
+            Confirm the event and optionally specify a range of contacts to call from your current filtered list of {totalCount} contacts.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -126,16 +118,6 @@ export function ConfirmSessionDialog({ isOpen, setIsOpen, people, onStartSession
                 />
             </div>
              <FormMessage>{form.formState.errors.startIndex?.message || form.formState.errors.endIndex?.message}</FormMessage>
-
-            {people.length > 0 && (
-                <Alert variant="default" className="text-sm">
-                    <AlertDescription>
-                        Select a range from your filtered list of {people.length} contacts.
-                        {startPerson && <p className="mt-2"><strong>From:</strong> {startIndex}. {startPerson}</p>}
-                        {endPerson && <p><strong>To:</strong> {endIndex}. {endPerson}</p>}
-                    </AlertDescription>
-                </Alert>
-            )}
 
             <DialogFooter>
                 <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>

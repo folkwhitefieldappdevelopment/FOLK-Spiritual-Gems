@@ -1,4 +1,7 @@
 
+
+'use server';
+
 import { db } from '@/lib/firebase';
 import {
   collection,
@@ -15,82 +18,110 @@ import {
   runTransaction,
   type DocumentSnapshot,
   deleteField,
+  orderBy,
+  limit,
+  startAfter,
+  getCountFromServer,
+  or,
+  and,
+  type QueryConstraint,
+  arrayUnion,
 } from 'firebase/firestore';
-import type { Person, AppUser } from '@/lib/types';
+import type { Person, AppUser, UserRole } from '@/lib/types';
 import { logAudit } from './audit-service';
 
 const processPersonDoc = (doc: DocumentSnapshot): Person => {
-  const data = doc.data() as any; // Use 'any' to access potential legacy fields
-  // Backward compatibility: If fullName is missing, construct it from firstName/lastName.
+  const data = doc.data() as any;
   if (!data.fullName && (data.firstName || data.lastName)) {
     data.fullName = `${data.firstName || ''} ${data.lastName || ''}`.trim();
   }
+  // Convert Firestore Timestamps to serializable strings
+  if (data.createdAt?.toDate) {
+    data.createdAt = data.createdAt.toDate().toISOString();
+  }
+  if (data.lastCallAt?.toDate) {
+    data.lastCallAt = data.lastCallAt.toDate().toISOString();
+  }
+  if (Array.isArray(data.callHistory)) {
+    data.callHistory = data.callHistory.map((log: any) => {
+      if (log.calledAt?.toDate) {
+        log.calledAt = log.calledAt.toDate().toISOString();
+      }
+      return log;
+    });
+  }
+
   return { id: doc.id, ...data } as Person;
 };
 
-export const getPeople = async (appUser: AppUser | null): Promise<Person[]> => {
-  if (!appUser) return [];
+type GetPeopleResult = {
+  people: Person[];
+  totalCount: number;
+};
 
-  const peopleCollection = collection(db, 'people');
-  
-  if (appUser.role.includes('Admin')) {
-    // Admin sees all contacts
-    const q = query(peopleCollection);
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(processPersonDoc);
-  }
-  
-  if (appUser.role.includes('Folk Guide')) {
-    // Guide sees contacts assigned to them OR any of their enablers
-    const usersCollection = collection(db, 'users');
-    const enablersQuery = query(usersCollection, where('reportsTo.guideId', '==', appUser.id));
-    const enablersSnapshot = await getDocs(enablersQuery);
-    const enablerNames = enablersSnapshot.docs.map(doc => doc.data().name);
+type UserInfo = {
+  id: string;
+  name: string;
+  role: UserRole[];
+};
 
-    // Names of people this guide is responsible for (themselves + their enablers)
-    const responsibleForNames = [appUser.name, ...enablerNames];
+export const getPeople = async (
+    userInfo: UserInfo,
+    options: { page?: number; pageSize?: number; search?: string } = {}
+): Promise<GetPeopleResult> => {
+    if (!userInfo) return { people: [], totalCount: 0 };
+    
+    const { page = 1, pageSize = 25, search = '' } = options;
 
-    // Firestore `in` query limit is 30. If more, we must do multiple queries.
-    const peopleMap = new Map<string, Person>();
-    const CHUNK_SIZE = 30;
+    const peopleCollection = collection(db, 'people');
+    let queryConstraints: QueryConstraint[] = [];
+    
+    // --- Role-based Access Control ---
+    if (userInfo.role.includes('Admin')) {
+        // No additional constraints needed for base query.
+    } else if (userInfo.role.includes('Folk Guide')) {
+        queryConstraints.push(where('folkGuideId', '==', userInfo.id));
+    } else { // Folk Enabler
+        queryConstraints.push(
+            or(
+                where('enablerInTouchWith', '==', userInfo.name),
+                where('coEnablerId', '==', userInfo.id)
+            )
+        );
+    }
+    
+    // --- Search ---
+    if (search.trim()) {
+        const searchTerm = search.trim().toLowerCase();
+        // This is a simple prefix search. For full-text search, a third-party service like Algolia is recommended.
+        queryConstraints.push(where('fullName_lowercase', '>=', searchTerm));
+        queryConstraints.push(where('fullName_lowercase', '<=', searchTerm + '\uf8ff'));
+    }
 
-    for (let i = 0; i < responsibleForNames.length; i += CHUNK_SIZE) {
-        const chunk = responsibleForNames.slice(i, i + CHUNK_SIZE);
-        if (chunk.length > 0) {
-            const peopleQuery = query(peopleCollection, where('enablerInTouchWith', 'in', chunk));
-            const snapshot = await getDocs(peopleQuery);
-            snapshot.docs.forEach(doc => {
-                if (!peopleMap.has(doc.id)) {
-                    peopleMap.set(doc.id, processPersonDoc(doc));
-                }
-            });
+    // --- Pagination ---
+    const countQuery = query(peopleCollection, ...queryConstraints);
+    const countSnapshot = await getCountFromServer(countQuery);
+    const totalCount = countSnapshot.data().count;
+
+    // --- Sorting ---
+    queryConstraints.push(orderBy('createdAt', 'desc'));
+
+    if (page > 1) {
+        const lastVisibleQuery = query(peopleCollection, ...queryConstraints, limit((page - 1) * pageSize));
+        const lastVisibleSnapshot = await getDocs(lastVisibleQuery);
+        const lastVisible = lastVisibleSnapshot.docs[lastVisibleSnapshot.docs.length - 1];
+        if (lastVisible) {
+            queryConstraints.push(startAfter(lastVisible));
         }
     }
-    return Array.from(peopleMap.values());
-  }
+    
+    queryConstraints.push(limit(pageSize));
 
-  // Folk Enabler: must check for permanent assignment AND temporary co-enabler assignment
-  const permanentQuery = query(peopleCollection, where('enablerInTouchWith', '==', appUser.name));
-  const coEnablerQuery = query(peopleCollection, where('coEnablerId', '==', appUser.id));
+    const finalQuery = query(peopleCollection, ...queryConstraints);
+    const dataSnapshot = await getDocs(finalQuery);
+    const allFetchedPeople = dataSnapshot.docs.map(processPersonDoc);
 
-  const [permanentSnapshot, coEnablerSnapshot] = await Promise.all([
-      getDocs(permanentQuery),
-      getDocs(coEnablerQuery)
-  ]);
-
-  const peopleMap = new Map<string, Person>();
-
-  permanentSnapshot.docs.forEach(doc => {
-      peopleMap.set(doc.id, processPersonDoc(doc));
-  });
-
-  coEnablerSnapshot.docs.forEach(doc => {
-      if (!peopleMap.has(doc.id)) {
-          peopleMap.set(doc.id, processPersonDoc(doc));
-      }
-  });
-  
-  return Array.from(peopleMap.values());
+    return { people: allFetchedPeople, totalCount };
 };
 
 export const getPerson = async (id: string): Promise<Person | null> => {
@@ -104,7 +135,7 @@ export const getPerson = async (id: string): Promise<Person | null> => {
 
 export const createPerson = async (
   personData: Omit<Person, 'id' | 'createdAt'>,
-  appUser: AppUser
+  userInfo: UserInfo
 ): Promise<Person> => {
   const peopleCollection = collection(db, 'people');
   const q = query(peopleCollection, where("phone", "==", personData.phone));
@@ -116,63 +147,18 @@ export const createPerson = async (
   let assignedEnabler = personData.enablerInTouchWith;
   let { folkGuide, folkGuideId } = personData;
 
-  // Auto-assignment for Folk Guide if not provided (e.g., by non-admin)
+  // Auto-assignment for Folk Guide if not provided
   if (!folkGuideId) {
-    if (appUser.role.includes('Folk Guide')) {
-      folkGuideId = appUser.id;
-      folkGuide = `${appUser.name} (${appUser.fgCode || 'N/A'})`;
-    } else if (appUser.role.includes('Folk Enabler') && appUser.reportsTo) {
-      folkGuideId = appUser.reportsTo.guideId;
-      folkGuide = `${appUser.reportsTo.guideName} (${appUser.reportsTo.guideFgCode || 'N/A'})`;
+    if (userInfo.role.includes('Folk Guide')) {
+      folkGuideId = userInfo.id;
+      folkGuide = `${userInfo.name}`; 
     }
-  }
-
-  // If unassigned, and the creator is a Folk Guide, auto-assign enabler.
-  if (!assignedEnabler && appUser.role.includes('Folk Guide')) {
-    const usersCollection = collection(db, 'users');
-    const enablersQuery = query(usersCollection, where('reportsTo.guideId', '==', appUser.id));
-    const enablersSnapshot = await getDocs(enablersQuery);
-    // Sort enablers by name to ensure consistent order
-    const enablers = enablersSnapshot.docs
-      .map(doc => doc.data() as AppUser)
-      .sort((a, b) => a.name.localeCompare(b.name));
-
-    if (enablers.length > 0) {
-        const guideDocRef = doc(db, 'users', appUser.id);
-        try {
-            const newAssignedEnablerName = await runTransaction(db, async (transaction) => {
-                const guideDoc = await transaction.get(guideDocRef);
-                if (!guideDoc.exists()) {
-                    throw "Folk Guide document not found!";
-                }
-
-                const guideData = guideDoc.data();
-                const lastIndex = guideData.lastAssignedEnablerIndex ?? -1;
-                const nextIndex = (lastIndex + 1) % enablers.length;
-                
-                const enablerToAssign = enablers[nextIndex];
-                
-                transaction.update(guideDocRef, { lastAssignedEnablerIndex: nextIndex });
-                
-                return enablerToAssign.name;
-            });
-            assignedEnabler = newAssignedEnablerName;
-        } catch (e) {
-            console.error("Transaction for auto-assignment failed: ", e);
-            // Fallback: assign to the guide themselves if transaction fails
-            assignedEnabler = appUser.name;
-        }
-    } else {
-        // If no enablers, assign to the guide themselves
-        assignedEnabler = appUser.name;
-    }
-  } else if (!assignedEnabler && appUser.role.includes('Folk Enabler')) {
-    // If an enabler creates a contact without specifying, assign it to them by default.
-    assignedEnabler = appUser.name;
   }
 
   const dataToSave = {
+    ...personData,
     fullName: personData.fullName || '',
+    fullName_lowercase: (personData.fullName || '').toLowerCase(),
     phone: personData.phone || '',
     photoUrl: personData.photoUrl || 'https://placehold.co/100x100.png',
     age: personData.age || 18,
@@ -185,8 +171,6 @@ export const createPerson = async (
     contactSource: personData.contactSource || '',
     chantingStatus: personData.chantingStatus || 0,
     fromOtherCamp: personData.fromOtherCamp || false,
-    progress: personData.progress,
-    customData: personData.customData || {},
     enablerInTouchWith: assignedEnabler || '',
     folkGuide: folkGuide || '',
     folkGuideId: folkGuideId || '',
@@ -194,16 +178,13 @@ export const createPerson = async (
   };
 
   const docRef = await addDoc(peopleCollection, dataToSave);
-  await logAudit('Create Contact', `Created new contact: ${dataToSave.fullName} (${docRef.id})`, appUser);
-  const newPerson: Person = {
-    ...(dataToSave as Omit<Person, 'id'>),
-    id: docRef.id,
-    createdAt: new Date(),
-  };
-  return newPerson;
+  await logAudit('Create Contact', `Created new contact: ${dataToSave.fullName} (${docRef.id})`, userInfo);
+  
+  const newPersonData = await getDoc(docRef);
+  return processPersonDoc(newPersonData);
 };
 
-export const updatePerson = async (id: string, personData: Partial<Omit<Person, 'id'>>, appUser: AppUser | null = null): Promise<void> => {
+export const updatePerson = async (id: string, personData: Partial<Omit<Person, 'id'>>, userInfo: UserInfo | null = null): Promise<void> => {
   if (personData.phone) {
     const peopleCollection = collection(db, 'people');
     const q = query(peopleCollection, where("phone", "==", personData.phone));
@@ -214,23 +195,38 @@ export const updatePerson = async (id: string, personData: Partial<Omit<Person, 
     }
   }
   const docRef = doc(db, 'people', id);
-  await updateDoc(docRef, personData);
-  if (appUser) {
+  const dataToUpdate: { [key: string]: any } = { ...personData };
+
+  if(dataToUpdate.fullName) {
+    dataToUpdate.fullName_lowercase = dataToUpdate.fullName.toLowerCase();
+  }
+
+  // Handle server-side operations based on placeholders
+  if (dataToUpdate.lastCallAt === 'SERVER_TIMESTAMP') {
+    dataToUpdate.lastCallAt = serverTimestamp();
+  }
+  if (dataToUpdate.callHistory) {
+      const historyEntry = dataToUpdate.callHistory;
+      dataToUpdate.callHistory = arrayUnion(historyEntry);
+  }
+
+  await updateDoc(docRef, dataToUpdate);
+  if (userInfo) {
     const person = await getPerson(id);
-    await logAudit('Update Contact', `Updated details for contact: ${person?.fullName} (${id})`, appUser);
+    await logAudit('Update Contact', `Updated details for contact: ${person?.fullName} (${id})`, userInfo);
   }
 };
 
-export const deletePerson = async (id: string, appUser: AppUser): Promise<void> => {
+export const deletePerson = async (id: string, userInfo: UserInfo): Promise<void> => {
   const person = await getPerson(id);
   const docRef = doc(db, 'people', id);
   await deleteDoc(docRef);
   if (person) {
-    await logAudit('Delete Contact', `Deleted contact: ${person.fullName} (${id})`, appUser);
+    await logAudit('Delete Contact', `Deleted contact: ${person.fullName} (${id})`, userInfo);
   }
 };
 
-export const deletePeople = async (ids: string[], appUser: AppUser): Promise<void> => {
+export const deletePeople = async (ids: string[], userInfo: UserInfo): Promise<void> => {
   if (ids.length === 0) return;
   const batch = writeBatch(db);
   ids.forEach(id => {
@@ -238,61 +234,70 @@ export const deletePeople = async (ids: string[], appUser: AppUser): Promise<voi
     batch.delete(docRef);
   });
   await batch.commit();
-  await logAudit('Delete Multiple Contacts', `Deleted ${ids.length} contacts: ${ids.join(', ')}`, appUser);
+  await logAudit('Delete Multiple Contacts', `Deleted ${ids.length} contacts: ${ids.join(', ')}`, userInfo);
 };
 
 export const importPeople = async (
     people: Omit<Person, 'id' | 'createdAt'>[],
-    appUser: AppUser
+    userInfo: UserInfo
 ): Promise<void> => {
   if (people.length === 0) return;
 
+  const users = await getUsers();
+  const guideMap = new Map<string, AppUser>(users.filter(u => u.role.includes('Folk Guide')).map(g => [g.id, g]));
+
   const batch = writeBatch(db);
-  people.forEach((person) => {
+  for (const person of people) {
+    const peopleCollection = collection(db, 'people');
+    const q = query(peopleCollection, where("phone", "==", person.phone));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+        console.warn(`Skipping import for duplicate phone number: ${person.phone}`);
+        continue;
+    }
+    
     const docRef = doc(collection(db, 'people'));
     let assignedEnabler = person.enablerInTouchWith;
     let { folkGuide, folkGuideId } = person;
 
-    // Auto-assign Folk Guide if not provided
-    if (!folkGuideId && !folkGuide) {
-      if (appUser.role.includes('Folk Guide')) {
-        folkGuideId = appUser.id;
-        folkGuide = `${appUser.name} (${appUser.fgCode || 'N/A'})`;
-      } else if (appUser.role.includes('Folk Enabler') && appUser.reportsTo) {
-        folkGuideId = appUser.reportsTo.guideId;
-        folkGuide = `${appUser.reportsTo.guideName} (${appUser.reportsTo.guideFgCode || 'N/A'})`;
+    if (userInfo.role.includes('Folk Enabler') && !userInfo.role.includes('Admin') && !userInfo.role.includes('Folk Guide')) {
+      const enablerUser = users.find(u => u.id === userInfo.id);
+      assignedEnabler = userInfo.name;
+      if (enablerUser?.reportsTo?.guideId) {
+          folkGuideId = enablerUser.reportsTo.guideId;
+          const guide = guideMap.get(folkGuideId);
+          if (guide) {
+              folkGuide = `${guide.name} (${guide.fgCode || 'N/A'})`;
+          }
+      } else {
+        folkGuide = '';
+        folkGuideId = '';
+      }
+    } else {
+      if (!folkGuideId && !folkGuide) {
+        if (userInfo.role.includes('Folk Guide')) {
+          folkGuideId = userInfo.id;
+          folkGuide = `${userInfo.name} (${guideMap.get(userInfo.id)?.fgCode || 'N/A'})`;
+        }
       }
     }
-
+    
     const dataToSave = {
-        fullName: person.fullName || '',
-        phone: person.phone || '',
-        photoUrl: person.photoUrl || 'https://placehold.co/100x100.png',
-        age: person.age || 18,
-        stayingWith: person.stayingWith || 'Family',
-        occupation: person.occupation || 'Working',
-        organisation: person.organisation || '',
-        rentDetails: person.rentDetails || '',
-        nativePlace: person.nativePlace || '',
-        sgRating: person.sgRating || 0,
-        contactSource: person.contactSource || '',
-        chantingStatus: person.chantingStatus || 0,
-        fromOtherCamp: person.fromOtherCamp || false,
-        progress: person.progress,
-        customData: person.customData || {},
+        ...person,
+        fullName_lowercase: (person.fullName || '').toLowerCase(),
         enablerInTouchWith: assignedEnabler || '',
         folkGuide: folkGuide || '',
         folkGuideId: folkGuideId || '',
         createdAt: serverTimestamp()
     };
     batch.set(docRef, dataToSave);
-  });
+  }
   
   await batch.commit();
-  await logAudit('Import Contacts', `Imported ${people.length} contacts from a file.`, appUser);
+  await logAudit('Import Contacts', `Imported ${people.length} contacts from a file.`, userInfo);
 };
 
-export const assignCoEnablerToPeople = async (personIds: string[], coEnabler: AppUser | null, appUser: AppUser): Promise<void> => {
+export const assignCoEnablerToPeople = async (personIds: string[], coEnabler: AppUser | null, userInfo: UserInfo): Promise<void> => {
   if (personIds.length === 0) return;
   const batch = writeBatch(db);
   personIds.forEach(id => {
@@ -313,18 +318,30 @@ export const assignCoEnablerToPeople = async (personIds: string[], coEnabler: Ap
   const details = coEnabler 
     ? `Assigned ${coEnabler.name} as co-enabler for ${personIds.length} contacts.`
     : `Unassigned co-enabler from ${personIds.length} contacts.`;
-  await logAudit('Assign Co-Enabler', details, appUser);
+  await logAudit('Assign Co-Enabler', details, userInfo);
 };
 
-export const assignEnablerToPeople = async (personIds: string[], enabler: AppUser, appUser: AppUser | null): Promise<void> => {
+export const assignEnablerToPeople = async (personIds: string[], enabler: AppUser, userInfo: UserInfo | null): Promise<void> => {
     if (personIds.length === 0) return;
     const batch = writeBatch(db);
+    const guideInfo = enabler.reportsTo;
+    
     personIds.forEach(id => {
         const docRef = doc(db, 'people', id);
-        batch.update(docRef, { enablerInTouchWith: enabler.name });
+        batch.update(docRef, { 
+          enablerInTouchWith: enabler.name,
+          folkGuide: guideInfo ? `${guideInfo.guideName} (${guideInfo.guideFgCode || 'N/A'})` : '',
+          folkGuideId: guideInfo ? guideInfo.guideId : '',
+        });
     });
     await batch.commit();
-    if (appUser) {
-        await logAudit('Assign Enabler', `Assigned ${personIds.length} contacts to ${enabler.name}.`, appUser);
+    if (userInfo) {
+        await logAudit('Assign Enabler', `Assigned ${personIds.length} contacts to ${enabler.name}.`, userInfo);
     }
 };
+
+async function getUsers(): Promise<AppUser[]> {
+    const usersCollection = collection(db, 'users');
+    const snapshot = await getDocs(usersCollection);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppUser));
+}

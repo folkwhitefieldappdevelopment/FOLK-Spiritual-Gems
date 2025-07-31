@@ -1,8 +1,5 @@
 
 import type { callStatuses as allCallStatuses } from './data';
-import type { FilterRule } from '@/components/filter-popover';
-import type { SortDescriptor } from '@/components/sort-popover';
-import type { ColumnFilterState } from '@/components/column-header-filter';
 
 export const progressCategories = [
   'Association',
@@ -67,6 +64,7 @@ export type PausedSession = {
 export type Person = {
   id: string;
   fullName: string;
+  fullName_lowercase: string;
   phone: string;
   photoUrl: string;
   age: number;
