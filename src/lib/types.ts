@@ -33,7 +33,7 @@ export type ProgressCategory = {
   items: ChecklistItem[];
 };
 
-export const customFieldTypes = ['text', 'textarea', 'number', 'date', 'boolean'] as const;
+export const customFieldTypes = ['text', 'textarea', 'number', 'date', 'boolean', 'dropdown'] as const;
 export type CustomFieldType = (typeof customFieldTypes)[number];
 
 export type OccupationStatus = string;
@@ -65,7 +65,6 @@ export type PausedSession = {
 export type Person = {
   id: string;
   fullName: string;
-  fullName_lowercase: string;
   phone: string;
   photoUrl: string;
   age: number;
@@ -146,6 +145,7 @@ export type CustomField = {
   id: string;
   label: string;
   type: CustomFieldType;
+  options?: string[];
 };
 
 export type AuditLog = {

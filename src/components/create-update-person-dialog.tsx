@@ -338,7 +338,7 @@ export function CreateUpdatePersonDialog({
   };
 
   const renderCustomField = (field: CustomField) => {
-    const { id, label, type } = field;
+    const { id, label, type, options = [] } = field;
     const value = customData[id];
 
     switch (type) {
@@ -352,6 +352,15 @@ export function CreateUpdatePersonDialog({
         return <Input type="date" value={value || ''} onChange={e => handleCustomDataChange(id, e.target.value)} />;
       case 'boolean':
         return <Checkbox checked={!!value} onCheckedChange={checked => handleCustomDataChange(id, checked)} />;
+      case 'dropdown':
+        return (
+            <Select value={value || ''} onValueChange={v => handleCustomDataChange(id, v)}>
+                <SelectTrigger><SelectValue placeholder="Select an option" /></SelectTrigger>
+                <SelectContent>
+                    {options.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                </SelectContent>
+            </Select>
+        )
       default:
         return null;
     }

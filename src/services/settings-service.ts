@@ -338,7 +338,7 @@ export const deleteStayingWithOption = async (optionToDelete: string, userInfo: 
 export const getCustomPersonFields = async (userInfo: UserInfo): Promise<CustomField[]> => {
     const settings = await ensureSettingsDoc(userInfo);
     // Ensure all fields have a type for backward compatibility
-    return settings.customPersonFields.map((f: CustomField) => ({ ...f, type: f.type || 'text' }));
+    return settings.customPersonFields.map((f: any) => ({ ...f, type: f.type || 'text' }));
 };
 
 export const saveCustomPersonFields = async (fields: CustomField[], userInfo: UserInfo): Promise<void> => {

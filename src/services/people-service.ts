@@ -28,8 +28,6 @@ import {
   arrayUnion,
 } from 'firebase/firestore';
 import type { Person, AppUser, UserRole } from '@/lib/types';
-import type { FilterRule } from '@/components/filter-popover';
-import type { SortDescriptor } from '@/components/sort-popover';
 import { logAudit } from './audit-service';
 
 const processPersonDoc = (doc: DocumentSnapshot): Person => {

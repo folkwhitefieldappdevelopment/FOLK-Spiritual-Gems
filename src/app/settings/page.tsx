@@ -119,6 +119,7 @@ function SettingsPageComponent() {
   const [editingField, setEditingField] = React.useState<CustomField | null>(null);
   const [fieldName, setFieldName] = React.useState('');
   const [fieldType, setFieldType] = React.useState<CustomFieldType>('text');
+  const [fieldOptions, setFieldOptions] = React.useState('');
 
   React.useEffect(() => {
     if (!appUser) return;
@@ -163,6 +164,7 @@ function SettingsPageComponent() {
         setEditingField(field);
         setFieldName(field ? field.label : '');
         setFieldType(field ? field.type : 'text');
+        setFieldOptions(field && field.options ? field.options.join(', ') : '');
     } else {
         const name = data as string | null;
         setOriginalName(name || '');
@@ -207,15 +209,18 @@ function SettingsPageComponent() {
   const handleSaveCustomField = async () => {
     if (!appUser) return;
     let updatedFields: CustomField[];
+    const optionsArray = fieldType === 'dropdown' ? fieldOptions.split(',').map(s => s.trim()).filter(Boolean) : undefined;
+    
     if (editingField) { // Edit mode
         updatedFields = customFields.map(f => 
-            f.id === editingField.id ? { ...f, label: fieldName.trim(), type: fieldType } : f
+            f.id === editingField.id ? { ...f, label: fieldName.trim(), type: fieldType, options: optionsArray } : f
         );
     } else { // Add mode
         const newField: CustomField = {
             id: crypto.randomUUID(),
             label: fieldName.trim(),
             type: fieldType,
+            options: optionsArray,
         };
         if (customFields.some(f => f.label.toLowerCase() === newField.label.toLowerCase())) {
             toast({ variant: 'destructive', title: 'A field with this label already exists.' });
@@ -440,6 +445,19 @@ function SettingsPageComponent() {
             </Select>
             {dialogMode === 'edit' && <p className="text-xs text-muted-foreground mt-1">Field type cannot be changed after creation.</p>}
           </div>
+          {fieldType === 'dropdown' && (
+            <div>
+              <Label htmlFor="fieldOptions">Dropdown Options</Label>
+              <Input
+                id="fieldOptions"
+                value={fieldOptions}
+                onChange={(e) => setFieldOptions(e.target.value)}
+                placeholder="e.g. Option A, Option B, Option C"
+                className="mt-1"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Enter comma-separated values for the dropdown.</p>
+            </div>
+          )}
         </div>
       );
     } else {

@@ -23,7 +23,7 @@ import { getGroup, getStaticGroups, addPeopleToGroup, removePeopleFromGroup } fr
 import { addPeopleToGroupByPhone } from '@/services/groups-actions';
 import { getPeople, updatePerson, assignCoEnablerToPeople } from '@/services/people-service';
 import { getFolkGuides, updateUser } from '@/services/user-service';
-import { getEnablers, getContactSources, getCustomPersonFields, getOccupationStatuses, type EnablerOption } from '@/services/settings-service';
+import { getEnablers, getContactSources, getCustomPersonFields, getOccupationStatuses, type EnablerOption, getStayingWithOptions } from '@/services/settings-service';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 import { useAuth } from '@/contexts/auth-context';
 
@@ -63,7 +63,6 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-import { ColumnFilterState, applyColumnFilters } from '@/components/column-header-filter';
 import { AuthGuard } from '@/components/auth-guard';
 import { dynamicGroupDefinitions } from '@/lib/dynamic-groups';
 import { useRouter, useSearchParams, usePathname, useParams } from 'next/navigation';
@@ -100,12 +99,13 @@ function GroupDetailPageComponent() {
   const [filters, setFilters] = React.useState<FilterRule[]>([]);
   const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([]);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFilterState>({});
   const [currentPage, setCurrentPage] = React.useState(1);
   
   const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
   const [occupationOptions, setOccupationOptions] = React.useState<string[]>([]);
+  const [stayingWithOptions, setStayingWithOptions] = React.useState<string[]>([]);
+  const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
   const canAssignCoEnabler = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
   
@@ -126,7 +126,6 @@ function GroupDetailPageComponent() {
     const search = params.get('search') || '';
     const sort = params.get('sort');
     const filter = params.get('filters');
-    const colFilters = params.get('colFilters');
 
     setCurrentPage(page);
     setView(view);
@@ -138,18 +137,6 @@ function GroupDetailPageComponent() {
     }
     if (filter) {
       try { setFilters(JSON.parse(filter)); } catch(e) {}
-    }
-    if (colFilters) {
-      try {
-        const parsed = JSON.parse(colFilters);
-        // Reconstruct Sets from arrays
-        Object.keys(parsed).forEach(key => {
-            if (parsed[key].values) {
-                parsed[key].values = new Set(parsed[key].values);
-            }
-        });
-        setColumnFilters(parsed);
-      } catch(e) {}
     }
   }, []); // Run only once on mount
 
@@ -163,15 +150,9 @@ function GroupDetailPageComponent() {
       params.set('sort', JSON.stringify(sortDescriptors));
     }
     if (filters.length > 0) params.set('filters', JSON.stringify(filters));
-    if (Object.keys(columnFilters).length > 0) {
-        const serializableFilters = JSON.parse(JSON.stringify(columnFilters, (key, value) => {
-            if (value instanceof Set) { return Array.from(value); }
-            return value;
-        }));
-        params.set('colFilters', JSON.stringify(serializableFilters));
-    }
+    
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [currentPage, view, searchTerm, sortDescriptors, filters, columnFilters, router, pathname]);
+  }, [currentPage, view, searchTerm, sortDescriptors, filters, router, pathname]);
 
   const fetchPageData = React.useCallback(async () => {
     if (!groupId || !appUser) return;
@@ -200,19 +181,23 @@ function GroupDetailPageComponent() {
         }
         setMembers(memberData);
         
-      const [allGroupsData, enablersData, sourcesData, occupationsData, guidesData] = await Promise.all([
+      const [allGroupsData, enablersData, sourcesData, occupationsData, stayingsData, guidesData, customFieldsData] = await Promise.all([
         getStaticGroups(userInfo),
         getEnablers(userInfo, 'filter'),
         getContactSources(userInfo),
         getOccupationStatuses(userInfo),
+        getStayingWithOptions(userInfo),
         getFolkGuides(),
+        getCustomPersonFields(userInfo),
       ]);
       
       setAllGroups(allGroupsData);
       setEnablerOptions(enablersData);
       setContactSourceOptions(sourcesData);
       setOccupationOptions(occupationsData);
+      setStayingWithOptions(stayingsData);
       setFolkGuides(guidesData);
+      setCustomFields(customFieldsData);
 
     } catch (error) {
       console.error('Failed to load group data', error);
@@ -229,19 +214,39 @@ function GroupDetailPageComponent() {
     }
   }, [appUser, groupId, fetchPageData]);
   
-  const filterableFields: FilterableField[] = React.useMemo(() => [
-    { value: 'occupation', label: 'Occupation', type: 'enum', options: occupationOptions.map(s => ({ value: s, label: s })) },
-    { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(s => ({ value: s, label: s })) },
-    { value: 'enablerInTouchWith', label: 'Enabler', type: 'enum', options: enablerOptions },
-    { value: 'chantingStatus', label: 'Chanting Rounds', type: 'number' },
-    { value: 'stayingWith', label: 'Staying At', type: 'enum', options: [{value: "PG / Hostel", label: "PG / Hostel"}, {value: "Flat", label: "Flat"}, {value: "Family", label: "Family"}] },
-    { value: 'organisation', label: 'Organisation', type: 'string' },
-    { value: 'folkGuide', label: 'Folk Guide', type: 'enum', options: folkGuides.map(g => ({ value: g.name, label: `${g.name} (${g.fgCode || 'N/A'})` })) },
-    { value: 'nativePlace', label: 'Native Place', type: 'string' },
-    { value: 'fromOtherCamp', label: 'From Other Camp', type: 'boolean' },
-    { value: 'age', label: 'Age', type: 'number' },
-    { value: 'sgRating', label: 'Rating', type: 'number' },
-  ], [enablerOptions, contactSourceOptions, folkGuides, occupationOptions]);
+  const filterableFields: FilterableField[] = React.useMemo(() => {
+    const standardFields: FilterableField[] = [
+      { value: 'occupation', label: 'Occupation', type: 'enum', options: occupationOptions.map(s => ({ value: s, label: s })) },
+      { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(s => ({ value: s, label: s })) },
+      { value: 'enablerInTouchWith', label: 'Enabler', type: 'enum', options: enablerOptions },
+      { value: 'chantingStatus', label: 'Chanting Rounds', type: 'number' },
+      { value: 'stayingWith', label: 'Staying At', type: 'enum', options: stayingWithOptions.map(s => ({ value: s, label: s })) },
+      { value: 'organisation', label: 'Organisation', type: 'string' },
+      { value: 'folkGuide', label: 'Folk Guide', type: 'enum', options: folkGuides.map(g => ({ value: g.name, label: `${g.name} (${g.fgCode || 'N/A'})` })) },
+      { value: 'nativePlace', label: 'Native Place', type: 'string' },
+      { value: 'fromOtherCamp', label: 'From Other Camp', type: 'boolean' },
+      { value: 'age', label: 'Age', type: 'number' },
+      { value: 'sgRating', label: 'Rating', type: 'number' },
+    ];
+    
+    const dynamicFields: FilterableField[] = customFields.map(cf => {
+        if (cf.type === 'dropdown') {
+            return {
+                value: `customData.${cf.id}`,
+                label: cf.label,
+                type: 'enum',
+                options: (cf.options || []).map(opt => ({ value: opt, label: opt })),
+            }
+        }
+        return {
+            value: `customData.${cf.id}`,
+            label: cf.label,
+            type: cf.type as 'string' | 'number' | 'boolean' | 'date',
+        }
+    });
+
+    return [...standardFields, ...dynamicFields];
+  }, [enablerOptions, contactSourceOptions, folkGuides, occupationOptions, stayingWithOptions, customFields]);
 
   const filteredAndSortedMembers = React.useMemo(() => {
     let people = [...members];
@@ -257,9 +262,6 @@ function GroupDetailPageComponent() {
 
     // Apply advanced filters
     people = applyClientSideFilters(people, filters);
-
-    // Apply column filters
-    people = applyColumnFilters(people, columnFilters);
 
     // Apply sorting
     if (sortDescriptors.length > 0) {
@@ -281,7 +283,7 @@ function GroupDetailPageComponent() {
     }
 
     return people;
-  }, [members, searchTerm, filters, columnFilters, sortDescriptors]);
+  }, [members, searchTerm, filters, sortDescriptors]);
   
   const totalPages = Math.ceil(filteredAndSortedMembers.length / ROWS_PER_PAGE);
   const paginatedMembers = React.useMemo(() => {
@@ -292,7 +294,7 @@ function GroupDetailPageComponent() {
   React.useEffect(() => {
     setCurrentPage(1);
     setSelectedIds(new Set());
-  }, [filters, sortDescriptors, searchTerm, columnFilters, view]);
+  }, [filters, sortDescriptors, searchTerm, view]);
 
   const handleEditPerson = React.useCallback((person: Person) => {
     setEditingPerson(person);
@@ -583,5 +585,3 @@ export default function GroupDetailPage() {
         </AuthGuard>
     )
 }
-
-    
