@@ -1,4 +1,5 @@
 
+
 import type { callStatuses as allCallStatuses } from './data';
 
 export const progressCategories = [
@@ -35,8 +36,8 @@ export type ProgressCategory = {
 export const customFieldTypes = ['text', 'textarea', 'number', 'date', 'boolean'] as const;
 export type CustomFieldType = (typeof customFieldTypes)[number];
 
-export const occupationStatuses = ['Working', 'Student', 'Searching for job'] as const;
-export type OccupationStatus = (typeof occupationStatuses)[number];
+export type OccupationStatus = string;
+export type StayingWithOption = string;
 
 export const callStatuses = [
     'A1 - Coming',
@@ -68,7 +69,7 @@ export type Person = {
   phone: string;
   photoUrl: string;
   age: number;
-  stayingWith: 'PG / Hostel' | 'Flat' | 'Family';
+  stayingWith: StayingWithOption;
   occupation: OccupationStatus;
   organisation: string;
   rentDetails: string;

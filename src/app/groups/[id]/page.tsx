@@ -17,14 +17,13 @@ import {
   Upload,
 } from 'lucide-react';
 import { read, utils, write, type WorkSheet } from "xlsx";
-import type { Person, Group, AppUser, CustomField, UserRole } from '@/lib/types';
-import { occupationStatuses, callStatuses } from "@/lib/types";
+import type { Person, Group, AppUser, CustomField, UserRole, OccupationStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { getGroup, getStaticGroups, addPeopleToGroup, removePeopleFromGroup } from '@/services/groups-service';
 import { addPeopleToGroupByPhone } from '@/services/groups-actions';
 import { getPeople, updatePerson, assignCoEnablerToPeople } from '@/services/people-service';
 import { getFolkGuides, updateUser } from '@/services/user-service';
-import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from '@/services/settings-service';
+import { getEnablers, getContactSources, getCustomPersonFields, getOccupationStatuses, type EnablerOption } from '@/services/settings-service';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 import { useAuth } from '@/contexts/auth-context';
 
@@ -106,6 +105,7 @@ function GroupDetailPageComponent() {
   
   const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
+  const [occupationOptions, setOccupationOptions] = React.useState<string[]>([]);
   const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
   const canAssignCoEnabler = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
   
@@ -200,16 +200,18 @@ function GroupDetailPageComponent() {
         }
         setMembers(memberData);
         
-      const [allGroupsData, enablersData, sourcesData, guidesData] = await Promise.all([
+      const [allGroupsData, enablersData, sourcesData, occupationsData, guidesData] = await Promise.all([
         getStaticGroups(userInfo),
         getEnablers(userInfo, 'filter'),
         getContactSources(userInfo),
+        getOccupationStatuses(userInfo),
         getFolkGuides(),
       ]);
       
       setAllGroups(allGroupsData);
       setEnablerOptions(enablersData);
       setContactSourceOptions(sourcesData);
+      setOccupationOptions(occupationsData);
       setFolkGuides(guidesData);
 
     } catch (error) {
@@ -228,7 +230,7 @@ function GroupDetailPageComponent() {
   }, [appUser, groupId, fetchPageData]);
   
   const filterableFields: FilterableField[] = React.useMemo(() => [
-    { value: 'occupation', label: 'Occupation', type: 'enum', options: occupationStatuses.map(s => ({ value: s, label: s })) },
+    { value: 'occupation', label: 'Occupation', type: 'enum', options: occupationOptions.map(s => ({ value: s, label: s })) },
     { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(s => ({ value: s, label: s })) },
     { value: 'enablerInTouchWith', label: 'Enabler', type: 'enum', options: enablerOptions },
     { value: 'chantingStatus', label: 'Chanting Rounds', type: 'number' },
@@ -239,7 +241,7 @@ function GroupDetailPageComponent() {
     { value: 'fromOtherCamp', label: 'From Other Camp', type: 'boolean' },
     { value: 'age', label: 'Age', type: 'number' },
     { value: 'sgRating', label: 'Rating', type: 'number' },
-  ], [enablerOptions, contactSourceOptions, folkGuides]);
+  ], [enablerOptions, contactSourceOptions, folkGuides, occupationOptions]);
 
   const filteredAndSortedMembers = React.useMemo(() => {
     let people = [...members];
@@ -482,16 +484,12 @@ function GroupDetailPageComponent() {
         {view === 'table' ? (
           <PersonTable 
             people={paginatedMembers} 
-            allPeople={filteredAndSortedMembers}
+            allPeopleCount={filteredAndSortedMembers.length}
             onEdit={handleEditPerson} 
             onDelete={(id) => handleRemoveMembers([id])} 
             selectedIds={selectedIds} 
             setSelectedIds={setSelectedIds} 
             isSelectionActive={isSelectionActive}
-            sortDescriptors={sortDescriptors}
-            setSortDescriptors={setSortDescriptors}
-            columnFilters={columnFilters}
-            setColumnFilters={setColumnFilters}
           />
         ) : (
            paginatedMembers.length > 0 ? (

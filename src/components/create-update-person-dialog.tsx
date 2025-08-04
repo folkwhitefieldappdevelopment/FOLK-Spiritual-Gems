@@ -5,10 +5,9 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import type { Person, CustomField, AppUser } from "@/lib/types";
-import { occupationStatuses } from "@/lib/types";
+import type { Person, CustomField, AppUser, OccupationStatus, StayingWithOption } from "@/lib/types";
 import { Camera, Upload, SwitchCamera, Loader2 } from "lucide-react";
-import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
+import { getEnablers, getContactSources, getCustomPersonFields, getOccupationStatuses, getStayingWithOptions, type EnablerOption } from "@/services/settings-service";
 import { getFolkGuides } from "@/services/user-service";
 import { useAuth } from "@/contexts/auth-context";
 
@@ -55,8 +54,8 @@ const createPersonFormSchema = (allPeople: Person[], currentPersonId?: string) =
     fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
     phone: z.string().regex(/^[6-9]\d{9}$/, { message: "Please enter a valid 10-digit Indian mobile number." }),
     age: z.coerce.number().min(16, "Must be at least 16").max(40, "Must be at most 40"),
-    stayingWith: z.enum(["PG / Hostel", "Flat", "Family"]),
-    occupation: z.enum(occupationStatuses),
+    stayingWith: z.string().min(1, { message: "This field is required."}),
+    occupation: z.string().min(1, { message: "This field is required."}),
     organisation: z.string().optional(),
     rentDetails: z.string().optional(),
     nativePlace: z.string().optional(),
@@ -108,8 +107,8 @@ export function CreateUpdatePersonDialog({
       fullName: "",
       phone: "",
       age: 18,
-      stayingWith: "Family",
-      occupation: "Working",
+      stayingWith: "",
+      occupation: "",
       organisation: "",
       rentDetails: "",
       nativePlace: "",
@@ -135,6 +134,8 @@ export function CreateUpdatePersonDialog({
   
   const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
+  const [occupationOptions, setOccupationOptions] = React.useState<string[]>([]);
+  const [stayingWithOptions, setStayingWithOptions] = React.useState<string[]>([]);
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   const [customData, setCustomData] = React.useState<{ [key: string]: any }>({});
   const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
@@ -144,14 +145,19 @@ export function CreateUpdatePersonDialog({
     if (isOpen && appUser) { // <-- Added appUser check here
       const loadOptions = async () => {
           try {
-              const [enablers, sources, fields] = await Promise.all([
+              const [enablers, sources, occupations, stayings, fields] = await Promise.all([
                 getEnablers(appUser, 'assignment'), 
                 getContactSources(appUser),
+                getOccupationStatuses(appUser),
+                getStayingWithOptions(appUser),
                 getCustomPersonFields(appUser)
               ]);
               setEnablerOptions(enablers);
               setContactSourceOptions(sources);
+              setOccupationOptions(occupations);
+              setStayingWithOptions(stayings);
               setCustomFields(fields);
+
               if (isAdmin) {
                   const guides = await getFolkGuides();
                   setFolkGuides(guides);
@@ -164,14 +170,13 @@ export function CreateUpdatePersonDialog({
       loadOptions();
 
       if (person) {
-        const isStandardOccupation = occupationStatuses.includes(person.occupation);
         form.reset({
           fullName: person.fullName,
           phone: person.phone,
           age: person.age,
           stayingWith: person.stayingWith,
-          occupation: isStandardOccupation ? person.occupation : 'Working',
-          organisation: person.organisation || (!isStandardOccupation ? person.occupation : ''),
+          occupation: person.occupation,
+          organisation: person.organisation,
           rentDetails: person.rentDetails,
           nativePlace: person.nativePlace,
           sgRating: person.sgRating,
@@ -188,8 +193,8 @@ export function CreateUpdatePersonDialog({
           fullName: "",
           phone: "",
           age: 18,
-          stayingWith: "Family",
-          occupation: "Working",
+          stayingWith: "",
+          occupation: "",
           organisation: "",
           rentDetails: "",
           nativePlace: "",
@@ -519,9 +524,7 @@ export function CreateUpdatePersonDialog({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="PG / Hostel">PG / Hostel</SelectItem>
-                            <SelectItem value="Flat">Flat</SelectItem>
-                            <SelectItem value="Family">Family</SelectItem>
+                            {stayingWithOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -543,9 +546,7 @@ export function CreateUpdatePersonDialog({
                                 </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                    <SelectItem value="Working">Working</SelectItem>
-                                    <SelectItem value="Student">Student</SelectItem>
-                                    <SelectItem value="Searching for job">Searching for job</SelectItem>
+                                    {occupationOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                             <FormMessage />

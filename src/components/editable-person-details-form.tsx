@@ -5,10 +5,9 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import type { Person, CustomField, AppUser, Group } from "@/lib/types";
-import { occupationStatuses } from "@/lib/types";
+import type { Person, CustomField, AppUser, Group, OccupationStatus, StayingWithOption } from "@/lib/types";
 import { Camera, Upload, SwitchCamera, Phone, Tags, Bot } from "lucide-react";
-import { getEnablers, getContactSources, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
+import { getEnablers, getContactSources, getCustomPersonFields, getOccupationStatuses, getStayingWithOptions, type EnablerOption } from "@/services/settings-service";
 import { getFolkGuides } from "@/services/user-service";
 import { useAuth } from "@/contexts/auth-context";
 
@@ -56,8 +55,8 @@ const createPersonFormSchema = (allPeople: Person[], currentPersonId?: string) =
     fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
     phone: z.string().regex(/^[6-9]\d{9}$/, { message: "Please enter a valid 10-digit Indian mobile number." }),
     age: z.coerce.number().min(16, "Must be at least 16").max(40, "Must be at most 40"),
-    stayingWith: z.enum(["PG / Hostel", "Flat", "Family"]),
-    occupation: z.enum(occupationStatuses),
+    stayingWith: z.string().min(1, { message: "This field is required."}),
+    occupation: z.string().min(1, { message: "This field is required."}),
     organisation: z.string().optional(),
     rentDetails: z.string().optional(),
     nativePlace: z.string().optional(),
@@ -121,20 +120,21 @@ export function EditablePersonDetailsForm({
   
   const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
+  const [occupationOptions, setOccupationOptions] = React.useState<string[]>([]);
+  const [stayingWithOptions, setStayingWithOptions] = React.useState<string[]>([]);
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   const [customData, setCustomData] = React.useState<{ [key: string]: any }>({});
   const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
 
   const resetFormToPerson = React.useCallback(() => {
     if (person) {
-      const isStandardOccupation = occupationStatuses.includes(person.occupation);
       form.reset({
         fullName: person.fullName,
         phone: person.phone,
         age: person.age,
         stayingWith: person.stayingWith,
-        occupation: isStandardOccupation ? person.occupation : 'Working',
-        organisation: person.organisation || (!isStandardOccupation ? person.occupation : ''),
+        occupation: person.occupation,
+        organisation: person.organisation,
         rentDetails: person.rentDetails,
         nativePlace: person.nativePlace,
         sgRating: person.sgRating,
@@ -158,13 +158,17 @@ export function EditablePersonDetailsForm({
     if (isEditing && appUser) { // <-- Added appUser check here
       const loadOptions = async () => {
           try {
-              const [enablers, sources, fields] = await Promise.all([
+              const [enablers, sources, occupations, stayings, fields] = await Promise.all([
                 getEnablers(appUser, 'assignment'), 
                 getContactSources(appUser),
+                getOccupationStatuses(appUser),
+                getStayingWithOptions(appUser),
                 getCustomPersonFields(appUser)
               ]);
               setEnablerOptions(enablers);
               setContactSourceOptions(sources);
+              setOccupationOptions(occupations);
+              setStayingWithOptions(stayings);
               setCustomFields(fields);
               if (isAdmin) {
                   const guides = await getFolkGuides();
@@ -333,9 +337,9 @@ export function EditablePersonDetailsForm({
             <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
             <FormField control={form.control} name="age" render={({ field }) => (<FormItem><FormLabel>Age</FormLabel><Select onValueChange={(value) => field.onChange(Number(value))} value={String(field.value)}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>{ageOptions.map(age => <SelectItem key={age} value={String(age)}>{age}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
           </div>
-          <FormField control={form.control} name="stayingWith" render={({ field }) => (<FormItem><FormLabel>Staying At & With</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="PG / Hostel">PG / Hostel</SelectItem><SelectItem value="Flat">Flat</SelectItem><SelectItem value="Family">Family</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+          <FormField control={form.control} name="stayingWith" render={({ field }) => (<FormItem><FormLabel>Staying At & With</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>{stayingWithOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField control={form.control} name="occupation" render={({ field }) => (<FormItem><FormLabel>Occupation Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>{occupationStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="occupation" render={({ field }) => (<FormItem><FormLabel>Occupation Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>{occupationOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
             <FormField control={form.control} name="organisation" render={({ field }) => (<FormItem><FormLabel>Organisation</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
           </div>
           

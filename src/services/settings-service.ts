@@ -21,6 +21,8 @@ type UserInfo = {
 };
 
 const defaultContactSources = ['Govinda Temple', 'ITPL', 'HK hill'];
+const defaultOccupationStatuses = ['Working', 'Student', 'Searching for job'];
+const defaultStayingWithOptions = ['PG / Hostel', 'Flat', 'Family'];
 
 export type EnablerOption = {
   value: string;
@@ -41,9 +43,23 @@ const ensureSettingsDoc = async (userInfo: UserInfo) => {
     if (!docSnap.exists()) {
         needsUpdate = true;
         updates.contactSources = defaultContactSources;
+        updates.occupationStatuses = defaultOccupationStatuses;
+        updates.stayingWithOptions = defaultStayingWithOptions;
         updates.customPersonFields = [];
         updates.whatsAppTemplate = "Hare Krishna {name}, ..."
     } else {
+        if (!data.contactSources) {
+            needsUpdate = true;
+            updates.contactSources = defaultContactSources;
+        }
+        if (!data.occupationStatuses) {
+            needsUpdate = true;
+            updates.occupationStatuses = defaultOccupationStatuses;
+        }
+        if (!data.stayingWithOptions) {
+            needsUpdate = true;
+            updates.stayingWithOptions = defaultStayingWithOptions;
+        }
         if (!data.customPersonFields) {
             needsUpdate = true;
             updates.customPersonFields = [];
@@ -61,9 +77,11 @@ const ensureSettingsDoc = async (userInfo: UserInfo) => {
     const finalData = { ...data, ...updates };
 
     return {
-        contactSources: finalData.contactSources || defaultContactSources,
-        customPersonFields: finalData.customPersonFields || [],
-        whatsAppTemplate: finalData.whatsAppTemplate || "Hare Krishna {name}, ...",
+        contactSources: finalData.contactSources,
+        occupationStatuses: finalData.occupationStatuses,
+        stayingWithOptions: finalData.stayingWithOptions,
+        customPersonFields: finalData.customPersonFields,
+        whatsAppTemplate: finalData.whatsAppTemplate,
     };
 }
 
@@ -146,7 +164,8 @@ export const getContactSources = async (userInfo: UserInfo): Promise<string[]> =
 
 export const addContactSource = async (newSource: string, userInfo: UserInfo) => {
     const settingsDocRef = doc(db, 'settings', 'options');
-    const currentSources = (await getDoc(settingsDocRef)).data()?.contactSources || [];
+    const settings = await ensureSettingsDoc(userInfo);
+    const currentSources = settings.contactSources;
     if (!currentSources.includes(newSource)) {
         const updatedSources = [...currentSources, newSource];
         await setDoc(settingsDocRef, { contactSources: updatedSources }, { merge: true });
@@ -161,7 +180,8 @@ export const updateContactSource = async (oldName: string, newName: string, user
     const settingsDocRef = doc(db, 'settings', 'options');
 
     // 1. Update settings document
-    const currentSources = (await getDoc(settingsDocRef)).data()?.contactSources || [];
+    const settings = await ensureSettingsDoc(userInfo);
+    const currentSources = settings.contactSources;
     const updatedSources = currentSources.map(s => s === oldName ? newName : s);
     batch.set(settingsDocRef, { contactSources: updatedSources }, { merge: true });
 
@@ -182,7 +202,8 @@ export const deleteContactSource = async (sourceToDelete: string, userInfo: User
     const settingsDocRef = doc(db, 'settings', 'options');
 
     // 1. Update settings document
-    const currentSources = (await getDoc(settingsDocRef)).data()?.contactSources || [];
+    const settings = await ensureSettingsDoc(userInfo);
+    const currentSources = settings.contactSources;
     const updatedSources = currentSources.filter(s => s !== sourceToDelete);
     batch.set(settingsDocRef, { contactSources: updatedSources }, { merge: true });
 
@@ -197,6 +218,121 @@ export const deleteContactSource = async (sourceToDelete: string, userInfo: User
     await logAudit('Delete Contact Source', `Deleted source: ${sourceToDelete}`, userInfo);
     return updatedSources;
 }
+
+// Occupation Statuses
+export const getOccupationStatuses = async (userInfo: UserInfo): Promise<string[]> => {
+    const settings = await ensureSettingsDoc(userInfo);
+    return settings.occupationStatuses;
+};
+
+export const addOccupationStatus = async (newStatus: string, userInfo: UserInfo) => {
+    const settingsDocRef = doc(db, 'settings', 'options');
+    const settings = await ensureSettingsDoc(userInfo);
+    const currentStatuses = settings.occupationStatuses;
+    if (!currentStatuses.includes(newStatus)) {
+        const updatedStatuses = [...currentStatuses, newStatus];
+        await setDoc(settingsDocRef, { occupationStatuses: updatedStatuses }, { merge: true });
+        await logAudit('Add Occupation Status', `Added status: ${newStatus}`, userInfo);
+        return updatedStatuses;
+    }
+    return currentStatuses;
+};
+
+export const updateOccupationStatus = async (oldName: string, newName: string, userInfo: UserInfo) => {
+    const batch = writeBatch(db);
+    const settingsDocRef = doc(db, 'settings', 'options');
+    const settings = await ensureSettingsDoc(userInfo);
+    const currentStatuses = settings.occupationStatuses;
+    const updatedStatuses = currentStatuses.map(s => s === oldName ? newName : s);
+    batch.set(settingsDocRef, { occupationStatuses: updatedStatuses }, { merge: true });
+
+    const peopleQuery = query(collection(db, 'people'), where('occupation', '==', oldName));
+    const querySnapshot = await getDocs(peopleQuery);
+    querySnapshot.forEach(doc => {
+        batch.update(doc.ref, { occupation: newName });
+    });
+
+    await batch.commit();
+    await logAudit('Update Occupation Status', `Renamed status from "${oldName}" to "${newName}"`, userInfo);
+    return updatedStatuses;
+};
+
+export const deleteOccupationStatus = async (statusToDelete: string, userInfo: UserInfo) => {
+    const batch = writeBatch(db);
+    const settingsDocRef = doc(db, 'settings', 'options');
+    const settings = await ensureSettingsDoc(userInfo);
+    const currentStatuses = settings.occupationStatuses;
+    const updatedStatuses = currentStatuses.filter(s => s !== statusToDelete);
+    batch.set(settingsDocRef, { occupationStatuses: updatedStatuses }, { merge: true });
+
+    const peopleQuery = query(collection(db, 'people'), where('occupation', '==', statusToDelete));
+    const querySnapshot = await getDocs(peopleQuery);
+    querySnapshot.forEach(doc => {
+        batch.update(doc.ref, { occupation: "" });
+    });
+
+    await batch.commit();
+    await logAudit('Delete Occupation Status', `Deleted status: ${statusToDelete}`, userInfo);
+    return updatedStatuses;
+};
+
+
+// Staying With Options
+export const getStayingWithOptions = async (userInfo: UserInfo): Promise<string[]> => {
+    const settings = await ensureSettingsDoc(userInfo);
+    return settings.stayingWithOptions;
+};
+
+export const addStayingWithOption = async (newOption: string, userInfo: UserInfo) => {
+    const settingsDocRef = doc(db, 'settings', 'options');
+    const settings = await ensureSettingsDoc(userInfo);
+    const currentOptions = settings.stayingWithOptions;
+    if (!currentOptions.includes(newOption)) {
+        const updatedOptions = [...currentOptions, newOption];
+        await setDoc(settingsDocRef, { stayingWithOptions: updatedOptions }, { merge: true });
+        await logAudit('Add Staying With Option', `Added option: ${newOption}`, userInfo);
+        return updatedOptions;
+    }
+    return currentOptions;
+};
+
+export const updateStayingWithOption = async (oldName: string, newName: string, userInfo: UserInfo) => {
+    const batch = writeBatch(db);
+    const settingsDocRef = doc(db, 'settings', 'options');
+    const settings = await ensureSettingsDoc(userInfo);
+    const currentOptions = settings.stayingWithOptions;
+    const updatedOptions = currentOptions.map(s => s === oldName ? newName : s);
+    batch.set(settingsDocRef, { stayingWithOptions: updatedOptions }, { merge: true });
+
+    const peopleQuery = query(collection(db, 'people'), where('stayingWith', '==', oldName));
+    const querySnapshot = await getDocs(peopleQuery);
+    querySnapshot.forEach(doc => {
+        batch.update(doc.ref, { stayingWith: newName });
+    });
+
+    await batch.commit();
+    await logAudit('Update Staying With Option', `Renamed option from "${oldName}" to "${newName}"`, userInfo);
+    return updatedOptions;
+};
+
+export const deleteStayingWithOption = async (optionToDelete: string, userInfo: UserInfo) => {
+    const batch = writeBatch(db);
+    const settingsDocRef = doc(db, 'settings', 'options');
+    const settings = await ensureSettingsDoc(userInfo);
+    const currentOptions = settings.stayingWithOptions;
+    const updatedOptions = currentOptions.filter(s => s !== optionToDelete);
+    batch.set(settingsDocRef, { stayingWithOptions: updatedOptions }, { merge: true });
+
+    const peopleQuery = query(collection(db, 'people'), where('stayingWith', '==', optionToDelete));
+    const querySnapshot = await getDocs(peopleQuery);
+    querySnapshot.forEach(doc => {
+        batch.update(doc.ref, { stayingWith: "" });
+    });
+
+    await batch.commit();
+    await logAudit('Delete Staying With Option', `Deleted option: ${optionToDelete}`, userInfo);
+    return updatedOptions;
+};
 
 // Custom Person Fields
 export const getCustomPersonFields = async (userInfo: UserInfo): Promise<CustomField[]> => {

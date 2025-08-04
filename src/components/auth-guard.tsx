@@ -48,6 +48,17 @@ export function AuthGuard({ children, adminOnly = false, adminOrGuideOnly = fals
       return;
     }
 
+    if (appUser && !appUser.role.length) {
+      toast({
+          variant: 'destructive',
+          title: 'No Role Assigned',
+          description: 'You do not have a role assigned. Please contact an administrator.'
+      });
+      router.replace('/login');
+      setIsRedirecting(true);
+      return;
+    }
+
     setIsRedirecting(false);
 
   }, [user, appUser, loading, adminOnly, adminOrGuideOnly, router, toast]);

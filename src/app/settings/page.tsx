@@ -41,6 +41,14 @@ import {
   saveCustomPersonFields,
   getWhatsAppTemplate,
   saveWhatsAppTemplate,
+  getOccupationStatuses,
+  addOccupationStatus,
+  updateOccupationStatus,
+  deleteOccupationStatus,
+  getStayingWithOptions,
+  addStayingWithOption,
+  updateStayingWithOption,
+  deleteStayingWithOption,
 } from '@/services/settings-service';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { CustomField, CustomFieldType } from '@/lib/types';
@@ -50,7 +58,7 @@ import { AuthGuard } from '@/components/auth-guard';
 import { Textarea } from '@/components/ui/textarea';
 
 type DialogMode = 'add' | 'edit';
-type ItemType = 'source' | 'customField';
+type ItemType = 'source' | 'customField' | 'occupation' | 'stayingWith';
 
 function WhatsAppTemplateCard({ initialTemplate, onSave }: { initialTemplate: string, onSave: (template: string) => Promise<void> }) {
   const [template, setTemplate] = React.useState(initialTemplate);
@@ -96,6 +104,8 @@ function SettingsPageComponent() {
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
 
   const [sources, setSources] = React.useState<string[]>([]);
+  const [occupations, setOccupations] = React.useState<string[]>([]);
+  const [stayingWithOptions, setStayingWithOptions] = React.useState<string[]>([]);
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   const [whatsAppTemplate, setWhatsAppTemplate] = React.useState('');
   
@@ -118,12 +128,16 @@ function SettingsPageComponent() {
       setFetchError(null);
       try {
         const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-        const [sourcesData, customFieldsData, templateData] = await Promise.all([
+        const [sourcesData, occupationsData, stayingData, customFieldsData, templateData] = await Promise.all([
           getContactSources(userInfo),
+          getOccupationStatuses(userInfo),
+          getStayingWithOptions(userInfo),
           getCustomPersonFields(userInfo),
           getWhatsAppTemplate(userInfo),
         ]);
         setSources(sourcesData);
+        setOccupations(occupationsData);
+        setStayingWithOptions(stayingData);
         setCustomFields(customFieldsData);
         setWhatsAppTemplate(templateData);
       } catch (error) {
@@ -168,19 +182,21 @@ function SettingsPageComponent() {
     }
 
     try {
+      const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
       if (itemType === 'customField') {
         await handleSaveCustomField();
-      } else { // source
-        const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-        if (dialogMode === 'add') {
-          const updated = await addContactSource(itemName, userInfo);
-          setSources(updated);
-          toast({ title: 'Contact Source Added' });
-        } else {
-          const updated = await updateContactSource(originalName, itemName, userInfo);
-          setSources(updated);
-          toast({ title: 'Contact Source Updated' });
-        }
+      } else if (itemType === 'source') {
+        const updated = dialogMode === 'add' ? await addContactSource(itemName, userInfo) : await updateContactSource(originalName, itemName, userInfo);
+        setSources(updated);
+        toast({ title: `Contact Source ${dialogMode === 'add' ? 'Added' : 'Updated'}` });
+      } else if (itemType === 'occupation') {
+        const updated = dialogMode === 'add' ? await addOccupationStatus(itemName, userInfo) : await updateOccupationStatus(originalName, itemName, userInfo);
+        setOccupations(updated);
+        toast({ title: `Occupation Status ${dialogMode === 'add' ? 'Added' : 'Updated'}` });
+      } else if (itemType === 'stayingWith') {
+        const updated = dialogMode === 'add' ? await addStayingWithOption(itemName, userInfo) : await updateStayingWithOption(originalName, itemName, userInfo);
+        setStayingWithOptions(updated);
+        toast({ title: `'Staying With' Option ${dialogMode === 'add' ? 'Added' : 'Updated'}` });
       }
       setIsDialogOpen(false);
     } catch (error) {
@@ -222,6 +238,14 @@ function SettingsPageComponent() {
         const updated = await deleteContactSource(identifier, userInfo);
         setSources(updated);
         toast({ title: 'Contact Source Deleted' });
+      } else if (type === 'occupation') {
+        const updated = await deleteOccupationStatus(identifier, userInfo);
+        setOccupations(updated);
+        toast({ title: 'Occupation Status Deleted' });
+      } else if (type === 'stayingWith') {
+        const updated = await deleteStayingWithOption(identifier, userInfo);
+        setStayingWithOptions(updated);
+        toast({ title: `'Staying With' Option Deleted` });
       } else { // customField
         const updatedFields = customFields.filter(f => f.id !== identifier);
         await saveCustomPersonFields(updatedFields, userInfo);
@@ -245,15 +269,18 @@ function SettingsPageComponent() {
     }
   };
   
-  const renderList = (type: 'source', items: string[]) => (
+  const renderList = (type: ItemType, items: string[], title: string, description: string) => (
     <Card>
       <CardHeader>
-        <CardTitle>Manage Contact Sources</CardTitle>
-        <CardDescription>
-          Add, edit, or remove the sources available in dropdowns.
-        </CardDescription>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
+        <div className="flex justify-end mb-4">
+          <Button onClick={() => openDialog('add', type)}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Add New
+          </Button>
+        </div>
         <div className="border rounded-md">
           <Table>
             <TableHeader>
@@ -296,7 +323,7 @@ function SettingsPageComponent() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={2} className="text-center text-muted-foreground h-24">
-                    No sources found.
+                    No options found.
                   </TableCell>
                 </TableRow>
               )}
@@ -314,6 +341,11 @@ function SettingsPageComponent() {
         <CardDescription>Add, edit, or remove custom fields for your contacts. The field type cannot be changed after creation.</CardDescription>
       </CardHeader>
       <CardContent>
+        <div className="flex justify-end mb-4">
+            <Button onClick={() => openDialog('add', 'customField')}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Add Custom Field
+            </Button>
+        </div>
         <div className="border rounded-md">
           <Table>
             <TableHeader>
@@ -370,10 +402,11 @@ function SettingsPageComponent() {
   );
 
   const getDialogTitle = () => {
-    if (itemType === 'customField') {
-      return `${dialogMode === 'edit' ? 'Edit' : 'Add'} Custom Field`;
-    }
-    return `${dialogMode === 'edit' ? 'Edit' : 'Add'} Contact Source`;
+    if (itemType === 'customField') return `${dialogMode === 'edit' ? 'Edit' : 'Add'} Custom Field`;
+    if (itemType === 'source') return `${dialogMode === 'edit' ? 'Edit' : 'Add'} Contact Source`;
+    if (itemType === 'occupation') return `${dialogMode === 'edit' ? 'Edit' : 'Add'} Occupation Status`;
+    if (itemType === 'stayingWith') return `${dialogMode === 'edit' ? 'Edit' : 'Add'} 'Staying With' Option`;
+    return 'Edit Item';
   }
 
   const renderDialogContent = () => {
@@ -442,22 +475,10 @@ function SettingsPageComponent() {
             ) : (
               <div className="mx-auto max-w-4xl space-y-8">
                 <WhatsAppTemplateCard initialTemplate={whatsAppTemplate} onSave={handleSaveWhatsAppTemplate} />
-                <div>
-                    <div className="flex justify-end mb-4">
-                        <Button onClick={() => openDialog('add', 'source')}>
-                        <PlusCircle className="mr-2 h-4 w-4" /> Add Contact Source
-                        </Button>
-                    </div>
-                    {renderList('source', sources)}
-                </div>
-                <div>
-                    <div className="flex justify-end mb-4">
-                        <Button onClick={() => openDialog('add', 'customField')}>
-                        <PlusCircle className="mr-2 h-4 w-4" /> Add Custom Field
-                        </Button>
-                    </div>
-                    {renderCustomFieldsList()}
-                </div>
+                {renderList('source', sources, 'Manage Contact Sources', 'Add, edit, or remove the sources available in dropdowns.')}
+                {renderList('occupation', occupations, 'Manage Occupation Statuses', 'Add, edit, or remove the occupation statuses available in dropdowns.')}
+                {renderList('stayingWith', stayingWithOptions, 'Manage "Staying With" Options', 'Add, edit, or remove the "Staying With" options available in dropdowns.')}
+                {renderCustomFieldsList()}
               </div>
             )}
           </main>
@@ -486,7 +507,7 @@ function SettingsPageComponent() {
 
 export default function SettingsPage() {
     return (
-        <AuthGuard>
+        <AuthGuard adminOnly>
             <SettingsPageComponent />
         </AuthGuard>
     )
