@@ -40,34 +40,25 @@ const ensureSettingsDoc = async (userInfo: UserInfo) => {
     let needsUpdate = false;
     const updates: {[key: string]: any} = {};
 
-    if (!docSnap.exists()) {
-        needsUpdate = true;
+    if (!docSnap.exists() || !data.contactSources) {
         updates.contactSources = defaultContactSources;
+        needsUpdate = true;
+    }
+    if (!docSnap.exists() || !data.occupationStatuses) {
         updates.occupationStatuses = defaultOccupationStatuses;
+        needsUpdate = true;
+    }
+    if (!docSnap.exists() || !data.stayingWithOptions) {
         updates.stayingWithOptions = defaultStayingWithOptions;
+        needsUpdate = true;
+    }
+    if (!docSnap.exists() || !data.customPersonFields) {
         updates.customPersonFields = [];
-        updates.whatsAppTemplate = "Hare Krishna {name}, ..."
-    } else {
-        if (!data.contactSources) {
-            needsUpdate = true;
-            updates.contactSources = defaultContactSources;
-        }
-        if (!data.occupationStatuses) {
-            needsUpdate = true;
-            updates.occupationStatuses = defaultOccupationStatuses;
-        }
-        if (!data.stayingWithOptions) {
-            needsUpdate = true;
-            updates.stayingWithOptions = defaultStayingWithOptions;
-        }
-        if (!data.customPersonFields) {
-            needsUpdate = true;
-            updates.customPersonFields = [];
-        }
-        if (!data.whatsAppTemplate) {
-            needsUpdate = true;
-            updates.whatsAppTemplate = "Hare Krishna {name}, ..."
-        }
+        needsUpdate = true;
+    }
+    if (!docSnap.exists() || !data.whatsAppTemplate) {
+        updates.whatsAppTemplate = "Hare Krishna {name}, ...";
+        needsUpdate = true;
     }
     
     if (needsUpdate) {
@@ -93,63 +84,39 @@ export const getEnablers = async (
 
   const usersCollection = collection(db, 'users');
 
-  // Admin sees all Folk Enablers and Folk Guides
   if (userInfo.role.includes('Admin')) {
     const allUsersSnapshot = await getDocs(usersCollection);
     const allUsers = allUsersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as AppUser));
 
-    const guides = allUsers.filter(u => u.role.includes('Folk Guide'));
     const assignees = allUsers.filter(u => u.role.includes('Folk Enabler') || u.role.includes('Folk Guide'));
 
-    const options: EnablerOption[] = assignees.map(assignee => {
-      let label = assignee.name;
-      if (context === 'filter') {
-        let fgCode = 'N/A';
-        if (assignee.role.includes('Folk Guide')) {
-          fgCode = assignee.fgCode || 'N/A';
-        } else if (assignee.reportsTo?.guideId) {
-          const guide = guides.find(g => g.id === assignee.reportsTo?.guideId);
-          fgCode = guide?.fgCode || 'N/A';
-        }
-        label = `${assignee.name} (${fgCode})`;
-      }
-      return {
-        value: assignee.name,
-        label,
-      };
-    });
-
+    const options: EnablerOption[] = assignees.map(assignee => ({
+      value: assignee.name,
+      label: assignee.name,
+    }));
+    
     if (context === 'filter') {
         options.unshift({ value: '__UNASSIGNED__', label: 'Unassigned' });
-    }
-
-    const uniqueOptions = Array.from(new Map(options.map(item => [item.value, item])).values());
-    return uniqueOptions.sort((a, b) => a.label.localeCompare(b.label));
-  }
-
-  // Folk Guide sees their enablers
-  if (userInfo.role.includes('Folk Guide')) {
-    const enablersQuery = query(usersCollection, where('reportsTo.guideId', '==', userInfo.id));
-    const snapshot = await getDocs(enablersQuery);
-    const enablerUsers = snapshot.docs.map(doc => doc.data() as AppUser);
-
-    const options: EnablerOption[] = enablerUsers.map(enabler => ({
-      value: enabler.name,
-      label: enabler.name,
-    }));
-
-    if (context === 'filter') {
-      // For filtering, add a special "Unassigned" option.
-      options.unshift({
-        value: '__UNASSIGNED__',
-        label: `Unassigned`,
-      });
     }
 
     return options.sort((a, b) => a.label.localeCompare(b.label));
   }
 
-  // A Folk Enabler only ever sees themselves.
+  if (userInfo.role.includes('Folk Guide')) {
+    const enablersQuery = query(usersCollection, where('reportsTo.guideId', '==', userInfo.id));
+    const snapshot = await getDocs(enablersQuery);
+    const enablerUsers = snapshot.docs.map(doc => doc.data() as AppUser);
+    const selfOption = { value: userInfo.name, label: userInfo.name };
+    const enablerOptions = enablerUsers.map(enabler => ({ value: enabler.name, label: enabler.name }));
+    const options = [selfOption, ...enablerOptions];
+
+    if (context === 'filter') {
+      options.unshift({ value: '__UNASSIGNED__', label: `Unassigned` });
+    }
+
+    return options.sort((a, b) => a.label.localeCompare(b.label));
+  }
+
   if (userInfo.role.includes('Folk Enabler')) {
     return [{ value: userInfo.name, label: userInfo.name }];
   }
@@ -159,7 +126,7 @@ export const getEnablers = async (
 
 export const getContactSources = async (userInfo: UserInfo): Promise<string[]> => {
     const settings = await ensureSettingsDoc(userInfo);
-    return settings.contactSources;
+    return settings.contactSources.sort((a:string, b:string) => a.localeCompare(b));
 }
 
 export const addContactSource = async (newSource: string, userInfo: UserInfo) => {
@@ -179,13 +146,11 @@ export const updateContactSource = async (oldName: string, newName: string, user
     const batch = writeBatch(db);
     const settingsDocRef = doc(db, 'settings', 'options');
 
-    // 1. Update settings document
     const settings = await ensureSettingsDoc(userInfo);
     const currentSources = settings.contactSources;
-    const updatedSources = currentSources.map(s => s === oldName ? newName : s);
+    const updatedSources = currentSources.map((s:string) => s === oldName ? newName : s);
     batch.set(settingsDocRef, { contactSources: updatedSources }, { merge: true });
 
-    // 2. Update all people documents
     const peopleQuery = query(collection(db, 'people'), where('contactSource', '==', oldName));
     const querySnapshot = await getDocs(peopleQuery);
     querySnapshot.forEach(doc => {
@@ -201,13 +166,11 @@ export const deleteContactSource = async (sourceToDelete: string, userInfo: User
     const batch = writeBatch(db);
     const settingsDocRef = doc(db, 'settings', 'options');
 
-    // 1. Update settings document
     const settings = await ensureSettingsDoc(userInfo);
     const currentSources = settings.contactSources;
-    const updatedSources = currentSources.filter(s => s !== sourceToDelete);
+    const updatedSources = currentSources.filter((s:string) => s !== sourceToDelete);
     batch.set(settingsDocRef, { contactSources: updatedSources }, { merge: true });
 
-    // 2. Update all people documents
     const peopleQuery = query(collection(db, 'people'), where('contactSource', '==', sourceToDelete));
     const querySnapshot = await getDocs(peopleQuery);
     querySnapshot.forEach(doc => {
@@ -222,7 +185,7 @@ export const deleteContactSource = async (sourceToDelete: string, userInfo: User
 // Occupation Statuses
 export const getOccupationStatuses = async (userInfo: UserInfo): Promise<string[]> => {
     const settings = await ensureSettingsDoc(userInfo);
-    return settings.occupationStatuses;
+    return settings.occupationStatuses.sort((a:string, b:string) => a.localeCompare(b));
 };
 
 export const addOccupationStatus = async (newStatus: string, userInfo: UserInfo) => {
@@ -243,7 +206,7 @@ export const updateOccupationStatus = async (oldName: string, newName: string, u
     const settingsDocRef = doc(db, 'settings', 'options');
     const settings = await ensureSettingsDoc(userInfo);
     const currentStatuses = settings.occupationStatuses;
-    const updatedStatuses = currentStatuses.map(s => s === oldName ? newName : s);
+    const updatedStatuses = currentStatuses.map((s:string) => s === oldName ? newName : s);
     batch.set(settingsDocRef, { occupationStatuses: updatedStatuses }, { merge: true });
 
     const peopleQuery = query(collection(db, 'people'), where('occupation', '==', oldName));
@@ -262,7 +225,7 @@ export const deleteOccupationStatus = async (statusToDelete: string, userInfo: U
     const settingsDocRef = doc(db, 'settings', 'options');
     const settings = await ensureSettingsDoc(userInfo);
     const currentStatuses = settings.occupationStatuses;
-    const updatedStatuses = currentStatuses.filter(s => s !== statusToDelete);
+    const updatedStatuses = currentStatuses.filter((s:string) => s !== statusToDelete);
     batch.set(settingsDocRef, { occupationStatuses: updatedStatuses }, { merge: true });
 
     const peopleQuery = query(collection(db, 'people'), where('occupation', '==', statusToDelete));
@@ -280,7 +243,7 @@ export const deleteOccupationStatus = async (statusToDelete: string, userInfo: U
 // Staying With Options
 export const getStayingWithOptions = async (userInfo: UserInfo): Promise<string[]> => {
     const settings = await ensureSettingsDoc(userInfo);
-    return settings.stayingWithOptions;
+    return settings.stayingWithOptions.sort((a:string, b:string) => a.localeCompare(b));
 };
 
 export const addStayingWithOption = async (newOption: string, userInfo: UserInfo) => {
@@ -301,7 +264,7 @@ export const updateStayingWithOption = async (oldName: string, newName: string, 
     const settingsDocRef = doc(db, 'settings', 'options');
     const settings = await ensureSettingsDoc(userInfo);
     const currentOptions = settings.stayingWithOptions;
-    const updatedOptions = currentOptions.map(s => s === oldName ? newName : s);
+    const updatedOptions = currentOptions.map((s:string) => s === oldName ? newName : s);
     batch.set(settingsDocRef, { stayingWithOptions: updatedOptions }, { merge: true });
 
     const peopleQuery = query(collection(db, 'people'), where('stayingWith', '==', oldName));
@@ -320,7 +283,7 @@ export const deleteStayingWithOption = async (optionToDelete: string, userInfo: 
     const settingsDocRef = doc(db, 'settings', 'options');
     const settings = await ensureSettingsDoc(userInfo);
     const currentOptions = settings.stayingWithOptions;
-    const updatedOptions = currentOptions.filter(s => s !== optionToDelete);
+    const updatedOptions = currentOptions.filter((s:string) => s !== optionToDelete);
     batch.set(settingsDocRef, { stayingWithOptions: updatedOptions }, { merge: true });
 
     const peopleQuery = query(collection(db, 'people'), where('stayingWith', '==', optionToDelete));
@@ -337,8 +300,13 @@ export const deleteStayingWithOption = async (optionToDelete: string, userInfo: 
 // Custom Person Fields
 export const getCustomPersonFields = async (userInfo: UserInfo): Promise<CustomField[]> => {
     const settings = await ensureSettingsDoc(userInfo);
-    // Ensure all fields have a type for backward compatibility
-    return settings.customPersonFields.map((f: any) => ({ ...f, type: f.type || 'text' }));
+    // Ensure all fields have a type and an id for backward compatibility
+    return (settings.customPersonFields || []).map((f: any, index: number) => ({ 
+        ...f, 
+        id: f.id || `custom_${index}`,
+        type: f.type || 'text',
+        options: f.options || [],
+    }));
 };
 
 export const saveCustomPersonFields = async (fields: CustomField[], userInfo: UserInfo): Promise<void> => {

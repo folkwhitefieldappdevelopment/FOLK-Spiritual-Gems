@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { PlusCircle, Edit, Trash2, Loader2, Save } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 import { useAuth } from '@/contexts/auth-context';
@@ -28,7 +28,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -116,6 +115,8 @@ function SettingsPageComponent() {
   const [originalName, setOriginalName] = React.useState('');
   const [itemName, setItemName] = React.useState('');
 
+  // State for Custom Field dialog
+  const [isCustomFieldDialogOpen, setIsCustomFieldDialogOpen] = React.useState(false);
   const [editingField, setEditingField] = React.useState<CustomField | null>(null);
   const [fieldName, setFieldName] = React.useState('');
   const [fieldType, setFieldType] = React.useState<CustomFieldType>('text');
@@ -155,39 +156,35 @@ function SettingsPageComponent() {
     fetchData();
   }, [appUser]);
 
-  const openDialog = (mode: DialogMode, type: ItemType, data: string | CustomField | null = null) => {
+  const openSimpleDialog = (mode: DialogMode, type: Exclude<ItemType, 'customField'>, data: string | null = null) => {
     setDialogMode(mode);
     setItemType(type);
-
-    if (type === 'customField') {
-        const field = data as CustomField | null;
-        setEditingField(field);
-        setFieldName(field ? field.label : '');
-        setFieldType(field ? field.type : 'text');
-        setFieldOptions(field && field.options ? field.options.join(', ') : '');
-    } else {
-        const name = data as string | null;
-        setOriginalName(name || '');
-        setItemName(name || '');
-    }
-    
+    setOriginalName(data || '');
+    setItemName(data || '');
     setIsDialogOpen(true);
   };
+  
+  const openCustomFieldDialog = (mode: DialogMode, field: CustomField | null = null) => {
+      setDialogMode(mode);
+      setItemType('customField');
+      setEditingField(field);
+      setFieldName(field?.label || '');
+      setFieldType(field?.type || 'text');
+      setFieldOptions(field?.options?.join(', ') || '');
+      setIsCustomFieldDialogOpen(true);
+  };
 
-  const handleSave = async () => {
-    if (!appUser) return;
+  const handleSaveSimpleItem = async () => {
+    if (!appUser || itemType === 'customField') return;
 
-    const valueToSave = itemType === 'customField' ? fieldName : itemName;
-    if (!valueToSave.trim()) {
-      toast({ variant: 'destructive', title: 'Name/Label cannot be empty.' });
+    if (!itemName.trim()) {
+      toast({ variant: 'destructive', title: 'Name cannot be empty.' });
       return;
     }
 
     try {
       const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-      if (itemType === 'customField') {
-        await handleSaveCustomField();
-      } else if (itemType === 'source') {
+      if (itemType === 'source') {
         const updated = dialogMode === 'add' ? await addContactSource(itemName, userInfo) : await updateContactSource(originalName, itemName, userInfo);
         setSources(updated);
         toast({ title: `Contact Source ${dialogMode === 'add' ? 'Added' : 'Updated'}` });
@@ -208,31 +205,41 @@ function SettingsPageComponent() {
   
   const handleSaveCustomField = async () => {
     if (!appUser) return;
-    let updatedFields: CustomField[];
-    const optionsArray = fieldType === 'dropdown' ? fieldOptions.split(',').map(s => s.trim()).filter(Boolean) : undefined;
-    
-    if (editingField) { // Edit mode
-        updatedFields = customFields.map(f => 
-            f.id === editingField.id ? { ...f, label: fieldName.trim(), type: fieldType, options: optionsArray } : f
-        );
-    } else { // Add mode
-        const newField: CustomField = {
-            id: crypto.randomUUID(),
-            label: fieldName.trim(),
-            type: fieldType,
-            options: optionsArray,
-        };
-        if (customFields.some(f => f.label.toLowerCase() === newField.label.toLowerCase())) {
-            toast({ variant: 'destructive', title: 'A field with this label already exists.' });
-            return;
-        }
-        updatedFields = [...customFields, newField];
+    if (!fieldName.trim()) {
+        toast({ variant: 'destructive', title: 'Field Label cannot be empty.' });
+        return;
     }
-    const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-    await saveCustomPersonFields(updatedFields, userInfo);
-    setCustomFields(updatedFields);
-    toast({ title: editingField ? 'Custom Field Updated' : 'Custom Field Added' });
-    setIsDialogOpen(false);
+    
+    let updatedFields: CustomField[];
+    const optionsArray = fieldType === 'dropdown' ? fieldOptions.split(',').map(s => s.trim()).filter(Boolean) : [];
+    
+    try {
+        if (editingField) { // Edit mode
+            updatedFields = customFields.map(f => 
+                f.id === editingField.id ? { ...f, label: fieldName.trim(), type: fieldType, options: optionsArray } : f
+            );
+        } else { // Add mode
+            if (customFields.some(f => f.label.toLowerCase() === fieldName.trim().toLowerCase())) {
+                toast({ variant: 'destructive', title: 'A field with this label already exists.' });
+                return;
+            }
+            const newField: CustomField = {
+                id: `custom_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                label: fieldName.trim(),
+                type: fieldType,
+                options: optionsArray,
+            };
+            updatedFields = [...customFields, newField];
+        }
+        
+        const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+        await saveCustomPersonFields(updatedFields, userInfo);
+        setCustomFields(updatedFields);
+        toast({ title: editingField ? 'Custom Field Updated' : 'Custom Field Added' });
+        setIsCustomFieldDialogOpen(false);
+    } catch (error) {
+         toast({ variant: 'destructive', title: 'Error', description: 'Could not save the custom field.' });
+    }
   };
 
   const handleDelete = async (type: ItemType, identifier: string) => {
@@ -274,7 +281,7 @@ function SettingsPageComponent() {
     }
   };
   
-  const renderList = (type: ItemType, items: string[], title: string, description: string) => (
+  const renderList = (type: Exclude<ItemType, 'customField'>, items: string[], title: string, description: string) => (
     <Card>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
@@ -282,7 +289,7 @@ function SettingsPageComponent() {
       </CardHeader>
       <CardContent>
         <div className="flex justify-end mb-4">
-          <Button onClick={() => openDialog('add', type)}>
+          <Button onClick={() => openSimpleDialog('add', type)}>
             <PlusCircle className="mr-2 h-4 w-4" /> Add New
           </Button>
         </div>
@@ -300,7 +307,7 @@ function SettingsPageComponent() {
                   <TableRow key={item}>
                     <TableCell className="font-medium">{item}</TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDialog('edit', type, item)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openSimpleDialog('edit', type, item)}>
                         <Edit className="h-4 w-4" />
                       </Button>
                       <AlertDialog>
@@ -347,7 +354,7 @@ function SettingsPageComponent() {
       </CardHeader>
       <CardContent>
         <div className="flex justify-end mb-4">
-            <Button onClick={() => openDialog('add', 'customField')}>
+            <Button onClick={() => openCustomFieldDialog('add')}>
             <PlusCircle className="mr-2 h-4 w-4" /> Add Custom Field
             </Button>
         </div>
@@ -367,7 +374,7 @@ function SettingsPageComponent() {
                     <TableCell className="font-medium">{field.label}</TableCell>
                     <TableCell className="capitalize text-muted-foreground">{field.type}</TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDialog('edit', 'customField', field)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openCustomFieldDialog('edit', field)}>
                         <Edit className="h-4 w-4" />
                       </Button>
                       <AlertDialog>
@@ -406,73 +413,11 @@ function SettingsPageComponent() {
     </Card>
   );
 
-  const getDialogTitle = () => {
-    if (itemType === 'customField') return `${dialogMode === 'edit' ? 'Edit' : 'Add'} Custom Field`;
+  const getSimpleDialogTitle = () => {
     if (itemType === 'source') return `${dialogMode === 'edit' ? 'Edit' : 'Add'} Contact Source`;
     if (itemType === 'occupation') return `${dialogMode === 'edit' ? 'Edit' : 'Add'} Occupation Status`;
     if (itemType === 'stayingWith') return `${dialogMode === 'edit' ? 'Edit' : 'Add'} 'Staying With' Option`;
     return 'Edit Item';
-  }
-
-  const renderDialogContent = () => {
-    if (itemType === 'customField') {
-      return (
-        <div className="space-y-4 py-4">
-          <div>
-            <Label htmlFor="fieldName">Field Label</Label>
-            <Input
-              id="fieldName"
-              value={fieldName}
-              onChange={(e) => setFieldName(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="fieldType">Field Type</Label>
-            <Select
-              value={fieldType}
-              onValueChange={(value) => setFieldType(value as CustomFieldType)}
-              disabled={dialogMode === 'edit'}
-            >
-              <SelectTrigger id="fieldType" className="mt-1">
-                <SelectValue placeholder="Select a type" />
-              </SelectTrigger>
-              <SelectContent>
-                {customFieldTypes.map(type => (
-                  <SelectItem key={type} value={type} className="capitalize">{type}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {dialogMode === 'edit' && <p className="text-xs text-muted-foreground mt-1">Field type cannot be changed after creation.</p>}
-          </div>
-          {fieldType === 'dropdown' && (
-            <div>
-              <Label htmlFor="fieldOptions">Dropdown Options</Label>
-              <Input
-                id="fieldOptions"
-                value={fieldOptions}
-                onChange={(e) => setFieldOptions(e.target.value)}
-                placeholder="e.g. Option A, Option B, Option C"
-                className="mt-1"
-              />
-              <p className="text-xs text-muted-foreground mt-1">Enter comma-separated values for the dropdown.</p>
-            </div>
-          )}
-        </div>
-      );
-    } else {
-      return (
-        <div className="py-4">
-          <Label htmlFor="itemName">Name</Label>
-          <Input
-            id="itemName"
-            value={itemName}
-            onChange={(e) => setItemName(e.target.value)}
-            className="mt-1"
-          />
-        </div>
-      )
-    }
   }
 
   return (
@@ -504,18 +449,77 @@ function SettingsPageComponent() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{getDialogTitle()}</DialogTitle>
-              <DialogDescription>
-              {itemType === 'customField' 
-                ? 'Define a new custom field for your contacts.'
-                : 'Enter the name for the item below.'
-              }
-            </DialogDescription>
+            <DialogTitle>{getSimpleDialogTitle()}</DialogTitle>
           </DialogHeader>
-          {renderDialogContent()}
+          <div className="py-4">
+            <Label htmlFor="itemName">Name</Label>
+            <Input
+                id="itemName"
+                value={itemName}
+                onChange={(e) => setItemName(e.target.value)}
+                className="mt-1"
+            />
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>Save</Button>
+            <Button onClick={handleSaveSimpleItem}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+       <Dialog open={isCustomFieldDialogOpen} onOpenChange={setIsCustomFieldDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{dialogMode === 'edit' ? 'Edit' : 'Add'} Custom Field</DialogTitle>
+            <DialogDescription>
+              {dialogMode === 'add' ? 'Define a new custom field for your contacts.' : 'Update the details for this custom field.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+                <Label htmlFor="fieldName">Field Label</Label>
+                <Input
+                id="fieldName"
+                value={fieldName}
+                onChange={(e) => setFieldName(e.target.value)}
+                className="mt-1"
+                />
+            </div>
+            <div>
+                <Label htmlFor="fieldType">Field Type</Label>
+                <Select
+                value={fieldType}
+                onValueChange={(value) => setFieldType(value as CustomFieldType)}
+                disabled={dialogMode === 'edit'}
+                >
+                <SelectTrigger id="fieldType" className="mt-1">
+                    <SelectValue placeholder="Select a type" />
+                </SelectTrigger>
+                <SelectContent>
+                    {customFieldTypes.map(type => (
+                    <SelectItem key={type} value={type} className="capitalize">{type}</SelectItem>
+                    ))}
+                </SelectContent>
+                </Select>
+                {dialogMode === 'edit' && <p className="text-xs text-muted-foreground mt-1">Field type cannot be changed after creation.</p>}
+            </div>
+            {fieldType === 'dropdown' && (
+                <div>
+                <Label htmlFor="fieldOptions">Dropdown Options</Label>
+                <Input
+                    id="fieldOptions"
+                    value={fieldOptions}
+                    onChange={(e) => setFieldOptions(e.target.value)}
+                    placeholder="e.g. Option A, Option B, Option C"
+                    className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Enter comma-separated values for the dropdown.</p>
+                </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCustomFieldDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveCustomField}>Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
