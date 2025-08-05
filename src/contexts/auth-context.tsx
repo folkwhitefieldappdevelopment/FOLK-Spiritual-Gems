@@ -79,6 +79,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               if (user.photoURL) {
                 appUserData.photoUrl = user.photoURL;
               }
+              
+              // Convert Firestore Timestamp to string to make it serializable
+              if (appUserData.createdAt && typeof appUserData.createdAt !== 'string') {
+                // @ts-ignore
+                appUserData.createdAt = appUserData.createdAt.toDate().toISOString();
+              }
 
               // User is in our DB, allow access.
               setUser(user);
