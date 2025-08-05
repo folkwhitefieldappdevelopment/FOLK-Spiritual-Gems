@@ -1,5 +1,4 @@
 
-
 import type { callStatuses as allCallStatuses } from './data';
 
 export const progressCategories = [
