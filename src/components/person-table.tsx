@@ -31,6 +31,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   Tooltip,
@@ -41,6 +42,8 @@ import {
 import { Checkbox } from './ui/checkbox';
 import { useAuth } from '@/contexts/auth-context';
 import { getWhatsAppTemplate } from '@/services/settings-service';
+import { useToast } from '@/hooks/use-toast';
+
 
 type PersonTableProps = {
   people?: Person[];
@@ -70,6 +73,7 @@ export function PersonTable({
   
   const { appUser } = useAuth();
   const [whatsAppTemplate, setWhatsAppTemplate] = React.useState('');
+  const { toast } = useToast();
 
   React.useEffect(() => {
     const fetchTemplate = async () => {
@@ -92,7 +96,7 @@ export function PersonTable({
         setSelectedIds(new Set());
       }
     }
-  }, [isSelectionEnabled, setSelectedIds, people]);
+  }, [isSelectionEnabled, setSelectedIds, people, toast]);
 
   const handleSelectOne = React.useCallback((personId: string, checked: boolean) => {
     if (isSelectionEnabled && setSelectedIds) {
