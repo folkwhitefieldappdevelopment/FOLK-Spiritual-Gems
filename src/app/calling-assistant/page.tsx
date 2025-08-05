@@ -267,8 +267,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       lastSg: sg,
       lastMa: ma,
       lastFrp: frp,
-      // @ts-ignore
-      callHistory: callLog,
+      callHistory: callLog as any,
     };
 
     try {
@@ -281,7 +280,8 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       // Update local state for immediate feedback
       setAllFetchedPeople(prev => prev.map(p => {
           if (p.id === personId) {
-              return { ...p, ...updates, lastCallAt: new Date().toISOString() };
+              const newHistory = [...(p.callHistory || []), { ...callLog, calledAt: new Date().toISOString() }];
+              return { ...p, ...updates, callHistory: newHistory, lastCallAt: new Date().toISOString() };
           }
           return p;
       }));
