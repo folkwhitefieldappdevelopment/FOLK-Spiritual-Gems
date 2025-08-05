@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { db } from '@/lib/firebase';
@@ -67,18 +66,18 @@ type UserInfo = {
 
 export const getPeople = async (
     userInfo: UserInfo,
-    options: { pageSize?: number } = {}
+    options: { page?: number; pageSize?: number; search?: string } = {}
 ): Promise<GetPeopleResult> => {
     if (!userInfo) return { people: [], totalCount: 0 };
     
-    const { pageSize = 10000 } = options;
+    const { page = 1, pageSize = 25, search = '' } = options;
 
     const peopleCollection = collection(db, 'people');
     let queryConstraints: QueryConstraint[] = [];
     
     // --- Role-based Access Control ---
     if (userInfo.role.includes('Admin')) {
-        // No additional constraints needed.
+        // No additional constraints needed for base query.
     } else if (userInfo.role.includes('Folk Guide')) {
         queryConstraints.push(where('folkGuideId', '==', userInfo.id));
     } else { // Folk Enabler
@@ -90,13 +89,50 @@ export const getPeople = async (
         );
     }
     
+    // --- Search ---
+    // This is a simple prefix search. For full-text search, a third-party service like Algolia is recommended.
+    // Note: Firestore does not support case-insensitive queries natively.
+    // A common workaround is to store a lowercase version of the field.
+    if (search.trim()) {
+        const searchTerm = search.trim();
+        queryConstraints.push(
+            or(
+                and(
+                    where('fullName_lowercase', '>=', searchTerm.toLowerCase()),
+                    where('fullName_lowercase', '<=', searchTerm.toLowerCase() + '\uf8ff')
+                ),
+                and(
+                    where('phone', '>=', searchTerm),
+                    where('phone', '<=', searchTerm + '\uf8ff')
+                )
+            )
+        );
+    }
+
+    // --- Pagination ---
+    const countQuery = query(peopleCollection, ...queryConstraints);
+    const countSnapshot = await getCountFromServer(countQuery);
+    const totalCount = countSnapshot.data().count;
+
+    // --- Sorting (applied before pagination cursor) ---
+    queryConstraints.push(orderBy('createdAt', 'desc'));
+
+    if (page > 1) {
+        const lastVisibleQuery = query(peopleCollection, ...queryConstraints, limit((page - 1) * pageSize));
+        const lastVisibleSnapshot = await getDocs(lastVisibleQuery);
+        const lastVisible = lastVisibleSnapshot.docs[lastVisibleSnapshot.docs.length - 1];
+        if (lastVisible) {
+            queryConstraints.push(startAfter(lastVisible));
+        }
+    }
+    
     queryConstraints.push(limit(pageSize));
 
-    const baseQuery = query(peopleCollection, ...queryConstraints);
-    const dataSnapshot = await getDocs(baseQuery);
+    const finalQuery = query(peopleCollection, ...queryConstraints);
+    const dataSnapshot = await getDocs(finalQuery);
     const allFetchedPeople = dataSnapshot.docs.map(processPersonDoc);
 
-    return { people: allFetchedPeople, totalCount: allFetchedPeople.length };
+    return { people: allFetchedPeople, totalCount };
 };
 
 export const getPerson = async (id: string): Promise<Person | null> => {
@@ -133,6 +169,7 @@ export const createPerson = async (
   const dataToSave = {
     ...personData,
     fullName: personData.fullName || '',
+    fullName_lowercase: (personData.fullName || '').toLowerCase(),
     phone: personData.phone || '',
     photoUrl: personData.photoUrl || 'https://placehold.co/100x100.png',
     age: personData.age || 18,
@@ -171,12 +208,19 @@ export const updatePerson = async (id: string, personData: Partial<Omit<Person, 
   const docRef = doc(db, 'people', id);
   const dataToUpdate: { [key: string]: any } = { ...personData };
 
+  if(dataToUpdate.fullName) {
+    dataToUpdate.fullName_lowercase = dataToUpdate.fullName.toLowerCase();
+  }
+
   // Handle server-side operations based on placeholders
   if (dataToUpdate.lastCallAt === 'SERVER_TIMESTAMP') {
     dataToUpdate.lastCallAt = serverTimestamp();
   }
   if (dataToUpdate.callHistory) {
       const historyEntry = dataToUpdate.callHistory;
+      if (historyEntry.calledAt === 'SERVER_TIMESTAMP') {
+        historyEntry.calledAt = serverTimestamp();
+      }
       dataToUpdate.callHistory = arrayUnion(historyEntry);
   }
 
@@ -254,6 +298,7 @@ export const importPeople = async (
     
     const dataToSave = {
         ...person,
+        fullName_lowercase: (person.fullName || '').toLowerCase(),
         enablerInTouchWith: assignedEnabler || '',
         folkGuide: folkGuide || '',
         folkGuideId: folkGuideId || '',

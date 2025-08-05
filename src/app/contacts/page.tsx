@@ -305,7 +305,9 @@ function ContactsPageComponent() {
     if (!appUser) return;
     let enablersUnderGuide: AppUser[] = [];
     if (isGuide) {
-      enablersUnderGuide = await getEnablersForGuide(appUser.id);
+      // This is a temporary solution as getEnablersForGuide is not available here.
+      // A better solution would be to pass this data down or refactor the service.
+      enablersUnderGuide = allUsers.filter(u => u.reportsTo?.guideId === appUser.id);
     }
     
     const baseHeaders = [
