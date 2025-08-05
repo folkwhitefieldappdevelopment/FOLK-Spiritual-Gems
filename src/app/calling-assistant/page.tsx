@@ -292,13 +292,25 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     }
   }, [appUser, sessionEvent, user, toast]);
 
+  const handleUpdatePausedSession = React.useCallback((currentIndex: number) => {
+    if (!appUser) return;
+    const pausedData: PausedSession = {
+        eventName: sessionEvent,
+        peopleIds: sessionPeople.map(p => p.id),
+        currentIndex: currentIndex,
+    };
+    updateUser(appUser.id, { pausedSession: pausedData });
+    updateCurrentAppUser({ pausedSession: pausedData });
+  }, [appUser, sessionEvent, sessionPeople, updateCurrentAppUser]);
+
   const handleSessionNavigate = React.useCallback((direction: 'next' | 'prev') => {
-    if (direction === 'next') {
-        setSessionCurrentIndex(prev => Math.min(prev + 1, sessionPeople.length - 1));
-    } else {
-        setSessionCurrentIndex(prev => Math.max(prev - 1, 0));
-    }
-  }, [sessionPeople.length]);
+    const newIndex = direction === 'next'
+      ? Math.min(sessionCurrentIndex + 1, sessionPeople.length - 1)
+      : Math.max(sessionCurrentIndex - 1, 0);
+
+    setSessionCurrentIndex(newIndex);
+    handleUpdatePausedSession(newIndex);
+  }, [sessionCurrentIndex, sessionPeople.length, handleUpdatePausedSession]);
 
   const handleEndAndClearSession = React.useCallback(async (isSilent = false) => {
     setIsCallingSessionDialogOpen(false);
@@ -316,16 +328,10 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
         setIsCallingSessionDialogOpen(false);
         return;
     }
-    const pausedData: PausedSession = {
-        eventName: sessionEvent,
-        peopleIds: sessionPeople.map(p => p.id),
-        currentIndex: sessionCurrentIndex,
-    };
-    updateUser(appUser.id, { pausedSession: pausedData });
-    updateCurrentAppUser({ pausedSession: pausedData });
+    handleUpdatePausedSession(sessionCurrentIndex);
     setIsCallingSessionDialogOpen(false);
     toast({ title: 'Session Paused', description: 'Your session has been saved. You can resume it from this page later.' });
-  }, [appUser, sessionEvent, sessionPeople, sessionCurrentIndex, updateCurrentAppUser, toast]);
+  }, [appUser, sessionCurrentIndex, toast, handleUpdatePausedSession]);
 
   const handleResumeSession = () => {
     if (!appUser?.pausedSession) return;
@@ -511,6 +517,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
             customFields={customFields}
             groups={groups}
             allPeople={allFetchedPeople}
+            onUpdatePausedSession={handleUpdatePausedSession}
           />
       )}
     </div>

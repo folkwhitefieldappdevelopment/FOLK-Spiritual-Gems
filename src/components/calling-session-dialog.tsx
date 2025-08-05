@@ -89,6 +89,7 @@ type CallingSessionDialogProps = {
   customFields: CustomField[];
   groups: Group[];
   allPeople: Person[];
+  onUpdatePausedSession: (currentIndex: number) => void;
 };
 
 const CallingSessionDialogComponent = ({
@@ -104,6 +105,7 @@ const CallingSessionDialogComponent = ({
   customFields,
   groups,
   allPeople,
+  onUpdatePausedSession,
 }: CallingSessionDialogProps) => {
   const { toast } = useToast();
   const { appUser } = useAuth();
@@ -115,7 +117,7 @@ const CallingSessionDialogComponent = ({
   const [generalRemarks, setGeneralRemarks] = React.useState(person.generalRemarks || '');
   const [isNotesDirty, setIsNotesDirty] = React.useState(false);
   const [isSavingNotes, setIsSavingNotes] = React.useState(false);
-
+  
   const form = useForm<CallFormValues>({
     resolver: zodResolver(callFormSchema),
     defaultValues: {
@@ -132,6 +134,22 @@ const CallingSessionDialogComponent = ({
     return groups.filter(g => g.peopleIds.includes(person.id));
   }, [person, groups]);
   
+  // Save progress before unload
+  React.useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      // This is a best-effort attempt. Most modern browsers will not show the custom message.
+      // The main purpose is to trigger the save operation.
+      onUpdatePausedSession(sessionCurrentNumber - 1);
+      event.preventDefault(); // This is required for some browsers
+      event.returnValue = ''; // This is required for some browsers
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [onUpdatePausedSession, sessionCurrentNumber]);
+
   React.useEffect(() => {
     if (isOpen) {
       const fetchTemplate = async () => {
