@@ -81,8 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               }
               
               // Convert Firestore Timestamp to string to make it serializable
-              if (appUserData.createdAt && typeof appUserData.createdAt !== 'string') {
-                // @ts-ignore
+              if (appUserData.createdAt && typeof appUserData.createdAt !== 'string' && appUserData.createdAt.toDate) {
                 appUserData.createdAt = appUserData.createdAt.toDate().toISOString();
               }
 

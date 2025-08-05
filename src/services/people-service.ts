@@ -91,23 +91,11 @@ export const getPeople = async (
     }
     
     // --- Search ---
-    // This is a simple prefix search. For full-text search, a third-party service like Algolia is recommended.
-    // Note: Firestore does not support case-insensitive queries natively.
-    // A common workaround is to store a lowercase version of the field.
     if (search.trim()) {
-        const searchTerm = search.trim();
-        queryConstraints.push(
-            or(
-                and(
-                    where('fullName_lowercase', '>=', searchTerm.toLowerCase()),
-                    where('fullName_lowercase', '<=', searchTerm.toLowerCase() + '\uf8ff')
-                ),
-                and(
-                    where('phone', '>=', searchTerm),
-                    where('phone', '<=', searchTerm + '\uf8ff')
-                )
-            )
-        );
+        const searchTerm = search.trim().toLowerCase();
+        // This is a simple prefix search. For full-text search, a third-party service is recommended.
+        queryConstraints.push(where('fullName_lowercase', '>=', searchTerm));
+        queryConstraints.push(where('fullName_lowercase', '<=', searchTerm + '\uf8ff'));
     }
 
     // --- Pagination ---
@@ -115,7 +103,7 @@ export const getPeople = async (
     const countSnapshot = await getCountFromServer(countQuery);
     const totalCount = countSnapshot.data().count;
 
-    // --- Sorting (applied before pagination cursor) ---
+    // --- Sorting ---
     queryConstraints.push(orderBy('createdAt', 'desc'));
 
     if (page > 1) {
