@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import type { Person, CallStatus, Group, CustomField, UserRole, PausedSession } from "@/lib/types";
-import { callStatuses } from "@/lib/data";
+import { callStatuses } from "@/lib/types";
 import { Phone, CheckSquare, Loader2, Edit, Save, XCircle, ArrowLeft, ArrowRight, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 

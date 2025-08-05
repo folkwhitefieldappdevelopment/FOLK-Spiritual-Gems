@@ -89,19 +89,3 @@ export const createInitialProgress = (): ProgressCategory[] => {
     }))
   }));
 };
-
-export const callStatuses = [
-    'A1 - Coming',
-    'A2 - Not Interested',
-    'A3 - Next Week/Upcoming week',
-    'A4 - Tentative',
-    'B - Not Answering',
-    'C - Busy',
-    'D - Wrong Number',
-    'E - Switched Off',
-    'F - Not Reachable',
-    'G - Completely Shifted to Another city',
-    'Y2 - Call me later',
-    'Y3 - Next Month',
-    'Z - Already Attended',
-] as const;
