@@ -25,6 +25,8 @@ const sortableFields = [
   { value: 'sgRating', label: 'Rating' },
   { value: 'chantingStatus', label: 'Chanting' },
   { value: 'lastCallAt', label: 'Last Called' },
+  { value: 'organisation', label: 'Organisation' },
+  { value: 'nativePlace', label: 'Native Place' },
 ];
 
 export function SortPopover({ sortDescriptors, setSortDescriptors }: SortPopoverProps) {

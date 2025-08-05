@@ -15,6 +15,8 @@ import {
   Info,
   UserPlus,
   Contact,
+  Filter as FilterIcon,
+  ArrowDownAZ,
 } from "lucide-react";
 import { read, utils, write, type WorkSheet } from "xlsx";
 import JSZip from "jszip";
@@ -70,8 +72,8 @@ import {
   assignEnablerToPeople,
 } from "@/services/people-service";
 import { getAllGroups, createGroup, addPeopleToGroup } from "@/services/groups-service";
-import { getFolkGuides, getEnablersForGuide, getUsers } from "@/services/user-service";
-import { getCustomPersonFields } from "@/services/settings-service";
+import { getFolkGuides, getUsers } from "@/services/user-service";
+import { getCustomPersonFields, getEnablers, getContactSources, getOccupationStatuses, getStayingWithOptions, type EnablerOption } from "@/services/settings-service";
 import { useAuth } from "@/contexts/auth-context";
 import { CreateUpdateGroupDialog } from "@/components/create-update-group-dialog";
 import { AssignCoEnablerDialog } from "@/components/assign-helper-dialog";
@@ -80,9 +82,13 @@ import { Input } from "@/components/ui/input";
 import { AuthGuard } from "@/components/auth-guard";
 import { logAudit } from '@/services/audit-service';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { FilterPopover, type FilterRule, type FilterableField, applyClientSideFilters } from '@/components/filter-popover';
+import { SortPopover, type SortDescriptor } from '@/components/sort-popover';
+import { get } from 'lodash';
+
 
 const ROWS_PER_PAGE = 25;
-const IMPORT_BATCH_SIZE = 50;
+const FIRESTORE_QUERY_LIMIT = 10000;
 
 type UserInfo = {
   id: string;
@@ -98,7 +104,6 @@ function ContactsPageComponent() {
   const searchParams = useSearchParams();
 
   const [allFetchedPeople, setAllFetchedPeople] = React.useState<Person[]>([]);
-  const [totalCount, setTotalCount] = React.useState(0);
   const [allUsers, setAllUsers] = React.useState<AppUser[]>([]);
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -108,6 +113,8 @@ function ContactsPageComponent() {
   
   const [view, setView] = React.useState<"table" | "card">("table");
   const [searchTerm, setSearchTerm] = React.useState("");
+  const [filters, setFilters] = React.useState<FilterRule[]>([]);
+  const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([]);
   const [currentPage, setCurrentPage] = React.useState(1);
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
@@ -119,8 +126,12 @@ function ContactsPageComponent() {
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
+  const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
+  const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
+  const [occupationOptions, setOccupationOptions] = React.useState<string[]>([]);
+  const [stayingWithOptions, setStayingWithOptions] = React.useState<string[]>([]);
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
+  const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
 
   const canAssignUsers = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
   const isAdmin = appUser?.role.includes('Admin');
@@ -133,10 +144,20 @@ function ContactsPageComponent() {
     const page = parseInt(params.get('page') || '1', 10);
     const view = params.get('view') as 'table' | 'card' || 'table';
     const search = params.get('search') || '';
+    const sort = params.get('sort');
+    const filter = params.get('filters');
 
     setCurrentPage(page);
     setView(view);
     setSearchTerm(search);
+    if (sort) {
+      try { setSortDescriptors(JSON.parse(sort)); } catch(e) {}
+    } else {
+      setSortDescriptors([{ field: 'createdAt', direction: 'desc' }]);
+    }
+    if (filter) {
+      try { setFilters(JSON.parse(filter)); } catch(e) {}
+    }
   }, []); // Run only once on mount
 
   // Update URL when state changes
@@ -145,9 +166,13 @@ function ContactsPageComponent() {
     if (currentPage > 1) params.set('page', String(currentPage));
     if (view !== 'table') params.set('view', view);
     if (searchTerm) params.set('search', searchTerm);
+    if (sortDescriptors.length > 0 && !(sortDescriptors.length === 1 && sortDescriptors[0].field === 'createdAt' && sortDescriptors[0].direction === 'desc')) {
+      params.set('sort', JSON.stringify(sortDescriptors));
+    }
+    if (filters.length > 0) params.set('filters', JSON.stringify(filters));
     
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [currentPage, view, searchTerm, router, pathname]);
+  }, [currentPage, view, searchTerm, sortDescriptors, filters, router, pathname]);
 
   const fetchPageData = React.useCallback(async () => {
     if (!appUser) return;
@@ -155,18 +180,25 @@ function ContactsPageComponent() {
     setFetchError(null);
     try {
       const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-      const { people: peopleData, totalCount } = await getPeople(userInfo, { page: currentPage, pageSize: ROWS_PER_PAGE, search: searchTerm });
+      const { people: peopleData, totalCount } = await getPeople(userInfo, { pageSize: FIRESTORE_QUERY_LIMIT });
       setAllFetchedPeople(peopleData);
-      setTotalCount(totalCount);
       
-      const [allUsersData, groupsData, guidesData, customFieldsData] = await Promise.all([
+      const [allUsersData, groupsData, enablersData, sourcesData, occupationsData, stayingsData, guidesData, customFieldsData] = await Promise.all([
         getUsers(),
         getAllGroups(userInfo),
+        getEnablers(userInfo, 'filter'),
+        getContactSources(userInfo),
+        getOccupationStatuses(userInfo),
+        getStayingWithOptions(userInfo),
         getFolkGuides(),
         getCustomPersonFields(userInfo),
       ]);
       setAllUsers(allUsersData);
       setGroups(groupsData);
+      setEnablerOptions(enablersData);
+      setContactSourceOptions(sourcesData);
+      setOccupationOptions(occupationsData);
+      setStayingWithOptions(stayingsData);
       setFolkGuides(guidesData);
       setCustomFields(customFieldsData);
     } catch (error) {
@@ -179,7 +211,7 @@ function ContactsPageComponent() {
     } finally {
       setIsLoading(false);
     }
-  }, [appUser, currentPage, searchTerm]);
+  }, [appUser]);
 
   React.useEffect(() => {
     if (appUser) {
@@ -189,9 +221,85 @@ function ContactsPageComponent() {
   
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, view]);
+    setSelectedIds(new Set());
+  }, [searchTerm, view, filters, sortDescriptors]);
+
+  const filterableFields: FilterableField[] = React.useMemo(() => {
+    const standardFields: FilterableField[] = [
+      { value: 'occupation', label: 'Occupation', type: 'enum', options: occupationOptions.map(s => ({ value: s, label: s })) },
+      { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(s => ({ value: s, label: s })) },
+      { value: 'enablerInTouchWith', label: 'Enabler', type: 'enum', options: enablerOptions },
+      { value: 'chantingStatus', label: 'Chanting Rounds', type: 'number' },
+      { value: 'stayingWith', label: 'Staying At', type: 'enum', options: stayingWithOptions.map(s => ({ value: s, label: s })) },
+      { value: 'organisation', label: 'Organisation', type: 'string' },
+      { value: 'folkGuide', label: 'Folk Guide', type: 'enum', options: folkGuides.map(g => ({ value: g.name, label: `${g.name} (${g.fgCode || 'N/A'})` })) },
+      { value: 'nativePlace', label: 'Native Place', type: 'string' },
+      { value: 'fromOtherCamp', label: 'From Other Camp', type: 'boolean' },
+      { value: 'age', label: 'Age', type: 'number' },
+      { value: 'sgRating', label: 'Rating', type: 'number' },
+    ];
+    
+    const dynamicFields: FilterableField[] = customFields.map(cf => {
+        if (cf.type === 'dropdown') {
+            return {
+                value: `customData.${cf.id}`,
+                label: cf.label,
+                type: 'enum',
+                options: (cf.options || []).map(opt => ({ value: opt, label: opt })),
+            }
+        }
+        return {
+            value: `customData.${cf.id}`,
+            label: cf.label,
+            type: cf.type as 'string' | 'number' | 'boolean' | 'date',
+        }
+    });
+
+    return [...standardFields, ...dynamicFields];
+  }, [enablerOptions, contactSourceOptions, folkGuides, occupationOptions, stayingWithOptions, customFields]);
   
-  const totalPages = Math.ceil(totalCount / ROWS_PER_PAGE);
+  const filteredAndSortedPeople = React.useMemo(() => {
+    let people = [...allFetchedPeople];
+    
+    // Apply main search term
+    if (searchTerm.trim()) {
+        const lowercasedTerm = searchTerm.toLowerCase();
+        people = people.filter(p => 
+            p.fullName.toLowerCase().includes(lowercasedTerm) || 
+            p.phone.includes(lowercasedTerm)
+        );
+    }
+
+    // Apply advanced filters
+    people = applyClientSideFilters(people, filters);
+
+    // Apply sorting
+    if (sortDescriptors.length > 0) {
+        people.sort((a, b) => {
+            for (const desc of sortDescriptors) {
+                const valA = get(a, desc.field);
+                const valB = get(b, desc.field);
+                let comparison = 0;
+                if (valA === null || valA === undefined) comparison = -1;
+                else if (valB === null || valB === undefined) comparison = 1;
+                else if (valA > valB) comparison = 1;
+                else if (valA < valB) comparison = -1;
+                if (comparison !== 0) {
+                    return desc.direction === 'asc' ? comparison : -comparison;
+                }
+            }
+            return 0;
+        });
+    }
+
+    return people;
+  }, [allFetchedPeople, searchTerm, filters, sortDescriptors]);
+
+  const totalPages = Math.ceil(filteredAndSortedPeople.length / ROWS_PER_PAGE);
+  const paginatedPeople = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
+    return filteredAndSortedPeople.slice(startIndex, startIndex + ROWS_PER_PAGE);
+  }, [filteredAndSortedPeople, currentPage]);
 
   const handleSampleDownload = React.useCallback(async () => {
     if (!appUser) return;
@@ -351,7 +459,7 @@ function ContactsPageComponent() {
   }, [customFields, isEnablerOnly, isAdmin, isGuide, appUser, folkGuides, allUsers]);
 
   const handleExport = React.useCallback(async () => {
-    if (totalCount === 0 || !appUser) {
+    if (filteredAndSortedPeople.length === 0 || !appUser) {
       toast({
         variant: "destructive",
         title: "No Contacts to Export",
@@ -363,8 +471,7 @@ function ContactsPageComponent() {
     setIsExporting(true);
     
     const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-    const { people: allMatchingPeople } = await getPeople(userInfo, { search: searchTerm });
-
+    
     const zip = new JSZip();
     const photosFolder = zip.folder("photos");
     const exportData = [];
@@ -375,7 +482,7 @@ function ContactsPageComponent() {
         return isNaN(d.getTime()) ? '' : d.toISOString();
     }
 
-    for (const p of allMatchingPeople) {
+    for (const p of filteredAndSortedPeople) {
       let photoColumnValue = '';
       if (p.photoUrl) {
         if (p.photoUrl.startsWith('data:image')) {
@@ -449,9 +556,9 @@ function ContactsPageComponent() {
 
       toast({
         title: 'Export Successful',
-        description: `Exported ${allMatchingPeople.length} contacts in contacts_export.zip.`,
+        description: `Exported ${filteredAndSortedPeople.length} contacts in contacts_export.zip.`,
       });
-      await logAudit('Export Contacts', `Exported ${allMatchingPeople.length} contacts.`, { id: appUser.id, name: appUser.name, role: appUser.role });
+      await logAudit('Export Contacts', `Exported ${filteredAndSortedPeople.length} contacts.`, { id: appUser.id, name: appUser.name, role: appUser.role });
 
     } catch (err) {
       console.error("Failed to generate zip file:", err);
@@ -463,7 +570,7 @@ function ContactsPageComponent() {
     } finally {
       setIsExporting(false);
     }
-  }, [totalCount, toast, appUser, customFields, searchTerm]);
+  }, [filteredAndSortedPeople, toast, appUser, customFields]);
 
   const handleExportForGoogle = React.useCallback(() => {
     const peopleToExport = Array.from(selectedIds)
@@ -615,8 +722,8 @@ function ContactsPageComponent() {
             return;
         }
 
-        for (let i = 0; i < allNewPeople.length; i += IMPORT_BATCH_SIZE) {
-            const batch = allNewPeople.slice(i, i + IMPORT_BATCH_SIZE);
+        for (let i = 0; i < allNewPeople.length; i += 50) {
+            const batch = allNewPeople.slice(i, i + 50);
             setImportingStatus(`Importing ${i + batch.length} of ${allNewPeople.length}...`);
             await importPeople(batch, userInfo);
         }
@@ -849,6 +956,8 @@ function ContactsPageComponent() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
+               <FilterPopover filters={filters} setFilters={setFilters} filterableFields={filterableFields} />
+               <SortPopover sortDescriptors={sortDescriptors} setSortDescriptors={setSortDescriptors} />
             </div>
             <div className="flex items-center gap-2">
               <div className="flex items-center rounded-md bg-muted p-1">
@@ -949,9 +1058,9 @@ function ContactsPageComponent() {
         </div>
         
         {view === 'card' ? (
-          allFetchedPeople.length > 0 ? (
+          paginatedPeople.length > 0 ? (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {allFetchedPeople.map((person) => {
+              {paginatedPeople.map((person) => {
                   const personGroups = groups.filter(g => g.peopleIds.includes(person.id));
                   return (
                     <PersonCard
@@ -980,8 +1089,8 @@ function ContactsPageComponent() {
           )
         ) : (
           <PersonTable
-            people={allFetchedPeople}
-            allPeopleCount={totalCount}
+            people={paginatedPeople}
+            allPeopleCount={filteredAndSortedPeople.length}
             onEdit={handleEditPerson}
             onDelete={handleDeletePerson}
             selectedIds={selectedIds}

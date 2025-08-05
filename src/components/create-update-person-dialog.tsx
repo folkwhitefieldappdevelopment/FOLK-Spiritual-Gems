@@ -355,7 +355,9 @@ export function CreateUpdatePersonDialog({
       case 'dropdown':
         return (
             <Select value={value || ''} onValueChange={v => handleCustomDataChange(id, v)}>
-                <SelectTrigger><SelectValue placeholder="Select an option" /></SelectTrigger>
+                <FormControl>
+                    <SelectTrigger><SelectValue placeholder="Select an option" /></SelectTrigger>
+                </FormControl>
                 <SelectContent>
                     {options.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
                 </SelectContent>
