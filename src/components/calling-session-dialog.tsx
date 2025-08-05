@@ -5,7 +5,7 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import type { Person, CallStatus, Group, CustomField, UserRole, PausedSession } from "@/lib/types";
+import type { Person, CallStatus, Group, CustomField, UserRole } from "@/lib/types";
 import { callStatuses } from "@/lib/types";
 import { Phone, CheckSquare, Loader2, Edit, Save, XCircle, ArrowLeft, ArrowRight, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -72,7 +72,7 @@ type UserInfo = {
 type CallingSessionDialogProps = {
   isOpen: boolean;
   onClose: () => void;
-  onEndSession: (isSilent?: boolean) => void;
+  onEndSession: () => void;
   onSaveAndNext: (
     personId: string, 
     remark: string, 
@@ -89,7 +89,6 @@ type CallingSessionDialogProps = {
   customFields: CustomField[];
   groups: Group[];
   allPeople: Person[];
-  onUpdatePausedSession: (currentIndex: number) => void;
 };
 
 const CallingSessionDialogComponent = ({
@@ -105,7 +104,6 @@ const CallingSessionDialogComponent = ({
   customFields,
   groups,
   allPeople,
-  onUpdatePausedSession,
 }: CallingSessionDialogProps) => {
   const { toast } = useToast();
   const { appUser } = useAuth();
@@ -133,22 +131,6 @@ const CallingSessionDialogComponent = ({
     if (!person || !groups) return [];
     return groups.filter(g => g.peopleIds.includes(person.id));
   }, [person, groups]);
-  
-  // Save progress before unload
-  React.useEffect(() => {
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      // This is a best-effort attempt. Most modern browsers will not show the custom message.
-      // The main purpose is to trigger the save operation.
-      onUpdatePausedSession(sessionCurrentNumber - 1);
-      event.preventDefault(); // This is required for some browsers
-      event.returnValue = ''; // This is required for some browsers
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [onUpdatePausedSession, sessionCurrentNumber]);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -444,7 +426,7 @@ const CallingSessionDialogComponent = ({
             <AlertDialog>
                 <AlertDialogTrigger asChild>
                     <Button variant="destructive" size="sm">
-                        <Trash2 className="mr-2 h-4 w-4"/> End & Clear
+                        <Trash2 className="mr-2 h-4 w-4"/> End Session
                     </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -456,7 +438,7 @@ const CallingSessionDialogComponent = ({
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => onEndSession()}>End Session</AlertDialogAction>
+                        <AlertDialogAction onClick={onEndSession}>End Session</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

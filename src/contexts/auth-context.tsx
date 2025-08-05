@@ -17,7 +17,6 @@ import { auth, configError as initialConfigError } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { getUserByEmail } from '@/services/user-service';
 import type { AppUser } from '@/lib/types';
-import isEqual from 'lodash.isequal';
 
 
 type AuthContextType = {
@@ -29,7 +28,6 @@ type AuthContextType = {
   signOut: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
-  updateCurrentAppUser: (updates: Partial<AppUser>) => void;
 };
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
@@ -40,23 +38,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [appUser, setAppUser] = React.useState<AppUser | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<Error | null>(initialConfigError);
-
-  const updateCurrentAppUser = React.useCallback((updates: Partial<AppUser>) => {
-    setAppUser(prev => {
-        if (!prev) return null;
-
-        // Check if there's actually a change to avoid infinite loops
-        const hasChanged = Object.keys(updates).some(key => 
-            !isEqual(prev[key as keyof AppUser], updates[key as keyof AppUser])
-        );
-
-        if (hasChanged) {
-            return { ...prev, ...updates };
-        }
-        
-        return prev;
-    });
-  }, []);
 
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, 
@@ -189,7 +170,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const value = { user, appUser, loading, error, signIn, signOut, changePassword, sendPasswordReset, updateCurrentAppUser };
+  const value = { user, appUser, loading, error, signIn, signOut, changePassword, sendPasswordReset };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
