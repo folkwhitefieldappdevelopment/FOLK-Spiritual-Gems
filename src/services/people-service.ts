@@ -208,12 +208,8 @@ export const updatePerson = async (id: string, personData: Partial<Omit<Person, 
 
   if (dataToUpdate.callHistory) {
       const historyEntry = dataToUpdate.callHistory;
-      if (historyEntry.calledAt instanceof Date) {
-        // Already a date object, great.
-      } else {
-        // It's a placeholder or something else, replace with a server timestamp
-        historyEntry.calledAt = serverTimestamp();
-      }
+      // arrayUnion cannot be used with serverTimestamp inside objects, so we handle it here.
+      historyEntry.calledAt = serverTimestamp();
       dataToUpdate.callHistory = arrayUnion(historyEntry);
   }
 

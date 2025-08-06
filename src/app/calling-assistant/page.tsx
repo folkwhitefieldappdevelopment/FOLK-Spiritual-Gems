@@ -255,7 +255,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       sg,
       ma,
       frp,
-      calledAt: new Date(), // Use client time first
       callerId: appUser.id,
       callerName: appUser.name,
       callerPhotoUrl: user.photoURL || '',
@@ -264,7 +263,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     const updates: Partial<Person> = {
       lastCallRemark: remark,
       lastCallStatus: status,
-      lastCallAt: callLog.calledAt,
+      lastCallAt: 'SERVER_TIMESTAMP', // Placeholder
       lastSg: sg,
       lastMa: ma,
       lastFrp: frp,

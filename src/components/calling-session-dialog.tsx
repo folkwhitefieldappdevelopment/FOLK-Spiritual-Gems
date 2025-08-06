@@ -168,8 +168,9 @@ const CallingSessionDialogComponent = ({
           };
           updateUser(appUser.id, { pausedCallingSession: pausedSession });
 
-          const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-            updateUser(appUser.id, { pausedCallingSession: pausedSession });
+          const handleBeforeUnload = () => {
+            // This needs to be synchronous, so we can't use async updateUser
+            // For now, we rely on the frequent updates from navigation.
           };
           window.addEventListener('beforeunload', handleBeforeUnload);
 
@@ -187,7 +188,11 @@ const CallingSessionDialogComponent = ({
 
     try {
       await onSaveAndNext(person.id, data.remark || '', data.status as CallStatus, sg, ma, frp);
-      onNavigate('next');
+      if (sessionCurrentNumber < sessionTotalCount) {
+        onNavigate('next');
+      } else {
+        onEndSession(); // End session if it was the last person
+      }
     } catch (e) {
       // Errors are toasted in the parent
     } finally {
