@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ForgotPasswordDialog } from '@/components/forgot-password-dialog';
 
 export default function LoginPage() {
-  const { user, signIn, loading, error, handleSignInWithEmailLink } = useAuth();
+  const { user, signIn, loading, error, completeSignInWithEmailLink, isSignInLink } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [email, setEmail] = React.useState('');
@@ -26,10 +26,10 @@ export default function LoginPage() {
   // This effect handles the magic link sign-in
   React.useEffect(() => {
     const verifyLink = async () => {
-        if (handleSignInWithEmailLink()) {
+        if (isSignInLink()) {
             setIsVerifyingLink(true);
             try {
-                await handleSignInWithEmailLink();
+                await completeSignInWithEmailLink();
                 // On success, the main auth listener will redirect.
             } catch (err: any) {
                 toast({
@@ -44,7 +44,8 @@ export default function LoginPage() {
         }
     };
     verifyLink();
-  }, [handleSignInWithEmailLink, router, toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   React.useEffect(() => {
     // Redirect if user is logged in and auth is not loading

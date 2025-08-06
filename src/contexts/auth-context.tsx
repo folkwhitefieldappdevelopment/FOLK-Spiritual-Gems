@@ -30,7 +30,8 @@ type AuthContextType = {
   signOut: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
-  handleSignInWithEmailLink: () => Promise<void> | boolean;
+  isSignInLink: () => boolean;
+  completeSignInWithEmailLink: () => Promise<void>;
 };
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
@@ -172,32 +173,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error('Failed to send password reset email. Please try again.');
     }
   };
+  
+  const isSignInLink = () => {
+    return isSignInWithEmailLink(auth, window.location.href);
+  };
 
-  const handleSignInWithEmailLink = React.useCallback(async () => {
-    if (isSignInWithEmailLink(auth, window.location.href)) {
-        let emailFromStorage = window.localStorage.getItem('emailForSignIn');
-        if (!emailFromStorage) {
-            emailFromStorage = window.prompt('Please provide your email for confirmation');
-        }
-        if (!emailFromStorage) {
-            throw new Error("Email is required to sign in with a link.");
-        }
-        
-        try {
-            await signInWithEmailLink(auth, emailFromStorage, window.location.href);
-            window.localStorage.removeItem('emailForSignIn');
-        } catch (err) {
-            console.error("Sign in with email link error:", err);
-            let description = 'The sign-in link is invalid or has expired.';
-            if (err instanceof AuthError && err.code === 'auth/invalid-email') {
-                description = 'The email you provided does not match the one in the sign-in link.';
-            }
-            throw new Error(description);
-        }
+  const completeSignInWithEmailLink = async () => {
+    let emailFromStorage = window.localStorage.getItem('emailForSignIn');
+    if (!emailFromStorage) {
+        emailFromStorage = window.prompt('Please provide your email for confirmation');
     }
-  }, []);
+    if (!emailFromStorage) {
+        throw new Error("Email is required to sign in with a link.");
+    }
+    
+    try {
+        await signInWithEmailLink(auth, emailFromStorage, window.location.href);
+        window.localStorage.removeItem('emailForSignIn');
+    } catch (err) {
+        console.error("Sign in with email link error:", err);
+        let description = 'The sign-in link is invalid or has expired.';
+        if (err instanceof AuthError && err.code === 'auth/invalid-email') {
+            description = 'The email you provided does not match the one in the sign-in link.';
+        }
+        throw new Error(description);
+    }
+  };
 
-  const value = { user, appUser, loading, error, signIn, signOut, changePassword, sendPasswordReset, handleSignInWithEmailLink };
+  const value = { user, appUser, loading, error, signIn, signOut, changePassword, sendPasswordReset, isSignInLink, completeSignInWithEmailLink };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
