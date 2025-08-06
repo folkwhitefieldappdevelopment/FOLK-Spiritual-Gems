@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import type { Person, CallStatus, Group, CustomField, UserRole } from "@/lib/types";
 import { callStatuses } from "@/lib/types";
-import { Phone, CheckSquare, Loader2, Edit, Save, XCircle, ArrowLeft, ArrowRight, Trash2 } from "lucide-react";
+import { Phone, CheckSquare, Loader2, Edit, Save, XCircle, ArrowLeft, ArrowRight, Trash2, MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import debounce from 'lodash/debounce';
 
@@ -93,6 +93,13 @@ type CallingSessionDialogProps = {
   allPeople: Person[];
 };
 
+const safeDate = (timestamp: any): Date | null => {
+    if (!timestamp) return null;
+    if (timestamp instanceof Date) return timestamp;
+    const d = new Date(timestamp);
+    return isNaN(d.getTime()) ? null : d;
+};
+
 const CallingSessionDialogComponent = ({
   isOpen,
   onClose,
@@ -121,7 +128,7 @@ const CallingSessionDialogComponent = ({
   const form = useForm<CallFormValues>({
     resolver: zodResolver(callFormSchema),
     defaultValues: {
-      remark: person.lastCallRemark || "",
+      remark: "",
       status: "",
       sg: typeof person.lastSg === 'boolean' ? (person.lastSg ? 'yes' : 'no') : '',
       ma: typeof person.lastMa === 'boolean' ? (person.lastMa ? 'yes' : 'no') : '',
@@ -133,6 +140,21 @@ const CallingSessionDialogComponent = ({
     if (!person || !groups) return [];
     return groups.filter(g => g.peopleIds.includes(person.id));
   }, [person, groups]);
+  
+  const lastEventRemark = React.useMemo(() => {
+    if (!person.callHistory || !currentEvent) return null;
+    
+    const lastCallForEvent = [...person.callHistory]
+        .filter(log => log.event === currentEvent)
+        .sort((a,b) => {
+            const dateA = safeDate(a.calledAt);
+            const dateB = safeDate(b.calledAt);
+            if (!dateA || !dateB) return 0;
+            return dateB.getTime() - dateA.getTime();
+        })[0];
+        
+    return lastCallForEvent?.remark || null;
+  }, [person, currentEvent]);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -148,7 +170,7 @@ const CallingSessionDialogComponent = ({
 
   React.useEffect(() => {
     form.reset({ 
-      remark: person.lastCallRemark || "", 
+      remark: "", 
       status: "",
       sg: typeof person.lastSg === 'boolean' ? (person.lastSg ? 'yes' : 'no') : '',
       ma: typeof person.lastMa === 'boolean' ? (person.lastMa ? 'yes' : 'no') : '',
@@ -275,6 +297,18 @@ const CallingSessionDialogComponent = ({
                         </div>
                     </div>
                     
+                    {lastEventRemark && (
+                        <div className="p-3 rounded-md bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
+                           <p className="text-xs font-semibold text-yellow-800 dark:text-yellow-300 flex items-center gap-2">
+                                <MessageSquare className="h-4 w-4" />
+                                Last Remark for this Event:
+                           </p>
+                           <p className="text-sm text-yellow-900 dark:text-yellow-200 mt-1 pl-6">
+                             {lastEventRemark}
+                           </p>
+                        </div>
+                    )}
+
                     <Form {...form}>
                         <form id="call-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                             <FormField
@@ -484,3 +518,5 @@ const CallingSessionDialogComponent = ({
 };
 
 export const CallingSessionDialog = React.memo(CallingSessionDialogComponent);
+
+    
