@@ -3,26 +3,15 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/auth-context';
-import { Loader2 } from 'lucide-react';
 
+// This is a temporary redirect page.
+// In a real application, you might want a landing page here.
 export default function HomePage() {
   const router = useRouter();
-  const { user, loading } = useAuth();
 
   React.useEffect(() => {
-    if (!loading) {
-      if (user) {
-        router.replace('/dashboard');
-      } else {
-        router.replace('/login');
-      }
-    }
-  }, [user, loading, router]);
+    router.replace('/login');
+  }, [router]);
 
-  return (
-    <div className="flex h-screen w-full items-center justify-center">
-      <Loader2 className="h-8 w-8 animate-spin" />
-    </div>
-  );
+  return null; // Return null or a loader while redirecting
 }
