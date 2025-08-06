@@ -208,7 +208,8 @@ export const updatePerson = async (id: string, personData: Partial<Omit<Person, 
 
   if (dataToUpdate.callHistory) {
       const historyEntry = dataToUpdate.callHistory;
-      historyEntry.calledAt = serverTimestamp();
+      // CORRECT FIX: Use a client-side date, which is valid inside arrayUnion.
+      historyEntry.calledAt = new Date();
       dataToUpdate.callHistory = arrayUnion(historyEntry);
   }
 
