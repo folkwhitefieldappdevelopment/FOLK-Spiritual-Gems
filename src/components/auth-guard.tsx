@@ -48,7 +48,7 @@ export function AuthGuard({ children, adminOnly = false, adminOrGuideOnly = fals
       return;
     }
 
-    if (appUser && !appUser.role.length) {
+    if (appUser && (!appUser.role || appUser.role.length === 0)) {
       toast({
           variant: 'destructive',
           title: 'No Role Assigned',
