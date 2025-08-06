@@ -79,79 +79,89 @@ export default function LoginPage() {
     );
   }
 
-  return (
-    <>
-      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4">
-        <div className="mb-8 flex h-40 w-40 items-center justify-center rounded-full bg-primary/10 shadow-2xl">
-          <Gem className="h-24 w-24 text-primary drop-shadow-lg" />
-        </div>
-        <Card className="w-full max-w-sm">
-          <CardHeader className="text-center">
-            <CardTitle className="text-lg sm:text-xl md:text-2xl">FOLK SPIRITUAL GEMS</CardTitle>
-            <CardDescription>
-              Central Contact Management App
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  disabled={loading}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
+  // If we are not loading and not logged in, show the login form.
+  if (!user) {
+    return (
+      <>
+        <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4">
+          <div className="mb-8 flex h-40 w-40 items-center justify-center rounded-full bg-primary/10 shadow-2xl">
+            <Gem className="h-24 w-24 text-primary drop-shadow-lg" />
+          </div>
+          <Card className="w-full max-w-sm">
+            <CardHeader className="text-center">
+              <CardTitle className="text-lg sm:text-xl md:text-2xl">FOLK SPIRITUAL GEMS</CardTitle>
+              <CardDescription>
+                Central Contact Management App
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address</Label>
                   <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    id="email"
+                    type="email"
+                    placeholder="name@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     required
                     disabled={loading}
-                    minLength={6}
-                    className="pr-10"
                   />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute inset-y-0 right-0 h-full w-10 text-muted-foreground"
-                    onClick={() => setShowPassword(!showPassword)}
-                    disabled={loading}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
                 </div>
-                <div className="flex justify-end">
-                  <Button
-                      type="button"
-                      variant="link"
-                      className="p-0 h-auto text-xs"
-                      onClick={() => setIsForgotPasswordOpen(true)}
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
                       disabled={loading}
-                  >
-                      Forgot Password?
-                  </Button>
+                      minLength={6}
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute inset-y-0 right-0 h-full w-10 text-muted-foreground"
+                      onClick={() => setShowPassword(!showPassword)}
+                      disabled={loading}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                        type="button"
+                        variant="link"
+                        className="p-0 h-auto text-xs"
+                        onClick={() => setIsForgotPasswordOpen(true)}
+                        disabled={loading}
+                    >
+                        Forgot Password?
+                    </Button>
+                  </div>
                 </div>
-              </div>
-              <Button type="submit" className="w-full" disabled={loading || !email || !password}>
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {loading ? 'Signing in...' : 'Sign In'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-      <ForgotPasswordDialog isOpen={isForgotPasswordOpen} setIsOpen={setIsForgotPasswordOpen} />
-    </>
+                <Button type="submit" className="w-full" disabled={loading || !email || !password}>
+                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {loading ? 'Signing in...' : 'Sign In'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+        <ForgotPasswordDialog isOpen={isForgotPasswordOpen} setIsOpen={setIsForgotPasswordOpen} />
+      </>
+    );
+  }
+
+  // If user is logged in but we are still on this page for a moment, show a loader
+  return (
+    <div className="flex min-h-screen w-full items-center justify-center bg-background">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
   );
 }

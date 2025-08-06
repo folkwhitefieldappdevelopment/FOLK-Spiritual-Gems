@@ -15,7 +15,6 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { GroupCard } from "@/components/group-card";
 import { CreateUpdateGroupDialog } from "@/components/create-update-group-dialog";
-import { AuthGuard } from "@/components/auth-guard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup as UiSelectGroup, SelectLabel } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
@@ -28,7 +27,7 @@ type UserInfo = {
   role: UserRole[];
 };
 
-function GroupsPageComponent() {
+export default function GroupsPage() {
   const { toast } = useToast();
   const { appUser } = useAuth();
   
@@ -347,12 +346,4 @@ function GroupsPageComponent() {
       />
     </div>
   );
-}
-
-export default function GroupsPage() {
-    return (
-        <AuthGuard>
-            <GroupsPageComponent />
-        </AuthGuard>
-    )
 }

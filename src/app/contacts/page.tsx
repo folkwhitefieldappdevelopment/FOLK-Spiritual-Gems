@@ -79,7 +79,6 @@ import { CreateUpdateGroupDialog } from "@/components/create-update-group-dialog
 import { AssignCoEnablerDialog } from "@/components/assign-helper-dialog";
 import { AssignEnablerDialog } from "@/components/assign-enabler-dialog";
 import { Input } from "@/components/ui/input";
-import { AuthGuard } from "@/components/auth-guard";
 import { logAudit } from '@/services/audit-service';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { FilterPopover, type FilterRule, type FilterableField, applyClientSideFilters } from '@/components/filter-popover';
@@ -96,7 +95,7 @@ type UserInfo = {
   role: UserRole[];
 };
 
-function ContactsPageComponent() {
+export default function ContactsPage() {
   const { toast } = useToast();
   const { appUser } = useAuth();
   const router = useRouter();
@@ -1225,12 +1224,4 @@ function ContactsPageComponent() {
       />
     </div>
   );
-}
-
-export default function ContactsPage() {
-    return (
-        <AuthGuard>
-            <ContactsPageComponent />
-        </AuthGuard>
-    )
 }

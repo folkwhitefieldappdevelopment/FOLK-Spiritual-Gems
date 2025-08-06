@@ -63,7 +63,6 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-import { AuthGuard } from '@/components/auth-guard';
 import { dynamicGroupDefinitions } from '@/lib/dynamic-groups';
 import { useRouter, useSearchParams, usePathname, useParams } from 'next/navigation';
 import { ShareGroupDialog } from '@/components/share-group-dialog';
@@ -77,7 +76,7 @@ type UserInfo = {
   role: UserRole[];
 };
 
-function GroupDetailPageComponent() {
+export default function GroupDetailPage() {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
@@ -563,9 +562,7 @@ function GroupDetailPageComponent() {
                 </PageHeader>
             )}
             <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
-              <AuthGuard>
                 {renderContent()}
-              </AuthGuard>
             </main>
         </div>
       
@@ -576,12 +573,4 @@ function GroupDetailPageComponent() {
       {group && <ShareGroupDialog isOpen={isShareGroupDialogOpen} setIsOpen={setIsShareGroupDialogOpen} group={group} members={members} />}
     </div>
   );
-}
-
-export default function GroupDetailPage() {
-    return (
-        <AuthGuard>
-            <GroupDetailPageComponent />
-        </AuthGuard>
-    )
 }

@@ -42,7 +42,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/auth-context';
-import { AuthGuard } from '@/components/auth-guard';
 
 type UserInfo = {
   id: string;
@@ -50,7 +49,7 @@ type UserInfo = {
   role: UserRole[];
 };
 
-function UserManagementPageComponent() {
+export default function UserManagementPage() {
   const { toast } = useToast();
   const { appUser } = useAuth();
   const [users, setUsers] = React.useState<AppUser[]>([]);
@@ -421,12 +420,4 @@ function UserManagementPageComponent() {
     )}
   </div>
   );
-}
-
-export default function UserManagementPage() {
-    return (
-        <AuthGuard adminOrGuideOnly>
-            <UserManagementPageComponent />
-        </AuthGuard>
-    )
 }

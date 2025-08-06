@@ -54,7 +54,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import type { CustomField, CustomFieldType } from '@/lib/types';
 import { customFieldTypes } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AuthGuard } from '@/components/auth-guard';
 import { Textarea } from '@/components/ui/textarea';
 
 type DialogMode = 'add' | 'edit';
@@ -97,7 +96,7 @@ function WhatsAppTemplateCard({ initialTemplate, onSave }: { initialTemplate: st
   )
 }
 
-function SettingsPageComponent() {
+export default function SettingsPage() {
   const { toast } = useToast();
   const { appUser } = useAuth();
   const [isLoading, setIsLoading] = React.useState(true);
@@ -526,12 +525,4 @@ function SettingsPageComponent() {
       </Dialog>
     </div>
   );
-}
-
-export default function SettingsPage() {
-    return (
-        <AuthGuard adminOnly>
-            <SettingsPageComponent />
-        </AuthGuard>
-    )
 }

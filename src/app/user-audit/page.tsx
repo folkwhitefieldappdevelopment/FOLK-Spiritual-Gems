@@ -10,7 +10,6 @@ import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AuthGuard } from '@/components/auth-guard';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -20,7 +19,7 @@ import { Calendar } from '@/components/ui/calendar';
 import type { DateRange } from 'react-day-picker';
 import { addDays, startOfDay, endOfDay } from 'date-fns';
 
-function UserAuditPageComponent() {
+export default function UserAuditPage() {
   const { appUser } = useAuth();
   const [audits, setAudits] = React.useState<AuditLog[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -203,19 +202,9 @@ function UserAuditPageComponent() {
           description="Track key activities performed in the application."
         />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 sm:pt-0">
-          <AuthGuard adminOnly>
-            {renderContent()}
-          </AuthGuard>
+          {renderContent()}
         </main>
       </div>
     </div>
   );
-}
-
-export default function UserAuditPage() {
-    return (
-        <AuthGuard>
-            <UserAuditPageComponent />
-        </AuthGuard>
-    )
 }

@@ -28,7 +28,6 @@ import {
 } from '@/components/ui/chart';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart, Cell, Line, LineChart, Tooltip } from 'recharts';
 import { CallReport } from '@/components/call-report';
-import { AuthGuard } from '@/components/auth-guard';
 
 type UserInfo = {
   id: string;
@@ -49,7 +48,7 @@ const CHART_COLORS = [
   'hsl(32.9 83.3% 57.8%)',
 ];
 
-function DashboardPageComponent() {
+export default function DashboardPage() {
   const { appUser } = useAuth();
   const [people, setPeople] = React.useState<Person[]>([]);
   const [relatedUsers, setRelatedUsers] = React.useState<AppUser[]>([]);
@@ -234,7 +233,7 @@ function DashboardPageComponent() {
     if (appUser.role.includes('Admin')) {
         const guides = relatedUsers.filter(u => u.role.includes('Folk Guide'));
         const guideIdToNameMap = new Map(guides.map(g => [g.id, `${g.name} (${g.fgCode || 'N/A'})`]));
-        const enablerIdToGuideIdMap = new Map<string, string>();
+        const enablerIdToGuideIdMap = new Map<string, string>(); // Map enabler ID to guide ID
         relatedUsers.filter(u => u.role.includes('Folk Enabler') && u.reportsTo?.guideId)
             .forEach(e => enablerIdToGuideIdMap.set(e.id, e.reportsTo!.guideId));
         
@@ -597,13 +596,3 @@ function DashboardPageComponent() {
     </div>
   );
 }
-
-export default function DashboardPage() {
-    return (
-        <AuthGuard>
-            <DashboardPageComponent />
-        </AuthGuard>
-    )
-}
-
-    

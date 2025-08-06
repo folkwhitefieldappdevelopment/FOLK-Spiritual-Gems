@@ -13,7 +13,6 @@ import { getStaticGroups } from '@/services/groups-service';
 import { generateDynamicGroups } from '@/lib/dynamic-groups';
 import { createInitialProgress } from '@/lib/data';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
-import { AuthGuard } from '@/components/auth-guard';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -327,8 +326,6 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
 
 export default function PersonDetailPage() {
   return (
-    <AuthGuard>
-        <PersonDetailPageComponent />
-    </AuthGuard>
+    <PersonDetailPageComponent />
   )
 }

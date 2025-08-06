@@ -25,7 +25,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { CreateUpdateGroupDialog } from '@/components/create-update-group-dialog';
 import { AssignCoEnablerDialog } from '@/components/assign-helper-dialog';
-import { AuthGuard } from "@/components/auth-guard";
 import {
   Pagination,
   PaginationContent,
@@ -256,7 +255,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       sg,
       ma,
       frp,
-      calledAt: 'SERVER_TIMESTAMP',
+      calledAt: new Date(), // Use client time first
       callerId: appUser.id,
       callerName: appUser.name,
       callerPhotoUrl: user.photoURL || '',
@@ -265,7 +264,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     const updates: Partial<Person> = {
       lastCallRemark: remark,
       lastCallStatus: status,
-      lastCallAt: 'SERVER_TIMESTAMP',
+      lastCallAt: callLog.calledAt,
       lastSg: sg,
       lastMa: ma,
       lastFrp: frp,
@@ -496,7 +495,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
             sessionTotalCount={sessionPeople.length}
             customFields={customFields}
             groups={groups}
-            allPeople={allFetchedPeople}
+            allPeople={sessionPeople}
           />
       )}
     </div>
@@ -506,8 +505,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
 export default function CallingAssistantPage() {
     return (
-        <AuthGuard>
-            <CallingAssistantPageComponent />
-        </AuthGuard>
+        <CallingAssistantPageComponent />
     );
 }

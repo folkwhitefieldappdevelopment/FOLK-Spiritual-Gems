@@ -12,7 +12,6 @@ import { getUsers, getEnablersForGuide } from '@/services/user-service';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
-import { AuthGuard } from '@/components/auth-guard';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -46,7 +45,7 @@ type UserInfo = {
   role: UserRole[];
 };
 
-function AssignmentsPageComponent() {
+export default function AssignmentsPage() {
   const { appUser } = useAuth();
   const { toast } = useToast();
 
@@ -333,12 +332,4 @@ function AssignmentsPageComponent() {
       </div>
     </div>
   );
-}
-
-export default function AssignmentsPage() {
-    return (
-        <AuthGuard adminOrGuideOnly>
-            <AssignmentsPageComponent />
-        </AuthGuard>
-    )
 }
