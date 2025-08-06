@@ -10,13 +10,11 @@ import { Loader2, Gem, Eye, EyeOff } from 'lucide-react';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { auth } from '@/lib/firebase';
-import { isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { ForgotPasswordDialog } from '@/components/forgot-password-dialog';
 
 export default function LoginPage() {
-  const { user, signIn, loading, error } = useAuth();
+  const { user, signIn, loading, error, handleSignInWithEmailLink } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [email, setEmail] = React.useState('');
@@ -27,43 +25,26 @@ export default function LoginPage() {
 
   // This effect handles the magic link sign-in
   React.useEffect(() => {
-    // Check if the current URL is a sign-in link
-    if (isSignInWithEmailLink(auth, window.location.href)) {
-      setIsVerifyingLink(true);
-      // Get the email from localStorage
-      let emailFromStorage = window.localStorage.getItem('emailForSignIn');
-      
-      if (!emailFromStorage) {
-        // If email is not in storage, it's a new user on a new device.
-        // We can't prompt because that often fails. Firebase stores the email in the link itself.
-        // We let signInWithEmailLink handle it by passing null, but we need to remove the item
-        // from local storage if it's there from a previous attempt.
-        // The firebase client will parse the email from the link.
-        emailFromStorage = window.prompt('Please provide your email for confirmation');
-      }
-      
-      signInWithEmailLink(auth, emailFromStorage!, window.location.href)
-        .then(() => {
-          // On success, onAuthStateChanged will handle the redirect.
-          window.localStorage.removeItem('emailForSignIn');
-          // No need to set isVerifyingLink to false, as the app will redirect.
-        })
-        .catch((err) => {
-          console.error("Sign in with email link error:", err);
-          let description = 'The sign-in link is invalid or has expired. Please ask an admin to resend the invite.';
-          if (err.code === 'auth/invalid-email') {
-            description = 'The email you provided does not match the one in the sign-in link. Please try again.';
-          }
-          toast({
-            variant: 'destructive',
-            title: 'Sign-in Failed',
-            description,
-          });
-          router.replace('/login'); // Go back to login on failure
-          setIsVerifyingLink(false); // Stop loading on failure
-        });
-    }
-  }, [router, toast]);
+    const verifyLink = async () => {
+        if (handleSignInWithEmailLink()) {
+            setIsVerifyingLink(true);
+            try {
+                await handleSignInWithEmailLink();
+                // On success, the main auth listener will redirect.
+            } catch (err: any) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Sign-in Failed',
+                    description: err.message,
+                });
+                router.replace('/login');
+            } finally {
+                setIsVerifyingLink(false);
+            }
+        }
+    };
+    verifyLink();
+  }, [handleSignInWithEmailLink, router, toast]);
 
   React.useEffect(() => {
     // Redirect if user is logged in and auth is not loading

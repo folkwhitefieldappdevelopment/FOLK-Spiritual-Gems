@@ -10,6 +10,8 @@ import {
     EmailAuthProvider,
     updatePassword,
     sendPasswordResetEmail,
+    isSignInWithEmailLink,
+    signInWithEmailLink,
     type User,
     type AuthError
 } from 'firebase/auth';
@@ -28,6 +30,7 @@ type AuthContextType = {
   signOut: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
+  handleSignInWithEmailLink: () => Promise<void> | boolean;
 };
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
@@ -170,7 +173,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const value = { user, appUser, loading, error, signIn, signOut, changePassword, sendPasswordReset };
+  const handleSignInWithEmailLink = React.useCallback(async () => {
+    if (isSignInWithEmailLink(auth, window.location.href)) {
+        let emailFromStorage = window.localStorage.getItem('emailForSignIn');
+        if (!emailFromStorage) {
+            emailFromStorage = window.prompt('Please provide your email for confirmation');
+        }
+        if (!emailFromStorage) {
+            throw new Error("Email is required to sign in with a link.");
+        }
+        
+        try {
+            await signInWithEmailLink(auth, emailFromStorage, window.location.href);
+            window.localStorage.removeItem('emailForSignIn');
+        } catch (err) {
+            console.error("Sign in with email link error:", err);
+            let description = 'The sign-in link is invalid or has expired.';
+            if (err instanceof AuthError && err.code === 'auth/invalid-email') {
+                description = 'The email you provided does not match the one in the sign-in link.';
+            }
+            throw new Error(description);
+        }
+    }
+  }, []);
+
+  const value = { user, appUser, loading, error, signIn, signOut, changePassword, sendPasswordReset, handleSignInWithEmailLink };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
