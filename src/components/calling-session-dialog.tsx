@@ -9,6 +9,7 @@ import type { Person, CallStatus, Group, CustomField, UserRole } from "@/lib/typ
 import { callStatuses } from "@/lib/types";
 import { Phone, CheckSquare, Loader2, Edit, Save, XCircle, ArrowLeft, ArrowRight, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import debounce from 'lodash/debounce';
 
 import {
   Dialog,
@@ -159,26 +160,24 @@ const CallingSessionDialogComponent = ({
   }, [person, form]);
   
   // This effect handles saving session state
+  const debouncedUpdateUser = React.useCallback(
+    debounce((userId, pausedSession) => {
+      updateUser(userId, { pausedCallingSession: pausedSession });
+    }, 500), // 500ms debounce delay
+    []
+  );
+
   React.useEffect(() => {
-      if(isOpen && appUser) {
-          const pausedSession = {
-              event: currentEvent,
-              people: allPeople,
-              currentIndex: sessionCurrentNumber -1
-          };
-          updateUser(appUser.id, { pausedCallingSession: pausedSession });
+    if (isOpen && appUser) {
+      const pausedSession = {
+        event: currentEvent,
+        people: allPeople,
+        currentIndex: sessionCurrentNumber - 1,
+      };
+      debouncedUpdateUser(appUser.id, pausedSession);
+    }
+  }, [isOpen, appUser, currentEvent, allPeople, sessionCurrentNumber, debouncedUpdateUser]);
 
-          const handleBeforeUnload = () => {
-            // This needs to be synchronous, so we can't use async updateUser
-            // For now, we rely on the frequent updates from navigation.
-          };
-          window.addEventListener('beforeunload', handleBeforeUnload);
-
-          return () => {
-              window.removeEventListener('beforeunload', handleBeforeUnload);
-          }
-      }
-  }, [isOpen, appUser, currentEvent, allPeople, sessionCurrentNumber]);
 
   const onSubmit = async (data: CallFormValues) => {
     setIsSubmitting(true);
