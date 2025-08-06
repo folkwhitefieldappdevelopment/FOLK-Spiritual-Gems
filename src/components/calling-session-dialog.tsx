@@ -120,7 +120,7 @@ const CallingSessionDialogComponent = ({
   const form = useForm<CallFormValues>({
     resolver: zodResolver(callFormSchema),
     defaultValues: {
-      remark: "",
+      remark: person.lastCallRemark || "",
       status: "",
       sg: typeof person.lastSg === 'boolean' ? (person.lastSg ? 'yes' : 'no') : '',
       ma: typeof person.lastMa === 'boolean' ? (person.lastMa ? 'yes' : 'no') : '',
@@ -147,7 +147,7 @@ const CallingSessionDialogComponent = ({
 
   React.useEffect(() => {
     form.reset({ 
-      remark: "", 
+      remark: person.lastCallRemark || "", 
       status: "",
       sg: typeof person.lastSg === 'boolean' ? (person.lastSg ? 'yes' : 'no') : '',
       ma: typeof person.lastMa === 'boolean' ? (person.lastMa ? 'yes' : 'no') : '',
@@ -271,13 +271,6 @@ const CallingSessionDialogComponent = ({
                         </div>
                     </div>
                     
-                    {person.lastCallRemark && (
-                      <div className="text-sm p-3 bg-muted/50 rounded-lg max-h-24 overflow-y-auto">
-                        <p className="font-semibold text-muted-foreground mb-1">Previous Remark:</p>
-                        <p className="text-foreground whitespace-pre-wrap">{person.lastCallRemark}</p>
-                      </div>
-                    )}
-
                     <Form {...form}>
                         <form id="call-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                             <FormField
@@ -369,7 +362,7 @@ const CallingSessionDialogComponent = ({
                             name="remark"
                             render={({ field }) => (
                                 <FormItem>
-                                <FormLabel>New Remark (Optional)</FormLabel>
+                                <FormLabel>New Remark</FormLabel>
                                 <FormControl>
                                     <Textarea
                                         placeholder="e.g., Discussed about the upcoming event, interested to join."
