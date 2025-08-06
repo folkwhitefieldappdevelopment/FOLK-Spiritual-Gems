@@ -208,7 +208,7 @@ export const updatePerson = async (id: string, personData: Partial<Omit<Person, 
   if (dataToUpdate.callHistory) {
       const historyEntry = dataToUpdate.callHistory;
       if (historyEntry.calledAt === 'SERVER_TIMESTAMP') {
-        historyEntry.calledAt = new Date();
+        historyEntry.calledAt = serverTimestamp();
       }
       dataToUpdate.callHistory = arrayUnion(historyEntry);
   }

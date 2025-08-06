@@ -52,6 +52,7 @@ import { updatePerson } from "@/services/people-service";
 import { getWhatsAppTemplate } from "@/services/settings-service";
 import { EditablePersonDetailsForm } from "./editable-person-details-form";
 import { useAuth } from "@/contexts/auth-context";
+import { updateUser } from "@/services/user-service";
 
 const callFormSchema = z.object({
   remark: z.string().trim().optional(),
@@ -157,6 +158,27 @@ const CallingSessionDialogComponent = ({
     setIsEditingDetails(false);
   }, [person, form]);
   
+  // This effect handles saving session state
+  React.useEffect(() => {
+      if(isOpen && appUser) {
+          const pausedSession = {
+              event: currentEvent,
+              people: allPeople,
+              currentIndex: sessionCurrentNumber -1
+          };
+          updateUser(appUser.id, { pausedCallingSession: pausedSession });
+
+          const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+            updateUser(appUser.id, { pausedCallingSession: pausedSession });
+          };
+          window.addEventListener('beforeunload', handleBeforeUnload);
+
+          return () => {
+              window.removeEventListener('beforeunload', handleBeforeUnload);
+          }
+      }
+  }, [isOpen, appUser, currentEvent, allPeople, sessionCurrentNumber]);
+
   const onSubmit = async (data: CallFormValues) => {
     setIsSubmitting(true);
     const sg = data.sg === 'yes' ? true : data.sg === 'no' ? false : undefined;

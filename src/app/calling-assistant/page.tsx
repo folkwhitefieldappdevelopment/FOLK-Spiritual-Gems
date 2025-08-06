@@ -36,6 +36,8 @@ import {
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { CallingSessionDialog } from '@/components/calling-session-dialog';
 import { ConfirmSessionDialog } from '@/components/confirm-session-dialog';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { updateUser } from '@/services/user-service';
 
 
 const ROWS_PER_PAGE = 25;
@@ -80,6 +82,8 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   const [isAssignCoEnablerDialogOpen, setIsAssignCoEnablerDialogOpen] = React.useState(false);
   const isSelectionActive = selectedIds.size > 0;
   const canAssignCoEnabler = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
+  
+  const [hasPausedSession, setHasPausedSession] = React.useState(false);
 
    // Set initial state from URL search params
   React.useEffect(() => {
@@ -116,6 +120,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
         
         setCustomFields(customFieldsData);
         setGroups(groupsData);
+        setHasPausedSession(!!appUser.pausedCallingSession);
 
       } catch (error) {
         console.error("Failed to load data:", error);
@@ -296,12 +301,32 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     });
   };
 
-  const handleEndSession = () => {
+  const handleEndSession = async () => {
     setIsCallingSessionDialogOpen(false);
+    if (appUser) {
+      await updateUser(appUser.id, { pausedCallingSession: null });
+    }
+    setHasPausedSession(false);
     toast({
         title: 'Session Ended',
         description: 'Your calling session has been completed.',
     });
+  };
+  
+  const handleResumeSession = () => {
+    if (!appUser?.pausedCallingSession) return;
+    const { event, people, currentIndex } = appUser.pausedCallingSession;
+    setSessionPeople(people);
+    setSessionEvent(event);
+    setSessionCurrentIndex(currentIndex);
+    setIsCallingSessionDialogOpen(true);
+  };
+  
+  const handleClearSession = async () => {
+    if (!appUser) return;
+    await updateUser(appUser.id, { pausedCallingSession: null });
+    setHasPausedSession(false);
+    toast({ title: 'Session Cleared', description: 'Your paused session has been cleared.'});
   };
 
   const renderContent = () => {
@@ -319,6 +344,19 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
     return (
       <>
+        {hasPausedSession && (
+          <Alert variant="default" className="mb-4 bg-yellow-100/50 border-yellow-300 dark:bg-yellow-900/20 dark:border-yellow-700">
+            <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+            <AlertTitle className="text-yellow-800 dark:text-yellow-300">Paused Session Found</AlertTitle>
+            <AlertDescription className="text-yellow-700 dark:text-yellow-400">
+              You have a calling session that was not completed.
+              <div className="mt-2 flex gap-2">
+                <Button size="sm" onClick={handleResumeSession}>Resume Session</Button>
+                <Button size="sm" variant="outline" onClick={handleClearSession}>Clear Session</Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
         <div className="mb-6 flex flex-col gap-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2 flex-wrap">

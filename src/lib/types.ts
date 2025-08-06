@@ -115,6 +115,11 @@ export type AppUser = {
   };
   lastAssignedEnablerIndex?: number;
   photoUrl?: string;
+  pausedCallingSession?: {
+    event: string;
+    people: Person[];
+    currentIndex: number;
+  } | null;
 };
 
 export type Group = {
