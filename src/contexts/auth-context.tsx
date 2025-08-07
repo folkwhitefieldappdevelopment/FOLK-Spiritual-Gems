@@ -201,7 +201,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await signInWithEmailLink(auth, emailFromStorage, window.location.href);
         // On successful sign-in, the auth state observer will handle the rest.
         window.localStorage.removeItem('emailForSignIn');
-    } catch (err) => {
+    } catch (err) {
         console.error("Sign in with email link error:", err);
         let description = 'The sign-in link is invalid or has expired.';
         if (err instanceof AuthError && err.code === 'auth/invalid-email') {
