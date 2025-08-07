@@ -72,6 +72,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   const [sessionPeople, setSessionPeople] = React.useState<Person[]>([]);
   const [sessionEvent, setSessionEvent] = React.useState('');
   const [sessionCurrentIndex, setSessionCurrentIndex] = React.useState(0);
+  const [hasPausedSession, setHasPausedSession] = React.useState(false);
 
 
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
@@ -91,6 +92,12 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     setCurrentPage(page);
     setSearchTerm(search);
   }, []); // Run only once on mount
+
+  // Sync paused session status with auth context
+  React.useEffect(() => {
+    setHasPausedSession(!!appUser?.pausedCallingSession);
+  }, [appUser]);
+
 
   // Update URL when state changes
   React.useEffect(() => {
@@ -318,6 +325,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   const handleClearSession = async () => {
     if (!appUser) return;
     await updateUser(appUser.id, { pausedCallingSession: null });
+    setHasPausedSession(false); // Manually update local state for immediate UI feedback
     toast({ title: 'Session Cleared', description: 'Your paused session has been cleared.'});
   };
 
@@ -336,7 +344,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
     return (
       <>
-        {appUser?.pausedCallingSession && (
+        {hasPausedSession && (
           <Alert variant="default" className="mb-4 bg-yellow-100/50 border-yellow-300 dark:bg-yellow-900/20 dark:border-yellow-700">
             <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
             <AlertTitle className="text-yellow-800 dark:text-yellow-300">Paused Session Found</AlertTitle>
