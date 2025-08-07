@@ -17,7 +17,8 @@ import {
 } from 'firebase/auth';
 import { auth, configError as initialConfigError } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { getUserByEmail } from '@/services/user-service';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import type { AppUser } from '@/lib/types';
 
 
@@ -43,65 +44,73 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [appUser, setAppUser] = React.useState<AppUser | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<Error | null>(initialConfigError);
-
+  
   React.useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, 
-      async (user) => {
-        if (user && user.email) {
-          // User is signed in with Firebase Auth, now verify against our database
-          try {
-            const appUserData = await getUserByEmail(user.email);
-            if (appUserData) {
-              // This ensures backward compatibility for users created when 'role' was a string.
-              if (typeof appUserData.role === 'string') {
-                // @ts-ignore - Allow temporary mismatch for migration
-                appUserData.role = [appUserData.role];
-              } else if (!Array.isArray(appUserData.role)) {
-                // If role is missing or not an array, default to an empty array.
-                appUserData.role = [];
-              }
-              
-              // Add photoUrl to appUser for easy access
-              if (user.photoURL) {
-                appUserData.photoUrl = user.photoURL;
-              }
-              
-              // Convert Firestore Timestamp to string to make it serializable
-              if (appUserData.createdAt && typeof appUserData.createdAt !== 'string' && appUserData.createdAt.toDate) {
-                appUserData.createdAt = appUserData.createdAt.toDate().toISOString();
-              }
+    let unsubscribeUserListener: (() => void) | null = null;
 
-              // User is in our DB, allow access.
-              setUser(user);
-              setAppUser(appUserData);
-            } else {
-              // User not in our DB, deny access by signing them out.
-              toast({
-                variant: 'destructive',
-                title: 'Access Denied',
-                description: 'Your user record was not found in the application database. Please contact an administrator.',
-              });
-              await firebaseSignOut(auth);
-              setUser(null);
-              setAppUser(null);
+    const authStateListener = onAuthStateChanged(auth, 
+      (user) => {
+        // Clean up previous user's snapshot listener if there was one
+        if (unsubscribeUserListener) {
+            unsubscribeUserListener();
+            unsubscribeUserListener = null;
+        }
+
+        if (user && user.email) {
+          // User is signed in with Firebase Auth, now listen for real-time updates to their app data.
+          const userDocRef = doc(db, 'users', user.uid);
+          
+          unsubscribeUserListener = onSnapshot(userDocRef, 
+            (docSnap) => {
+              if (docSnap.exists()) {
+                const appUserData = { id: docSnap.id, ...docSnap.data() } as AppUser;
+
+                // This ensures backward compatibility for users created when 'role' was a string.
+                if (typeof appUserData.role === 'string') {
+                    // @ts-ignore - Allow temporary mismatch for migration
+                    appUserData.role = [appUserData.role];
+                } else if (!Array.isArray(appUserData.role)) {
+                    appUserData.role = [];
+                }
+                
+                if (user.photoURL) {
+                    appUserData.photoUrl = user.photoURL;
+                }
+                
+                if (appUserData.createdAt && typeof appUserData.createdAt !== 'string' && appUserData.createdAt.toDate) {
+                    appUserData.createdAt = appUserData.createdAt.toDate().toISOString();
+                }
+
+                setUser(user);
+                setAppUser(appUserData);
+              } else {
+                // User's record was deleted from Firestore after they logged in.
+                toast({
+                    variant: 'destructive',
+                    title: 'Access Revoked',
+                    description: 'Your user record was not found. Please contact an administrator.',
+                });
+                firebaseSignOut(auth); // This will trigger the onAuthStateChanged again to clean up state
+              }
+              setLoading(false);
+            },
+            (snapshotError) => {
+                console.error("Firestore onSnapshot error:", snapshotError);
+                toast({
+                    variant: 'destructive',
+                    title: 'Database Error',
+                    description: 'Could not sync user data. Please try again later.',
+                });
+                firebaseSignOut(auth);
+                setLoading(false);
             }
-          } catch (e) {
-            console.error("Error verifying user against database", e);
-            toast({
-              variant: 'destructive',
-              title: 'Verification Error',
-              description: 'Could not verify access rights. Please try again.',
-            });
-            await firebaseSignOut(auth);
-            setUser(null);
-            setAppUser(null);
-          }
+          );
         } else {
-          // No user is signed in, or user has no email.
+          // No user is signed in.
           setUser(null);
           setAppUser(null);
+          setLoading(false);
         }
-        setLoading(false);
       },
       (err) => {
         console.error("Firebase Auth State Error:", err);
@@ -110,8 +119,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    // Cleanup subscription on unmount
-    return () => unsubscribe();
+    // Cleanup both listeners on unmount
+    return () => {
+        authStateListener();
+        if (unsubscribeUserListener) {
+            unsubscribeUserListener();
+        }
+    };
   }, [toast]);
 
   const signIn = async (email: string, password: string) => {
@@ -119,7 +133,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // The onAuthStateChanged listener will handle setting the user state after verification
     } catch (err) {
       const authError = err as AuthError;
       toast({
@@ -128,8 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: authError.code === 'auth/invalid-credential' ? 'Invalid email or password.' : 'An error occurred during sign-in.'
       });
       console.error("Error signing in", err);
-      // Do not set a global error for a failed login attempt. The toast is sufficient.
-      setLoading(false); // Set loading to false on error
+      setLoading(false);
       throw err;
     }
   };
@@ -137,7 +149,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       await firebaseSignOut(auth);
-      // The onAuthStateChanged listener will set user to null
     } catch (err) {
       console.error("Error signing out", err);
       if (err instanceof Error) {
@@ -153,10 +164,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     const credential = EmailAuthProvider.credential(user.email, currentPassword);
     
-    // Re-authenticate the user
     await reauthenticateWithCredential(user, credential);
-    
-    // Update the password
     await updatePassword(user, newPassword);
   };
 
@@ -170,7 +178,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await sendPasswordResetEmail(auth, email, actionCodeSettings);
     } catch (err) {
       console.error("Error sending password reset email", err);
-      // We don't distinguish between user-not-found and other errors to avoid email enumeration attacks
       throw new Error('Failed to send password reset email. Please try again.');
     }
   };

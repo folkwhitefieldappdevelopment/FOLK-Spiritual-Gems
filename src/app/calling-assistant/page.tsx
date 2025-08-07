@@ -49,7 +49,7 @@ type UserInfo = {
 
 const CallingAssistantPageComponent = React.memo(function CallingAssistantPageComponent() {
   const { toast } = useToast();
-  const { appUser, user, setAppUser } = useAuth();
+  const { appUser, user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -299,7 +299,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     setIsCallingSessionDialogOpen(false);
     if (appUser) {
       await updateUser(appUser.id, { pausedCallingSession: null });
-      setAppUser({ ...appUser, pausedCallingSession: null });
     }
     toast({
         title: 'Session Ended',
@@ -319,7 +318,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   const handleClearSession = async () => {
     if (!appUser) return;
     await updateUser(appUser.id, { pausedCallingSession: null });
-    setAppUser({ ...appUser, pausedCallingSession: null });
     toast({ title: 'Session Cleared', description: 'Your paused session has been cleared.'});
   };
 
