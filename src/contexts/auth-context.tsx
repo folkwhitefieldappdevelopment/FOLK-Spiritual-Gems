@@ -24,6 +24,7 @@ import type { AppUser } from '@/lib/types';
 type AuthContextType = {
   user: User | null;
   appUser: AppUser | null;
+  setAppUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
   loading: boolean;
   error: Error | null;
   signIn: (email: string, password: string) => Promise<void>;
@@ -200,7 +201,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const value = { user, appUser, loading, error, signIn, signOut, changePassword, sendPasswordReset, isSignInLink, completeSignInWithEmailLink };
+  const value = { user, appUser, setAppUser, loading, error, signIn, signOut, changePassword, sendPasswordReset, isSignInLink, completeSignInWithEmailLink };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
