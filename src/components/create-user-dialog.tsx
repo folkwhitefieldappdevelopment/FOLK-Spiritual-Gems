@@ -36,13 +36,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Copy } from 'lucide-react';
 import { userRoles, type AppUser, type UserRole } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { createUserAction } from '@/app/actions';
-import { auth } from '@/lib/firebase';
-import { sendSignInLinkToEmail } from 'firebase/auth';
+import { Alert, AlertTitle, AlertDescription } from './ui/alert';
 
 const userFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -85,6 +84,7 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [availableRoles, setAvailableRoles] = React.useState<UserRole[]>([]);
+  const [signInLink, setSignInLink] = React.useState<string | null>(null);
   
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
@@ -114,6 +114,7 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
 
   React.useEffect(() => {
     if (isOpen) {
+      setSignInLink(null); // Reset link when dialog opens
       if (user) {
         form.reset({
           name: user.name,
@@ -139,6 +140,7 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
 
   async function onSubmit(data: UserFormValues) {
     setIsSubmitting(true);
+    setSignInLink(null);
     try {
         if (!appUser) throw new Error("Not authenticated");
         
@@ -150,30 +152,20 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
 
         if (user) { // Editing existing user
             await onSave(data, user.id);
+            setIsOpen(false);
         } else { // Creating new user
             const result = await createUserAction(data, actorInfo);
             if (result.success) {
-                const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-                const actionCodeSettings = {
-                    url: `${appUrl}/login`,
-                    handleCodeInApp: true,
-                };
-                
-                // This does NOT send an email. It just generates the link.
-                await sendSignInLinkToEmail(auth, data.email, actionCodeSettings);
-
                 toast({
                     title: 'User Record Created',
-                    description: `Record for ${data.name} saved. Please manually send the sign-in link to their email from your email client. The user must click the link to gain access.`,
-                    duration: 10000,
+                    description: `Record for ${data.name} saved.`,
                 });
+                setSignInLink(result.message);
                 onUserCreated();
             } else {
                 throw new Error(result.message);
             }
         }
-
-        setIsOpen(false);
     } catch (error) {
         console.error("Error in onSubmit:", error);
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
@@ -188,16 +180,44 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+        if (!open) setSignInLink(null);
+        setIsOpen(open);
+    }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{user ? 'Edit User' : 'Create New User'}</DialogTitle>
           <DialogDescription>
             {user
               ? "Update the user's details below."
-              : 'Add a new user to the application. A sign-in link will be generated for you to send manually.'}
+              : 'Add a new user to the application. This will generate a sign-in link for you to send to them.'}
           </DialogDescription>
         </DialogHeader>
+        {signInLink ? (
+          <div className="space-y-4 py-4">
+              <Alert variant="default">
+                <AlertTitle>Sign-In Link Generated!</AlertTitle>
+                <AlertDescription>
+                    The user has been created. Please copy the link below and send it to them. They must click this link to set their password and gain access.
+                </AlertDescription>
+              </Alert>
+              <div className="relative">
+                <Input readOnly value={signInLink} className="pr-10" />
+                <Button 
+                    type="button" 
+                    size="icon" 
+                    variant="ghost" 
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                    onClick={() => {
+                        navigator.clipboard.writeText(signInLink);
+                        toast({ title: "Copied to clipboard!" });
+                    }}
+                >
+                    <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+          </div>
+        ) : (
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
             <FormField
@@ -339,11 +359,12 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
               </Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {user ? 'Save Changes' : 'Save User'}
+                {user ? 'Save Changes' : 'Create User & Get Link'}
               </Button>
             </DialogFooter>
           </form>
         </Form>
+        )}
       </DialogContent>
     </Dialog>
   );

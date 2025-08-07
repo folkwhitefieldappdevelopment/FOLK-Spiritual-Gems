@@ -56,9 +56,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             unsubscribeUserListener = null;
         }
 
-        if (user && user.email) {
+        if (user && user.uid) { // <-- Check for user.uid
           // User is signed in with Firebase Auth, now listen for real-time updates to their app data.
-          const userDocRef = doc(db, 'users', user.uid);
+          const userDocRef = doc(db, 'users', user.uid); // <-- Use user.uid
           
           unsubscribeUserListener = onSnapshot(userDocRef, 
             (docSnap) => {
@@ -189,6 +189,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const completeSignInWithEmailLink = async () => {
     let emailFromStorage = window.localStorage.getItem('emailForSignIn');
     if (!emailFromStorage) {
+        // Prompt for email if not found in storage.
+        // This can happen if the user opens the link on a different device.
         emailFromStorage = window.prompt('Please provide your email for confirmation');
     }
     if (!emailFromStorage) {
@@ -197,8 +199,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     try {
         await signInWithEmailLink(auth, emailFromStorage, window.location.href);
+        // On successful sign-in, the auth state observer will handle the rest.
         window.localStorage.removeItem('emailForSignIn');
-    } catch (err) {
+    } catch (err) => {
         console.error("Sign in with email link error:", err);
         let description = 'The sign-in link is invalid or has expired.';
         if (err instanceof AuthError && err.code === 'auth/invalid-email') {

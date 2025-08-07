@@ -1,11 +1,11 @@
 
 'use server';
 
-import { doc, deleteDoc } from 'firebase/firestore';
+import { doc, deleteDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { logAudit } from './audit-service';
 import type { AppUser, UserRole } from '@/lib/types';
-import { getDoc } from 'firebase/firestore';
+import { admin } from '@/lib/firebase-admin';
 
 type UserInfo = {
   id: string;
@@ -14,10 +14,8 @@ type UserInfo = {
 };
 
 /**
- * Deletes a user record from Firestore.
- * This does NOT delete the user from Firebase Authentication.
- * This is a server action and requires admin privileges.
- * @param userId The Firestore document ID of the user.
+ * Deletes a user record from Firestore AND from Firebase Authentication.
+ * @param userId The Firestore document ID (which is the same as the Auth UID).
  * @param actorInfo The user performing the action.
  */
 export async function deleteUserAndAuth(userId: string, actorInfo: UserInfo) {
@@ -26,17 +24,26 @@ export async function deleteUserAndAuth(userId: string, actorInfo: UserInfo) {
     const userSnap = await getDoc(userDocRef);
     const userData = userSnap.data();
 
+    // 1. Delete from Firestore
     await deleteDoc(userDocRef);
     
+    // 2. Delete from Firebase Auth
+    await admin.auth().deleteUser(userId);
+    
     if (userData) {
-      await logAudit('Delete User', `Deleted user: ${userData.name} (${userId})`, actorInfo);
+      await logAudit('Delete User', `Deleted user from Auth & Firestore: ${userData.name} (${userId})`, actorInfo);
     }
 
   } catch (error: any) {
-    console.error('Error deleting user record from Firestore:', error);
-    const message =
-      error.message ||
-      'An unexpected error occurred while deleting the user record.';
+    console.error('Error deleting user and auth record:', error);
+    
+    let message = 'An unexpected error occurred while deleting the user.';
+    if (error.code === 'auth/user-not-found') {
+        message = "User was not found in Firebase Authentication, but was deleted from the app's database.";
+    } else if (error.message) {
+        message = error.message;
+    }
+    
     throw new Error(message);
   }
 }
