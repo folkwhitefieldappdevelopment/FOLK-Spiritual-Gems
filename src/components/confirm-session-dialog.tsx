@@ -40,7 +40,7 @@ type ConfirmSessionDialogProps = {
 export function ConfirmSessionDialog({ isOpen, setIsOpen, totalCount, onStartSession, searchTerm }: ConfirmSessionDialogProps) {
   const { appUser } = useAuth();
   
-  const formSchema = createFormSchema(totalCount);
+  const formSchema = React.useMemo(() => createFormSchema(totalCount), [totalCount]);
   type FormValues = z.infer<typeof formSchema>;
 
   const form = useForm<FormValues>({
@@ -55,12 +55,12 @@ export function ConfirmSessionDialog({ isOpen, setIsOpen, totalCount, onStartSes
   React.useEffect(() => {
     if (isOpen) {
       form.reset({
-        eventName: appUser?.currentCallingEvent || '',
+        eventName: '',
         startIndex: 1,
         endIndex: totalCount,
       });
     }
-  }, [isOpen, totalCount, form, appUser]);
+  }, [isOpen, totalCount, form]);
   
   const onSubmit = (data: FormValues) => {
     onStartSession(data.eventName, data.startIndex, data.endIndex);
