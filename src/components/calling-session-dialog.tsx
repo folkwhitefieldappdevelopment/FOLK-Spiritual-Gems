@@ -186,17 +186,15 @@ const CallingSessionDialogComponent = ({
   
   React.useEffect(() => {
     if (isOpen && appUser) {
-      const pausedSession = {
-        event: currentEvent,
-        people: allPeople,
-        currentIndex: sessionCurrentNumber - 1,
-      };
-      // Save progress on every navigation change
-      updateUser(appUser.id, { pausedCallingSession: pausedSession });
-      setAppUser({...appUser, pausedCallingSession: pausedSession});
+        const pausedSession = {
+            event: currentEvent,
+            people: allPeople,
+            currentIndex: sessionCurrentNumber - 1,
+        };
+        updateUser(appUser.id, { pausedCallingSession: pausedSession });
+        setAppUser({...appUser, pausedCallingSession: pausedSession});
     }
 
-    // Cleanup function when the component unmounts or session ends
     return () => {
         if (sessionIsEndingRef.current && appUser) {
             updateUser(appUser.id, { pausedCallingSession: null });
@@ -204,7 +202,7 @@ const CallingSessionDialogComponent = ({
             sessionIsEndingRef.current = false;
         }
     };
-  }, [isOpen, appUser, currentEvent, allPeople, sessionCurrentNumber, setAppUser]);
+  }, [person, isOpen, appUser, currentEvent, allPeople, sessionCurrentNumber, setAppUser]);
 
 
   const onSubmit = async (data: CallFormValues) => {

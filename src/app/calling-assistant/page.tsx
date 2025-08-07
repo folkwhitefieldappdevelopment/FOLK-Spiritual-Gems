@@ -82,8 +82,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   const isSelectionActive = selectedIds.size > 0;
   const canAssignCoEnabler = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
   
-  const [hasPausedSession, setHasPausedSession] = React.useState(false);
-
    // Set initial state from URL search params
   React.useEffect(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -119,8 +117,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
         
         setCustomFields(customFieldsData);
         setGroups(groupsData);
-        setHasPausedSession(!!appUser.pausedCallingSession);
-
       } catch (error) {
         console.error("Failed to load data:", error);
         if (error instanceof Error) {
@@ -305,7 +301,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       await updateUser(appUser.id, { pausedCallingSession: null });
       setAppUser({ ...appUser, pausedCallingSession: null });
     }
-    setHasPausedSession(false);
     toast({
         title: 'Session Ended',
         description: 'Your calling session has been completed.',
@@ -325,7 +320,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     if (!appUser) return;
     await updateUser(appUser.id, { pausedCallingSession: null });
     setAppUser({ ...appUser, pausedCallingSession: null });
-    setHasPausedSession(false);
     toast({ title: 'Session Cleared', description: 'Your paused session has been cleared.'});
   };
 
@@ -344,7 +338,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
     return (
       <>
-        {hasPausedSession && (
+        {appUser?.pausedCallingSession && (
           <Alert variant="default" className="mb-4 bg-yellow-100/50 border-yellow-300 dark:bg-yellow-900/20 dark:border-yellow-700">
             <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
             <AlertTitle className="text-yellow-800 dark:text-yellow-300">Paused Session Found</AlertTitle>
