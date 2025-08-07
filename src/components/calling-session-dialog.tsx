@@ -128,7 +128,7 @@ const CallingSessionDialogComponent = ({
   const form = useForm<CallFormValues>({
     resolver: zodResolver(callFormSchema),
     defaultValues: {
-      remark: "",
+      remark: person.lastCallRemark || "",
       status: "",
       sg: typeof person.lastSg === 'boolean' ? (person.lastSg ? 'yes' : 'no') : '',
       ma: typeof person.lastMa === 'boolean' ? (person.lastMa ? 'yes' : 'no') : '',
@@ -170,7 +170,7 @@ const CallingSessionDialogComponent = ({
 
   React.useEffect(() => {
     form.reset({ 
-      remark: "", 
+      remark: person.lastCallRemark || "",
       status: "",
       sg: typeof person.lastSg === 'boolean' ? (person.lastSg ? 'yes' : 'no') : '',
       ma: typeof person.lastMa === 'boolean' ? (person.lastMa ? 'yes' : 'no') : '',
@@ -181,11 +181,10 @@ const CallingSessionDialogComponent = ({
     setIsEditingDetails(false);
   }, [person, form]);
   
-  // This effect handles saving session state
   const debouncedUpdateUser = React.useCallback(
     debounce((userId, pausedSession) => {
       updateUser(userId, { pausedCallingSession: pausedSession });
-    }, 500), // 500ms debounce delay
+    }, 500),
     []
   );
 
@@ -518,5 +517,3 @@ const CallingSessionDialogComponent = ({
 };
 
 export const CallingSessionDialog = React.memo(CallingSessionDialogComponent);
-
-    
