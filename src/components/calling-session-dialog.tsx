@@ -115,7 +115,8 @@ const CallingSessionDialogComponent = ({
   allPeople,
 }: CallingSessionDialogProps) => {
   const { toast } = useToast();
-  const { appUser } = useAuth();
+  const { appUser, setAppUser } = useAuth();
+  const sessionIsEndingRef = React.useRef(false);
   
   const [isEditingDetails, setIsEditingDetails] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -153,8 +154,10 @@ const CallingSessionDialogComponent = ({
             return dateB.getTime() - dateA.getTime();
         })[0];
         
-    return lastCallForEvent?.remark || null;
-  }, [person, currentEvent]);
+    const lastRemark = lastCallForEvent?.remark || person.lastCallRemark || '';
+    form.reset({ ...form.getValues(), remark: lastRemark });
+    return lastRemark;
+  }, [person, currentEvent, form]);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -181,13 +184,6 @@ const CallingSessionDialogComponent = ({
     setIsEditingDetails(false);
   }, [person, form]);
   
-  const debouncedUpdateUser = React.useCallback(
-    debounce((userId, pausedSession) => {
-      updateUser(userId, { pausedCallingSession: pausedSession });
-    }, 500),
-    []
-  );
-
   React.useEffect(() => {
     if (isOpen && appUser) {
       const pausedSession = {
@@ -195,9 +191,20 @@ const CallingSessionDialogComponent = ({
         people: allPeople,
         currentIndex: sessionCurrentNumber - 1,
       };
-      debouncedUpdateUser(appUser.id, pausedSession);
+      // Save progress on every navigation change
+      updateUser(appUser.id, { pausedCallingSession: pausedSession });
+      setAppUser({...appUser, pausedCallingSession: pausedSession});
     }
-  }, [isOpen, appUser, currentEvent, allPeople, sessionCurrentNumber, debouncedUpdateUser]);
+
+    // Cleanup function when the component unmounts or session ends
+    return () => {
+        if (sessionIsEndingRef.current && appUser) {
+            updateUser(appUser.id, { pausedCallingSession: null });
+            setAppUser({...appUser, pausedCallingSession: null});
+            sessionIsEndingRef.current = false;
+        }
+    };
+  }, [isOpen, appUser, currentEvent, allPeople, sessionCurrentNumber, setAppUser]);
 
 
   const onSubmit = async (data: CallFormValues) => {
@@ -211,7 +218,7 @@ const CallingSessionDialogComponent = ({
       if (sessionCurrentNumber < sessionTotalCount) {
         onNavigate('next');
       } else {
-        onEndSession(); // End session if it was the last person
+        handleEndAndClose();
       }
     } catch (e) {
       // Errors are toasted in the parent
@@ -256,6 +263,11 @@ const CallingSessionDialogComponent = ({
     const message = whatsAppTemplate.replace('{name}', person.fullName);
     return `https://wa.me/91${person.phone.replace(/\s+/g, '')}?text=${encodeURIComponent(message)}`;
   };
+  
+  const handleEndAndClose = () => {
+    sessionIsEndingRef.current = true;
+    onEndSession();
+  }
   
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -485,12 +497,12 @@ const CallingSessionDialogComponent = ({
                     <AlertDialogHeader>
                         <AlertDialogTitle>End Calling Session?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will end the current session. You can start a new one from the Calling Assistant page.
+                            This will end the current session. Your progress up to this contact has been saved.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={onEndSession}>End Session</AlertDialogAction>
+                        <AlertDialogAction onClick={handleEndAndClose}>End Session</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
