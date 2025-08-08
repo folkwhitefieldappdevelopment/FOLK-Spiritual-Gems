@@ -17,9 +17,9 @@ import {
 } from 'firebase/auth';
 import { auth, configError as initialConfigError } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, getDocs, collection, query, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { AppUser } from '@/lib/types';
+import type { AppUser, UserRole } from '@/lib/types';
 
 
 type AuthContextType = {
@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const userDocRef = doc(db, 'users', user.uid); // <-- Use user.uid
           
           unsubscribeUserListener = onSnapshot(userDocRef, 
-            (docSnap) => {
+            async (docSnap) => {
               if (docSnap.exists()) {
                 const appUserData = { id: docSnap.id, ...docSnap.data() } as AppUser;
 
@@ -84,13 +84,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setUser(user);
                 setAppUser(appUserData);
               } else {
-                // User's record was deleted from Firestore after they logged in.
-                toast({
+                // User's record was not found in Firestore. Create it automatically.
+                console.warn(`User with UID ${user.uid} authenticated but has no Firestore profile. Creating one now.`);
+                
+                try {
+                  const usersCollection = collection(db, 'users');
+                  const usersSnapshot = await getDocs(query(usersCollection));
+                  const isFirstUser = usersSnapshot.empty;
+                  
+                  const newUserProfile: Omit<AppUser, 'id'> = {
+                    name: user.displayName || 'New User',
+                    email: user.email || '',
+                    phone: user.phoneNumber || '',
+                    role: isFirstUser ? ['Admin'] : ['Folk Enabler'], // First user becomes admin
+                    createdAt: serverTimestamp(),
+                  };
+
+                  await setDoc(userDocRef, newUserProfile);
+                  
+                  // The onSnapshot listener will fire again with the new data, so we don't need to setLoading(false) here.
+                  toast({
+                    title: 'Profile Created',
+                    description: 'Your user profile was missing and has been automatically created.',
+                  });
+
+                } catch (createError) {
+                  console.error("Failed to auto-create user profile:", createError);
+                  toast({
                     variant: 'destructive',
-                    title: 'Access Revoked',
-                    description: 'Your user record was not found. Please contact an administrator.',
-                });
-                firebaseSignOut(auth); // This will trigger the onAuthStateChanged again to clean up state
+                    title: 'Critical Error',
+                    description: 'Could not create your user profile. Please contact support.',
+                  });
+                  firebaseSignOut(auth);
+                }
               }
               setLoading(false);
             },
