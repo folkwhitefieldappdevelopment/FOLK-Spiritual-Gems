@@ -40,8 +40,9 @@ import { Loader2, Copy } from 'lucide-react';
 import { userRoles, type AppUser, type UserRole } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { createUserAction } from '@/app/actions';
 import { Alert, AlertTitle, AlertDescription } from './ui/alert';
+import { createUserAction } from '@/app/user-management/page';
+
 
 const userFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
