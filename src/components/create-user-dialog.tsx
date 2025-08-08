@@ -41,7 +41,7 @@ import { userRoles, type AppUser, type UserRole } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertTitle, AlertDescription } from './ui/alert';
-import { createUserAction } from '@/app/user-management/page';
+import { createUserAction } from '@/app/user-management/actions';
 
 
 const userFormSchema = z.object({
@@ -203,12 +203,12 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
                 </AlertDescription>
               </Alert>
               <div className="relative">
-                <Input readOnly value={signInLink} className="pr-10" />
+                <Textarea readOnly value={signInLink} className="pr-10 h-32" />
                 <Button 
                     type="button" 
                     size="icon" 
                     variant="ghost" 
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                    className="absolute right-1 top-1 h-8 w-8"
                     onClick={() => {
                         navigator.clipboard.writeText(signInLink);
                         toast({ title: "Copied to clipboard!" });
