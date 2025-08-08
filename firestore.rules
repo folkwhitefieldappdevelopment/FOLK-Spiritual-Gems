@@ -1,9 +1,90 @@
-
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    
+    // Helper functions to check user roles from their profile document
+    function isUserRole(role) {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role[0] == role || 
+             (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role.size() > 1 && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role[1] == role);
     }
+    
+    function isUserAdmin() {
+      return isUserRole('Admin');
+    }
+    
+    function isUserGuide() {
+      return isUserRole('Folk Guide');
+    }
+
+    // Rules for the 'users' collection
+    match /users/{userId} {
+      // Admins can manage all users. Guides can manage enablers under them.
+      // Users can read/update their own profile.
+      allow read: if request.auth != null && 
+                     (isUserAdmin() || 
+                      isUserGuide() ||
+                      request.auth.uid == userId);
+                      
+      allow create: if request.auth != null && (isUserAdmin() || isUserGuide());
+      
+      allow update: if request.auth != null && 
+                       (isUserAdmin() ||
+                        isUserGuide() && resource.data.reportsTo.guideId == request.auth.uid ||
+                        request.auth.uid == userId);
+                        
+      allow delete: if request.auth != null && isUserAdmin();
+    }
+    
+    // Rules for the 'people' collection (contacts)
+    match /people/{personId} {
+      // Allow read/write if user is admin, or the person is assigned to them as a guide,
+      // or assigned to them as an enabler/co-enabler.
+      allow read, write: if request.auth != null &&
+                            (isUserAdmin() ||
+                             resource.data.folkGuideId == request.auth.uid ||
+                             resource.data.enablerInTouchWith == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.name ||
+                             resource.data.coEnablerId == request.auth.uid);
+                             
+      allow create, delete: if request.auth != null; // Allow any authenticated user to create/delete contacts
+    }
+    
+    // Rules for 'groups'
+    match /groups/{groupId} {
+        // Admins can access all groups.
+        // Users can access groups they created.
+        // Users can access groups shared with their role.
+        allow read: if request.auth != null &&
+                       (isUserAdmin() ||
+                        resource.data.createdBy == request.auth.uid ||
+                        (resource.data.visibility.size() > 0 && 
+                         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role[0] in resource.data.visibility || 
+                          (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role.size() > 1 && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role[1] in resource.data.visibility)
+                         )
+                        )
+                       );
+
+        // Any authenticated user can create a group.
+        allow create: if request.auth != null;
+        
+        // Only admins or the group creator can update/delete a group.
+        allow update, delete: if request.auth != null && 
+                                 (isUserAdmin() || resource.data.createdBy == request.auth.uid);
+    }
+    
+    // Rules for 'audits' and 'settings' collections
+    match /audits/{auditId} {
+      // Only Admins and Guides can read audit logs.
+      allow read: if request.auth != null && (isUserAdmin() || isUserGuide());
+      // Any authenticated user can write to the audit log.
+      allow write: if request.auth != null;
+    }
+    
+    match /settings/{settingId} {
+        // Only Admins can modify settings
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && isUserAdmin();
+    }
+    
   }
 }
