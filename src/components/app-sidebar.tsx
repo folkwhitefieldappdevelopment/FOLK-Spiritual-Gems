@@ -28,7 +28,8 @@ export function AppSidebar() {
   ];
   
   const isActive = (href: string) => {
-    if (href === '/contacts' && pathname === '/') return true;
+    // Special case for root, otherwise check startsWith
+    if (href === '/dashboard' && pathname === '/') return true;
     return pathname.startsWith(href);
   }
 
@@ -69,7 +70,7 @@ export function AppSidebar() {
               <Link
                 href="/settings"
                  className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors md:h-8 md:w-8 ${
-                      isActive('/settings')
+                      pathname.startsWith('/settings')
                         ? 'bg-accent text-accent-foreground'
                         : 'text-muted-foreground hover:text-foreground'
                     }`}

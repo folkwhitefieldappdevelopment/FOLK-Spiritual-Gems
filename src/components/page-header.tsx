@@ -22,11 +22,6 @@ type PageHeaderProps = {
 export function PageHeader({ title, description, children }: PageHeaderProps) {
     const pathname = usePathname();
     const [isMobileSheetOpen, setIsMobileSheetOpen] = React.useState(false);
-    const [isClient, setIsClient] = React.useState(false);
-
-    React.useEffect(() => {
-        setIsClient(true);
-    }, []);
 
     const navItems = [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -48,11 +43,6 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
       setIsMobileSheetOpen(false);
     };
     
-    // Render a placeholder on the server and the actual header on the client
-    if (!isClient) {
-        return <div className="h-[65px] sm:h-auto" />;
-    }
-
   return (
     <header className="sticky top-0 z-30 flex items-center gap-2 border-b bg-background px-4 py-3 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 sm:gap-4">
        <Sheet open={isMobileSheetOpen} onOpenChange={setIsMobileSheetOpen}>
