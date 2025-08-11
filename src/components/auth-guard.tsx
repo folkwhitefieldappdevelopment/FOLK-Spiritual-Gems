@@ -27,66 +27,61 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
-  const [isVerifying, setIsVerifying] = React.useState(true);
 
   React.useEffect(() => {
+    // This effect handles redirection for unauthenticated users and permission checks for authenticated users.
     if (loading) {
-      return; // Wait until Firebase auth state is resolved
+      return; // Wait until Firebase auth state is resolved.
     }
 
-    // If on a public route, do nothing.
-    // If a logged-in user tries to access a public route (like /login), they will be redirected by the page itself.
-    if (publicRoutes.includes(pathname)) {
-      setIsVerifying(false);
+    const isPublic = publicRoutes.includes(pathname);
+
+    if (!user && !isPublic) {
+      // If not authenticated and not on a public page, redirect to login.
+      router.replace('/login');
       return;
     }
-
-    // If not on a public route and user is not authenticated, redirect to login.
-    if (!user) {
-      router.replace('/login');
-      return; // Early exit, no need to proceed
-    }
-
-    // If user is authenticated but appUser details (with roles) are not yet loaded, wait.
-    if (!appUser) {
-        return; 
-    }
     
-    // Check if the user has a role assigned. If not, they shouldn't access anything.
-    if (!appUser.role || appUser.role.length === 0) {
-        toast({
-            variant: 'destructive',
-            title: 'No Role Assigned',
-            description: 'You do not have a role assigned. Please contact an administrator.'
-        });
-        router.replace('/login');
+    if (user && !appUser) {
+        // Auth is loaded, but Firestore profile is still loading. Wait for it.
         return;
     }
 
-    // Check for role-based permissions for the current route
-    let hasPermission = true;
-    const requiredRoles = Object.keys(routePermissions).find(route => pathname.startsWith(route));
-
-    if (requiredRoles) {
-      hasPermission = routePermissions[requiredRoles].some(role => appUser.role.includes(role));
+    if (appUser) {
+      // User is authenticated and appUser profile is loaded. Now, check permissions.
+      // Check if the user has a role assigned. If not, they shouldn't access anything.
+      if (!appUser.role || appUser.role.length === 0) {
+          toast({
+              variant: 'destructive',
+              title: 'Access Revoked',
+              description: 'You do not have a role assigned. Please contact an administrator.'
+          });
+          router.replace('/login');
+          return;
+      }
+      
+      // Check for role-based permissions for the current route
+      const requiredRolesKey = Object.keys(routePermissions).find(route => pathname.startsWith(route));
+      if (requiredRolesKey) {
+        const hasPermission = routePermissions[requiredRolesKey].some(role => appUser.role.includes(role));
+        if (!hasPermission) {
+            toast({
+                variant: 'destructive',
+                title: 'Access Denied',
+                description: 'You do not have permission to view this page.'
+            });
+            router.replace('/dashboard'); // Redirect to a default safe page
+        }
+      }
     }
-    
-    if (!hasPermission) {
-      toast({
-          variant: 'destructive',
-          title: 'Access Denied',
-          description: 'You do not have permission to view this page.'
-      });
-      router.replace('/dashboard'); // Redirect to a default safe page
-      return;
-    }
-
-    // If all checks pass, verification is complete.
-    setIsVerifying(false);
 
   }, [user, appUser, loading, pathname, router, toast]);
-
-  if (loading || (!publicRoutes.includes(pathname) && isVerifying)) {
+  
+  // Render a loading spinner if Firebase auth is loading OR if the user is authenticated but their Firestore profile hasn't loaded yet.
+  // This prevents rendering the page before permissions can be checked.
+  const isAuthReady = !loading;
+  const isPublic = publicRoutes.includes(pathname);
+  if (!isAuthReady || (isAuthReady && !appUser && !isPublic)) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin" />
