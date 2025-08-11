@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 
 import { getPeople, assignEnablerToPeople } from '@/services/people-service';
-import { getUsers, getEnablersForGuide } from '@/services/user-service';
+import { getUsers } from '@/services/user-service';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -67,15 +67,9 @@ export default function AssignmentsPage() {
       const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
       // Firestore has a hard limit of 10000 documents per query.
       const { people: peopleData } = await getPeople(userInfo, { pageSize: 10000 });
-      let usersToAssign: AppUser[] = [];
-
-      if (appUser.role.includes('Admin')) {
-        const allUsers = await getUsers();
-        usersToAssign = allUsers.filter(u => u.role.includes('Folk Enabler'));
-      } else if (appUser.role.includes('Folk Guide')) {
-        const enablersUnderGuide = await getEnablersForGuide(appUser.id);
-        usersToAssign = enablersUnderGuide;
-      }
+      
+      const allUsers = await getUsers();
+      const usersToAssign = allUsers.filter(u => (u.role || []).includes('Folk Enabler'));
       
       setPeople(peopleData);
       setAssignableUsers(usersToAssign.sort((a,b) => a.name.localeCompare(b.name)));
@@ -212,7 +206,7 @@ export default function AssignmentsPage() {
                         <div>
                           <p className="font-semibold">{enabler.name}</p>
                           <div className="text-xs text-muted-foreground">
-                              {enabler.role.includes('Folk Enabler') && <Badge variant="outline" className="mr-1">Enabler</Badge>}
+                              {(enabler.role || []).includes('Folk Enabler') && <Badge variant="outline" className="mr-1">Enabler</Badge>}
                           </div>
                         </div>
                       </div>

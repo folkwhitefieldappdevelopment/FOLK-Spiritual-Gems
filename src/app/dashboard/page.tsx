@@ -4,7 +4,7 @@
 import * as React from 'react';
 import type { Person, AppUser, UserRole } from '@/lib/types';
 import { getPeople } from '@/services/people-service';
-import { getUsers, getEnablersForGuide } from '@/services/user-service';
+import { getUsers } from '@/services/user-service';
 import { useToast } from '@/hooks/use-toast';
 import { subWeeks, startOfWeek, isAfter, format, eachDayOfInterval, startOfDay, endOfDay, isWithinInterval, addDays } from 'date-fns';
 import { Users, UserPlus, Briefcase, Loader2, Calendar as CalendarIcon } from 'lucide-react';
@@ -73,12 +73,7 @@ export default function DashboardPage() {
         // This is a tradeoff for performance vs. comprehensiveness.
         const { people: peopleData } = await getPeople(userInfo, { pageSize: 5000 }); 
 
-        let usersData: AppUser[] = [];
-        if (appUser.role.includes('Admin')) {
-            usersData = await getUsers();
-        } else if (appUser.role.includes('Folk Guide')) {
-            usersData = await getEnablersForGuide(appUser.id);
-        }
+        const usersData = await getUsers();
         
         setPeople(peopleData);
         setRelatedUsers(usersData);
@@ -161,39 +156,26 @@ export default function DashboardPage() {
     });
     const occupationData = Array.from(occupationMap.entries()).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value);
 
-    // User-based calculations
-    let enablerCountResult = 0;
-    let enablerCountDescResult = '';
-    let enablersByGuideChartData: { name: string; value: number }[] = [];
-    
-    if (appUser) {
-        if (appUser.role.includes('Admin')) {
-            const enablers = relatedUsers.filter(u => u.role.includes('Folk Enabler'));
-            enablerCountResult = enablers.length;
-            enablerCountDescResult = 'Total enablers in the system';
+    const enablers = relatedUsers.filter(u => (u.role || []).includes('Folk Enabler'));
+    const enablerCountResult = enablers.length;
+    const enablerCountDescResult = 'Total enablers in the system';
 
-            const guides = relatedUsers.filter(u => u.role.includes('Folk Guide'));
-            const guideMap = new Map<string, { name: string, count: number }>();
-            guides.forEach(g => {
-                guideMap.set(g.id, { name: `${g.name} (${g.fgCode || 'N/A'})`, count: 0 });
-            });
-            enablers.forEach(e => {
-                if (e.reportsTo?.guideId) {
-                    const guideData = guideMap.get(e.reportsTo.guideId);
-                    if (guideData) {
-                        guideData.count++;
-                    }
-                }
-            });
-            enablersByGuideChartData = Array.from(guideMap.values())
-                .map(g => ({ name: g.name, value: g.count }))
-                .sort((a,b) => b.value - a.value);
-
-        } else if (appUser.role.includes('Folk Guide')) {
-            enablerCountResult = relatedUsers.length;
-            enablerCountDescResult = 'Total enablers assigned to you';
+    const guides = relatedUsers.filter(u => (u.role || []).includes('Folk Guide'));
+    const guideMap = new Map<string, { name: string, count: number }>();
+    guides.forEach(g => {
+        guideMap.set(g.id, { name: `${g.name} (${g.fgCode || 'N/A'})`, count: 0 });
+    });
+    enablers.forEach(e => {
+        if (e.reportsTo?.guideId) {
+            const guideData = guideMap.get(e.reportsTo.guideId);
+            if (guideData) {
+                guideData.count++;
+            }
         }
-    }
+    });
+    const enablersByGuideChartData = Array.from(guideMap.values())
+        .map(g => ({ name: g.name, value: g.count }))
+        .sort((a,b) => b.value - a.value);
 
     return { 
       totalContacts: people.length,
@@ -206,7 +188,7 @@ export default function DashboardPage() {
       contactsByOccupation: occupationData,
       enablersByGuideData: enablersByGuideChartData,
     };
-  }, [people, relatedUsers, appUser]);
+  }, [people, relatedUsers]);
 
   const { dailyCallsData, dailyConfirmationsData, reportKeys } = React.useMemo(() => {
     if (!appUser || !dateRange?.from || !people.length) {
@@ -230,96 +212,50 @@ export default function DashboardPage() {
   
     const dateInterval = eachDayOfInterval({ start: from, end: to });
     
-    if (appUser.role.includes('Admin')) {
-        const guides = relatedUsers.filter(u => u.role.includes('Folk Guide'));
-        const guideIdToNameMap = new Map(guides.map(g => [g.id, `${g.name} (${g.fgCode || 'N/A'})`]));
-        const enablerIdToGuideIdMap = new Map<string, string>(); // Map enabler ID to guide ID
-        relatedUsers.filter(u => u.role.includes('Folk Enabler') && u.reportsTo?.guideId)
-            .forEach(e => enablerIdToGuideIdMap.set(e.id, e.reportsTo!.guideId));
-        
-        const reportKeys = guides.map(g => `${g.name} (${g.fgCode || 'N/A'})`);
+    const guides = relatedUsers.filter(u => (u.role || []).includes('Folk Guide'));
+    const guideIdToNameMap = new Map(guides.map(g => [g.id, `${g.name} (${g.fgCode || 'N/A'})`]));
+    const enablerIdToGuideIdMap = new Map<string, string>(); // Map enabler ID to guide ID
+    relatedUsers.filter(u => (u.role || []).includes('Folk Enabler') && u.reportsTo?.guideId)
+        .forEach(e => enablerIdToGuideIdMap.set(e.id, e.reportsTo!.guideId));
+    
+    const reportKeys = guides.map(g => `${g.name} (${g.fgCode || 'N/A'})`);
 
-        const dailyData = dateInterval.map(d => {
-            const dateStr = format(d, 'yyyy-MM-dd');
-            const entry: { date: string, [key: string]: number | string } = { date: dateStr };
-            reportKeys.forEach(name => {
-                entry[`${name}_calls`] = 0;
-                entry[`${name}_confirmations`] = 0;
-            });
-            
-            callsInRange.filter(call => call.date === dateStr).forEach(call => {
-                let guideId: string | undefined;
-                if (guideIdToNameMap.has(call.callerId)) { // Caller is a guide
-                    guideId = call.callerId;
-                } else if (enablerIdToGuideIdMap.has(call.callerId)) { // Caller is an enabler
-                    guideId = enablerIdToGuideIdMap.get(call.callerId);
+    const dailyData = dateInterval.map(d => {
+        const dateStr = format(d, 'yyyy-MM-dd');
+        const entry: { date: string, [key: string]: number | string } = { date: dateStr };
+        reportKeys.forEach(name => {
+            entry[`${name}_calls`] = 0;
+            entry[`${name}_confirmations`] = 0;
+        });
+        
+        callsInRange.filter(call => call.date === dateStr).forEach(call => {
+            let guideId: string | undefined;
+            if (guideIdToNameMap.has(call.callerId)) { // Caller is a guide
+                guideId = call.callerId;
+            } else if (enablerIdToGuideIdMap.has(call.callerId)) { // Caller is an enabler
+                guideId = enablerIdToGuideIdMap.get(call.callerId);
+            }
+
+            if (guideId && guideIdToNameMap.has(guideId)) {
+                const guideName = guideIdToNameMap.get(guideId)!;
+                entry[`${guideName}_calls`]++;
+                if (call.status === 'A1 - Coming') {
+                    entry[`${guideName}_confirmations`]++;
                 }
-
-                if (guideId && guideIdToNameMap.has(guideId)) {
-                    const guideName = guideIdToNameMap.get(guideId)!;
-                    entry[`${guideName}_calls`]++;
-                    if (call.status === 'A1 - Coming') {
-                        entry[`${guideName}_confirmations`]++;
-                    }
-                }
-            });
-            return entry;
+            }
         });
+        return entry;
+    });
 
-        const chartData = (type: 'calls' | 'confirmations') => dailyData.map(d => {
-            const entry: { date: string, [key: string]: number } = { date: d.date };
-            reportKeys.forEach(name => {
-                entry[name] = d[`${name}_${type}`] as number;
-            });
-            return entry;
+    const chartData = (type: 'calls' | 'confirmations') => dailyData.map(d => {
+        const entry: { date: string, [key: string]: number } = { date: d.date };
+        reportKeys.forEach(name => {
+            entry[name] = d[`${name}_${type}`] as number;
         });
+        return entry;
+    });
 
-        return { dailyCallsData: chartData('calls'), dailyConfirmationsData: chartData('confirmations'), reportKeys };
-    }
-
-    if (appUser.role.includes('Folk Guide')) {
-        const enablers = relatedUsers; // Users managed by the guide
-        const teamMembers = [appUser, ...enablers];
-        const teamMemberIds = new Set(teamMembers.map(u => u.id));
-        
-        const reportKeys = teamMembers.map(m => m.name);
-
-        const dailyData = dateInterval.map(d => {
-            const dateStr = format(d, 'yyyy-MM-dd');
-            const entry: { date: string, [key: string]: number | string } = { date: dateStr };
-            reportKeys.forEach(name => {
-                entry[name] = 0;
-            });
-
-            callsInRange.filter(call => call.date === dateStr && teamMemberIds.has(call.callerId)).forEach(call => {
-                 const member = teamMembers.find(m => m.id === call.callerId);
-                 if(member) {
-                    entry[member.name] = (entry[member.name] as number) + 1;
-                 }
-            });
-            return entry;
-        });
-        
-        const confirmationData = dateInterval.map(d => {
-            const dateStr = format(d, 'yyyy-MM-dd');
-            const entry: { date: string, [key: string]: number | string } = { date: dateStr };
-            reportKeys.forEach(name => {
-                entry[name] = 0;
-            });
-
-            callsInRange.filter(call => call.date === dateStr && teamMemberIds.has(call.callerId) && call.status === 'A1 - Coming').forEach(call => {
-                 const member = teamMembers.find(m => m.id === call.callerId);
-                 if(member) {
-                    entry[member.name] = (entry[member.name] as number) + 1;
-                 }
-            });
-            return entry;
-        });
-
-        return { dailyCallsData: dailyData, dailyConfirmationsData: confirmationData, reportKeys };
-    }
-
-    return { dailyCallsData: [], dailyConfirmationsData: [], reportKeys: [] };
+    return { dailyCallsData: chartData('calls'), dailyConfirmationsData: chartData('confirmations'), reportKeys };
 
   }, [dateRange, people, relatedUsers, appUser]);
   
@@ -334,18 +270,6 @@ export default function DashboardPage() {
 
     if (fetchError) {
       return <FirebaseConfigError error={fetchError} />;
-    }
-    
-    const showDailyReport = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
-    let dailyReportTitle = "Daily Activity Report";
-    let dailyReportDesc = "Calls and confirmations per enabler over the selected period.";
-
-    if (appUser?.role.includes('Admin')) {
-        dailyReportTitle = "Daily Activity Report (by Folk Guide)";
-        dailyReportDesc = "Calls and confirmations aggregated by Folk Guide over the selected period.";
-    } else if (appUser?.role.includes('Folk Guide')) {
-        dailyReportTitle = "Daily Activity Report (by Team Member)";
-        dailyReportDesc = "Calls and confirmations per enabler you manage (including yourself) over the selected period.";
     }
     
     const chartConfig = reportKeys.reduce((config, key, i) => {
@@ -391,84 +315,82 @@ export default function DashboardPage() {
               </CardContent>
           </Card>
           
-          {showDailyReport && (
-            <Card className="lg:col-span-3">
-                <CardHeader>
-                    <CardTitle>{dailyReportTitle}</CardTitle>
-                    <CardDescription>{dailyReportDesc}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-8">
-                <div className="flex justify-end">
-                    <Popover>
-                    <PopoverTrigger asChild>
-                    <Button
-                        id="date"
-                        variant={"outline"}
-                        className={cn(
-                        "w-full sm:w-[300px] justify-start text-left font-normal",
-                        !dateRange && "text-muted-foreground"
-                        )}
-                    >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dateRange?.from ? (
-                        dateRange.to ? (
-                            <>
-                            {format(dateRange.from, "LLL dd, y")} -{" "}
-                            {format(dateRange.to, "LLL dd, y")}
-                            </>
-                        ) : (
-                            format(dateRange.from, "LLL dd, y")
-                        )
-                        ) : (
-                        <span>Pick a date range</span>
-                        )}
-                    </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="end">
-                    <Calendar
-                        initialFocus
-                        mode="range"
-                        defaultMonth={dateRange?.from}
-                        selected={dateRange}
-                        onSelect={setDateRange}
-                        numberOfMonths={2}
-                    />
-                    </PopoverContent>
-                    </Popover>
-                </div>
-                <div>
-                    <h3 className="text-md font-semibold mb-4">Daily Calls</h3>
-                    <ChartContainer config={chartConfig} className="h-[300px] w-full">
-                    <LineChart data={dailyCallsData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" tickFormatter={(value) => format(new Date(value), 'MMM d')} />
-                        <YAxis allowDecimals={false} />
-                        <Tooltip content={<ChartTooltipContent />} />
-                        <ChartLegend content={<ChartLegendContent />} />
-                        {reportKeys.map((key) => (
-                          <Line key={key} type="monotone" dataKey={key} stroke={chartConfig[key]?.color} strokeWidth={2} dot={false} />
-                        ))}
-                    </LineChart>
-                    </ChartContainer>
-                </div>
-                <div>
-                    <h3 className="text-md font-semibold mb-4">Daily Confirmations (A1)</h3>
-                    <ChartContainer config={chartConfig} className="h-[300px] w-full">
-                    <LineChart data={dailyConfirmationsData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" tickFormatter={(value) => format(new Date(value), 'MMM d')} />
-                        <YAxis allowDecimals={false} />
-                        <Tooltip content={<ChartTooltipContent />} />
-                        <ChartLegend content={<ChartLegendContent />} />
-                        {reportKeys.map((key) => (
-                          <Line key={key} type="monotone" dataKey={key} stroke={chartConfig[key]?.color} strokeWidth={2} dot={false} />
-                        ))}
-                    </LineChart>
-                    </ChartContainer>
-                </div>
-                </CardContent>
-            </Card>
-          )}
+          <Card className="lg:col-span-3">
+              <CardHeader>
+                  <CardTitle>Daily Activity Report (by Folk Guide)</CardTitle>
+                  <CardDescription>Calls and confirmations aggregated by Folk Guide over the selected period.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-8">
+              <div className="flex justify-end">
+                  <Popover>
+                  <PopoverTrigger asChild>
+                  <Button
+                      id="date"
+                      variant={"outline"}
+                      className={cn(
+                      "w-full sm:w-[300px] justify-start text-left font-normal",
+                      !dateRange && "text-muted-foreground"
+                      )}
+                  >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateRange?.from ? (
+                      dateRange.to ? (
+                          <>
+                          {format(dateRange.from, "LLL dd, y")} -{" "}
+                          {format(dateRange.to, "LLL dd, y")}
+                          </>
+                      ) : (
+                          format(dateRange.from, "LLL dd, y")
+                      )
+                      ) : (
+                      <span>Pick a date range</span>
+                      )}
+                  </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                      initialFocus
+                      mode="range"
+                      defaultMonth={dateRange?.from}
+                      selected={dateRange}
+                      onSelect={setDateRange}
+                      numberOfMonths={2}
+                  />
+                  </PopoverContent>
+                  </Popover>
+              </div>
+              <div>
+                  <h3 className="text-md font-semibold mb-4">Daily Calls</h3>
+                  <ChartContainer config={chartConfig} className="h-[300px] w-full">
+                  <LineChart data={dailyCallsData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" tickFormatter={(value) => format(new Date(value), 'MMM d')} />
+                      <YAxis allowDecimals={false} />
+                      <Tooltip content={<ChartTooltipContent />} />
+                      <ChartLegend content={<ChartLegendContent />} />
+                      {reportKeys.map((key) => (
+                        <Line key={key} type="monotone" dataKey={key} stroke={chartConfig[key]?.color} strokeWidth={2} dot={false} />
+                      ))}
+                  </LineChart>
+                  </ChartContainer>
+              </div>
+              <div>
+                  <h3 className="text-md font-semibold mb-4">Daily Confirmations (A1)</h3>
+                  <ChartContainer config={chartConfig} className="h-[300px] w-full">
+                  <LineChart data={dailyConfirmationsData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" tickFormatter={(value) => format(new Date(value), 'MMM d')} />
+                      <YAxis allowDecimals={false} />
+                      <Tooltip content={<ChartTooltipContent />} />
+                      <ChartLegend content={<ChartLegendContent />} />
+                      {reportKeys.map((key) => (
+                        <Line key={key} type="monotone" dataKey={key} stroke={chartConfig[key]?.color} strokeWidth={2} dot={false} />
+                      ))}
+                  </LineChart>
+                  </ChartContainer>
+              </div>
+              </CardContent>
+          </Card>
           
           <Card className="lg:col-span-3">
             <CardHeader>
@@ -510,7 +432,7 @@ export default function DashboardPage() {
               </CardContent>
           </Card>
           
-          {appUser?.role.includes('Admin') && enablersByGuideData.length > 0 && (
+          {enablersByGuideData.length > 0 && (
             <Card className="lg:col-span-3">
               <CardHeader>
                   <CardTitle>Enablers per Folk Guide</CardTitle>

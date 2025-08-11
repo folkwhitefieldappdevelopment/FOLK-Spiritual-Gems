@@ -5,7 +5,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import type { Group, UserRole } from "@/lib/types";
-import { userRoles } from "@/lib/types";
 
 import {
   Dialog,
@@ -23,18 +22,10 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from "@/components/ui/form";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuCheckboxItem,
-} from '@/components/ui/dropdown-menu';
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useEffect, useMemo } from "react";
-import { useAuth } from "@/contexts/auth-context";
+import { useEffect } from "react";
 
 const groupFormSchema = z.object({
   name: z.string().min(2, {
@@ -43,7 +34,6 @@ const groupFormSchema = z.object({
   description: z.string().max(160, {
     message: "Description must not be longer than 160 characters.",
   }).optional(),
-  visibility: z.array(z.string()).default([]),
 });
 
 type GroupFormValues = z.infer<typeof groupFormSchema>;
@@ -51,7 +41,7 @@ type GroupFormValues = z.infer<typeof groupFormSchema>;
 type CreateUpdateGroupDialogProps = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  onSave: (data: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy" | "creatorRole">) => void;
+  onSave: (data: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy" | "creatorRole" | "visibility">) => void;
   group?: Group;
 };
 
@@ -61,14 +51,11 @@ export function CreateUpdateGroupDialog({
   onSave,
   group,
 }: CreateUpdateGroupDialogProps) {
-  const { appUser } = useAuth();
-
   const form = useForm<GroupFormValues>({
     resolver: zodResolver(groupFormSchema),
     defaultValues: {
       name: "",
       description: "",
-      visibility: [],
     },
   });
 
@@ -77,13 +64,11 @@ export function CreateUpdateGroupDialog({
       form.reset({
         name: group.name,
         description: group.description,
-        visibility: group.visibility || [],
       });
     } else {
         form.reset({
             name: "",
             description: "",
-            visibility: [],
         });
     }
   }, [group, form]);
@@ -92,24 +77,9 @@ export function CreateUpdateGroupDialog({
     onSave({
         name: data.name,
         description: data.description || '',
-        visibility: data.visibility as UserRole[],
     });
     setIsOpen(false);
   };
-  
-  const canSetVisibility = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
-  
-  const availableRolesToShare: UserRole[] = useMemo(() => {
-    if (appUser?.role.includes('Admin')) {
-      return ['Folk Guide', 'Folk Enabler'];
-    }
-    if (appUser?.role.includes('Folk Guide')) {
-      return ['Folk Enabler'];
-    }
-    return [];
-  }, [appUser]);
-
-  const selectedVisibilityRoles = form.watch('visibility');
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -154,47 +124,6 @@ export function CreateUpdateGroupDialog({
                 </FormItem>
               )}
             />
-            {canSetVisibility && (
-              <FormField
-                control={form.control}
-                name="visibility"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Share With</FormLabel>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <FormControl>
-                          <Button variant="outline" className="w-full justify-start text-left font-normal">
-                            <div className="truncate">
-                              {selectedVisibilityRoles.length > 0
-                                ? `Shared with: ${selectedVisibilityRoles.join(', ')}`
-                                : 'Private (only me)'}
-                            </div>
-                          </Button>
-                        </FormControl>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-                        {availableRolesToShare.map(role => (
-                          <DropdownMenuCheckboxItem
-                            key={role}
-                            checked={field.value.includes(role)}
-                            onCheckedChange={(checked) => {
-                              return checked
-                                ? field.onChange([...field.value, role])
-                                : field.onChange(field.value.filter(value => value !== role));
-                            }}
-                          >
-                            {role}
-                          </DropdownMenuCheckboxItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <FormDescription>Select which roles can view this group.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
             <DialogFooter>
               <Button type="submit">Save changes</Button>
             </DialogFooter>

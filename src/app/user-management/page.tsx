@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -17,7 +18,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { getUsers, updateUser, getFolkGuides, getEnablersForGuide } from '@/services/user-service';
+import { getUsers, updateUser, getFolkGuides } from '@/services/user-service';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { userRoles, type UserRole, type AppUser } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -63,7 +64,6 @@ export default function UserManagementPage() {
   const [userToDelete, setUserToDelete] = React.useState<AppUser | null>(null);
 
   const [searchTerm, setSearchTerm] = React.useState('');
-  const [roleFilter, setRoleFilter] = React.useState('');
   
   const fetchUsersAndGuides = React.useCallback(async () => {
     if (!appUser) return;
@@ -71,19 +71,8 @@ export default function UserManagementPage() {
     setIsLoadingUsers(true);
     setFetchError(null);
     try {
-      let usersPromise: Promise<AppUser[]>;
-
-      if (appUser.role.includes('Admin')) {
-        usersPromise = getUsers();
-      } else if (appUser.role.includes('Folk Guide')) {
-        const enablers = await getEnablersForGuide(appUser.id);
-        usersPromise = Promise.resolve([appUser, ...enablers]);
-      } else {
-        usersPromise = Promise.resolve([]);
-      }
-      
       const [usersData, guidesData] = await Promise.all([
-        usersPromise,
+        getUsers(),
         getFolkGuides(),
       ]);
 
@@ -212,21 +201,17 @@ export default function UserManagementPage() {
     return users
       .filter(user => {
         const searchInput = searchTerm.toLowerCase();
-        const searchMatch = searchInput
+        return searchInput
           ? user.name.toLowerCase().includes(searchInput) ||
             user.email.toLowerCase().includes(searchInput)
           : true;
-        
-        const roleMatch = roleFilter ? user.role?.includes(roleFilter as UserRole) : true;
-
-        return searchMatch && roleMatch;
       })
       .sort((a, b) => {
         const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
         const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
         return dateB.getTime() - dateA.getTime();
       });
-  }, [users, searchTerm, roleFilter]);
+  }, [users, searchTerm]);
 
   const safeDate = (timestamp: any): Date | null => {
     if (!timestamp) return null;
@@ -239,8 +224,6 @@ export default function UserManagementPage() {
     return null;
   };
 
-  const canCreateUsers = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
-
   return (
     <div className="flex min-h-screen w-full flex-col bg-background">
       <AppSidebar />
@@ -249,12 +232,10 @@ export default function UserManagementPage() {
             title="User Management"
             description="Create and manage application users."
           >
-            {canCreateUsers && (
-              <Button size="sm" onClick={handleOpenCreateDialog}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Create User
-              </Button>
-            )}
+            <Button size="sm" onClick={handleOpenCreateDialog}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Create User
+            </Button>
           </PageHeader>
           <main className="flex-1 p-4 sm:p-6 sm:pt-0">
             <div className="mx-auto max-w-4xl space-y-6">
@@ -284,15 +265,6 @@ export default function UserManagementPage() {
                             />
                         </div>
                         <div className="flex items-center gap-2">
-                          <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value === 'all' ? '' : value)}>
-                              <SelectTrigger className="w-full sm:w-[200px]">
-                                  <SelectValue placeholder="Filter by role" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                  <SelectItem value="all">All Roles</SelectItem>
-                                  {userRoles.map(role => <SelectItem key={role} value={role}>{role}</SelectItem>)}
-                              </SelectContent>
-                          </Select>
                           <Button variant="outline" size="icon" onClick={fetchUsersAndGuides} disabled={isLoadingUsers}>
                               <RefreshCw className={isLoadingUsers ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
                           </Button>
@@ -320,11 +292,6 @@ export default function UserManagementPage() {
                                 <TableBody>
                                     {filteredUsers.map(user => {
                                       const isSelf = user.id === appUser?.id;
-                                      const isManagedByGuide = appUser?.role.includes('Folk Guide') && user.reportsTo?.guideId === appUser?.id;
-                                      const isAdmin = appUser?.role.includes('Admin');
-
-                                      const canEdit = isAdmin || isManagedByGuide;
-                                      const canDelete = !isSelf && isAdmin;
 
                                       return (
                                       <TableRow key={user.id}>
@@ -343,7 +310,7 @@ export default function UserManagementPage() {
                                         <TableCell>
                                           <div className="flex flex-col gap-1">
                                             <div className="flex flex-wrap gap-1">
-                                                {user.role?.map(r => <Badge key={r} variant="secondary">{r}</Badge>)}
+                                                {(user.role || []).map(r => <Badge key={r} variant="secondary">{r}</Badge>)}
                                             </div>
                                             {user.fgCode && <Badge variant="outline">FG Code: {user.fgCode}</Badge>}
                                           </div>
@@ -354,23 +321,21 @@ export default function UserManagementPage() {
                                         <TableCell className="text-right">
                                           <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                              <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!canEdit && !canDelete}>
+                                              <Button variant="ghost" size="icon" className="h-8 w-8">
                                                 <MoreHorizontal className="h-4 w-4" />
                                               </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                              {canEdit && (
-                                                  <DropdownMenuItem onSelect={() => handleEditUser(user)}>
-                                                      <Edit className="mr-2 h-4 w-4" />
-                                                      Edit
-                                                  </DropdownMenuItem>
-                                              )}
-                                              {canDelete && (
+                                                <DropdownMenuItem onSelect={() => handleEditUser(user)}>
+                                                    <Edit className="mr-2 h-4 w-4" />
+                                                    Edit
+                                                </DropdownMenuItem>
+                                                {!isSelf && (
                                                   <DropdownMenuItem onSelect={() => setUserToDelete(user)} className="text-destructive focus:text-destructive">
                                                       <Trash2 className="mr-2 h-4 w-4" />
                                                       Delete
                                                   </DropdownMenuItem>
-                                              )}
+                                                )}
                                             </DropdownMenuContent>
                                           </DropdownMenu>
                                         </TableCell>

@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { db } from '@/lib/firebase';
@@ -76,20 +75,6 @@ export const getPeople = async (
     const peopleCollection = collection(db, 'people');
     let queryConstraints: QueryConstraint[] = [];
     
-    // --- Role-based Access Control ---
-    if (userInfo.role.includes('Admin')) {
-        // No additional constraints needed for base query.
-    } else if (userInfo.role.includes('Folk Guide')) {
-        queryConstraints.push(where('folkGuideId', '==', userInfo.id));
-    } else { // Folk Enabler
-        queryConstraints.push(
-            or(
-                where('enablerInTouchWith', '==', userInfo.name),
-                where('coEnablerId', '==', userInfo.id)
-            )
-        );
-    }
-    
     // --- Search ---
     if (search.trim()) {
         const searchTerm = search.trim().toLowerCase();
@@ -144,17 +129,6 @@ export const createPerson = async (
     throw new Error(`A contact with phone number ${personData.phone} already exists.`);
   }
 
-  let assignedEnabler = personData.enablerInTouchWith;
-  let { folkGuide, folkGuideId } = personData;
-
-  // Auto-assignment for Folk Guide if not provided
-  if (!folkGuideId) {
-    if (userInfo.role.includes('Folk Guide')) {
-      folkGuideId = userInfo.id;
-      folkGuide = `${userInfo.name}`; 
-    }
-  }
-
   const dataToSave = {
     ...personData,
     fullName: personData.fullName || '',
@@ -171,9 +145,9 @@ export const createPerson = async (
     contactSource: personData.contactSource || '',
     chantingStatus: personData.chantingStatus || 0,
     fromOtherCamp: personData.fromOtherCamp || false,
-    enablerInTouchWith: assignedEnabler || '',
-    folkGuide: folkGuide || '',
-    folkGuideId: folkGuideId || '',
+    enablerInTouchWith: personData.enablerInTouchWith || '',
+    folkGuide: personData.folkGuide || '',
+    folkGuideId: personData.folkGuideId || '',
     createdAt: serverTimestamp(),
   };
 
@@ -205,10 +179,8 @@ export const updatePerson = async (id: string, personData: Partial<Omit<Person, 
   if (dataToUpdate.lastCallAt === 'SERVER_TIMESTAMP') {
     dataToUpdate.lastCallAt = serverTimestamp();
   }
-
   if (dataToUpdate.callHistory) {
       const historyEntry = dataToUpdate.callHistory;
-      // CORRECT FIX: Use a client-side date, which is valid inside arrayUnion.
       historyEntry.calledAt = new Date();
       dataToUpdate.callHistory = arrayUnion(historyEntry);
   }
@@ -246,9 +218,6 @@ export const importPeople = async (
 ): Promise<void> => {
   if (people.length === 0) return;
 
-  const users = await getUsers();
-  const guideMap = new Map<string, AppUser>(users.filter(u => u.role.includes('Folk Guide')).map(g => [g.id, g]));
-
   const batch = writeBatch(db);
   for (const person of people) {
     const peopleCollection = collection(db, 'people');
@@ -260,37 +229,12 @@ export const importPeople = async (
     }
     
     const docRef = doc(collection(db, 'people'));
-    let assignedEnabler = person.enablerInTouchWith;
-    let { folkGuide, folkGuideId } = person;
-
-    if (userInfo.role.includes('Folk Enabler') && !userInfo.role.includes('Admin') && !userInfo.role.includes('Folk Guide')) {
-      const enablerUser = users.find(u => u.id === userInfo.id);
-      assignedEnabler = userInfo.name;
-      if (enablerUser?.reportsTo?.guideId) {
-          folkGuideId = enablerUser.reportsTo.guideId;
-          const guide = guideMap.get(folkGuideId);
-          if (guide) {
-              folkGuide = `${guide.name} (${guide.fgCode || 'N/A'})`;
-          }
-      } else {
-        folkGuide = '';
-        folkGuideId = '';
-      }
-    } else {
-      if (!folkGuideId && !folkGuide) {
-        if (userInfo.role.includes('Folk Guide')) {
-          folkGuideId = userInfo.id;
-          folkGuide = `${userInfo.name} (${guideMap.get(userInfo.id)?.fgCode || 'N/A'})`;
-        }
-      }
-    }
-    
     const dataToSave = {
         ...person,
         fullName_lowercase: (person.fullName || '').toLowerCase(),
-        enablerInTouchWith: assignedEnabler || '',
-        folkGuide: folkGuide || '',
-        folkGuideId: folkGuideId || '',
+        enablerInTouchWith: person.enablerInTouchWith || '',
+        folkGuide: person.folkGuide || '',
+        folkGuideId: person.folkGuideId || '',
         createdAt: serverTimestamp()
     };
     batch.set(docRef, dataToSave);

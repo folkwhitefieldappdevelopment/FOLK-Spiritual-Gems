@@ -132,10 +132,6 @@ export default function ContactsPage() {
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
 
-  const canAssignUsers = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
-  const isAdmin = appUser?.role.includes('Admin');
-  const isGuide = appUser?.role.includes('Folk Guide');
-  const isEnablerOnly = appUser?.role.includes('Folk Enabler') && !isAdmin && !isGuide;
   
   // Set initial state from URL search params
   React.useEffect(() => {
@@ -302,30 +298,16 @@ export default function ContactsPage() {
 
   const handleSampleDownload = React.useCallback(async () => {
     if (!appUser) return;
-    let enablersUnderGuide: AppUser[] = [];
-    if (isGuide) {
-      // This is a temporary solution as getEnablersForGuide is not available here.
-      // A better solution would be to pass this data down or refactor the service.
-      enablersUnderGuide = allUsers.filter(u => u.reportsTo?.guideId === appUser.id);
-    }
     
     const baseHeaders = [
       "fullName", "phone", "photoUrl", "age", "stayingWith",
       "occupation", "organisation", "rentDetails", "nativePlace", "sgRating",
       "contactSource", "chantingStatus", "fromOtherCamp",
-      "generalRemarks", "lastCallRemark",
+      "generalRemarks", "lastCallRemark", "enablerInTouchWith", "folkGuide"
     ];
 
-    let fullHeaders = [...baseHeaders];
-    if (!isEnablerOnly) {
-      fullHeaders.push("enablerInTouchWith");
-    }
-    if (isAdmin) {
-      fullHeaders.push("folkGuide");
-    }
-
     const customHeaders = customFields.map(f => f.label);
-    const headers = [...fullHeaders, ...customHeaders];
+    const headers = [...baseHeaders, ...customHeaders];
 
     const dummyContact: {[key: string]: any} = {
       fullName: "John Doe", phone: "9876543210", photoUrl: "https://placehold.co/100x100.png",
@@ -335,25 +317,15 @@ export default function ContactsPage() {
       generalRemarks: "Is progressing well in spiritual life.", lastCallRemark: "Confirmed for Sunday feast.",
     };
 
-    let enablerList: string[] = [];
-    let guideList: string[] = [];
-
-    if (!isEnablerOnly) {
-      if (isAdmin) {
-          enablerList = allUsers
-            .filter(u => u.role.includes('Folk Enabler') || u.role.includes('Folk Guide'))
-            .map(u => u.name)
-            .sort();
-      } else if (isGuide) {
-          enablerList = [appUser.name, ...enablersUnderGuide.map(e => e.name)].sort();
-      }
-      dummyContact.enablerInTouchWith = enablerList[0] || '';
-    }
+    const enablerList = allUsers
+      .filter(u => u.role.includes('Folk Enabler') || u.role.includes('Folk Guide'))
+      .map(u => u.name)
+      .sort();
+      
+    const guideList = folkGuides.map(g => `${g.name} (${g.fgCode || 'N/A'})`).sort();
     
-    if (isAdmin) {
-      guideList = folkGuides.map(g => `${g.name} (${g.fgCode || 'N/A'})`).sort();
-      dummyContact.folkGuide = guideList[0] || '';
-    }
+    dummyContact.enablerInTouchWith = enablerList[0] || '';
+    dummyContact.folkGuide = guideList[0] || '';
 
     customFields.forEach(f => {
       dummyContact[f.label] = f.type === 'number' ? 123 : f.type === 'boolean' ? true : `Sample ${f.type} data`;
@@ -378,13 +350,10 @@ export default function ContactsPage() {
         { Column: 'fromOtherCamp', Instruction: 'Optional. Enter TRUE or FALSE.', Example: 'FALSE' },
         { Column: 'generalRemarks', Instruction: 'Optional. Any general notes about the contact.', Example: 'Is progressing well.' },
         { Column: 'lastCallRemark', Instruction: 'Optional. Remark from the most recent call.', Example: 'Confirmed for Sunday feast.' },
+        { Column: 'enablerInTouchWith', Instruction: 'Optional. Must be an exact name from the "Dropdown Values" sheet.', Example: enablerList[0] || 'Enabler Name' },
+        { Column: 'folkGuide', Instruction: 'Optional. Must be an exact name from the "Dropdown Values" sheet.', Example: guideList[0] || 'Guide Name (FG01)' },
     ];
-    if (!isEnablerOnly) {
-        instructionsData.push({ Column: 'enablerInTouchWith', Instruction: 'Optional. Must be an exact name from the "Dropdown Values" sheet.', Example: enablerList[0] || 'Enabler Name' });
-    }
-    if (isAdmin) {
-        instructionsData.push({ Column: 'folkGuide', Instruction: 'Optional. Must be an exact name from the "Dropdown Values" sheet.', Example: guideList[0] || 'Guide Name (FG01)' });
-    }
+
     customFields.forEach(f => {
         instructionsData.push({ Column: f.label, Instruction: `Optional. Custom field of type: ${f.type}.`, Example: `Sample ${f.type} data` });
     });
@@ -399,26 +368,22 @@ export default function ContactsPage() {
     const MAX_ROWS = 1000;
     if (!worksheet['!dataValidation']) worksheet['!dataValidation'] = [];
 
-    if (!isEnablerOnly && enablerList.length > 0) {
-        const enablerColIndex = headers.indexOf("enablerInTouchWith");
-        if (enablerColIndex !== -1) {
-            const enablerCol = utils.encode_col(enablerColIndex);
-            worksheet['!dataValidation'].push({
-                sqref: `${enablerCol}2:${enablerCol}${MAX_ROWS}`,
-                validation: { type: "list", allowBlank: true, showDropDown: true, formulae: [`"=""&INDIRECT("'Dropdown Values'!B2:B${enablerList.length + 1}")`]}
-            });
-        }
+    const enablerColIndex = headers.indexOf("enablerInTouchWith");
+    if (enablerColIndex !== -1 && enablerList.length > 0) {
+        const enablerCol = utils.encode_col(enablerColIndex);
+        worksheet['!dataValidation'].push({
+            sqref: `${enablerCol}2:${enablerCol}${MAX_ROWS}`,
+            validation: { type: "list", allowBlank: true, showDropDown: true, formulae: [`"=""&INDIRECT("'Dropdown Values'!B2:B${enablerList.length + 1}")`]}
+        });
     }
 
-    if (isAdmin && guideList.length > 0) {
-        const guideColIndex = headers.indexOf("folkGuide");
-        if (guideColIndex !== -1) {
-            const guideCol = utils.encode_col(guideColIndex);
-            worksheet['!dataValidation'].push({
-                sqref: `${guideCol}2:${guideCol}${MAX_ROWS}`,
-                validation: { type: "list", allowBlank: true, showDropDown: true, formulae: [`"=""&INDIRECT("'Dropdown Values'!A2:A${guideList.length + 1}")`]}
-            });
-        }
+    const guideColIndex = headers.indexOf("folkGuide");
+    if (guideColIndex !== -1 && guideList.length > 0) {
+        const guideCol = utils.encode_col(guideColIndex);
+        worksheet['!dataValidation'].push({
+            sqref: `${guideCol}2:${guideCol}${MAX_ROWS}`,
+            validation: { type: "list", allowBlank: true, showDropDown: true, formulae: [`"=""&INDIRECT("'Dropdown Values'!A2:A${guideList.length + 1}")`]}
+        });
     }
     
     utils.book_append_sheet(workbook, worksheet, "Contacts");
@@ -457,7 +422,7 @@ export default function ContactsPage() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(link.href);
-  }, [customFields, isEnablerOnly, isAdmin, isGuide, appUser, folkGuides, allUsers]);
+  }, [customFields, appUser, folkGuides, allUsers]);
 
   const handleExport = React.useCallback(async () => {
     if (filteredAndSortedPeople.length === 0 || !appUser) {
@@ -1011,18 +976,14 @@ export default function ContactsPage() {
                       </DropdownMenuContent>
                   </DropdownMenu>
 
-                  {canAssignUsers && (
-                    <>
-                      <Button variant="outline" size="sm" onClick={() => setIsAssignEnablerDialogOpen(true)}>
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        Assign Enabler
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => setIsAssignCoEnablerDialogOpen(true)}>
-                        <UserCheck className="mr-2 h-4 w-4" />
-                        Assign Co-Enabler
-                      </Button>
-                    </>
-                  )}
+                  <Button variant="outline" size="sm" onClick={() => setIsAssignEnablerDialogOpen(true)}>
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Assign Enabler
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setIsAssignCoEnablerDialogOpen(true)}>
+                    <UserCheck className="mr-2 h-4 w-4" />
+                    Assign Co-Enabler
+                  </Button>
 
                   <AlertDialog>
                       <AlertDialogTrigger asChild>

@@ -12,12 +12,8 @@ import {
   deleteDoc,
   runTransaction,
   query,
-  where,
-  type QuerySnapshot,
-  type DocumentData,
-  or,
 } from 'firebase/firestore';
-import type { Group, AppUser, UserRole, Person } from '@/lib/types';
+import type { Group, AppUser, UserRole } from '@/lib/types';
 import { logAudit } from './audit-service';
 import { generateDynamicGroups, dynamicGroupDefinitions } from '@/lib/dynamic-groups';
 import { getPeople as getAllPeople } from './people-service';
@@ -28,40 +24,18 @@ type UserInfo = {
   role: UserRole[];
 };
 
-// This function now fetches BOTH static (Firestore) and dynamic (code-defined) groups
 export const getAllGroups = async (userInfo: UserInfo): Promise<Group[]> => {
   const staticGroups = await getStaticGroups(userInfo);
-  // Dynamic groups are generated client-side based on the current people context
   return staticGroups.sort((a,b) => a.name.localeCompare(b.name));
 };
 
-
 export const getStaticGroups = async (userInfo: UserInfo): Promise<Group[]> => {
   const groupsCollection = collection(db, 'groups');
-  
-  let q;
-  // Admins see everything, so a simple collection scan is fine.
-  if (userInfo.role.includes('Admin')) {
-    q = query(groupsCollection);
-  } else {
-    // For non-admins, use a more efficient OR query to get groups they created OR groups shared with their role.
-    const viewableRoleFilters = userInfo.role.length > 0
-      ? [where('visibility', 'array-contains-any', userInfo.role)]
-      : [];
-      
-    q = query(groupsCollection, or(
-      where('createdBy', '==', userInfo.id),
-      ...viewableRoleFilters
-    ));
-  }
-  
+  const q = query(groupsCollection);
   const snapshot = await getDocs(q);
   const results: Group[] = snapshot.docs.map(doc => {
       const groupData = { id: doc.id, ...doc.data() } as Group;
-      if (!Array.isArray(groupData.visibility)) {
-          // @ts-ignore - backward compatibility
-          groupData.visibility = groupData.visibility === 'team' ? (userInfo.role.includes('Folk Guide') ? ['Folk Enabler'] : []) : [];
-      }
+      groupData.visibility = []; // Remove visibility
       return groupData;
   });
   
@@ -75,7 +49,6 @@ export const getGroup = async (id: string, userInfo: UserInfo): Promise<Group | 
     if (!dynamicGroupDef) {
         return null;
     }
-    // Dynamic groups are based on the full set of people the user can see.
     const { people } = await getAllPeople(userInfo, {}); 
     const dynamicGroups = generateDynamicGroups(people);
     return dynamicGroups.find(g => g.id === id) || null;
@@ -86,22 +59,19 @@ export const getGroup = async (id: string, userInfo: UserInfo): Promise<Group | 
   const docSnap = await getDoc(docRef);
   if (docSnap.exists()) {
     const groupData = { id: docSnap.id, ...docSnap.data(), isDynamic: false } as Group;
-    if (!Array.isArray(groupData.visibility)) {
-       // @ts-ignore - backward compatibility
-      groupData.visibility = [];
-    }
+    groupData.visibility = [];
     return groupData;
   }
   return null;
 };
 
-export const createGroup = async (groupData: Omit<Group, 'id' | 'memberCount' | 'peopleIds' | 'createdBy' | 'creatorRole'>, userInfo: UserInfo): Promise<Group> => {
+export const createGroup = async (groupData: Omit<Group, 'id' | 'memberCount' | 'peopleIds' | 'createdBy' | 'creatorRole' | 'visibility'>, userInfo: UserInfo): Promise<Group> => {
   const groupsCollection = collection(db, 'groups');
   const dataToSave = {
     ...groupData,
     createdBy: userInfo.id,
     creatorRole: userInfo.role,
-    visibility: groupData.visibility || [],
+    visibility: [], // Always private now
     memberCount: 0,
     peopleIds: [],
     isDynamic: false,
@@ -111,9 +81,11 @@ export const createGroup = async (groupData: Omit<Group, 'id' | 'memberCount' | 
   return { id: docRef.id, ...dataToSave } as Group;
 };
 
-export const updateGroup = async (id: string, groupData: Partial<Omit<Group, 'id'>>, userInfo: UserInfo): Promise<void> => {
+export const updateGroup = async (id: string, groupData: Partial<Omit<Group, 'id' | 'visibility'>>, userInfo: UserInfo): Promise<void> => {
   const docRef = doc(db, 'groups', id);
-  await updateDoc(docRef, groupData);
+  const updateData = { ...groupData };
+  delete updateData.visibility; // Ensure visibility is not updated
+  await updateDoc(docRef, updateData);
   await logAudit('Update Group', `Updated group: ${groupData.name || id}`, userInfo);
 };
 

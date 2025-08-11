@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -11,10 +10,8 @@ type AuthGuardProps = {
   children: React.ReactNode;
 };
 
-// Define public routes that don't require authentication
 const publicRoutes = ['/login'];
 
-// Define routes and their required roles
 const routePermissions: { [key: string]: string[] } = {
   '/settings': ['Admin'],
   '/user-management': ['Admin', 'Folk Guide'],
@@ -29,59 +26,67 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const { toast } = useToast();
 
   React.useEffect(() => {
-    // This effect handles redirection for unauthenticated users and permission checks for authenticated users.
-    if (loading) {
-      return; // Wait until Firebase auth state is resolved.
-    }
+    if (loading) return; // Wait for Firebase auth to load
 
     const isPublic = publicRoutes.includes(pathname);
 
+    // Not logged in → redirect to login
     if (!user && !isPublic) {
-      // If not authenticated and not on a public page, redirect to login.
       router.replace('/login');
       return;
     }
-    
-    if (user && !appUser) {
-        // Auth is loaded, but Firestore profile is still loading. Wait for it.
-        return;
+
+    // Logged in but Firestore profile still loading (role not set yet)
+    if (user && (!appUser || appUser.role === undefined)) {
+      return;
     }
 
+    // Once appUser is loaded, do role-based checks
     if (appUser) {
-      // User is authenticated and appUser profile is loaded. Now, check permissions.
-      // Check if the user has a role assigned. If not, they shouldn't access anything.
-      if (!appUser.role || appUser.role.length === 0) {
-          toast({
-              variant: 'destructive',
-              title: 'Access Revoked',
-              description: 'You do not have a role assigned. Please contact an administrator.'
-          });
-          router.replace('/login');
-          return;
+      const roles = Array.isArray(appUser.role)
+        ? appUser.role
+        : [appUser.role].filter(Boolean);
+
+      // No role assigned → revoke access
+      if (roles.length === 0) {
+        toast({
+          variant: 'destructive',
+          title: 'Access Revoked',
+          description: 'You do not have a role assigned. Please contact an administrator.',
+        });
+        router.replace('/login');
+        return;
       }
-      
-      // Check for role-based permissions for the current route
-      const requiredRolesKey = Object.keys(routePermissions).find(route => pathname.startsWith(route));
+
+      // Check route permissions
+      const requiredRolesKey = Object.keys(routePermissions)
+        .find(route => pathname.startsWith(route));
       if (requiredRolesKey) {
-        const hasPermission = routePermissions[requiredRolesKey].some(role => appUser.role.includes(role));
+        const hasPermission = routePermissions[requiredRolesKey]
+          .some(role =>
+            roles.map(r => r.toLowerCase()).includes(role.toLowerCase())
+          );
         if (!hasPermission) {
-            toast({
-                variant: 'destructive',
-                title: 'Access Denied',
-                description: 'You do not have permission to view this page.'
-            });
-            router.replace('/dashboard'); // Redirect to a default safe page
+          toast({
+            variant: 'destructive',
+            title: 'Access Denied',
+            description: 'You do not have permission to view this page.',
+          });
+          router.replace('/dashboard');
         }
       }
     }
-
   }, [user, appUser, loading, pathname, router, toast]);
-  
-  // Render a loading spinner if Firebase auth is loading OR if the user is authenticated but their Firestore profile hasn't loaded yet.
-  // This prevents rendering the page before permissions can be checked.
-  const isAuthReady = !loading;
+
+  // Show loading spinner while:
+  // - Firebase auth is loading
+  // - Logged in but Firestore profile (role) not loaded yet
   const isPublic = publicRoutes.includes(pathname);
-  if (!isAuthReady || (isAuthReady && !appUser && !isPublic)) {
+  const isAuthReady =
+    !loading &&
+    (!user || (appUser && appUser.role !== undefined));
+
+  if (!isAuthReady && !isPublic) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin" />

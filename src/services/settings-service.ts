@@ -83,45 +83,21 @@ export const getEnablers = async (
   if (!userInfo) return [];
 
   const usersCollection = collection(db, 'users');
+  const allUsersSnapshot = await getDocs(usersCollection);
+  const allUsers = allUsersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as AppUser));
 
-  if (userInfo.role.includes('Admin')) {
-    const allUsersSnapshot = await getDocs(usersCollection);
-    const allUsers = allUsersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as AppUser));
+  const assignees = allUsers.filter(u => (u.role || []).includes('Folk Enabler') || (u.role || []).includes('Folk Guide'));
 
-    const assignees = allUsers.filter(u => u.role.includes('Folk Enabler') || u.role.includes('Folk Guide'));
-
-    const options: EnablerOption[] = assignees.map(assignee => ({
-      value: assignee.name,
-      label: assignee.name,
-    }));
-    
-    if (context === 'filter') {
-        options.unshift({ value: '__UNASSIGNED__', label: 'Unassigned' });
-    }
-
-    return options.sort((a, b) => a.label.localeCompare(b.label));
+  const options: EnablerOption[] = assignees.map(assignee => ({
+    value: assignee.name,
+    label: assignee.name,
+  }));
+  
+  if (context === 'filter') {
+      options.unshift({ value: '__UNASSIGNED__', label: 'Unassigned' });
   }
 
-  if (userInfo.role.includes('Folk Guide')) {
-    const enablersQuery = query(usersCollection, where('reportsTo.guideId', '==', userInfo.id));
-    const snapshot = await getDocs(enablersQuery);
-    const enablerUsers = snapshot.docs.map(doc => doc.data() as AppUser);
-    const selfOption = { value: userInfo.name, label: userInfo.name };
-    const enablerOptions = enablerUsers.map(enabler => ({ value: enabler.name, label: enabler.name }));
-    const options = [selfOption, ...enablerOptions];
-
-    if (context === 'filter') {
-      options.unshift({ value: '__UNASSIGNED__', label: `Unassigned` });
-    }
-
-    return options.sort((a, b) => a.label.localeCompare(b.label));
-  }
-
-  if (userInfo.role.includes('Folk Enabler')) {
-    return [{ value: userInfo.name, label: userInfo.name }];
-  }
-
-  return [];
+  return options.sort((a, b) => a.label.localeCompare(b.label));
 };
 
 export const getContactSources = async (userInfo: UserInfo): Promise<string[]> => {
