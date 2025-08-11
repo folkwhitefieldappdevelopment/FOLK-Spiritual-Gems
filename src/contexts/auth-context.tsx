@@ -11,7 +11,7 @@ const mockAppUser: AppUser = {
   name: 'Default User',
   email: 'user@example.com',
   phone: '1234567890',
-  role: [], // No roles, access is universal now
+  role: ['Admin', 'Folk Guide', 'Folk Enabler'], // Grant all roles
   createdAt: new Date().toISOString(),
 };
 
