@@ -29,7 +29,7 @@ const ensureSettingsDoc = async () => {
     const data = docSnap.data() || {};
     
     let needsUpdate = false;
-    const updates: {[key: string]: any} = {};
+    const updates: {[key:string]: any} = {};
 
     if (!docSnap.exists() || !data.contactSources) {
         updates.contactSources = defaultContactSources;
@@ -273,7 +273,7 @@ export const getCustomPersonFields = async (): Promise<CustomField[]> => {
     }));
 };
 
-export const saveCustomPersonFields = async (fields: CustomField[]): Promise<void> => {
+export const saveCustomPersonFields = async (fields: CustomField[]) => {
     const settingsDocRef = doc(db, 'settings', 'options');
     await setDoc(settingsDocRef, { customPersonFields: fields }, { merge: true });
     await logAudit('Update Custom Fields', `Updated custom fields definition.`);
@@ -285,7 +285,7 @@ export const getWhatsAppTemplate = async (): Promise<string> => {
     return settings.whatsAppTemplate;
 }
 
-export const saveWhatsAppTemplate = async (template: string): Promise<void> => {
+export const saveWhatsAppTemplate = async (template: string) => {
     const settingsDocRef = doc(db, 'settings', 'options');
     await setDoc(settingsDocRef, { whatsAppTemplate: template }, { merge: true });
     await logAudit('Update WhatsApp Template', `Updated WhatsApp message template.`);

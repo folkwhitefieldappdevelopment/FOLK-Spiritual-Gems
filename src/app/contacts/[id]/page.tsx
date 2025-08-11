@@ -44,12 +44,6 @@ import { GeneralRemarksCard } from '@/components/general-remarks-card';
 import { Badge } from '@/components/ui/badge';
 import { EditablePersonDetailsForm } from '@/components/editable-person-details-form';
 
-type UserInfo = {
-  id: string;
-  name: string;
-  role: UserRole[];
-};
-
 const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent() {
   const router = useRouter();
   const params = useParams();
@@ -69,7 +63,6 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
 
   React.useEffect(() => {
     if (!personId || !appUser) return;
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
 
     const fetchPersonAndGroups = async () => {
       setIsLoading(true);
@@ -84,7 +77,7 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
         }
 
         // Combine static and dynamic groups
-        const staticGroups = await getStaticGroups(userInfo);
+        const staticGroups = await getStaticGroups();
         const personStaticGroups = staticGroups.filter(g => g.peopleIds.includes(personData.id));
 
         const personDynamicGroups = generateDynamicGroups([personData])
@@ -112,8 +105,7 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
   const handleSavePerson = async (formData: Partial<Person>) => {
     if (!person || !appUser) return;
     try {
-      const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-      await updatePerson(person.id, formData, userInfo);
+      await updatePerson(person.id, formData);
       setPerson(prev => prev ? { ...prev, ...formData } : null);
       toast({ title: 'Person Updated', description: "The person's details have been saved." });
       setIsEditing(false);
@@ -125,8 +117,7 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
   const handleDeletePerson = async () => {
     if (!appUser) return;
     try {
-      const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-      await deletePerson(personId, userInfo);
+      await deletePerson(personId);
       toast({
         title: 'Person Deleted',
         description: 'The person has been removed from your contacts.',
@@ -169,10 +160,9 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
     const updatedPerson = { ...person, progress: newProgress };
     
     setPerson(updatedPerson); // Optimistic update
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-
+    
     try {
-      await updatePerson(personId, { progress: newProgress }, userInfo);
+      await updatePerson(personId, { progress: newProgress });
     } catch (error) {
       toast({
         variant: 'destructive',

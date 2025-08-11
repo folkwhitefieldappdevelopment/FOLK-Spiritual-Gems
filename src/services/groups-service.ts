@@ -44,7 +44,7 @@ export const getGroup = async (id: string): Promise<Group | null> => {
     if (!dynamicGroupDef) {
         return null;
     }
-    const { people } = await getAllPeople({}); 
+    const { people } = await getAllPeople({ pageSize: 10000 }); 
     const dynamicGroups = generateDynamicGroups(people);
     return dynamicGroups.find(g => g.id === id) || null;
   }

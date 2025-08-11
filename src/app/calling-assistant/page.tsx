@@ -132,8 +132,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
      setIsDataLoading(true);
       setFetchError(null);
       try {
-        const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-        const { people: peopleData } = await getPeople(userInfo, { pageSize: FIRESTORE_QUERY_LIMIT });
+        const { people: peopleData } = await getPeople({ pageSize: FIRESTORE_QUERY_LIMIT });
         setAllFetchedPeople(peopleData);
 
         const [customFieldsData, groupsData, enablersData, sourcesData, occupationsData, stayingsData, guidesData] = await Promise.all([

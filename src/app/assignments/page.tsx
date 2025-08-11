@@ -39,12 +39,6 @@ import {
 
 const ROWS_PER_PAGE = 50;
 
-type UserInfo = {
-  id: string;
-  name: string;
-  role: UserRole[];
-};
-
 export default function AssignmentsPage() {
   const { appUser } = useAuth();
   const { toast } = useToast();
@@ -64,9 +58,8 @@ export default function AssignmentsPage() {
     setIsLoading(true);
     setFetchError(null);
     try {
-      const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
       // Firestore has a hard limit of 10000 documents per query.
-      const { people: peopleData } = await getPeople(userInfo, { pageSize: 10000 });
+      const { people: peopleData } = await getPeople({ pageSize: 10000 });
       
       const allUsers = await getUsers();
       const usersToAssign = allUsers.filter(u => (u.role || []).includes('Folk Enabler'));
@@ -126,10 +119,9 @@ export default function AssignmentsPage() {
       return;
     }
     if (!appUser) return;
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
 
     try {
-      await assignEnablerToPeople(Array.from(selectedContactIds), enabler, userInfo);
+      await assignEnablerToPeople(Array.from(selectedContactIds), enabler);
       toast({ title: 'Contacts Assigned', description: `${selectedContactIds.size} contacts were assigned to ${enabler.name}.` });
       
       const guideInfo = enabler.reportsTo;
