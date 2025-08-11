@@ -2,11 +2,8 @@
 'use client';
 
 import * as React from 'react';
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut as firebaseSignOut, type User } from 'firebase/auth';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
-import { db, auth, configError } from '@/lib/firebase';
-import type { AppUser, UserRole } from '@/lib/types';
-import { useToast } from '@/hooks/use-toast';
+import type { User } from 'firebase/auth';
+import type { AppUser } from '@/lib/types';
 
 type AuthContextType = {
   user: User | null;
@@ -20,77 +17,42 @@ type AuthContextType = {
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 
+// A mock user that will be used for the entire application.
+const mockAppUser: AppUser = {
+    id: 'anonymous-user',
+    name: 'Default User',
+    email: 'user@example.com',
+    phone: '0000000000',
+    role: ['Admin'],
+    createdAt: new Date(),
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = React.useState<User | null>(null);
   const [appUser, setAppUser] = React.useState<AppUser | null>(null);
   const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<Error | null>(configError);
-  const { toast } = useToast();
 
   React.useEffect(() => {
-    if (configError) {
-      setLoading(false);
-      return;
-    }
-
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
+    // Simulate loading the user profile.
+    setTimeout(() => {
+        setAppUser(mockAppUser);
+        setLoading(false);
+    }, 250);
   }, []);
-  
-  React.useEffect(() => {
-    if (user && !appUser) {
-        const userDocRef = doc(db, 'users', user.uid);
-        const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
-            if (docSnap.exists()) {
-                const roles = docSnap.data().role as UserRole[];
-                if (!roles || roles.length === 0) {
-                     toast({
-                        variant: 'destructive',
-                        title: 'Access Revoked',
-                        description: 'You do not have a role assigned. Please contact an administrator.',
-                    });
-                    firebaseSignOut(auth);
-                } else {
-                    setAppUser({ id: docSnap.id, ...docSnap.data() } as AppUser);
-                }
-            } else {
-                // This case can happen if a user is deleted from Firestore but not from Auth.
-                toast({
-                    variant: 'destructive',
-                    title: 'Access Revoked',
-                    description: 'Your user profile could not be found.',
-                });
-                firebaseSignOut(auth);
-            }
-        });
 
-        return () => unsubscribe();
-    } else if (!user) {
-        setAppUser(null);
-    }
-  }, [user, toast]);
-
-  const signIn = async (email: string, password: string) => {
-    if (configError) throw configError;
-    await signInWithEmailAndPassword(auth, email, password);
+  const signIn = async () => {
+    console.warn("Sign-in functionality has been removed.");
   };
 
   const signOut = async () => {
-    if (configError) throw configError;
-    await firebaseSignOut(auth);
-    setAppUser(null); // Clear app user on sign out
+    console.warn("Sign-out functionality has been removed.");
   };
 
   const value = {
-    user,
+    user: null, // Firebase user is null as we are not using Firebase Auth
     appUser,
     setAppUser,
     loading,
-    error,
+    error: null,
     signIn,
     signOut,
   };
