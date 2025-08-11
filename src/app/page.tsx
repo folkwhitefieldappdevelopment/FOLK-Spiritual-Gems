@@ -10,7 +10,7 @@ export default function HomePage() {
   const router = useRouter();
 
   React.useEffect(() => {
-    router.replace('/login');
+    router.replace('/dashboard');
   }, [router]);
 
   return null; // Return null or a loader while redirecting

@@ -3,7 +3,6 @@
 
 import type { ReactNode } from "react";
 import * as React from 'react';
-import { UserNav } from './user-nav';
 import { Button } from "./ui/button";
 import { Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
@@ -89,7 +88,6 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
       </div>
       <div className="flex items-center gap-2">
         {children}
-        <UserNav />
       </div>
     </header>
   );
