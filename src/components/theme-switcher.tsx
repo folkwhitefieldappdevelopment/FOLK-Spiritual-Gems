@@ -23,6 +23,15 @@ export function ThemeSwitcher() {
   const { setTheme } = useTheme();
   const pathname = usePathname();
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
 
   if (isMobile) {
     return (

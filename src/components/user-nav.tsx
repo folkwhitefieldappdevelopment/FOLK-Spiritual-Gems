@@ -19,8 +19,13 @@ import { ChangePasswordDialog } from './change-password-dialog';
 export function UserNav() {
   const { user, appUser, signOut } = useAuth();
   const [isChangePasswordOpen, setIsChangePasswordOpen] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
 
-  if (!user || !appUser) {
+  React.useEffect(() => {
+      setMounted(true);
+  }, []);
+
+  if (!mounted || !user || !appUser) {
     return null;
   }
 
@@ -47,20 +52,6 @@ export function UserNav() {
 
                 <p className="text-xs text-muted-foreground">Email:</p>
                 <p className="text-xs leading-none text-muted-foreground truncate">{appUser.email}</p>
-
-                {appUser.fgCode && (
-                  <>
-                    <p className="text-xs text-muted-foreground">FG Code:</p>
-                    <p className="text-sm font-semibold leading-none truncate">{appUser.fgCode}</p>
-                  </>
-                )}
-
-                {appUser.reportsTo && (
-                  <>
-                    <p className="text-xs text-muted-foreground">Reports to:</p>
-                    <p className="text-sm leading-none truncate">{`${appUser.reportsTo.guideName} (${appUser.reportsTo.guideFgCode})`}</p>
-                  </>
-                )}
              </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
