@@ -1107,7 +1107,7 @@ export default function ContactsPage() {
                   </TooltipProvider>
 
                   <Button size="sm" onClick={handleAddPerson} className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
+                  <PlusCircle className="h-4 w-4 sm:mr-2" />
                   <span className="hidden sm:inline">Add Person</span>
                   </Button>
               </div>
