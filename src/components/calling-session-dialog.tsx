@@ -65,12 +65,6 @@ const callFormSchema = z.object({
 
 type CallFormValues = z.infer<typeof callFormSchema>;
 
-type UserInfo = {
-  id: string;
-  name: string;
-  role: UserRole[];
-};
-
 type CallingSessionDialogProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -162,14 +156,12 @@ const CallingSessionDialogComponent = ({
   React.useEffect(() => {
     if (isOpen) {
       const fetchTemplate = async () => {
-        if (appUser) {
-          const template = await getWhatsAppTemplate(appUser);
+          const template = await getWhatsAppTemplate();
           setWhatsAppTemplate(template);
-        }
       };
       fetchTemplate();
     }
-  }, [isOpen, appUser]);
+  }, [isOpen]);
 
   React.useEffect(() => {
     form.reset({ 
@@ -226,11 +218,10 @@ const CallingSessionDialogComponent = ({
   };
 
   const handleSaveDetails = React.useCallback(async (formData: Partial<Person>) => {
-    if (!person || !appUser) return;
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+    if (!person) return;
     setIsSubmitting(true);
     try {
-        await updatePerson(person.id, formData, userInfo);
+        await updatePerson(person.id, formData);
         toast({ title: 'Details Updated', description: "The contact's details have been saved." });
         setIsEditingDetails(false);
         // Note: We don't need to update local state here as the parent will send a new 'person' prop on next render
@@ -239,14 +230,13 @@ const CallingSessionDialogComponent = ({
     } finally {
         setIsSubmitting(false);
     }
-  }, [person, toast, appUser]);
+  }, [person, toast]);
   
   const handleSaveNotes = React.useCallback(async () => {
-    if (!person || !isNotesDirty || !appUser) return;
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+    if (!person || !isNotesDirty) return;
     setIsSavingNotes(true);
     try {
-        await updatePerson(person.id, { generalRemarks: generalRemarks }, userInfo);
+        await updatePerson(person.id, { generalRemarks: generalRemarks });
         toast({ title: 'Progress Notes Saved' });
         setIsNotesDirty(false);
     } catch (error) {
@@ -254,7 +244,7 @@ const CallingSessionDialogComponent = ({
     } finally {
         setIsSavingNotes(false);
     }
-  }, [person, isNotesDirty, generalRemarks, toast, appUser]);
+  }, [person, isNotesDirty, generalRemarks, toast]);
   
   const whatsAppLink = () => {
     if (!person) return '#';

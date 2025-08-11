@@ -128,7 +128,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   }, [currentPage, searchTerm, sortDescriptors, filters, router, pathname]);
 
   const fetchPageData = React.useCallback(async () => {
-    if (!appUser) return;
      setIsDataLoading(true);
       setFetchError(null);
       try {
@@ -163,13 +162,11 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       } finally {
         setIsDataLoading(false);
       }
-  }, [appUser]);
+  }, []);
 
   React.useEffect(() => {
-    if (appUser) {
-      fetchPageData();
-    }
-  }, [appUser, fetchPageData]);
+    fetchPageData();
+  }, [fetchPageData]);
   
   React.useEffect(() => {
     setCurrentPage(1);
