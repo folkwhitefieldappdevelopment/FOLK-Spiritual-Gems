@@ -17,19 +17,21 @@ type AuthContextType = {
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 
-// A mock user that will be used for the entire application.
-const mockAppUser: AppUser = {
-    id: 'anonymous-user',
-    name: 'Default User',
-    email: 'user@example.com',
-    phone: '0000000000',
-    role: ['Admin'],
-    createdAt: new Date(),
-};
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [appUser, setAppUser] = React.useState<AppUser | null>(null);
   const [loading, setLoading] = React.useState(true);
+
+  // A mock user that will be used for the entire application.
+  // Memoize the user object to prevent re-renders in consuming components.
+  const mockAppUser: AppUser = React.useMemo(() => ({
+      id: 'anonymous-user',
+      name: 'Default User',
+      email: 'user@example.com',
+      phone: '0000000000',
+      role: ['Admin'],
+      createdAt: new Date(),
+  }), []);
+
 
   React.useEffect(() => {
     // Simulate loading the user profile.
@@ -37,7 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAppUser(mockAppUser);
         setLoading(false);
     }, 250);
-  }, []);
+  }, [mockAppUser]);
 
   const signIn = async () => {
     console.warn("Sign-in functionality has been removed.");
