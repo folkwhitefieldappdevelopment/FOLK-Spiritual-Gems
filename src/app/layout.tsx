@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { AuthProvider } from "@/contexts/auth-context";
 import { ThemeProvider } from "@/contexts/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
+import { AuthGuard } from "@/components/auth-guard";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -36,7 +37,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            {children}
+            <AuthGuard>
+              {children}
+            </AuthGuard>
             <Toaster />
           </AuthProvider>
         </ThemeProvider>

@@ -10,6 +10,7 @@ import Link from "next/link";
 import { Users, UserSquare, Settings, Gem, Headset, UserCog, History, LayoutDashboard, UsersRound } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { ThemeSwitcher } from "./theme-switcher";
+import { UserNav } from "./user-nav";
 
 
 type PageHeaderProps = {
@@ -88,6 +89,7 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
       </div>
       <div className="flex items-center gap-2">
         {children}
+        <UserNav />
       </div>
     </header>
   );
