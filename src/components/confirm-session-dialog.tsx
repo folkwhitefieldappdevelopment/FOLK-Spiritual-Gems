@@ -17,7 +17,6 @@ import { Button } from './ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from './ui/form';
 import { Input } from './ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/auth-context';
 import { getPeople } from '@/services/people-service';
 
 const createFormSchema = (max: number) => z.object({
@@ -38,7 +37,6 @@ type ConfirmSessionDialogProps = {
 };
 
 export function ConfirmSessionDialog({ isOpen, setIsOpen, totalCount, onStartSession, searchTerm }: ConfirmSessionDialogProps) {
-  const { appUser } = useAuth();
   
   const formSchema = React.useMemo(() => createFormSchema(totalCount), [totalCount]);
   type FormValues = z.infer<typeof formSchema>;

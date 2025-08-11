@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -38,7 +39,6 @@ import {
 } from '@/components/ui/select';
 import { Loader2, Copy } from 'lucide-react';
 import { userRoles, type AppUser, type UserRole } from '@/lib/types';
-import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertTitle, AlertDescription } from './ui/alert';
 import { createUserAction } from '@/app/user-management/actions';
@@ -81,10 +81,8 @@ type CreateUserDialogProps = {
 };
 
 export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, onUserCreated }: CreateUserDialogProps) {
-  const { appUser } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [availableRoles, setAvailableRoles] = React.useState<UserRole[]>([]);
   const [signInLink, setSignInLink] = React.useState<string | null>(null);
   
   const form = useForm<UserFormValues>({
@@ -102,20 +100,10 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
   const selectedRoles = form.watch('role', user?.role || []);
   const isGuideSelected = selectedRoles.includes('Folk Guide');
   const isEnablerSelected = selectedRoles.includes('Folk Enabler');
-  const isCurrentUserGuide = appUser?.role.includes('Folk Guide');
-  const isCurrentUserAdmin = appUser?.role.includes('Admin');
-
-  React.useEffect(() => {
-    if (isCurrentUserAdmin) {
-      setAvailableRoles([...userRoles]);
-    } else if (isCurrentUserGuide) {
-      setAvailableRoles(['Folk Enabler']);
-    }
-  }, [isCurrentUserAdmin, isCurrentUserGuide]);
 
   React.useEffect(() => {
     if (isOpen) {
-      setSignInLink(null); // Reset link when dialog opens
+      setSignInLink(null); 
       if (user) {
         form.reset({
           name: user.name,
@@ -130,32 +118,24 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
           name: '',
           email: '',
           phone: '',
-          role: isCurrentUserGuide ? ['Folk Enabler'] : [],
+          role: [],
           fgCode: '',
-          guideId: isCurrentUserGuide ? appUser?.id : '',
+          guideId: '',
         });
       }
       setIsSubmitting(false);
     }
-  }, [isOpen, user, form, isCurrentUserGuide, appUser?.id]);
+  }, [isOpen, user, form]);
 
   async function onSubmit(data: UserFormValues) {
     setIsSubmitting(true);
     setSignInLink(null);
     try {
-        if (!appUser) throw new Error("Not authenticated");
-        
-        const actorInfo: { id: string; name: string; role: UserRole[] } = {
-          id: appUser.id,
-          name: appUser.name,
-          role: appUser.role,
-        };
-
-        if (user) { // Editing existing user
+        if (user) {
             await onSave(data, user.id);
             setIsOpen(false);
-        } else { // Creating new user
-            const result = await createUserAction(data, actorInfo);
+        } else {
+            const result = await createUserAction(data);
             if (result.success) {
                 toast({
                     title: 'User Record Created',
@@ -203,7 +183,7 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
                 </AlertDescription>
               </Alert>
               <div className="relative">
-                <Textarea readOnly value={signInLink} className="pr-10 h-32" />
+                <Input readOnly value={signInLink} className="pr-10" />
                 <Button 
                     type="button" 
                     size="icon" 
@@ -270,7 +250,7 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <FormControl>
-                        <Button variant="outline" className="w-full justify-start text-left font-normal" disabled={isCurrentUserGuide && !user}>
+                        <Button variant="outline" className="w-full justify-start text-left font-normal">
                           <div className="truncate">
                             {field.value?.length ? field.value.join(', ') : 'Select roles'}
                           </div>
@@ -278,7 +258,7 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
                       </FormControl>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-                      {availableRoles.map((roleOption) => (
+                      {userRoles.map((roleOption) => (
                         <DropdownMenuCheckboxItem
                           key={roleOption}
                           checked={field.value?.includes(roleOption)}
@@ -295,11 +275,6 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  {isCurrentUserGuide && !user && (
-                    <FormDescription className="text-xs">
-                        Folk Guides can only create Folk Enablers.
-                    </FormDescription>
-                   )}
                   <FormMessage />
                 </FormItem>
               )}
@@ -328,26 +303,20 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>Assign to Folk Guide</FormLabel>
-                            {isCurrentUserGuide && appUser ? (
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
                                 <FormControl>
-                                    <Input value={`${appUser.name} (${appUser.fgCode || 'N/A'})`} disabled />
+                                    <SelectTrigger>
+                                    <SelectValue placeholder="Select a Folk Guide" />
+                                    </SelectTrigger>
                                 </FormControl>
-                            ) : (
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger>
-                                        <SelectValue placeholder="Select a Folk Guide" />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        {folkGuides.map(guide => (
-                                            <SelectItem key={guide.id} value={guide.id}>
-                                                {guide.name} ({guide.fgCode || 'N/A'})
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            )}
+                                <SelectContent>
+                                    {folkGuides.map(guide => (
+                                        <SelectItem key={guide.id} value={guide.id}>
+                                            {guide.name} ({guide.fgCode || 'N/A'})
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                             <FormMessage />
                         </FormItem>
                     )}

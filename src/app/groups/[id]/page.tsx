@@ -25,7 +25,6 @@ import { getPeople, updatePerson, assignCoEnablerToPeople } from '@/services/peo
 import { getFolkGuides, updateUser } from '@/services/user-service';
 import { getEnablers, getContactSources, getCustomPersonFields, getOccupationStatuses, type EnablerOption, getStayingWithOptions } from '@/services/settings-service';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
-import { useAuth } from '@/contexts/auth-context';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -66,21 +65,15 @@ import {
 import { dynamicGroupDefinitions } from '@/lib/dynamic-groups';
 import { useRouter, useSearchParams, usePathname, useParams } from 'next/navigation';
 import { ShareGroupDialog } from '@/components/share-group-dialog';
+import { get } from 'lodash';
 
 const ROWS_PER_PAGE = 10;
 const FIRESTORE_QUERY_LIMIT = 10000;
-
-type UserInfo = {
-  id: string;
-  name: string;
-  role: UserRole[];
-};
 
 export default function GroupDetailPage() {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
-  const { appUser } = useAuth();
   const groupId = params.id as string;
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -106,7 +99,6 @@ export default function GroupDetailPage() {
   const [stayingWithOptions, setStayingWithOptions] = React.useState<string[]>([]);
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
-  const canAssignCoEnabler = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
   
   const [isManageMembersDialogOpen, setIsManageMembersDialogOpen] = React.useState(false);
   const [isAssignCoEnablerDialogOpen, setIsAssignCoEnablerDialogOpen] = React.useState(false);
@@ -117,7 +109,6 @@ export default function GroupDetailPage() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = React.useState(false);
 
-  // Set initial state from URL search params
   React.useEffect(() => {
     const params = new URLSearchParams(searchParams.toString());
     const page = parseInt(params.get('page') || '1', 10);
@@ -137,9 +128,8 @@ export default function GroupDetailPage() {
     if (filter) {
       try { setFilters(JSON.parse(filter)); } catch(e) {}
     }
-  }, []); // Run only once on mount
+  }, []); 
 
-  // Update URL when state changes
   React.useEffect(() => {
     const params = new URLSearchParams();
     if (currentPage > 1) params.set('page', String(currentPage));
@@ -154,12 +144,11 @@ export default function GroupDetailPage() {
   }, [currentPage, view, searchTerm, sortDescriptors, filters, router, pathname]);
 
   const fetchPageData = React.useCallback(async () => {
-    if (!groupId || !appUser) return;
+    if (!groupId) return;
     setIsLoading(true);
     setFetchError(null);
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     try {
-        const groupData = await getGroup(groupId, userInfo);
+        const groupData = await getGroup(groupId);
         if (!groupData) {
              toast({ variant: 'destructive', title: 'Group not found' });
              router.push('/groups');
@@ -167,7 +156,7 @@ export default function GroupDetailPage() {
         }
         setGroup(groupData);
         
-        const { people: allVisiblePeople } = await getPeople(userInfo, { pageSize: FIRESTORE_QUERY_LIMIT });
+        const { people: allVisiblePeople } = await getPeople({ pageSize: FIRESTORE_QUERY_LIMIT });
         setAllPeople(allVisiblePeople);
 
         let memberData: Person[];
@@ -181,13 +170,13 @@ export default function GroupDetailPage() {
         setMembers(memberData);
         
       const [allGroupsData, enablersData, sourcesData, occupationsData, stayingsData, guidesData, customFieldsData] = await Promise.all([
-        getStaticGroups(userInfo),
-        getEnablers(userInfo, 'filter'),
-        getContactSources(userInfo),
-        getOccupationStatuses(userInfo),
-        getStayingWithOptions(userInfo),
+        getStaticGroups(),
+        getEnablers('filter'),
+        getContactSources(),
+        getOccupationStatuses(),
+        getStayingWithOptions(),
         getFolkGuides(),
-        getCustomPersonFields(userInfo),
+        getCustomPersonFields(),
       ]);
       
       setAllGroups(allGroupsData);
@@ -205,13 +194,13 @@ export default function GroupDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [groupId, appUser, router, toast]);
+  }, [groupId, router, toast]);
 
   React.useEffect(() => {
-    if (appUser && groupId) {
+    if (groupId) {
       fetchPageData();
     }
-  }, [appUser, groupId, fetchPageData]);
+  }, [groupId, fetchPageData]);
   
   const filterableFields: FilterableField[] = React.useMemo(() => {
     const standardFields: FilterableField[] = [
@@ -250,7 +239,6 @@ export default function GroupDetailPage() {
   const filteredAndSortedMembers = React.useMemo(() => {
     let people = [...members];
     
-    // Apply main search term
     if (searchTerm.trim()) {
         const lowercasedTerm = searchTerm.toLowerCase();
         people = people.filter(p => 
@@ -259,15 +247,13 @@ export default function GroupDetailPage() {
         );
     }
 
-    // Apply advanced filters
     people = applyClientSideFilters(people, filters);
 
-    // Apply sorting
     if (sortDescriptors.length > 0) {
         people.sort((a, b) => {
             for (const desc of sortDescriptors) {
-                const valA = a[desc.field as keyof Person];
-                const valB = b[desc.field as keyof Person];
+                const valA = get(a, desc.field);
+                const valB = get(b, desc.field);
                 let comparison = 0;
                 if (valA === null || valA === undefined) comparison = -1;
                 else if (valB === null || valB === undefined) comparison = 1;
@@ -300,10 +286,9 @@ export default function GroupDetailPage() {
   }, []);
   
   const handleRemoveMembers = React.useCallback(async (idsToRemove: string[]) => {
-    if (!group || group.isDynamic || !appUser) return;
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+    if (!group || group.isDynamic) return;
     try {
-      await removePeopleFromGroup(group.id, idsToRemove, userInfo);
+      await removePeopleFromGroup(group.id, idsToRemove);
       fetchPageData(); // Refetch data
       toast({
         title: 'Members Removed',
@@ -313,13 +298,12 @@ export default function GroupDetailPage() {
     } catch(e) {
       toast({ variant: 'destructive', title: 'Error removing members' });
     }
-  }, [group, toast, appUser, fetchPageData]);
+  }, [group, toast, fetchPageData]);
   
   const handleSavePersonDialog = React.useCallback(async (personData: Omit<Person, 'id' | 'progress' | 'createdAt'>) => {
-    if (!editingPerson || !appUser) return;
+    if (!editingPerson) return;
     try {
-      const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-      await updatePerson(editingPerson.id, personData, userInfo);
+      await updatePerson(editingPerson.id, personData);
       
       const updatedPerson = { ...editingPerson, ...personData };
       setMembers(members.map(m => m.id === updatedPerson.id ? updatedPerson : m));
@@ -330,19 +314,18 @@ export default function GroupDetailPage() {
     } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not update person details.'});
     }
-  }, [editingPerson, members, allPeople, toast, appUser]);
+  }, [editingPerson, members, allPeople, toast]);
   
   const handleSaveMembers = React.useCallback(async (memberIds: string[]) => {
-    if (!group || group.isDynamic || !appUser) return;
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+    if (!group || group.isDynamic) return;
     try {
-      await addPeopleToGroup(groupId, memberIds, userInfo);
-      await fetchPageData(); // Refetch to get updated members
+      await addPeopleToGroup(groupId, memberIds);
+      await fetchPageData(); 
       toast({title: 'Members Updated', description: `Group members for '${group.name}' have been saved.`});
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not update group members.'});
     }
-  }, [group, groupId, toast, appUser, fetchPageData]);
+  }, [group, groupId, toast, fetchPageData]);
   
   const handleSelectionChange = React.useCallback((personId: string, checked: boolean) => {
     setSelectedIds(prev => {
@@ -354,29 +337,27 @@ export default function GroupDetailPage() {
   }, []);
 
   const handleAddToGroup = React.useCallback(async (targetGroupId: string) => {
-    if (selectedIds.size === 0 || !appUser) return;
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+    if (selectedIds.size === 0) return;
     try {
-      await addPeopleToGroup(targetGroupId, Array.from(selectedIds), userInfo);
+      await addPeopleToGroup(targetGroupId, Array.from(selectedIds));
       toast({ title: 'Members Added', description: `${selectedIds.size} contacts have been added to the other group.` });
       setSelectedIds(new Set());
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not add contacts to the group.'});
     }
-  }, [selectedIds, toast, appUser]);
+  }, [selectedIds, toast]);
 
   const handleAssignCoEnabler = React.useCallback(async (coEnabler: AppUser | null) => {
-    if (!appUser || selectedIds.size === 0) return;
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+    if (selectedIds.size === 0) return;
     try {
-      await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler, userInfo);
+      await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler);
       toast({ title: coEnabler ? 'Co-Enabler Assigned' : 'Co-Enabler Unassigned', description: `${selectedIds.size} contacts have been updated.` });
       fetchPageData(); // Refetch to show changes
       setSelectedIds(new Set());
     } catch (error) {
        toast({ variant: "destructive", title: "Error", description: "Could not assign co-enabler." });
     }
-  }, [selectedIds, toast, fetchPageData, appUser]);
+  }, [selectedIds, toast, fetchPageData]);
 
   const handleExportMembers = React.useCallback(() => {
     if (!group || members.length === 0) return;
@@ -392,10 +373,9 @@ export default function GroupDetailPage() {
 
   const handleImportMembers = React.useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !appUser || !group) return;
+    if (!file || !group) return;
     
     setIsImporting(true);
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     
     try {
         const reader = new FileReader();
@@ -412,7 +392,7 @@ export default function GroupDetailPage() {
                     throw new Error("No phone numbers found in the file.");
                 }
                 
-                const result = await addPeopleToGroupByPhone(groupId, phoneNumbers, userInfo);
+                const result = await addPeopleToGroupByPhone(groupId, phoneNumbers);
 
                 toast({
                     title: 'Import Complete',
@@ -433,7 +413,7 @@ export default function GroupDetailPage() {
         setIsImporting(false);
     }
 
-  }, [appUser, group, groupId, toast, fetchPageData]);
+  }, [group, groupId, toast, fetchPageData]);
 
   const renderContent = () => {
     if (isLoading) return <div className="flex min-h-[50vh] w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -467,7 +447,7 @@ export default function GroupDetailPage() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
-                {canAssignCoEnabler && <Button variant="outline" size="sm" onClick={() => setIsAssignCoEnablerDialogOpen(true)}><UserCheck className="mr-2 h-4 w-4" /> Assign Co-Enabler</Button>}
+                <Button variant="outline" size="sm" onClick={() => setIsAssignCoEnablerDialogOpen(true)}><UserCheck className="mr-2 h-4 w-4" /> Assign Co-Enabler</Button>
                 {!group.isDynamic && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild><Button variant="destructive" size="sm"><Trash2 className="mr-2 h-4 w-4" /> Remove from Group</Button></AlertDialogTrigger>

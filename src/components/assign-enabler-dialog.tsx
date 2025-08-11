@@ -2,7 +2,6 @@
 "use client";
 
 import * as React from "react";
-import { useAuth } from "@/contexts/auth-context";
 import { getUsers, getEnablersForGuide } from "@/services/user-service";
 import type { AppUser } from "@/lib/types";
 import {
@@ -37,25 +36,19 @@ export function AssignEnablerDialog({
   onSave,
   peopleCount,
 }: AssignEnablerDialogProps) {
-  const { appUser } = useAuth();
   const { toast } = useToast();
   const [enablers, setEnablers] = React.useState<AppUser[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [selectedEnablerId, setSelectedEnablerId] = React.useState<string>("");
 
   React.useEffect(() => {
-    if (!isOpen || !appUser) return;
+    if (!isOpen) return;
     
     const fetchEnablers = async () => {
         setIsLoading(true);
         try {
-            let availableEnablers: AppUser[] = [];
-            if (appUser.role.includes('Admin')) {
-                const allUsers = await getUsers();
-                availableEnablers = allUsers.filter(u => u.role.includes('Folk Enabler'));
-            } else if (appUser.role.includes('Folk Guide')) {
-                availableEnablers = await getEnablersForGuide(appUser.id);
-            }
+            const allUsers = await getUsers();
+            const availableEnablers = allUsers.filter(u => u.role.includes('Folk Enabler'));
             setEnablers(availableEnablers.sort((a,b) => a.name.localeCompare(b.name)));
         } catch (error) {
             console.error("Failed to fetch enablers", error);
@@ -66,7 +59,7 @@ export function AssignEnablerDialog({
     };
     
     fetchEnablers();
-  }, [isOpen, appUser, toast]);
+  }, [isOpen, toast]);
 
   const handleSave = () => {
     const selectedEnabler = enablers.find(h => h.id === selectedEnablerId);
@@ -76,7 +69,6 @@ export function AssignEnablerDialog({
     setIsOpen(false);
   };
   
-  // Reset state when closing
   React.useEffect(() => {
     if (!isOpen) {
         setSelectedEnablerId("");

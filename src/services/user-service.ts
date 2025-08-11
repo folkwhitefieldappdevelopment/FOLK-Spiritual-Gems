@@ -15,20 +15,12 @@ import {
 import type { AppUser, UserRole } from '@/lib/types';
 import { logAudit } from './audit-service';
 
-type UserData = Omit<AppUser, 'id' | 'createdAt'>;
-
-type UserInfo = {
-  id: string;
-  name: string;
-  role: UserRole[];
-};
-
 /**
  * Updates a user record in the 'users' Firestore collection.
  * @param id The ID of the user to update.
  * @param userData The data to update.
  */
-export const updateUser = async (id: string, userData: { [key: string]: any }, actorInfo: UserInfo | null = null): Promise<void> => {
+export const updateUser = async (id: string, userData: { [key: string]: any }): Promise<void> => {
   const userDocRef = doc(db, 'users', id);
   if (userData.email) {
     const q = query(collection(db, 'users'), where("email", "==", userData.email));
@@ -58,10 +50,7 @@ export const updateUser = async (id: string, userData: { [key: string]: any }, a
 
 
   await updateDoc(userDocRef, dataToUpdate);
-  
-  if (actorInfo) {
-    await logAudit('Update User', `Updated user: ${userData.name || id}`, actorInfo);
-  }
+  await logAudit('Update User', `Updated user: ${userData.name || id}`);
 };
 
 /**

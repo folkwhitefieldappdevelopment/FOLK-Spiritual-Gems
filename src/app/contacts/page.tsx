@@ -15,8 +15,6 @@ import {
   Info,
   UserPlus,
   Contact,
-  Filter as FilterIcon,
-  ArrowDownAZ,
 } from "lucide-react";
 import { read, utils, write, type WorkSheet } from "xlsx";
 import JSZip from "jszip";
@@ -133,7 +131,6 @@ export default function ContactsPage() {
   const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
 
   
-  // Set initial state from URL search params
   React.useEffect(() => {
     const params = new URLSearchParams(searchParams.toString());
     const page = parseInt(params.get('page') || '1', 10);
@@ -153,9 +150,8 @@ export default function ContactsPage() {
     if (filter) {
       try { setFilters(JSON.parse(filter)); } catch(e) {}
     }
-  }, []); // Run only once on mount
+  }, []); 
 
-  // Update URL when state changes
   React.useEffect(() => {
     const params = new URLSearchParams();
     if (currentPage > 1) params.set('page', String(currentPage));
@@ -170,23 +166,21 @@ export default function ContactsPage() {
   }, [currentPage, view, searchTerm, sortDescriptors, filters, router, pathname]);
 
   const fetchPageData = React.useCallback(async () => {
-    if (!appUser) return;
     setIsLoading(true);
     setFetchError(null);
     try {
-      const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-      const { people: peopleData, totalCount } = await getPeople(userInfo, { pageSize: FIRESTORE_QUERY_LIMIT });
+      const { people: peopleData } = await getPeople({ pageSize: FIRESTORE_QUERY_LIMIT });
       setAllFetchedPeople(peopleData);
       
       const [allUsersData, groupsData, enablersData, sourcesData, occupationsData, stayingsData, guidesData, customFieldsData] = await Promise.all([
         getUsers(),
-        getAllGroups(userInfo),
-        getEnablers(userInfo, 'filter'),
-        getContactSources(userInfo),
-        getOccupationStatuses(userInfo),
-        getStayingWithOptions(userInfo),
+        getAllGroups(),
+        getEnablers('filter'),
+        getContactSources(),
+        getOccupationStatuses(),
+        getStayingWithOptions(),
         getFolkGuides(),
-        getCustomPersonFields(userInfo),
+        getCustomPersonFields(),
       ]);
       setAllUsers(allUsersData);
       setGroups(groupsData);
@@ -206,13 +200,11 @@ export default function ContactsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [appUser]);
+  }, []);
 
   React.useEffect(() => {
-    if (appUser) {
-      fetchPageData();
-    }
-  }, [appUser, fetchPageData]);
+    fetchPageData();
+  }, [fetchPageData]);
   
   React.useEffect(() => {
     setCurrentPage(1);
@@ -256,7 +248,6 @@ export default function ContactsPage() {
   const filteredAndSortedPeople = React.useMemo(() => {
     let people = [...allFetchedPeople];
     
-    // Apply main search term
     if (searchTerm.trim()) {
         const lowercasedTerm = searchTerm.toLowerCase();
         people = people.filter(p => 
@@ -265,10 +256,8 @@ export default function ContactsPage() {
         );
     }
 
-    // Apply advanced filters
     people = applyClientSideFilters(people, filters);
 
-    // Apply sorting
     if (sortDescriptors.length > 0) {
         people.sort((a, b) => {
             for (const desc of sortDescriptors) {
@@ -297,8 +286,6 @@ export default function ContactsPage() {
   }, [filteredAndSortedPeople, currentPage]);
 
   const handleSampleDownload = React.useCallback(async () => {
-    if (!appUser) return;
-    
     const baseHeaders = [
       "fullName", "phone", "photoUrl", "age", "stayingWith",
       "occupation", "organisation", "rentDetails", "nativePlace", "sgRating",
@@ -333,7 +320,6 @@ export default function ContactsPage() {
 
     const workbook = utils.book_new();
 
-    // 1. Create Instructions Sheet
     const instructionsData = [
         { Column: 'fullName', Instruction: 'Required. Full name of the contact.', Example: 'John Doe' },
         { Column: 'phone', Instruction: 'Required. 10-digit Indian mobile number without country code.', Example: '9876543210' },
@@ -362,7 +348,6 @@ export default function ContactsPage() {
     instructionsSheet['!cols'] = [{ wch: 20 }, { wch: 80 }, { wch: 30 }];
     utils.book_append_sheet(workbook, instructionsSheet, "Instructions");
 
-    // 2. Create Contacts Sheet
     const worksheet: WorkSheet = utils.json_to_sheet([dummyContact], { header: headers });
     
     const MAX_ROWS = 1000;
@@ -388,7 +373,6 @@ export default function ContactsPage() {
     
     utils.book_append_sheet(workbook, worksheet, "Contacts");
     
-    // 3. Create Dropdown Values Sheet
     if (enablerList.length > 0 || guideList.length > 0) {
         const maxLength = Math.max(guideList.length, enablerList.length);
         const dropdownSheetData = [];
@@ -403,7 +387,6 @@ export default function ContactsPage() {
         utils.book_append_sheet(workbook, dropdownWorksheet, "Dropdown Values");
     }
 
-    // Reorder sheets to put Instructions first
     if(workbook.SheetNames.length > 1) {
       const instructionsIndex = workbook.SheetNames.indexOf('Instructions');
       if (instructionsIndex > 0) {
@@ -422,10 +405,10 @@ export default function ContactsPage() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(link.href);
-  }, [customFields, appUser, folkGuides, allUsers]);
+  }, [customFields, folkGuides, allUsers]);
 
   const handleExport = React.useCallback(async () => {
-    if (filteredAndSortedPeople.length === 0 || !appUser) {
+    if (filteredAndSortedPeople.length === 0) {
       toast({
         variant: "destructive",
         title: "No Contacts to Export",
@@ -435,8 +418,6 @@ export default function ContactsPage() {
     }
 
     setIsExporting(true);
-    
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     
     const zip = new JSZip();
     const photosFolder = zip.folder("photos");
@@ -524,7 +505,7 @@ export default function ContactsPage() {
         title: 'Export Successful',
         description: `Exported ${filteredAndSortedPeople.length} contacts in contacts_export.zip.`,
       });
-      await logAudit('Export Contacts', `Exported ${filteredAndSortedPeople.length} contacts.`, { id: appUser.id, name: appUser.name, role: appUser.role });
+      if (appUser) await logAudit('Export Contacts', `Exported ${filteredAndSortedPeople.length} contacts.`, { id: appUser.id, name: appUser.name, role: appUser.role });
 
     } catch (err) {
       console.error("Failed to generate zip file:", err);
@@ -600,16 +581,10 @@ export default function ContactsPage() {
 
   const handleFileImport = React.useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !appUser) return;
+    if (!file) return;
 
     setImportingStatus("Reading file...");
 
-    const userInfo: UserInfo = {
-      id: appUser.id,
-      name: appUser.name,
-      role: appUser.role,
-    };
-    
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
@@ -691,7 +666,7 @@ export default function ContactsPage() {
         for (let i = 0; i < allNewPeople.length; i += 50) {
             const batch = allNewPeople.slice(i, i + 50);
             setImportingStatus(`Importing ${i + batch.length} of ${allNewPeople.length}...`);
-            await importPeople(batch, userInfo);
+            await importPeople(batch);
         }
 
         await fetchPageData();
@@ -715,7 +690,7 @@ export default function ContactsPage() {
       }
     };
     reader.readAsArrayBuffer(file);
-  }, [appUser, toast, customFields, fetchPageData]);
+  }, [toast, customFields, fetchPageData]);
 
   const handleAddPerson = React.useCallback(() => {
     setEditingPerson(undefined);
@@ -728,10 +703,8 @@ export default function ContactsPage() {
   }, []);
 
   const handleDeletePerson = React.useCallback(async (personId: string) => {
-    if (!appUser) return;
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     try {
-      await deletePerson(personId, userInfo);
+      await deletePerson(personId);
       toast({
         title: "Person Deleted",
         description: "The person has been removed from your contacts.",
@@ -744,13 +717,11 @@ export default function ContactsPage() {
         description: "Could not delete person.",
       });
     }
-  }, [toast, appUser, fetchPageData]);
+  }, [toast, fetchPageData]);
 
   const handleDeleteSelected = React.useCallback(async () => {
-    if (!appUser) return;
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     try {
-      await deletePeople(Array.from(selectedIds), userInfo);
+      await deletePeople(Array.from(selectedIds));
       toast({
         title: "Contacts Deleted",
         description: `${selectedIds.size} contacts have been removed.`,
@@ -764,15 +735,13 @@ export default function ContactsPage() {
         description: "Could not delete the selected contacts.",
       });
     }
-  }, [selectedIds, toast, appUser, fetchPageData]);
+  }, [selectedIds, toast, fetchPageData]);
 
 
   const handleSavePerson = React.useCallback(async (personData: Omit<Person, "id" | "progress" | "createdAt">) => {
-    if (!appUser) return;
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     try {
       if (editingPerson) {
-        await updatePerson(editingPerson.id, personData, userInfo);
+        await updatePerson(editingPerson.id, personData);
         toast({
           title: "Person Updated",
           description: "The person's details have been saved.",
@@ -782,7 +751,7 @@ export default function ContactsPage() {
           ...personData,
           progress: createInitialProgress(),
         };
-        await createPerson(newPersonData as Omit<Person, 'id' | 'createdAt'>, userInfo);
+        await createPerson(newPersonData as Omit<Person, 'id' | 'createdAt'>);
         toast({
           title: "Person Added",
           description: "The new person has been added to your contacts.",
@@ -799,13 +768,12 @@ export default function ContactsPage() {
       });
       throw error;
     }
-  }, [appUser, toast, editingPerson, fetchPageData]);
+  }, [toast, editingPerson, fetchPageData]);
   
   const handleAddToGroup = React.useCallback(async (groupId: string) => {
-    if (selectedIds.size === 0 || !appUser) return;
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+    if (selectedIds.size === 0) return;
     try {
-      await addPeopleToGroup(groupId, Array.from(selectedIds), userInfo);
+      await addPeopleToGroup(groupId, Array.from(selectedIds));
       toast({
         title: "Members Added",
         description: `${selectedIds.size} contacts have been added to the group.`,
@@ -818,21 +786,19 @@ export default function ContactsPage() {
         description: "Could not add contacts to the group.",
       });
     }
-  }, [selectedIds, toast, appUser]);
+  }, [selectedIds, toast]);
 
   const handleSaveGroupAndAddMembers = React.useCallback(async (groupData: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy">) => {
-    if (!appUser) return;
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     try {
       const newGroupData: Omit<Group, 'id' | 'createdBy'> = {
         memberCount: 0,
         peopleIds: [],
         ...groupData,
       };
-      const newGroup = await createGroup(newGroupData, userInfo);
+      const newGroup = await createGroup(newGroupData);
       
       if (selectedIds.size > 0) {
-        await addPeopleToGroup(newGroup.id, Array.from(selectedIds), userInfo);
+        await addPeopleToGroup(newGroup.id, Array.from(selectedIds));
          toast({
           title: "Group Created & Members Added",
           description: `The group "${newGroup.name}" was created and ${selectedIds.size} contacts were added.`,
@@ -853,13 +819,12 @@ export default function ContactsPage() {
         description: "Could not create or add members to the new group.",
       });
     }
-  }, [selectedIds, appUser, toast, fetchPageData]);
+  }, [selectedIds, toast, fetchPageData]);
   
   const handleAssignCoEnabler = React.useCallback(async (coEnabler: AppUser | null) => {
-    if (!appUser || selectedIds.size === 0) return;
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+    if (selectedIds.size === 0) return;
     try {
-      await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler, userInfo);
+      await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler);
       toast({
         title: coEnabler ? 'Co-Enabler Assigned' : 'Co-Enabler Unassigned',
         description: `${selectedIds.size} contacts have been updated.`,
@@ -873,13 +838,12 @@ export default function ContactsPage() {
         description: "Could not assign co-enabler.",
       });
     }
-  }, [selectedIds, toast, fetchPageData, appUser]);
+  }, [selectedIds, toast, fetchPageData]);
 
   const handleAssignEnabler = React.useCallback(async (enabler: AppUser) => {
-    if (!appUser || selectedIds.size === 0) return;
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+    if (selectedIds.size === 0) return;
     try {
-        await assignEnablerToPeople(Array.from(selectedIds), enabler, userInfo);
+        await assignEnablerToPeople(Array.from(selectedIds), enabler);
         toast({
             title: 'Enabler Assigned',
             description: `${selectedIds.size} contacts have been assigned to ${enabler.name}.`,
@@ -889,7 +853,7 @@ export default function ContactsPage() {
     } catch (error) {
         toast({ variant: "destructive", title: "Error", description: "Could not assign the enabler." });
     }
-  }, [selectedIds, toast, fetchPageData, appUser]);
+  }, [selectedIds, toast, fetchPageData]);
 
   const isLoadingAction = !!importingStatus || isExporting;
   const loadingText = typeof importingStatus === 'string' ? importingStatus : (isExporting ? 'Exporting...' : '');
@@ -1143,7 +1107,7 @@ export default function ContactsPage() {
                   </TooltipProvider>
 
                   <Button size="sm" onClick={handleAddPerson} className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3" disabled={isLoadingAction}>
-                  <PlusCircle className="h-4 w-4 sm:mr-2" />
+                  <PlusCircle className="mr-2 h-4 w-4" />
                   <span className="hidden sm:inline">Add Person</span>
                   </Button>
               </div>

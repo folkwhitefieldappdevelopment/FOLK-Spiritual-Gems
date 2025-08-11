@@ -2,7 +2,6 @@
 "use client";
 
 import * as React from "react";
-import { useAuth } from "@/contexts/auth-context";
 import { getUsers, getEnablersForGuide } from "@/services/user-service";
 import type { AppUser } from "@/lib/types";
 import {
@@ -37,25 +36,19 @@ export function AssignCoEnablerDialog({
   onSave,
   peopleCount,
 }: AssignCoEnablerDialogProps) {
-  const { appUser } = useAuth();
   const { toast } = useToast();
   const [coEnablers, setCoEnablers] = React.useState<AppUser[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [selectedCoEnablerId, setSelectedCoEnablerId] = React.useState<string>("");
 
   React.useEffect(() => {
-    if (!isOpen || !appUser) return;
+    if (!isOpen) return;
     
     const fetchCoEnablers = async () => {
         setIsLoading(true);
         try {
-            let availableCoEnablers: AppUser[] = [];
-            if (appUser.role.includes('Admin')) {
-                const allUsers = await getUsers();
-                availableCoEnablers = allUsers.filter(u => u.role.includes('Folk Enabler'));
-            } else if (appUser.role.includes('Folk Guide')) {
-                availableCoEnablers = await getEnablersForGuide(appUser.id);
-            }
+            const allUsers = await getUsers();
+            const availableCoEnablers = allUsers.filter(u => u.role.includes('Folk Enabler'));
             setCoEnablers(availableCoEnablers.sort((a,b) => a.name.localeCompare(b.name)));
         } catch (error) {
             console.error("Failed to fetch co-enablers", error);
@@ -66,7 +59,7 @@ export function AssignCoEnablerDialog({
     };
     
     fetchCoEnablers();
-  }, [isOpen, appUser, toast]);
+  }, [isOpen, toast]);
 
   const handleSave = () => {
     if (selectedCoEnablerId === '__UNASSIGN__') {
@@ -80,7 +73,6 @@ export function AssignCoEnablerDialog({
     setIsOpen(false);
   };
   
-  // Reset state when closing
   React.useEffect(() => {
     if (!isOpen) {
         setSelectedCoEnablerId("");

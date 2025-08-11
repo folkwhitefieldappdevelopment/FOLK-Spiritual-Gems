@@ -14,12 +14,6 @@ import {
 import type { AppUser, CustomField, UserRole } from '@/lib/types';
 import { logAudit } from './audit-service';
 
-type UserInfo = {
-  id: string;
-  name: string;
-  role: UserRole[];
-};
-
 const defaultContactSources = ['Govinda Temple', 'ITPL', 'HK hill'];
 const defaultOccupationStatuses = ['Working', 'Student', 'Searching for job'];
 const defaultStayingWithOptions = ['PG / Hostel', 'Flat', 'Family'];
@@ -29,10 +23,7 @@ export type EnablerOption = {
   label: string;
 };
 
-const ensureSettingsDoc = async (userInfo: UserInfo) => {
-    if (!userInfo) {
-        throw new Error("Authentication required to access settings.");
-    }
+const ensureSettingsDoc = async () => {
     const settingsDocRef = doc(db, 'settings', 'options');
     const docSnap = await getDoc(settingsDocRef);
     const data = docSnap.data() || {};
@@ -77,11 +68,8 @@ const ensureSettingsDoc = async (userInfo: UserInfo) => {
 }
 
 export const getEnablers = async (
-  userInfo: UserInfo | null,
   context: 'filter' | 'assignment' = 'filter'
 ): Promise<EnablerOption[]> => {
-  if (!userInfo) return [];
-
   const usersCollection = collection(db, 'users');
   const allUsersSnapshot = await getDocs(usersCollection);
   const allUsers = allUsersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as AppUser));
@@ -100,29 +88,29 @@ export const getEnablers = async (
   return options.sort((a, b) => a.label.localeCompare(b.label));
 };
 
-export const getContactSources = async (userInfo: UserInfo): Promise<string[]> => {
-    const settings = await ensureSettingsDoc(userInfo);
+export const getContactSources = async (): Promise<string[]> => {
+    const settings = await ensureSettingsDoc();
     return settings.contactSources.sort((a:string, b:string) => a.localeCompare(b));
 }
 
-export const addContactSource = async (newSource: string, userInfo: UserInfo) => {
+export const addContactSource = async (newSource: string) => {
     const settingsDocRef = doc(db, 'settings', 'options');
-    const settings = await ensureSettingsDoc(userInfo);
+    const settings = await ensureSettingsDoc();
     const currentSources = settings.contactSources;
     if (!currentSources.includes(newSource)) {
         const updatedSources = [...currentSources, newSource];
         await setDoc(settingsDocRef, { contactSources: updatedSources }, { merge: true });
-        await logAudit('Add Contact Source', `Added source: ${newSource}`, userInfo);
+        await logAudit('Add Contact Source', `Added source: ${newSource}`);
         return updatedSources;
     }
     return currentSources;
 }
 
-export const updateContactSource = async (oldName: string, newName: string, userInfo: UserInfo) => {
+export const updateContactSource = async (oldName: string, newName: string) => {
     const batch = writeBatch(db);
     const settingsDocRef = doc(db, 'settings', 'options');
 
-    const settings = await ensureSettingsDoc(userInfo);
+    const settings = await ensureSettingsDoc();
     const currentSources = settings.contactSources;
     const updatedSources = currentSources.map((s:string) => s === oldName ? newName : s);
     batch.set(settingsDocRef, { contactSources: updatedSources }, { merge: true });
@@ -134,15 +122,15 @@ export const updateContactSource = async (oldName: string, newName: string, user
     });
 
     await batch.commit();
-    await logAudit('Update Contact Source', `Renamed source from "${oldName}" to "${newName}"`, userInfo);
+    await logAudit('Update Contact Source', `Renamed source from "${oldName}" to "${newName}"`);
     return updatedSources;
 }
 
-export const deleteContactSource = async (sourceToDelete: string, userInfo: UserInfo) => {
+export const deleteContactSource = async (sourceToDelete: string) => {
     const batch = writeBatch(db);
     const settingsDocRef = doc(db, 'settings', 'options');
 
-    const settings = await ensureSettingsDoc(userInfo);
+    const settings = await ensureSettingsDoc();
     const currentSources = settings.contactSources;
     const updatedSources = currentSources.filter((s:string) => s !== sourceToDelete);
     batch.set(settingsDocRef, { contactSources: updatedSources }, { merge: true });
@@ -154,33 +142,33 @@ export const deleteContactSource = async (sourceToDelete: string, userInfo: User
     });
 
     await batch.commit();
-    await logAudit('Delete Contact Source', `Deleted source: ${sourceToDelete}`, userInfo);
+    await logAudit('Delete Contact Source', `Deleted source: ${sourceToDelete}`);
     return updatedSources;
 }
 
 // Occupation Statuses
-export const getOccupationStatuses = async (userInfo: UserInfo): Promise<string[]> => {
-    const settings = await ensureSettingsDoc(userInfo);
+export const getOccupationStatuses = async (): Promise<string[]> => {
+    const settings = await ensureSettingsDoc();
     return settings.occupationStatuses.sort((a:string, b:string) => a.localeCompare(b));
 };
 
-export const addOccupationStatus = async (newStatus: string, userInfo: UserInfo) => {
+export const addOccupationStatus = async (newStatus: string) => {
     const settingsDocRef = doc(db, 'settings', 'options');
-    const settings = await ensureSettingsDoc(userInfo);
+    const settings = await ensureSettingsDoc();
     const currentStatuses = settings.occupationStatuses;
     if (!currentStatuses.includes(newStatus)) {
         const updatedStatuses = [...currentStatuses, newStatus];
         await setDoc(settingsDocRef, { occupationStatuses: updatedStatuses }, { merge: true });
-        await logAudit('Add Occupation Status', `Added status: ${newStatus}`, userInfo);
+        await logAudit('Add Occupation Status', `Added status: ${newStatus}`);
         return updatedStatuses;
     }
     return currentStatuses;
 };
 
-export const updateOccupationStatus = async (oldName: string, newName: string, userInfo: UserInfo) => {
+export const updateOccupationStatus = async (oldName: string, newName: string) => {
     const batch = writeBatch(db);
     const settingsDocRef = doc(db, 'settings', 'options');
-    const settings = await ensureSettingsDoc(userInfo);
+    const settings = await ensureSettingsDoc();
     const currentStatuses = settings.occupationStatuses;
     const updatedStatuses = currentStatuses.map((s:string) => s === oldName ? newName : s);
     batch.set(settingsDocRef, { occupationStatuses: updatedStatuses }, { merge: true });
@@ -192,14 +180,14 @@ export const updateOccupationStatus = async (oldName: string, newName: string, u
     });
 
     await batch.commit();
-    await logAudit('Update Occupation Status', `Renamed status from "${oldName}" to "${newName}"`, userInfo);
+    await logAudit('Update Occupation Status', `Renamed status from "${oldName}" to "${newName}"`);
     return updatedStatuses;
 };
 
-export const deleteOccupationStatus = async (statusToDelete: string, userInfo: UserInfo) => {
+export const deleteOccupationStatus = async (statusToDelete: string) => {
     const batch = writeBatch(db);
     const settingsDocRef = doc(db, 'settings', 'options');
-    const settings = await ensureSettingsDoc(userInfo);
+    const settings = await ensureSettingsDoc();
     const currentStatuses = settings.occupationStatuses;
     const updatedStatuses = currentStatuses.filter((s:string) => s !== statusToDelete);
     batch.set(settingsDocRef, { occupationStatuses: updatedStatuses }, { merge: true });
@@ -211,34 +199,34 @@ export const deleteOccupationStatus = async (statusToDelete: string, userInfo: U
     });
 
     await batch.commit();
-    await logAudit('Delete Occupation Status', `Deleted status: ${statusToDelete}`, userInfo);
+    await logAudit('Delete Occupation Status', `Deleted status: ${statusToDelete}`);
     return updatedStatuses;
 };
 
 
 // Staying With Options
-export const getStayingWithOptions = async (userInfo: UserInfo): Promise<string[]> => {
-    const settings = await ensureSettingsDoc(userInfo);
+export const getStayingWithOptions = async (): Promise<string[]> => {
+    const settings = await ensureSettingsDoc();
     return settings.stayingWithOptions.sort((a:string, b:string) => a.localeCompare(b));
 };
 
-export const addStayingWithOption = async (newOption: string, userInfo: UserInfo) => {
+export const addStayingWithOption = async (newOption: string) => {
     const settingsDocRef = doc(db, 'settings', 'options');
-    const settings = await ensureSettingsDoc(userInfo);
+    const settings = await ensureSettingsDoc();
     const currentOptions = settings.stayingWithOptions;
     if (!currentOptions.includes(newOption)) {
         const updatedOptions = [...currentOptions, newOption];
         await setDoc(settingsDocRef, { stayingWithOptions: updatedOptions }, { merge: true });
-        await logAudit('Add Staying With Option', `Added option: ${newOption}`, userInfo);
+        await logAudit('Add Staying With Option', `Added option: ${newOption}`);
         return updatedOptions;
     }
     return currentOptions;
 };
 
-export const updateStayingWithOption = async (oldName: string, newName: string, userInfo: UserInfo) => {
+export const updateStayingWithOption = async (oldName: string, newName: string) => {
     const batch = writeBatch(db);
     const settingsDocRef = doc(db, 'settings', 'options');
-    const settings = await ensureSettingsDoc(userInfo);
+    const settings = await ensureSettingsDoc();
     const currentOptions = settings.stayingWithOptions;
     const updatedOptions = currentOptions.map((s:string) => s === oldName ? newName : s);
     batch.set(settingsDocRef, { stayingWithOptions: updatedOptions }, { merge: true });
@@ -250,14 +238,14 @@ export const updateStayingWithOption = async (oldName: string, newName: string, 
     });
 
     await batch.commit();
-    await logAudit('Update Staying With Option', `Renamed option from "${oldName}" to "${newName}"`, userInfo);
+    await logAudit('Update Staying With Option', `Renamed option from "${oldName}" to "${newName}"`);
     return updatedOptions;
 };
 
-export const deleteStayingWithOption = async (optionToDelete: string, userInfo: UserInfo) => {
+export const deleteStayingWithOption = async (optionToDelete: string) => {
     const batch = writeBatch(db);
     const settingsDocRef = doc(db, 'settings', 'options');
-    const settings = await ensureSettingsDoc(userInfo);
+    const settings = await ensureSettingsDoc();
     const currentOptions = settings.stayingWithOptions;
     const updatedOptions = currentOptions.filter((s:string) => s !== optionToDelete);
     batch.set(settingsDocRef, { stayingWithOptions: updatedOptions }, { merge: true });
@@ -269,13 +257,13 @@ export const deleteStayingWithOption = async (optionToDelete: string, userInfo: 
     });
 
     await batch.commit();
-    await logAudit('Delete Staying With Option', `Deleted option: ${optionToDelete}`, userInfo);
+    await logAudit('Delete Staying With Option', `Deleted option: ${optionToDelete}`);
     return updatedOptions;
 };
 
 // Custom Person Fields
-export const getCustomPersonFields = async (userInfo: UserInfo): Promise<CustomField[]> => {
-    const settings = await ensureSettingsDoc(userInfo);
+export const getCustomPersonFields = async (): Promise<CustomField[]> => {
+    const settings = await ensureSettingsDoc();
     // Ensure all fields have a type and an id for backward compatibility
     return (settings.customPersonFields || []).map((f: any, index: number) => ({ 
         ...f, 
@@ -285,22 +273,20 @@ export const getCustomPersonFields = async (userInfo: UserInfo): Promise<CustomF
     }));
 };
 
-export const saveCustomPersonFields = async (fields: CustomField[], userInfo: UserInfo): Promise<void> => {
-    if (!userInfo) throw new Error("Authentication required.");
+export const saveCustomPersonFields = async (fields: CustomField[]): Promise<void> => {
     const settingsDocRef = doc(db, 'settings', 'options');
     await setDoc(settingsDocRef, { customPersonFields: fields }, { merge: true });
-    await logAudit('Update Custom Fields', `Updated custom fields definition.`, userInfo);
+    await logAudit('Update Custom Fields', `Updated custom fields definition.`);
 };
 
 // WhatsApp Template
-export const getWhatsAppTemplate = async (userInfo: UserInfo): Promise<string> => {
-    const settings = await ensureSettingsDoc(userInfo);
+export const getWhatsAppTemplate = async (): Promise<string> => {
+    const settings = await ensureSettingsDoc();
     return settings.whatsAppTemplate;
 }
 
-export const saveWhatsAppTemplate = async (template: string, userInfo: UserInfo): Promise<void> => {
-    if (!userInfo) throw new Error("Authentication required.");
+export const saveWhatsAppTemplate = async (template: string): Promise<void> => {
     const settingsDocRef = doc(db, 'settings', 'options');
     await setDoc(settingsDocRef, { whatsAppTemplate: template }, { merge: true });
-    await logAudit('Update WhatsApp Template', `Updated WhatsApp message template.`, userInfo);
+    await logAudit('Update WhatsApp Template', `Updated WhatsApp message template.`);
 }

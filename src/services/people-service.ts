@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { db } from '@/lib/firebase';
@@ -58,18 +59,9 @@ type GetPeopleResult = {
   totalCount: number;
 };
 
-type UserInfo = {
-  id: string;
-  name: string;
-  role: UserRole[];
-};
-
 export const getPeople = async (
-    userInfo: UserInfo,
     options: { page?: number; pageSize?: number; search?: string } = {}
 ): Promise<GetPeopleResult> => {
-    if (!userInfo) return { people: [], totalCount: 0 };
-    
     const { page = 1, pageSize = 25, search = '' } = options;
 
     const peopleCollection = collection(db, 'people');
@@ -120,7 +112,6 @@ export const getPerson = async (id: string): Promise<Person | null> => {
 
 export const createPerson = async (
   personData: Omit<Person, 'id' | 'createdAt'>,
-  userInfo: UserInfo
 ): Promise<Person> => {
   const peopleCollection = collection(db, 'people');
   const q = query(peopleCollection, where("phone", "==", personData.phone));
@@ -152,13 +143,13 @@ export const createPerson = async (
   };
 
   const docRef = await addDoc(peopleCollection, dataToSave);
-  await logAudit('Create Contact', `Created new contact: ${dataToSave.fullName} (${docRef.id})`, userInfo);
+  await logAudit('Create Contact', `Created new contact: ${dataToSave.fullName} (${docRef.id})`);
   
   const newPersonData = await getDoc(docRef);
   return processPersonDoc(newPersonData);
 };
 
-export const updatePerson = async (id: string, personData: Partial<Omit<Person, 'id'>>, userInfo: UserInfo | null = null): Promise<void> => {
+export const updatePerson = async (id: string, personData: Partial<Omit<Person, 'id'>>): Promise<void> => {
   if (personData.phone) {
     const peopleCollection = collection(db, 'people');
     const q = query(peopleCollection, where("phone", "==", personData.phone));
@@ -186,22 +177,20 @@ export const updatePerson = async (id: string, personData: Partial<Omit<Person, 
   }
 
   await updateDoc(docRef, dataToUpdate);
-  if (userInfo) {
-    const person = await getPerson(id);
-    await logAudit('Update Contact', `Updated details for contact: ${person?.fullName} (${id})`, userInfo);
-  }
+  const person = await getPerson(id);
+  await logAudit('Update Contact', `Updated details for contact: ${person?.fullName} (${id})`);
 };
 
-export const deletePerson = async (id: string, userInfo: UserInfo): Promise<void> => {
+export const deletePerson = async (id: string): Promise<void> => {
   const person = await getPerson(id);
   const docRef = doc(db, 'people', id);
   await deleteDoc(docRef);
   if (person) {
-    await logAudit('Delete Contact', `Deleted contact: ${person.fullName} (${id})`, userInfo);
+    await logAudit('Delete Contact', `Deleted contact: ${person.fullName} (${id})`);
   }
 };
 
-export const deletePeople = async (ids: string[], userInfo: UserInfo): Promise<void> => {
+export const deletePeople = async (ids: string[]): Promise<void> => {
   if (ids.length === 0) return;
   const batch = writeBatch(db);
   ids.forEach(id => {
@@ -209,12 +198,11 @@ export const deletePeople = async (ids: string[], userInfo: UserInfo): Promise<v
     batch.delete(docRef);
   });
   await batch.commit();
-  await logAudit('Delete Multiple Contacts', `Deleted ${ids.length} contacts: ${ids.join(', ')}`, userInfo);
+  await logAudit('Delete Multiple Contacts', `Deleted ${ids.length} contacts: ${ids.join(', ')}`);
 };
 
 export const importPeople = async (
     people: Omit<Person, 'id' | 'createdAt'>[],
-    userInfo: UserInfo
 ): Promise<void> => {
   if (people.length === 0) return;
 
@@ -241,10 +229,10 @@ export const importPeople = async (
   }
   
   await batch.commit();
-  await logAudit('Import Contacts', `Imported ${people.length} contacts from a file.`, userInfo);
+  await logAudit('Import Contacts', `Imported ${people.length} contacts from a file.`);
 };
 
-export const assignCoEnablerToPeople = async (personIds: string[], coEnabler: AppUser | null, userInfo: UserInfo): Promise<void> => {
+export const assignCoEnablerToPeople = async (personIds: string[], coEnabler: AppUser | null): Promise<void> => {
   if (personIds.length === 0) return;
   const batch = writeBatch(db);
   personIds.forEach(id => {
@@ -265,10 +253,10 @@ export const assignCoEnablerToPeople = async (personIds: string[], coEnabler: Ap
   const details = coEnabler 
     ? `Assigned ${coEnabler.name} as co-enabler for ${personIds.length} contacts.`
     : `Unassigned co-enabler from ${personIds.length} contacts.`;
-  await logAudit('Assign Co-Enabler', details, userInfo);
+  await logAudit('Assign Co-Enabler', details);
 };
 
-export const assignEnablerToPeople = async (personIds: string[], enabler: AppUser, userInfo: UserInfo | null): Promise<void> => {
+export const assignEnablerToPeople = async (personIds: string[], enabler: AppUser): Promise<void> => {
     if (personIds.length === 0) return;
     const batch = writeBatch(db);
     const guideInfo = enabler.reportsTo;
@@ -282,13 +270,5 @@ export const assignEnablerToPeople = async (personIds: string[], enabler: AppUse
         });
     });
     await batch.commit();
-    if (userInfo) {
-        await logAudit('Assign Enabler', `Assigned ${personIds.length} contacts to ${enabler.name}.`, userInfo);
-    }
+    await logAudit('Assign Enabler', `Assigned ${personIds.length} contacts to ${enabler.name}.`);
 };
-
-async function getUsers(): Promise<AppUser[]> {
-    const usersCollection = collection(db, 'users');
-    const snapshot = await getDocs(usersCollection);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppUser));
-}

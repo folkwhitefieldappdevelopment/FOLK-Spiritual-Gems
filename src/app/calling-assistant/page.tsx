@@ -13,8 +13,9 @@ import { PersonTable } from "@/components/person-table";
 import { CreateUpdatePersonDialog } from "@/components/create-update-person-dialog";
 import { FirebaseConfigError } from "@/components/firebase-config-error";
 import { getPeople, updatePerson, assignCoEnablerToPeople } from "@/services/people-service";
-import { getCustomPersonFields } from "@/services/settings-service";
+import { getCustomPersonFields, getEnablers, getContactSources, getOccupationStatuses, getStayingWithOptions, type EnablerOption } from "@/services/settings-service";
 import { getAllGroups, createGroup, addPeopleToGroup } from "@/services/groups-service";
+import { getFolkGuides } from '@/services/user-service';
 import { useAuth } from "@/contexts/auth-context";
 import {
   DropdownMenu,
@@ -37,9 +38,13 @@ import { CallingSessionDialog } from '@/components/calling-session-dialog';
 import { ConfirmSessionDialog } from '@/components/confirm-session-dialog';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { updateUser } from '@/services/user-service';
+import { FilterPopover, type FilterRule, type FilterableField, applyClientSideFilters } from '@/components/filter-popover';
+import { SortPopover, type SortDescriptor } from '@/components/sort-popover';
+import { get } from 'lodash';
 
 
 const ROWS_PER_PAGE = 25;
+const FIRESTORE_QUERY_LIMIT = 10000;
 
 type UserInfo = {
   id: string;
@@ -55,11 +60,12 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   const searchParams = useSearchParams();
 
   const [allFetchedPeople, setAllFetchedPeople] = React.useState<Person[]>([]);
-  const [totalCount, setTotalCount] = React.useState(0);
   const [isDataLoading, setIsDataLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
   
   const [searchTerm, setSearchTerm] = React.useState("");
+  const [filters, setFilters] = React.useState<FilterRule[]>([]);
+  const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([]);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = React.useState(1);
 
@@ -67,7 +73,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   const [isEditingDialogOpen, setIsEditingDialogOpen] = React.useState(false);
   const [isConfirmSessionDialogOpen, setIsConfirmSessionDialogOpen] = React.useState(false);
   
-  // Calling Session State
   const [isCallingSessionDialogOpen, setIsCallingSessionDialogOpen] = React.useState(false);
   const [sessionPeople, setSessionPeople] = React.useState<Person[]>([]);
   const [sessionEvent, setSessionEvent] = React.useState('');
@@ -77,53 +82,78 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   const [groups, setGroups] = React.useState<Group[]>([]);
+  const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
+  const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
+  const [occupationOptions, setOccupationOptions] = React.useState<string[]>([]);
+  const [stayingWithOptions, setStayingWithOptions] = React.useState<string[]>([]);
+  const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
   
   const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = React.useState(false);
   const [isAssignCoEnablerDialogOpen, setIsAssignCoEnablerDialogOpen] = React.useState(false);
   const isSelectionActive = selectedIds.size > 0;
-  const canAssignCoEnabler = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
   
-   // Set initial state from URL search params
-  React.useEffect(() => {
+   React.useEffect(() => {
     const params = new URLSearchParams(searchParams.toString());
     const page = parseInt(params.get('page') || '1', 10);
     const search = params.get('search') || '';
+    const sort = params.get('sort');
+    const filter = params.get('filters');
 
     setCurrentPage(page);
     setSearchTerm(search);
-  }, []); // Run only once on mount
+    if (sort) {
+      try { setSortDescriptors(JSON.parse(sort)); } catch(e) {}
+    } else {
+      setSortDescriptors([{ field: 'createdAt', direction: 'desc' }]);
+    }
+    if (filter) {
+      try { setFilters(JSON.parse(filter)); } catch(e) {}
+    }
+  }, []); 
 
-  // Sync paused session status with auth context
   React.useEffect(() => {
     setHasPausedSession(!!appUser?.pausedCallingSession);
   }, [appUser]);
 
-
-  // Update URL when state changes
   React.useEffect(() => {
     const params = new URLSearchParams();
     if (currentPage > 1) params.set('page', String(currentPage));
     if (searchTerm) params.set('search', searchTerm);
+    if (sortDescriptors.length > 0 && !(sortDescriptors.length === 1 && sortDescriptors[0].field === 'createdAt' && sortDescriptors[0].direction === 'desc')) {
+      params.set('sort', JSON.stringify(sortDescriptors));
+    }
+    if (filters.length > 0) params.set('filters', JSON.stringify(filters));
+    
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [currentPage, searchTerm, router, pathname]);
+  }, [currentPage, searchTerm, sortDescriptors, filters, router, pathname]);
 
   const fetchPageData = React.useCallback(async () => {
     if (!appUser) return;
      setIsDataLoading(true);
       setFetchError(null);
-      const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
       try {
-        const { people: peopleData, totalCount } = await getPeople(userInfo, { page: currentPage, pageSize: ROWS_PER_PAGE, search: searchTerm });
+        const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+        const { people: peopleData } = await getPeople(userInfo, { pageSize: FIRESTORE_QUERY_LIMIT });
         setAllFetchedPeople(peopleData);
-        setTotalCount(totalCount);
 
-        const [customFieldsData, groupsData] = await Promise.all([
-          getCustomPersonFields(userInfo),
-          getAllGroups(userInfo),
+        const [customFieldsData, groupsData, enablersData, sourcesData, occupationsData, stayingsData, guidesData] = await Promise.all([
+          getCustomPersonFields(),
+          getAllGroups(),
+          getEnablers('filter'),
+          getContactSources(),
+          getOccupationStatuses(),
+          getStayingWithOptions(),
+          getFolkGuides(),
         ]);
         
         setCustomFields(customFieldsData);
         setGroups(groupsData);
+        setEnablerOptions(enablersData);
+        setContactSourceOptions(sourcesData);
+        setOccupationOptions(occupationsData);
+        setStayingWithOptions(stayingsData);
+        setFolkGuides(guidesData);
+
       } catch (error) {
         console.error("Failed to load data:", error);
         if (error instanceof Error) {
@@ -134,7 +164,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       } finally {
         setIsDataLoading(false);
       }
-  }, [appUser, currentPage, searchTerm]);
+  }, [appUser]);
 
   React.useEffect(() => {
     if (appUser) {
@@ -145,9 +175,81 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   React.useEffect(() => {
     setCurrentPage(1);
     setSelectedIds(new Set());
-  }, [searchTerm]);
+  }, [searchTerm, filters, sortDescriptors]);
 
-  const totalPages = Math.ceil(totalCount / ROWS_PER_PAGE);
+  const filterableFields: FilterableField[] = React.useMemo(() => {
+    const standardFields: FilterableField[] = [
+      { value: 'occupation', label: 'Occupation', type: 'enum', options: occupationOptions.map(s => ({ value: s, label: s })) },
+      { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(s => ({ value: s, label: s })) },
+      { value: 'enablerInTouchWith', label: 'Enabler', type: 'enum', options: enablerOptions },
+      { value: 'chantingStatus', label: 'Chanting Rounds', type: 'number' },
+      { value: 'stayingWith', label: 'Staying At', type: 'enum', options: stayingWithOptions.map(s => ({ value: s, label: s })) },
+      { value: 'organisation', label: 'Organisation', type: 'string' },
+      { value: 'folkGuide', label: 'Folk Guide', type: 'enum', options: folkGuides.map(g => ({ value: g.name, label: `${g.name} (${g.fgCode || 'N/A'})` })) },
+      { value: 'nativePlace', label: 'Native Place', type: 'string' },
+      { value: 'fromOtherCamp', label: 'From Other Camp', type: 'boolean' },
+      { value: 'age', label: 'Age', type: 'number' },
+      { value: 'sgRating', label: 'Rating', type: 'number' },
+    ];
+    
+    const dynamicFields: FilterableField[] = customFields.map(cf => {
+        if (cf.type === 'dropdown') {
+            return {
+                value: `customData.${cf.id}`,
+                label: cf.label,
+                type: 'enum',
+                options: (cf.options || []).map(opt => ({ value: opt, label: opt })),
+            }
+        }
+        return {
+            value: `customData.${cf.id}`,
+            label: cf.label,
+            type: cf.type as 'string' | 'number' | 'boolean' | 'date',
+        }
+    });
+
+    return [...standardFields, ...dynamicFields];
+  }, [enablerOptions, contactSourceOptions, folkGuides, occupationOptions, stayingWithOptions, customFields]);
+  
+  const filteredAndSortedPeople = React.useMemo(() => {
+    let people = [...allFetchedPeople];
+    
+    if (searchTerm.trim()) {
+        const lowercasedTerm = searchTerm.toLowerCase();
+        people = people.filter(p => 
+            p.fullName.toLowerCase().includes(lowercasedTerm) || 
+            p.phone.includes(lowercasedTerm)
+        );
+    }
+
+    people = applyClientSideFilters(people, filters);
+
+    if (sortDescriptors.length > 0) {
+        people.sort((a, b) => {
+            for (const desc of sortDescriptors) {
+                const valA = get(a, desc.field);
+                const valB = get(b, desc.field);
+                let comparison = 0;
+                if (valA === null || valA === undefined) comparison = -1;
+                else if (valB === null || valB === undefined) comparison = 1;
+                else if (valA > valB) comparison = 1;
+                else if (valA < valB) comparison = -1;
+                if (comparison !== 0) {
+                    return desc.direction === 'asc' ? comparison : -comparison;
+                }
+            }
+            return 0;
+        });
+    }
+
+    return people;
+  }, [allFetchedPeople, searchTerm, filters, sortDescriptors]);
+
+  const totalPages = Math.ceil(filteredAndSortedPeople.length / ROWS_PER_PAGE);
+  const paginatedPeople = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
+    return filteredAndSortedPeople.slice(startIndex, startIndex + ROWS_PER_PAGE);
+  }, [filteredAndSortedPeople, currentPage]);
 
   const handleEditPerson = React.useCallback((person: Person) => {
     editingPersonRef.current = person;
@@ -162,37 +264,34 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   }, [toast]);
   
   const handleAddToGroup = React.useCallback(async (targetGroupId: string) => {
-    if (selectedIds.size === 0 || !appUser) return;
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+    if (selectedIds.size === 0) return;
     try {
-        await addPeopleToGroup(targetGroupId, Array.from(selectedIds), userInfo);
+        await addPeopleToGroup(targetGroupId, Array.from(selectedIds));
         toast({ title: 'Members Added', description: `${selectedIds.size} contacts have been added to the other group.` });
-        const updatedGroups = await getAllGroups(userInfo);
+        const updatedGroups = await getAllGroups();
         setGroups(updatedGroups);
         setSelectedIds(new Set());
     } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not add contacts to the group.' });
     }
-  }, [selectedIds, appUser, toast]);
+  }, [selectedIds, toast]);
 
   const handleSaveGroupAndAddMembers = React.useCallback(async (groupData: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy">) => {
-    if (!appUser) return;
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     try {
         const newGroupData: Omit<Group, 'id' | 'createdBy'> = {
             memberCount: 0,
             peopleIds: [],
             ...groupData,
         };
-        const newGroup = await createGroup(newGroupData, userInfo);
+        const newGroup = await createGroup(newGroupData);
         
         if (selectedIds.size > 0) {
-            await addPeopleToGroup(newGroup.id, Array.from(selectedIds), userInfo);
+            await addPeopleToGroup(newGroup.id, Array.from(selectedIds));
             toast({
                 title: "Group Created & Members Added",
                 description: `The group "${newGroup.name}" was created and ${selectedIds.size} contacts were added.`,
             });
-            const updatedGroups = await getAllGroups(userInfo);
+            const updatedGroups = await getAllGroups();
             setGroups(updatedGroups);
             setSelectedIds(new Set());
         } else {
@@ -210,13 +309,12 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
             description: "Could not create or add members to the new group.",
         });
     }
-  }, [selectedIds, appUser, toast]);
+  }, [selectedIds, toast]);
 
   const handleAssignCoEnabler = React.useCallback(async (coEnabler: AppUser | null) => {
-    if (!appUser || selectedIds.size === 0) return;
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
+    if (selectedIds.size === 0) return;
     try {
-        await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler, userInfo);
+        await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler);
         toast({
             title: coEnabler ? 'Co-Enabler Assigned' : 'Co-Enabler Unassigned',
             description: `${selectedIds.size} contacts have been updated.`,
@@ -226,19 +324,17 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     } catch (error) {
         toast({ variant: "destructive", title: "Error", description: "Could not assign co-enabler." });
     }
-  }, [selectedIds, toast, appUser, fetchPageData]);
+  }, [selectedIds, toast, fetchPageData]);
 
-  // --- Calling Session Logic ---
   const handleStartSession = React.useCallback(async (eventName: string, start: number, end: number) => {
-    const { people: peopleForSession } = await getPeople(appUser!, { page: 1, pageSize: end, search: searchTerm });
-    const slicedPeople = peopleForSession.slice(start - 1, end);
+    const slicedPeople = filteredAndSortedPeople.slice(start - 1, end);
     
     setSessionPeople(slicedPeople);
     setSessionEvent(eventName);
     setSessionCurrentIndex(0);
     setIsCallingSessionDialogOpen(true);
     setIsConfirmSessionDialogOpen(false);
-  }, [appUser, searchTerm]);
+  }, [filteredAndSortedPeople]);
   
   const handleSessionSave = React.useCallback(async (
     personId: string,
@@ -249,7 +345,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     frp: boolean | undefined
   ) => {
     if (!appUser || !user) return;
-    const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
     
     const callLog = {
       remark,
@@ -266,7 +361,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     const updates: Partial<Person> = {
       lastCallRemark: remark,
       lastCallStatus: status,
-      lastCallAt: 'SERVER_TIMESTAMP', // Placeholder
+      lastCallAt: 'SERVER_TIMESTAMP',
       lastSg: sg,
       lastMa: ma,
       lastFrp: frp,
@@ -274,13 +369,12 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     };
 
     try {
-      await updatePerson(personId, updates, userInfo);
+      await updatePerson(personId, updates);
       toast({
           title: "Call Logged",
           description: `Status for the contact has been updated.`
       });
       
-      // Update local state for immediate feedback
       setAllFetchedPeople(prev => prev.map(p => {
           if (p.id === personId) {
               const newHistory = [...(p.callHistory || []), { ...callLog, calledAt: new Date().toISOString() }];
@@ -325,7 +419,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   const handleClearSession = async () => {
     if (!appUser) return;
     await updateUser(appUser.id, { pausedCallingSession: null });
-    setHasPausedSession(false); // Manually update local state for immediate UI feedback
+    setHasPausedSession(false); 
     toast({ title: 'Session Cleared', description: 'Your paused session has been cleared.'});
   };
 
@@ -369,11 +463,13 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <Button onClick={() => setIsConfirmSessionDialogOpen(true)} disabled={totalCount === 0}>
-                        <PhoneCall className="mr-2 h-4 w-4"/>
-                        Begin Call Session
-                    </Button>
+                    <FilterPopover filters={filters} setFilters={setFilters} filterableFields={filterableFields} />
+                    <SortPopover sortDescriptors={sortDescriptors} setSortDescriptors={setSortDescriptors} />
                 </div>
+                 <Button onClick={() => setIsConfirmSessionDialogOpen(true)} disabled={filteredAndSortedPeople.length === 0}>
+                    <PhoneCall className="mr-2 h-4 w-4"/>
+                    Begin Call Session
+                </Button>
             </div>
 
             {isSelectionActive && (
@@ -392,7 +488,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
-                {canAssignCoEnabler && <Button variant="outline" size="sm" onClick={() => setIsAssignCoEnablerDialogOpen(true)}><UserCheck className="mr-2 h-4 w-4" />Assign Co-Enabler</Button>}
+                <Button variant="outline" size="sm" onClick={() => setIsAssignCoEnablerDialogOpen(true)}><UserCheck className="mr-2 h-4 w-4" />Assign Co-Enabler</Button>
                 <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())} className="ml-auto">
                     Deselect All
                 </Button>
@@ -402,8 +498,8 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
         </div>
         
         <PersonTable
-          people={allFetchedPeople}
-          allPeopleCount={totalCount}
+          people={paginatedPeople}
+          allPeopleCount={filteredAndSortedPeople.length}
           onEdit={handleEditPerson}
           onDelete={handleDeletePerson}
           selectedIds={selectedIds}
@@ -465,9 +561,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
               setIsEditingDialogOpen(isOpen);
             }}
             onSave={async (data) => {
-              if (!appUser) return;
-              const userInfo: UserInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
-              await updatePerson(editingPersonRef.current!.id, data, userInfo);
+              await updatePerson(editingPersonRef.current!.id, data);
               setAllFetchedPeople(prev => prev.map(p => p.id === editingPersonRef.current!.id ? {...p, ...data} : p));
             }}
             person={editingPersonRef.current}
@@ -478,7 +572,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       <ConfirmSessionDialog
         isOpen={isConfirmSessionDialogOpen}
         setIsOpen={setIsConfirmSessionDialogOpen}
-        totalCount={totalCount}
+        totalCount={filteredAndSortedPeople.length}
         onStartSession={handleStartSession}
         searchTerm={searchTerm}
       />

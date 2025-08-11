@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { db } from '@/lib/firebase';
@@ -18,18 +19,12 @@ import { logAudit } from './audit-service';
 import { generateDynamicGroups, dynamicGroupDefinitions } from '@/lib/dynamic-groups';
 import { getPeople as getAllPeople } from './people-service';
 
-type UserInfo = {
-  id: string;
-  name: string;
-  role: UserRole[];
-};
-
-export const getAllGroups = async (userInfo: UserInfo): Promise<Group[]> => {
-  const staticGroups = await getStaticGroups(userInfo);
+export const getAllGroups = async (): Promise<Group[]> => {
+  const staticGroups = await getStaticGroups();
   return staticGroups.sort((a,b) => a.name.localeCompare(b.name));
 };
 
-export const getStaticGroups = async (userInfo: UserInfo): Promise<Group[]> => {
+export const getStaticGroups = async (): Promise<Group[]> => {
   const groupsCollection = collection(db, 'groups');
   const q = query(groupsCollection);
   const snapshot = await getDocs(q);
@@ -42,14 +37,14 @@ export const getStaticGroups = async (userInfo: UserInfo): Promise<Group[]> => {
   return results.sort((a,b) => a.name.localeCompare(b.name));
 };
 
-export const getGroup = async (id: string, userInfo: UserInfo): Promise<Group | null> => {
+export const getGroup = async (id: string): Promise<Group | null> => {
   // Handle dynamic groups
   if (id.startsWith('dynamic-')) {
     const dynamicGroupDef = dynamicGroupDefinitions.find(def => def.id === id);
     if (!dynamicGroupDef) {
         return null;
     }
-    const { people } = await getAllPeople(userInfo, {}); 
+    const { people } = await getAllPeople({}); 
     const dynamicGroups = generateDynamicGroups(people);
     return dynamicGroups.find(g => g.id === id) || null;
   }
@@ -65,40 +60,39 @@ export const getGroup = async (id: string, userInfo: UserInfo): Promise<Group | 
   return null;
 };
 
-export const createGroup = async (groupData: Omit<Group, 'id' | 'memberCount' | 'peopleIds' | 'createdBy' | 'creatorRole' | 'visibility'>, userInfo: UserInfo): Promise<Group> => {
+export const createGroup = async (groupData: Omit<Group, 'id' | 'memberCount' | 'peopleIds' | 'createdBy'>): Promise<Group> => {
   const groupsCollection = collection(db, 'groups');
   const dataToSave = {
     ...groupData,
-    createdBy: userInfo.id,
-    creatorRole: userInfo.role,
-    visibility: [], // Always private now
+    createdBy: 'system',
+    visibility: [], 
     memberCount: 0,
     peopleIds: [],
     isDynamic: false,
   };
   const docRef = await addDoc(groupsCollection, dataToSave);
-  await logAudit('Create Group', `Created group: ${groupData.name}`, userInfo);
+  await logAudit('Create Group', `Created group: ${groupData.name}`);
   return { id: docRef.id, ...dataToSave } as Group;
 };
 
-export const updateGroup = async (id: string, groupData: Partial<Omit<Group, 'id' | 'visibility'>>, userInfo: UserInfo): Promise<void> => {
+export const updateGroup = async (id: string, groupData: Partial<Omit<Group, 'id' | 'visibility'>>): Promise<void> => {
   const docRef = doc(db, 'groups', id);
   const updateData = { ...groupData };
   delete updateData.visibility; // Ensure visibility is not updated
   await updateDoc(docRef, updateData);
-  await logAudit('Update Group', `Updated group: ${groupData.name || id}`, userInfo);
+  await logAudit('Update Group', `Updated group: ${groupData.name || id}`);
 };
 
-export const deleteGroup = async (id: string, userInfo: UserInfo): Promise<void> => {
-  const group = await getGroup(id, userInfo);
+export const deleteGroup = async (id: string): Promise<void> => {
+  const group = await getGroup(id);
   const docRef = doc(db, 'groups', id);
   await deleteDoc(docRef);
   if (group) {
-    await logAudit('Delete Group', `Deleted group: ${group.name} (${id})`, userInfo);
+    await logAudit('Delete Group', `Deleted group: ${group.name} (${id})`);
   }
 };
 
-export const addPeopleToGroup = async (groupId: string, peopleIds: string[], userInfo: UserInfo): Promise<void> => {
+export const addPeopleToGroup = async (groupId: string, peopleIds: string[]): Promise<void> => {
   const groupRef = doc(db, 'groups', groupId);
   let groupName = 'Unknown Group';
 
@@ -120,10 +114,10 @@ export const addPeopleToGroup = async (groupId: string, peopleIds: string[], use
     }
   });
 
-  await logAudit('Add to Group', `Added ${peopleIds.length} members to group: ${groupName}`, userInfo);
+  await logAudit('Add to Group', `Added ${peopleIds.length} members to group: ${groupName}`);
 };
 
-export const removePeopleFromGroup = async (groupId: string, peopleIdsToRemove: string[], userInfo: UserInfo): Promise<void> => {
+export const removePeopleFromGroup = async (groupId: string, peopleIdsToRemove: string[]): Promise<void> => {
   const groupRef = doc(db, 'groups', groupId);
   let groupName = 'Unknown Group';
 
@@ -146,5 +140,5 @@ export const removePeopleFromGroup = async (groupId: string, peopleIdsToRemove: 
     }
   });
   
-  await logAudit('Remove from Group', `Removed ${peopleIdsToRemove.length} members from group: ${groupName}`, userInfo);
+  await logAudit('Remove from Group', `Removed ${peopleIdsToRemove.length} members from group: ${groupName}`);
 };

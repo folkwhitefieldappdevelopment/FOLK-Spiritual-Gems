@@ -6,16 +6,9 @@ import { collection, doc, runTransaction, where, query, getDocs } from 'firebase
 import type { AppUser, UserRole } from '@/lib/types';
 import { logAudit } from './audit-service';
 
-type UserInfo = {
-  id: string;
-  name: string;
-  role: UserRole[];
-};
-
 export const addPeopleToGroupByPhone = async (
   groupId: string,
   phoneNumbers: string[],
-  userInfo: UserInfo
 ): Promise<{ addedCount: number; existingCount: number; notFoundCount: number }> => {
   const peopleCollection = collection(db, 'people');
   const groupRef = doc(db, 'groups', groupId);
@@ -64,7 +57,7 @@ export const addPeopleToGroupByPhone = async (
     });
 
     const groupName = (await getDoc(groupRef)).data()?.name || 'Unknown Group';
-    await logAudit('Import Group Members', `Imported ${addedCount} new members to group: ${groupName}`, userInfo);
+    await logAudit('Import Group Members', `Imported ${addedCount} new members to group: ${groupName}`);
   }
 
   return { addedCount, existingCount, notFoundCount };
