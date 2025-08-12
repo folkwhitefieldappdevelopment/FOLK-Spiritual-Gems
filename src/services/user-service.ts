@@ -21,6 +21,12 @@ import { logAudit } from './audit-service';
  * @param userData The data to update.
  */
 export const updateUser = async (id: string, userData: { [key: string]: any }): Promise<void> => {
+  // Prevent updates to the mock anonymous user
+  if (id === 'anonymous-user') {
+    console.log("Skipping update for anonymous user.");
+    return;
+  }
+  
   const userDocRef = doc(db, 'users', id);
   if (userData.email) {
     const q = query(collection(db, 'users'), where("email", "==", userData.email));
