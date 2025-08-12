@@ -252,7 +252,7 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
                       <FormControl>
                         <Button variant="outline" className="w-full justify-start text-left font-normal">
                           <div className="truncate">
-                            {field.value?.length ? field.value.join(', ') : 'Select roles'}
+                            {(field.value || []).length > 0 ? (field.value || []).join(', ') : 'Select roles'}
                           </div>
                         </Button>
                       </FormControl>
@@ -261,7 +261,7 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
                       {userRoles.map((roleOption) => (
                         <DropdownMenuCheckboxItem
                           key={roleOption}
-                          checked={field.value?.includes(roleOption)}
+                          checked={(field.value || []).includes(roleOption)}
                           onCheckedChange={(checked) => {
                             const currentRoles = field.value || [];
                             const newRoles = checked
