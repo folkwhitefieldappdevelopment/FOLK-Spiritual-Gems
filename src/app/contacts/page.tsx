@@ -79,8 +79,8 @@ import { AssignEnablerDialog } from "@/components/assign-enabler-dialog";
 import { Input } from "@/components/ui/input";
 import { logAudit } from '@/services/audit-service';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { FilterPopover, type FilterRule, type FilterableField, applyClientSideFilters } from '@/components/filter-popover';
-import { SortPopover, type SortDescriptor } from '@/components/sort-popover';
+import { applyClientSideFilters, type FilterRule } from '@/components/filter-popover';
+import { type SortDescriptor } from '@/components/sort-popover';
 import { get } from 'lodash';
 
 
@@ -123,10 +123,6 @@ export default function ContactsPage() {
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
-  const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
-  const [occupationOptions, setOccupationOptions] = React.useState<string[]>([]);
-  const [stayingWithOptions, setStayingWithOptions] = React.useState<string[]>([]);
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
 
@@ -172,22 +168,14 @@ export default function ContactsPage() {
       const { people: peopleData } = await getPeople({ pageSize: FIRESTORE_QUERY_LIMIT });
       setAllFetchedPeople(peopleData);
       
-      const [allUsersData, groupsData, enablersData, sourcesData, occupationsData, stayingsData, guidesData, customFieldsData] = await Promise.all([
+      const [allUsersData, groupsData, guidesData, customFieldsData] = await Promise.all([
         getUsers(),
         getAllGroups(),
-        getEnablers('filter'),
-        getContactSources(),
-        getOccupationStatuses(),
-        getStayingWithOptions(),
         getFolkGuides(),
         getCustomPersonFields(),
       ]);
       setAllUsers(allUsersData);
       setGroups(groupsData);
-      setEnablerOptions(enablersData);
-      setContactSourceOptions(sourcesData);
-      setOccupationOptions(occupationsData);
-      setStayingWithOptions(stayingsData);
       setFolkGuides(guidesData);
       setCustomFields(customFieldsData);
     } catch (error) {
@@ -210,40 +198,6 @@ export default function ContactsPage() {
     setCurrentPage(1);
     setSelectedIds(new Set());
   }, [searchTerm, view, filters, sortDescriptors]);
-
-  const filterableFields: FilterableField[] = React.useMemo(() => {
-    const standardFields: FilterableField[] = [
-      { value: 'occupation', label: 'Occupation', type: 'enum', options: occupationOptions.map(s => ({ value: s, label: s })) },
-      { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(s => ({ value: s, label: s })) },
-      { value: 'enablerInTouchWith', label: 'Enabler', type: 'enum', options: enablerOptions },
-      { value: 'chantingStatus', label: 'Chanting Rounds', type: 'number' },
-      { value: 'stayingWith', label: 'Staying At', type: 'enum', options: stayingWithOptions.map(s => ({ value: s, label: s })) },
-      { value: 'organisation', label: 'Organisation', type: 'string' },
-      { value: 'folkGuide', label: 'Folk Guide', type: 'enum', options: folkGuides.map(g => ({ value: g.name, label: `${g.name} (${g.fgCode || 'N/A'})` })) },
-      { value: 'nativePlace', label: 'Native Place', type: 'string' },
-      { value: 'fromOtherCamp', label: 'From Other Camp', type: 'boolean' },
-      { value: 'age', label: 'Age', type: 'number' },
-      { value: 'sgRating', label: 'Rating', type: 'number' },
-    ];
-    
-    const dynamicFields: FilterableField[] = customFields.map(cf => {
-        if (cf.type === 'dropdown') {
-            return {
-                value: `customData.${cf.id}`,
-                label: cf.label,
-                type: 'enum',
-                options: (cf.options || []).map(opt => ({ value: opt, label: opt })),
-            }
-        }
-        return {
-            value: `customData.${cf.id}`,
-            label: cf.label,
-            type: cf.type as 'string' | 'number' | 'boolean' | 'date',
-        }
-    });
-
-    return [...standardFields, ...dynamicFields];
-  }, [enablerOptions, contactSourceOptions, folkGuides, occupationOptions, stayingWithOptions, customFields]);
   
   const filteredAndSortedPeople = React.useMemo(() => {
     let people = [...allFetchedPeople];
@@ -505,7 +459,7 @@ export default function ContactsPage() {
         title: 'Export Successful',
         description: `Exported ${filteredAndSortedPeople.length} contacts in contacts_export.zip.`,
       });
-      if (appUser) await logAudit('Export Contacts', `Exported ${filteredAndSortedPeople.length} contacts.`, { id: appUser.id, name: appUser.name, role: appUser.role });
+      if (appUser) await logAudit('Export Contacts', `Exported ${filteredAndSortedPeople.length} contacts.`);
 
     } catch (err) {
       console.error("Failed to generate zip file:", err);
@@ -876,18 +830,14 @@ export default function ContactsPage() {
       <>
         <div className="mb-6 flex flex-col gap-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2 flex-wrap flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by name or phone..."
-                  className="pl-10 w-full sm:w-64"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-               <FilterPopover filters={filters} setFilters={setFilters} filterableFields={filterableFields} />
-               <SortPopover sortDescriptors={sortDescriptors} setSortDescriptors={setSortDescriptors} />
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or phone..."
+                className="pl-10 w-full sm:w-64"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
             <div className="flex items-center gap-2">
               <div className="flex items-center rounded-md bg-muted p-1">
@@ -1022,6 +972,8 @@ export default function ContactsPage() {
             selectedIds={selectedIds}
             setSelectedIds={setSelectedIds}
             isSelectionActive={isSelectionActive}
+            sortDescriptors={sortDescriptors}
+            setSortDescriptors={setSortDescriptors}
           />
         )}
 

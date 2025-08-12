@@ -35,8 +35,8 @@ import { PersonCard } from '@/components/person-card';
 import { CreateUpdatePersonDialog } from '@/components/create-update-person-dialog';
 import { ManageGroupMembersDialog } from '@/components/manage-group-members-dialog';
 import { AssignCoEnablerDialog } from '@/components/assign-helper-dialog';
-import { FilterPopover, type FilterRule, type FilterableField, applyClientSideFilters } from '@/components/filter-popover';
-import { SortPopover, type SortDescriptor } from '@/components/sort-popover';
+import { applyClientSideFilters, type FilterRule } from '@/components/filter-popover';
+import { type SortDescriptor } from '@/components/sort-popover';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,10 +93,6 @@ export default function GroupDetailPage() {
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = React.useState(1);
   
-  const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
-  const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
-  const [occupationOptions, setOccupationOptions] = React.useState<string[]>([]);
-  const [stayingWithOptions, setStayingWithOptions] = React.useState<string[]>([]);
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
   
@@ -169,21 +165,13 @@ export default function GroupDetailPage() {
         }
         setMembers(memberData);
         
-      const [allGroupsData, enablersData, sourcesData, occupationsData, stayingsData, guidesData, customFieldsData] = await Promise.all([
+      const [allGroupsData, guidesData, customFieldsData] = await Promise.all([
         getStaticGroups(),
-        getEnablers('filter'),
-        getContactSources(),
-        getOccupationStatuses(),
-        getStayingWithOptions(),
         getFolkGuides(),
         getCustomPersonFields(),
       ]);
       
       setAllGroups(allGroupsData);
-      setEnablerOptions(enablersData);
-      setContactSourceOptions(sourcesData);
-      setOccupationOptions(occupationsData);
-      setStayingWithOptions(stayingsData);
       setFolkGuides(guidesData);
       setCustomFields(customFieldsData);
 
@@ -201,40 +189,6 @@ export default function GroupDetailPage() {
       fetchPageData();
     }
   }, [groupId, fetchPageData]);
-  
-  const filterableFields: FilterableField[] = React.useMemo(() => {
-    const standardFields: FilterableField[] = [
-      { value: 'occupation', label: 'Occupation', type: 'enum', options: occupationOptions.map(s => ({ value: s, label: s })) },
-      { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(s => ({ value: s, label: s })) },
-      { value: 'enablerInTouchWith', label: 'Enabler', type: 'enum', options: enablerOptions },
-      { value: 'chantingStatus', label: 'Chanting Rounds', type: 'number' },
-      { value: 'stayingWith', label: 'Staying At', type: 'enum', options: stayingWithOptions.map(s => ({ value: s, label: s })) },
-      { value: 'organisation', label: 'Organisation', type: 'string' },
-      { value: 'folkGuide', label: 'Folk Guide', type: 'enum', options: folkGuides.map(g => ({ value: g.name, label: `${g.name} (${g.fgCode || 'N/A'})` })) },
-      { value: 'nativePlace', label: 'Native Place', type: 'string' },
-      { value: 'fromOtherCamp', label: 'From Other Camp', type: 'boolean' },
-      { value: 'age', label: 'Age', type: 'number' },
-      { value: 'sgRating', label: 'Rating', type: 'number' },
-    ];
-    
-    const dynamicFields: FilterableField[] = customFields.map(cf => {
-        if (cf.type === 'dropdown') {
-            return {
-                value: `customData.${cf.id}`,
-                label: cf.label,
-                type: 'enum',
-                options: (cf.options || []).map(opt => ({ value: opt, label: opt })),
-            }
-        }
-        return {
-            value: `customData.${cf.id}`,
-            label: cf.label,
-            type: cf.type as 'string' | 'number' | 'boolean' | 'date',
-        }
-    });
-
-    return [...standardFields, ...dynamicFields];
-  }, [enablerOptions, contactSourceOptions, folkGuides, occupationOptions, stayingWithOptions, customFields]);
 
   const filteredAndSortedMembers = React.useMemo(() => {
     let people = [...members];
@@ -424,11 +378,7 @@ export default function GroupDetailPage() {
       <>
         <div className="mb-6 flex flex-col gap-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2 flex-wrap flex-1">
-              <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by name or phone..." className="pl-10 w-full sm:w-64" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
-              <FilterPopover filters={filters} setFilters={setFilters} filterableFields={filterableFields} />
-              <SortPopover sortDescriptors={sortDescriptors} setSortDescriptors={setSortDescriptors} />
-            </div>
+            <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by name or phone..." className="pl-10 w-full sm:w-64" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
             <div className="flex items-center gap-2">
                 <div className="flex items-center rounded-md bg-muted p-1">
                     <Button variant={view === "card" ? "secondary" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setView("card")} aria-label="Card View"><LayoutGrid className="h-4 w-4" /></Button>
@@ -471,6 +421,8 @@ export default function GroupDetailPage() {
             selectedIds={selectedIds} 
             setSelectedIds={setSelectedIds} 
             isSelectionActive={isSelectionActive}
+            sortDescriptors={sortDescriptors}
+            setSortDescriptors={setSortDescriptors}
           />
         ) : (
            paginatedMembers.length > 0 ? (

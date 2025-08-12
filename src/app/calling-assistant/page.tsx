@@ -37,8 +37,8 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { CallingSessionDialog } from '@/components/calling-session-dialog';
 import { ConfirmSessionDialog } from '@/components/confirm-session-dialog';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { FilterPopover, type FilterRule, type FilterableField, applyClientSideFilters } from '@/components/filter-popover';
-import { SortPopover, type SortDescriptor } from '@/components/sort-popover';
+import { applyClientSideFilters, type FilterRule } from '@/components/filter-popover';
+import { type SortDescriptor } from '@/components/sort-popover';
 import { get } from 'lodash';
 
 
@@ -47,7 +47,7 @@ const FIRESTORE_QUERY_LIMIT = 10000;
 
 const CallingAssistantPageComponent = React.memo(function CallingAssistantPageComponent() {
   const { toast } = useToast();
-  const { appUser, user, setAppUser } = useAuth();
+  const { appUser, setAppUser } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -165,40 +165,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     setCurrentPage(1);
     setSelectedIds(new Set());
   }, [searchTerm, filters, sortDescriptors]);
-
-  const filterableFields: FilterableField[] = React.useMemo(() => {
-    const standardFields: FilterableField[] = [
-      { value: 'occupation', label: 'Occupation', type: 'enum', options: occupationOptions.map(s => ({ value: s, label: s })) },
-      { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(s => ({ value: s, label: s })) },
-      { value: 'enablerInTouchWith', label: 'Enabler', type: 'enum', options: enablerOptions },
-      { value: 'chantingStatus', label: 'Chanting Rounds', type: 'number' },
-      { value: 'stayingWith', label: 'Staying At', type: 'enum', options: stayingWithOptions.map(s => ({ value: s, label: s })) },
-      { value: 'organisation', label: 'Organisation', type: 'string' },
-      { value: 'folkGuide', label: 'Folk Guide', type: 'enum', options: folkGuides.map(g => ({ value: g.name, label: `${g.name} (${g.fgCode || 'N/A'})` })) },
-      { value: 'nativePlace', label: 'Native Place', type: 'string' },
-      { value: 'fromOtherCamp', label: 'From Other Camp', type: 'boolean' },
-      { value: 'age', label: 'Age', type: 'number' },
-      { value: 'sgRating', label: 'Rating', type: 'number' },
-    ];
-    
-    const dynamicFields: FilterableField[] = customFields.map(cf => {
-        if (cf.type === 'dropdown') {
-            return {
-                value: `customData.${cf.id}`,
-                label: cf.label,
-                type: 'enum',
-                options: (cf.options || []).map(opt => ({ value: opt, label: opt })),
-            }
-        }
-        return {
-            value: `customData.${cf.id}`,
-            label: cf.label,
-            type: cf.type as 'string' | 'number' | 'boolean' | 'date',
-        }
-    });
-
-    return [...standardFields, ...dynamicFields];
-  }, [enablerOptions, contactSourceOptions, folkGuides, occupationOptions, stayingWithOptions, customFields]);
   
   const filteredAndSortedPeople = React.useMemo(() => {
     let people = [...allFetchedPeople];
@@ -466,18 +432,14 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
         )}
         <div className="mb-6 flex flex-col gap-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2 flex-wrap">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Search by name or phone..."
-                            className="pl-10 w-full sm:w-64"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-                    <FilterPopover filters={filters} setFilters={setFilters} filterableFields={filterableFields} />
-                    <SortPopover sortDescriptors={sortDescriptors} setSortDescriptors={setSortDescriptors} />
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search by name or phone..."
+                        className="pl-10 w-full sm:w-64"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                 </div>
                  <Button onClick={() => setIsConfirmSessionDialogOpen(true)} disabled={filteredAndSortedPeople.length === 0}>
                     <PhoneCall className="mr-2 h-4 w-4"/>
@@ -518,6 +480,8 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
           selectedIds={selectedIds}
           setSelectedIds={setSelectedIds}
           isSelectionActive={isSelectionActive}
+          sortDescriptors={sortDescriptors}
+          setSortDescriptors={setSortDescriptors}
         />
         {totalPages > 1 && (
           <Pagination className="mt-8">

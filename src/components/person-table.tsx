@@ -43,7 +43,8 @@ import { Checkbox } from './ui/checkbox';
 import { useAuth } from '@/contexts/auth-context';
 import { getWhatsAppTemplate } from '@/services/settings-service';
 import { useToast } from '@/hooks/use-toast';
-
+import type { SortDescriptor } from './sort-popover';
+import { DataTableColumnHeader } from './data-table-column-header';
 
 type PersonTableProps = {
   people?: Person[];
@@ -53,6 +54,8 @@ type PersonTableProps = {
   isSelectionActive?: boolean;
   selectedIds?: Set<string>;
   setSelectedIds?: React.Dispatch<React.SetStateAction<Set<string>>>;
+  sortDescriptors: SortDescriptor[];
+  setSortDescriptors: React.Dispatch<React.SetStateAction<SortDescriptor[]>>;
 };
 
 const safeDate = (timestamp: any): Date | null => {
@@ -69,6 +72,8 @@ export function PersonTable({
   isSelectionActive = false, 
   selectedIds, 
   setSelectedIds,
+  sortDescriptors,
+  setSortDescriptors
 }: PersonTableProps) {
   
   const { appUser } = useAuth();
@@ -78,7 +83,7 @@ export function PersonTable({
   React.useEffect(() => {
     const fetchTemplate = async () => {
         if (appUser) {
-            const template = await getWhatsAppTemplate(appUser);
+            const template = await getWhatsAppTemplate();
             setWhatsAppTemplate(template);
         }
     };
@@ -124,6 +129,11 @@ export function PersonTable({
     ];
   }, []);
 
+  const getColumnSortState = (columnId: string) => {
+    const sort = sortDescriptors.find(s => s.field === columnId);
+    if (!sort) return false;
+    return sort.direction;
+  }
 
   return (
     <TooltipProvider>
@@ -143,7 +153,12 @@ export function PersonTable({
               )}
               {columns.map(column => (
                 <TableHead key={column.key} className={column.key === 'fullName' ? 'min-w-[200px]' : ''}>
-                    {column.label}
+                    <DataTableColumnHeader 
+                      column={{id: column.key, getIsSorted: () => getColumnSortState(column.key), toggleSorting: () => {}}}
+                      title={column.label} 
+                      sortDescriptors={sortDescriptors}
+                      setSortDescriptors={setSortDescriptors}
+                     />
                 </TableHead>
               ))}
               <TableHead className="w-[50px] text-right">Actions</TableHead>
@@ -353,5 +368,3 @@ export function PersonTable({
     </TooltipProvider>
   );
 }
-
-    
