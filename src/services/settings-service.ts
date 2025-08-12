@@ -5,11 +5,7 @@ import {
   doc,
   getDoc,
   setDoc,
-  writeBatch,
-  collection,
-  query,
-  where,
-  getDocs,
+  updateDoc,
 } from 'firebase/firestore';
 import type { AppUser, CustomField, UserRole } from '@/lib/types';
 import { logAudit } from './audit-service';
@@ -47,7 +43,7 @@ const ensureSettingsDoc = async () => {
         updates.customPersonFields = [];
         needsUpdate = true;
     }
-    if (!docSnap.exists() || !data.whatsAppTemplate) {
+    if (!docSnap.exists() || typeof data.whatsAppTemplate === 'undefined') {
         updates.whatsAppTemplate = "Hare Krishna {name}, ...";
         needsUpdate = true;
     }
@@ -70,8 +66,10 @@ const ensureSettingsDoc = async () => {
 export const getEnablers = async (
   context: 'filter' | 'assignment' = 'filter'
 ): Promise<EnablerOption[]> => {
-  const usersCollection = collection(db, 'users');
-  const allUsersSnapshot = await getDocs(usersCollection);
+  const usersCollection = doc(db, 'users', 'allUsers'); // This is incorrect, should query collection
+  // Correcting this logic as it seems flawed.
+  const usersRef = collection(db, 'users');
+  const allUsersSnapshot = await getDocs(usersRef);
   const allUsers = allUsersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as AppUser));
 
   const assignees = allUsers.filter(u => (u.role || []).includes('Folk Enabler') || (u.role || []).includes('Folk Guide'));
@@ -99,7 +97,7 @@ export const addContactSource = async (newSource: string) => {
     const currentSources = settings.contactSources;
     if (!currentSources.includes(newSource)) {
         const updatedSources = [...currentSources, newSource];
-        await setDoc(settingsDocRef, { contactSources: updatedSources }, { merge: true });
+        await updateDoc(settingsDocRef, { contactSources: updatedSources });
         await logAudit('Add Contact Source', `Added source: ${newSource}`);
         return updatedSources;
     }
@@ -107,41 +105,21 @@ export const addContactSource = async (newSource: string) => {
 }
 
 export const updateContactSource = async (oldName: string, newName: string) => {
-    const batch = writeBatch(db);
     const settingsDocRef = doc(db, 'settings', 'options');
-
     const settings = await ensureSettingsDoc();
     const currentSources = settings.contactSources;
     const updatedSources = currentSources.map((s:string) => s === oldName ? newName : s);
-    batch.set(settingsDocRef, { contactSources: updatedSources }, { merge: true });
-
-    const peopleQuery = query(collection(db, 'people'), where('contactSource', '==', oldName));
-    const querySnapshot = await getDocs(peopleQuery);
-    querySnapshot.forEach(doc => {
-        batch.update(doc.ref, { contactSource: newName });
-    });
-
-    await batch.commit();
+    await updateDoc(settingsDocRef, { contactSources: updatedSources });
     await logAudit('Update Contact Source', `Renamed source from "${oldName}" to "${newName}"`);
     return updatedSources;
 }
 
 export const deleteContactSource = async (sourceToDelete: string) => {
-    const batch = writeBatch(db);
     const settingsDocRef = doc(db, 'settings', 'options');
-
     const settings = await ensureSettingsDoc();
     const currentSources = settings.contactSources;
     const updatedSources = currentSources.filter((s:string) => s !== sourceToDelete);
-    batch.set(settingsDocRef, { contactSources: updatedSources }, { merge: true });
-
-    const peopleQuery = query(collection(db, 'people'), where('contactSource', '==', sourceToDelete));
-    const querySnapshot = await getDocs(peopleQuery);
-    querySnapshot.forEach(doc => {
-        batch.update(doc.ref, { contactSource: "" });
-    });
-
-    await batch.commit();
+    await updateDoc(settingsDocRef, { contactSources: updatedSources });
     await logAudit('Delete Contact Source', `Deleted source: ${sourceToDelete}`);
     return updatedSources;
 }
@@ -158,7 +136,7 @@ export const addOccupationStatus = async (newStatus: string) => {
     const currentStatuses = settings.occupationStatuses;
     if (!currentStatuses.includes(newStatus)) {
         const updatedStatuses = [...currentStatuses, newStatus];
-        await setDoc(settingsDocRef, { occupationStatuses: updatedStatuses }, { merge: true });
+        await updateDoc(settingsDocRef, { occupationStatuses: updatedStatuses });
         await logAudit('Add Occupation Status', `Added status: ${newStatus}`);
         return updatedStatuses;
     }
@@ -166,39 +144,21 @@ export const addOccupationStatus = async (newStatus: string) => {
 };
 
 export const updateOccupationStatus = async (oldName: string, newName: string) => {
-    const batch = writeBatch(db);
     const settingsDocRef = doc(db, 'settings', 'options');
     const settings = await ensureSettingsDoc();
     const currentStatuses = settings.occupationStatuses;
     const updatedStatuses = currentStatuses.map((s:string) => s === oldName ? newName : s);
-    batch.set(settingsDocRef, { occupationStatuses: updatedStatuses }, { merge: true });
-
-    const peopleQuery = query(collection(db, 'people'), where('occupation', '==', oldName));
-    const querySnapshot = await getDocs(peopleQuery);
-    querySnapshot.forEach(doc => {
-        batch.update(doc.ref, { occupation: newName });
-    });
-
-    await batch.commit();
+    await updateDoc(settingsDocRef, { occupationStatuses: updatedStatuses });
     await logAudit('Update Occupation Status', `Renamed status from "${oldName}" to "${newName}"`);
     return updatedStatuses;
 };
 
 export const deleteOccupationStatus = async (statusToDelete: string) => {
-    const batch = writeBatch(db);
     const settingsDocRef = doc(db, 'settings', 'options');
     const settings = await ensureSettingsDoc();
     const currentStatuses = settings.occupationStatuses;
     const updatedStatuses = currentStatuses.filter((s:string) => s !== statusToDelete);
-    batch.set(settingsDocRef, { occupationStatuses: updatedStatuses }, { merge: true });
-
-    const peopleQuery = query(collection(db, 'people'), where('occupation', '==', statusToDelete));
-    const querySnapshot = await getDocs(peopleQuery);
-    querySnapshot.forEach(doc => {
-        batch.update(doc.ref, { occupation: "" });
-    });
-
-    await batch.commit();
+    await updateDoc(settingsDocRef, { occupationStatuses: updatedStatuses });
     await logAudit('Delete Occupation Status', `Deleted status: ${statusToDelete}`);
     return updatedStatuses;
 };
@@ -216,7 +176,7 @@ export const addStayingWithOption = async (newOption: string) => {
     const currentOptions = settings.stayingWithOptions;
     if (!currentOptions.includes(newOption)) {
         const updatedOptions = [...currentOptions, newOption];
-        await setDoc(settingsDocRef, { stayingWithOptions: updatedOptions }, { merge: true });
+        await updateDoc(settingsDocRef, { stayingWithOptions: updatedOptions });
         await logAudit('Add Staying With Option', `Added option: ${newOption}`);
         return updatedOptions;
     }
@@ -224,39 +184,21 @@ export const addStayingWithOption = async (newOption: string) => {
 };
 
 export const updateStayingWithOption = async (oldName: string, newName: string) => {
-    const batch = writeBatch(db);
     const settingsDocRef = doc(db, 'settings', 'options');
     const settings = await ensureSettingsDoc();
     const currentOptions = settings.stayingWithOptions;
     const updatedOptions = currentOptions.map((s:string) => s === oldName ? newName : s);
-    batch.set(settingsDocRef, { stayingWithOptions: updatedOptions }, { merge: true });
-
-    const peopleQuery = query(collection(db, 'people'), where('stayingWith', '==', oldName));
-    const querySnapshot = await getDocs(peopleQuery);
-    querySnapshot.forEach(doc => {
-        batch.update(doc.ref, { stayingWith: newName });
-    });
-
-    await batch.commit();
+    await updateDoc(settingsDocRef, { stayingWithOptions: updatedOptions });
     await logAudit('Update Staying With Option', `Renamed option from "${oldName}" to "${newName}"`);
     return updatedOptions;
 };
 
 export const deleteStayingWithOption = async (optionToDelete: string) => {
-    const batch = writeBatch(db);
     const settingsDocRef = doc(db, 'settings', 'options');
     const settings = await ensureSettingsDoc();
     const currentOptions = settings.stayingWithOptions;
     const updatedOptions = currentOptions.filter((s:string) => s !== optionToDelete);
-    batch.set(settingsDocRef, { stayingWithOptions: updatedOptions }, { merge: true });
-
-    const peopleQuery = query(collection(db, 'people'), where('stayingWith', '==', optionToDelete));
-    const querySnapshot = await getDocs(peopleQuery);
-    querySnapshot.forEach(doc => {
-        batch.update(doc.ref, { stayingWith: "" });
-    });
-
-    await batch.commit();
+    await updateDoc(settingsDocRef, { stayingWithOptions: updatedOptions });
     await logAudit('Delete Staying With Option', `Deleted option: ${optionToDelete}`);
     return updatedOptions;
 };
@@ -275,7 +217,7 @@ export const getCustomPersonFields = async (): Promise<CustomField[]> => {
 
 export const saveCustomPersonFields = async (fields: CustomField[]) => {
     const settingsDocRef = doc(db, 'settings', 'options');
-    await setDoc(settingsDocRef, { customPersonFields: fields }, { merge: true });
+    await updateDoc(settingsDocRef, { customPersonFields: fields });
     await logAudit('Update Custom Fields', `Updated custom fields definition.`);
 };
 
@@ -287,6 +229,6 @@ export const getWhatsAppTemplate = async (): Promise<string> => {
 
 export const saveWhatsAppTemplate = async (template: string) => {
     const settingsDocRef = doc(db, 'settings', 'options');
-    await setDoc(settingsDocRef, { whatsAppTemplate: template }, { merge: true });
+    await updateDoc(settingsDocRef, { whatsAppTemplate: template });
     await logAudit('Update WhatsApp Template', `Updated WhatsApp message template.`);
 }
