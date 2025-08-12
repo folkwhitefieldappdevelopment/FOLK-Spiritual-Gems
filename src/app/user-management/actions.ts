@@ -1,3 +1,4 @@
+
 'use server';
 
 import { admin } from '@/lib/firebase-admin';
@@ -17,13 +18,7 @@ import { logAudit } from '@/services/audit-service';
 import type { UserRole, AppUser } from '@/lib/types';
 import type { UserFormValues } from '@/components/create-user-dialog';
 
-type UserInfo = {
-  id: string;
-  name: string;
-  role: UserRole[];
-};
-
-export async function createUserAction(userData: UserFormValues, actorInfo: UserInfo): Promise<{ success: boolean; message: string }> {
+export async function createUserAction(userData: UserFormValues): Promise<{ success: boolean; message: string }> {
     const usersCollection = collection(db, 'users');
     
     // Check for duplicate email in Firestore (and by extension, Auth)
@@ -84,7 +79,7 @@ export async function createUserAction(userData: UserFormValues, actorInfo: User
         // 3. Save user data to Firestore with the UID from Auth
         await setDoc(doc(db, 'users', uid), dataToSave);
 
-        await logAudit('Create User Record', `Created Auth & Firestore record for ${userData.name} (${userData.email}).`, actorInfo);
+        await logAudit('Create User Record', `Created Auth & Firestore record for ${userData.name} (${userData.email}).`);
         
         // 4. Generate the sign-in link
         const link = await admin.auth().generateSignInWithEmailLink(userData.email, {
@@ -104,7 +99,7 @@ export async function createUserAction(userData: UserFormValues, actorInfo: User
     }
 }
 
-export async function deleteUserAction(userId: string, actorInfo: UserInfo): Promise<{ success: boolean; message: string }> {
+export async function deleteUserAction(userId: string): Promise<{ success: boolean; message: string }> {
   const userDocRef = doc(db, 'users', userId);
   const userSnap = await getDoc(userDocRef);
   const userData = userSnap.data();
@@ -117,13 +112,13 @@ export async function deleteUserAction(userId: string, actorInfo: UserInfo): Pro
   try {
     await admin.auth().deleteUser(userId);
     if (userData) {
-      await logAudit('Delete User', `Deleted user: ${userData.name} (${userId}) from Auth and Firestore.`, actorInfo);
+      await logAudit('Delete User', `Deleted user: ${userData.name} (${userId}) from Auth and Firestore.`);
     }
     return { success: true, message: 'User deleted successfully from both app and authentication system.' };
   } catch (authError: any) {
     console.error(`Failed to delete user ${userId} from Firebase Auth:`, authError);
     if (userData) {
-      await logAudit('Delete User (Firestore only)', `Deleted user: ${userData.name} (${userId}) from Firestore. Auth deletion failed.`, actorInfo);
+      await logAudit('Delete User (Firestore only)', `Deleted user: ${userData.name} (${userId}) from Firestore. Auth deletion failed.`);
     }
     return { 
       success: true, 

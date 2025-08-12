@@ -14,20 +14,12 @@ export type AuditLog = {
     details: string;
 };
 
-type UserInfo = {
-  id: string;
-  name: string;
-  role: UserRole[];
-};
-
 type AuditLogData = Omit<AuditLog, 'id' | 'timestamp'>;
 
-export const logAudit = async (action: string, details: string, userInfo: UserInfo | null) => {
-    if (!userInfo) return; // Don't log if user isn't available
-
+export const logAudit = async (action: string, details: string) => {
     const auditData: AuditLogData = {
-        userId: userInfo.id,
-        userName: userInfo.name,
+        userId: "system",
+        userName: "System",
         action,
         details,
     };
