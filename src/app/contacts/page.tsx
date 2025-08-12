@@ -20,6 +20,7 @@ import { read, utils, write, type WorkSheet } from "xlsx";
 import JSZip from "jszip";
 import { createInitialProgress } from "@/lib/data";
 import type { Person, Group, AppUser, CustomField, UserRole } from "@/lib/types";
+import { callStatuses } from '@/lib/types';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -830,6 +831,10 @@ export default function ContactsPage() {
     { value: 'stayingWith', label: 'Staying With', type: 'enum', options: stayingWithOptions.map(o => ({ value: o, label: o })) },
     { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(o => ({ value: o, label: o }))},
     { value: 'enablerInTouchWith', label: 'Enabler', type: 'enum', options: enablerOptions.map(o => ({ value: o.value, label: o.label })) },
+    { value: 'lastCallStatus', label: 'Last Call Status', type: 'enum', options: [...callStatuses].map(s => ({ value: s, label: s }))},
+    { value: 'lastSg', label: 'Last SG Attended', type: 'boolean' },
+    { value: 'lastMa', label: 'Last MA Attended', type: 'boolean' },
+    { value: 'lastFrp', label: 'Last FRP Attended', type: 'boolean' },
     { value: 'fromOtherCamp', label: 'From Other Camp', type: 'boolean' },
     { value: 'age', label: 'Age', type: 'number' },
     { value: 'sgRating', label: 'Rating', type: 'number' },

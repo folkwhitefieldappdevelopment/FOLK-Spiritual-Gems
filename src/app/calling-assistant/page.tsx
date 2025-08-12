@@ -4,6 +4,7 @@
 import * as React from "react";
 import { Loader2, Users, UserCheck, PlusCircle, AlertCircle, PhoneCall, Search } from "lucide-react";
 import type { Person, CallStatus, CustomField, Group, AppUser, UserRole } from "@/lib/types";
+import { callStatuses } from '@/lib/types';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -410,6 +411,10 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     { value: 'stayingWith', label: 'Staying With', type: 'enum', options: stayingWithOptions.map(o => ({ value: o, label: o })) },
     { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(o => ({ value: o, label: o }))},
     { value: 'enablerInTouchWith', label: 'Enabler', type: 'enum', options: enablerOptions.map(o => ({ value: o.value, label: o.label })) },
+    { value: 'lastCallStatus', label: 'Last Call Status', type: 'enum', options: [...callStatuses].map(s => ({ value: s, label: s }))},
+    { value: 'lastSg', label: 'Last SG Attended', type: 'boolean' },
+    { value: 'lastMa', label: 'Last MA Attended', type: 'boolean' },
+    { value: 'lastFrp', label: 'Last FRP Attended', type: 'boolean' },
     { value: 'fromOtherCamp', label: 'From Other Camp', type: 'boolean' },
     { value: 'age', label: 'Age', type: 'number' },
     { value: 'sgRating', label: 'Rating', type: 'number' },

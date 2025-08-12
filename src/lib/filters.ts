@@ -41,9 +41,11 @@ export const applyClientSideFilters = (
             const filterValue = filter.value;
 
             // Handle boolean specifically, since 'false' can be a valid value
-            if (typeof personValue === 'boolean') {
+            if (typeof personValue === 'boolean' || typeof filterValue === 'boolean') {
               if (filter.operator === 'is_true') return personValue === true;
               if (filter.operator === 'is_false') return personValue === false;
+              if (filter.operator === 'eq') return !!personValue === !!filterValue;
+              if (filter.operator === 'neq') return !!personValue !== !!filterValue;
               return true;
             }
 
