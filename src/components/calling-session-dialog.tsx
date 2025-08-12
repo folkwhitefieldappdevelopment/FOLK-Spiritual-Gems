@@ -122,11 +122,11 @@ const CallingSessionDialogComponent = ({
   const form = useForm<CallFormValues>({
     resolver: zodResolver(callFormSchema),
     defaultValues: {
-      remark: person.lastCallRemark || "",
+      remark: "",
       status: "",
-      sg: typeof person.lastSg === 'boolean' ? (person.lastSg ? 'yes' : 'no') : '',
-      ma: typeof person.lastMa === 'boolean' ? (person.lastMa ? 'yes' : 'no') : '',
-      frp: typeof person.lastFrp === 'boolean' ? (person.lastFrp ? 'yes' : 'no') : '',
+      sg: '',
+      ma: '',
+      frp: '',
     },
   });
 
@@ -136,25 +136,19 @@ const CallingSessionDialogComponent = ({
   }, [person, groups]);
   
   const lastEventRemark = React.useMemo(() => {
-    if (!person.callHistory || !currentEvent) return null;
-    
+    if (!person.callHistory || !currentEvent) return person.lastCallRemark || '';
+
     const lastCallForEvent = [...person.callHistory]
-        .filter(log => log.event === currentEvent)
-        .sort((a,b) => {
-            const dateA = safeDate(a.calledAt);
-            const dateB = safeDate(b.calledAt);
-            if (!dateA || !dateB) return 0;
-            return dateB.getTime() - dateA.getTime();
-        })[0];
-        
+      .filter(log => log.event === currentEvent)
+      .sort((a,b) => {
+          const dateA = safeDate(a.calledAt);
+          const dateB = safeDate(b.calledAt);
+          if (!dateA || !dateB) return 0;
+          return dateB.getTime() - a.getTime();
+      })[0];
+      
     return lastCallForEvent?.remark || person.lastCallRemark || '';
   }, [person, currentEvent]);
-
-  React.useEffect(() => {
-    if(lastEventRemark !== null) {
-      form.reset({ ...form.getValues(), remark: lastEventRemark });
-    }
-  }, [lastEventRemark, form]);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -167,19 +161,20 @@ const CallingSessionDialogComponent = ({
   }, [isOpen]);
 
   React.useEffect(() => {
-    // Reset form fields when the person prop changes, but keep the remark if it was calculated
-    const currentRemark = form.getValues('remark');
-    form.reset({ 
-      remark: currentRemark,
-      status: "",
-      sg: typeof person.lastSg === 'boolean' ? (person.lastSg ? 'yes' : 'no') : '',
-      ma: typeof person.lastMa === 'boolean' ? (person.lastMa ? 'yes' : 'no') : '',
-      frp: typeof person.lastFrp === 'boolean' ? (person.lastFrp ? 'yes' : 'no') : '',
-    });
-    setGeneralRemarks(person.generalRemarks || '');
-    setIsNotesDirty(false);
-    setIsEditingDetails(false);
-  }, [person, form]);
+    // This effect runs when the 'person' prop changes.
+    // It safely updates the form state without causing render loops.
+    if (person) {
+      form.setValue('remark', lastEventRemark);
+      form.setValue('sg', typeof person.lastSg === 'boolean' ? (person.lastSg ? 'yes' : 'no') : '');
+      form.setValue('ma', typeof person.lastMa === 'boolean' ? (person.lastMa ? 'yes' : 'no') : '');
+      form.setValue('frp', typeof person.lastFrp === 'boolean' ? (person.lastFrp ? 'yes' : 'no') : '');
+      form.setValue('status', ''); // Always reset status for a new contact
+
+      setGeneralRemarks(person.generalRemarks || '');
+      setIsNotesDirty(false);
+      setIsEditingDetails(false);
+    }
+  }, [person, lastEventRemark, form]);
   
   React.useEffect(() => {
     const saveSessionState = async () => {
