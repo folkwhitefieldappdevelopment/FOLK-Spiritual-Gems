@@ -84,7 +84,7 @@ type CallingSessionDialogProps = {
   sessionTotalCount: number;
   customFields: CustomField[];
   groups: Group[];
-  allPeople: Person[];
+  sessionPeopleIds: string[];
 };
 
 const safeDate = (timestamp: any): Date | null => {
@@ -106,7 +106,7 @@ const CallingSessionDialogComponent = ({
   sessionTotalCount,
   customFields,
   groups,
-  allPeople,
+  sessionPeopleIds,
 }: CallingSessionDialogProps) => {
   const { toast } = useToast();
   const { appUser, setAppUser } = useAuth();
@@ -180,7 +180,7 @@ const CallingSessionDialogComponent = ({
       if (isOpen && appUser) {
           const pausedSession = {
               event: currentEvent,
-              people: allPeople,
+              peopleIds: sessionPeopleIds,
               currentIndex: sessionCurrentNumber - 1,
           };
           await updateUser(appUser.id, { pausedCallingSession: pausedSession });
@@ -188,7 +188,7 @@ const CallingSessionDialogComponent = ({
       }
     }
     saveSessionState();
-  }, [person, isOpen, appUser, currentEvent, allPeople, sessionCurrentNumber, setAppUser]);
+  }, [person, isOpen, appUser, currentEvent, sessionPeopleIds, sessionCurrentNumber, setAppUser]);
 
 
   const onSubmit = async (data: CallFormValues) => {
@@ -432,7 +432,7 @@ const CallingSessionDialogComponent = ({
                       isEditing={isEditingDetails} 
                       onSave={handleSaveDetails}
                       onCancel={() => setIsEditingDetails(false)}
-                      allPeople={allPeople}
+                      allPeople={[]}
                       groups={personGroups}
                       isInDialog
                     />

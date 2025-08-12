@@ -367,7 +367,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       setAllFetchedPeople(prev => prev.map(p => {
           if (p.id === personId) {
               const newHistory = [...(p.callHistory || []), { ...callLog, calledAt: new Date().toISOString() }];
-              return { ...p, ...updates, callHistory: newHistory };
+              return { ...p, ...updates, callHistory: newHistory, lastCallAt: new Date().toISOString() };
           }
           return p;
       }));
@@ -400,11 +400,19 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   
   const handleResumeSession = () => {
     if (!appUser?.pausedCallingSession) return;
-    const { event, people, currentIndex } = appUser.pausedCallingSession;
-    setSessionPeople(people);
-    setSessionEvent(event);
-    setSessionCurrentIndex(currentIndex);
-    setIsCallingSessionDialogOpen(true);
+    const { event, peopleIds, currentIndex } = appUser.pausedCallingSession;
+    const peopleMap = new Map(allFetchedPeople.map(p => [p.id, p]));
+    const resumedPeople = peopleIds.map(id => peopleMap.get(id)).filter(Boolean) as Person[];
+    
+    if (resumedPeople.length > 0) {
+      setSessionPeople(resumedPeople);
+      setSessionEvent(event);
+      setSessionCurrentIndex(currentIndex);
+      setIsCallingSessionDialogOpen(true);
+    } else {
+      toast({ variant: 'destructive', title: 'Error Resuming', description: 'Could not find the contacts for the paused session.' });
+      handleClearSession();
+    }
   };
   
   const handleClearSession = async () => {
@@ -581,7 +589,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
             sessionTotalCount={sessionPeople.length}
             customFields={customFields}
             groups={groups}
-            allPeople={sessionPeople}
+            sessionPeopleIds={sessionPeople.map(p => p.id)}
           />
       )}
     </div>

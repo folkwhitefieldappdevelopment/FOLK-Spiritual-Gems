@@ -117,7 +117,7 @@ export type AppUser = {
   photoUrl?: string;
   pausedCallingSession?: {
     event: string;
-    people: Person[];
+    peopleIds: string[];
     currentIndex: number;
   } | null;
 };
