@@ -147,10 +147,14 @@ const CallingSessionDialogComponent = ({
             return dateB.getTime() - dateA.getTime();
         })[0];
         
-    const lastRemark = lastCallForEvent?.remark || person.lastCallRemark || '';
-    form.reset({ ...form.getValues(), remark: lastRemark });
-    return lastRemark;
-  }, [person, currentEvent, form]);
+    return lastCallForEvent?.remark || person.lastCallRemark || '';
+  }, [person, currentEvent]);
+
+  React.useEffect(() => {
+    if(lastEventRemark !== null) {
+      form.reset({ ...form.getValues(), remark: lastEventRemark });
+    }
+  }, [lastEventRemark, form]);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -163,8 +167,10 @@ const CallingSessionDialogComponent = ({
   }, [isOpen]);
 
   React.useEffect(() => {
+    // Reset form fields when the person prop changes, but keep the remark if it was calculated
+    const currentRemark = form.getValues('remark');
     form.reset({ 
-      remark: person.lastCallRemark || "",
+      remark: currentRemark,
       status: "",
       sg: typeof person.lastSg === 'boolean' ? (person.lastSg ? 'yes' : 'no') : '',
       ma: typeof person.lastMa === 'boolean' ? (person.lastMa ? 'yes' : 'no') : '',
