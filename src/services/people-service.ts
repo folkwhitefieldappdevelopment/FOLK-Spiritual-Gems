@@ -167,12 +167,12 @@ export const updatePerson = async (id: string, personData: Partial<Omit<Person, 
   }
 
   // Handle server-side operations based on placeholders
-  if (dataToUpdate.lastCallAt === 'SERVER_TIMESTAMP') {
-    dataToUpdate.lastCallAt = serverTimestamp();
+  if (dataToUpdate.lastCallAt) {
+    dataToUpdate.lastCallAt = new Date(dataToUpdate.lastCallAt);
   }
   if (dataToUpdate.callHistory) {
       const historyEntry = dataToUpdate.callHistory;
-      historyEntry.calledAt = new Date();
+      historyEntry.calledAt = new Date(); // Ensure timestamp is a Date object
       dataToUpdate.callHistory = arrayUnion(historyEntry);
   }
 

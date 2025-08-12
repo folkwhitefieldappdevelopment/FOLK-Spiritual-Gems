@@ -110,7 +110,6 @@ const CallingSessionDialogComponent = ({
 }: CallingSessionDialogProps) => {
   const { toast } = useToast();
   const { appUser, setAppUser } = useAuth();
-  const sessionIsEndingRef = React.useRef(false);
   
   const [isEditingDetails, setIsEditingDetails] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -177,23 +176,18 @@ const CallingSessionDialogComponent = ({
   }, [person, form]);
   
   React.useEffect(() => {
-    if (isOpen && appUser) {
-        const pausedSession = {
-            event: currentEvent,
-            people: allPeople,
-            currentIndex: sessionCurrentNumber - 1,
-        };
-        updateUser(appUser.id, { pausedCallingSession: pausedSession });
-        setAppUser({...appUser, pausedCallingSession: pausedSession});
+    const saveSessionState = async () => {
+      if (isOpen && appUser) {
+          const pausedSession = {
+              event: currentEvent,
+              people: allPeople,
+              currentIndex: sessionCurrentNumber - 1,
+          };
+          await updateUser(appUser.id, { pausedCallingSession: pausedSession });
+          setAppUser(prev => prev ? {...prev, pausedCallingSession: pausedSession} : null);
+      }
     }
-
-    return () => {
-        if (sessionIsEndingRef.current && appUser) {
-            updateUser(appUser.id, { pausedCallingSession: null });
-            setAppUser({...appUser, pausedCallingSession: null});
-            sessionIsEndingRef.current = false;
-        }
-    };
+    saveSessionState();
   }, [person, isOpen, appUser, currentEvent, allPeople, sessionCurrentNumber, setAppUser]);
 
 
@@ -253,7 +247,6 @@ const CallingSessionDialogComponent = ({
   };
   
   const handleEndAndClose = () => {
-    sessionIsEndingRef.current = true;
     onEndSession();
   }
   

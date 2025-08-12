@@ -15,7 +15,7 @@ import { FirebaseConfigError } from "@/components/firebase-config-error";
 import { getPeople, updatePerson, assignCoEnablerToPeople } from "@/services/people-service";
 import { getCustomPersonFields, getEnablers, getContactSources, getOccupationStatuses, getStayingWithOptions, type EnablerOption } from "@/services/settings-service";
 import { getAllGroups, createGroup, addPeopleToGroup } from "@/services/groups-service";
-import { getFolkGuides } from '@/services/user-service';
+import { getFolkGuides, updateUser } from '@/services/user-service';
 import { useAuth } from "@/contexts/auth-context";
 import {
   DropdownMenu,
@@ -37,7 +37,6 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { CallingSessionDialog } from '@/components/calling-session-dialog';
 import { ConfirmSessionDialog } from '@/components/confirm-session-dialog';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { updateUser } from '@/services/user-service';
 import { FilterPopover, type FilterRule, type FilterableField, applyClientSideFilters } from '@/components/filter-popover';
 import { SortPopover, type SortDescriptor } from '@/components/sort-popover';
 import { get } from 'lodash';
@@ -48,7 +47,7 @@ const FIRESTORE_QUERY_LIMIT = 10000;
 
 const CallingAssistantPageComponent = React.memo(function CallingAssistantPageComponent() {
   const { toast } = useToast();
-  const { appUser, user } = useAuth();
+  const { appUser, user, setAppUser } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -334,7 +333,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     ma: boolean | undefined,
     frp: boolean | undefined
   ) => {
-    if (!appUser || !user) return;
+    if (!appUser) return;
     
     const callLog = {
       remark,
@@ -345,13 +344,13 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       frp,
       callerId: appUser.id,
       callerName: appUser.name,
-      callerPhotoUrl: user.photoURL || '',
+      callerPhotoUrl: appUser.photoUrl || '',
     };
     
     const updates: Partial<Person> = {
       lastCallRemark: remark,
       lastCallStatus: status,
-      lastCallAt: 'SERVER_TIMESTAMP',
+      lastCallAt: new Date().toISOString(),
       lastSg: sg,
       lastMa: ma,
       lastFrp: frp,
@@ -368,7 +367,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       setAllFetchedPeople(prev => prev.map(p => {
           if (p.id === personId) {
               const newHistory = [...(p.callHistory || []), { ...callLog, calledAt: new Date().toISOString() }];
-              return { ...p, ...updates, callHistory: newHistory, lastCallAt: new Date().toISOString() };
+              return { ...p, ...updates, callHistory: newHistory };
           }
           return p;
       }));
@@ -377,7 +376,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       toast({ variant: 'destructive', title: "Error", description: 'Could not save the call log.' });
       throw error;
     }
-  }, [appUser, sessionEvent, user, toast]);
+  }, [appUser, sessionEvent, toast]);
 
   const handleSessionNavigate = (direction: 'next' | 'prev') => {
     setSessionCurrentIndex(prev => {
@@ -389,7 +388,9 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   const handleEndSession = async () => {
     setIsCallingSessionDialogOpen(false);
     if (appUser) {
-      await updateUser(appUser.id, { pausedCallingSession: null });
+        const newAppUser = { ...appUser, pausedCallingSession: null };
+        await updateUser(appUser.id, { pausedCallingSession: null });
+        setAppUser(newAppUser);
     }
     toast({
         title: 'Session Ended',
