@@ -176,7 +176,7 @@ export default function UserManagementPage() {
       }
       
       if (userId) { // This is an update
-        await updateUser(userId, userData, actorInfo);
+        await updateUser(userId, userData);
         toast({
           title: 'User Updated',
           description: `${data.name}'s details have been updated.`,

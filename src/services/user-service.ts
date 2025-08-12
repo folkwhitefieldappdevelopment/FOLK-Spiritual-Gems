@@ -47,6 +47,9 @@ export const updateUser = async (id: string, userData: { [key: string]: any }): 
    if (dataToUpdate.pausedCallingSession === null) {
     dataToUpdate.pausedCallingSession = deleteField();
   }
+  if ('role' in dataToUpdate && !Array.isArray(dataToUpdate.role)) {
+    dataToUpdate.role = [];
+  }
 
 
   await updateDoc(userDocRef, dataToUpdate);
