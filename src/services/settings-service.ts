@@ -6,6 +6,8 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  collection,
+  getDocs,
 } from 'firebase/firestore';
 import type { AppUser, CustomField, UserRole } from '@/lib/types';
 import { logAudit } from './audit-service';
@@ -66,8 +68,6 @@ const ensureSettingsDoc = async () => {
 export const getEnablers = async (
   context: 'filter' | 'assignment' = 'filter'
 ): Promise<EnablerOption[]> => {
-  const usersCollection = doc(db, 'users', 'allUsers'); // This is incorrect, should query collection
-  // Correcting this logic as it seems flawed.
   const usersRef = collection(db, 'users');
   const allUsersSnapshot = await getDocs(usersRef);
   const allUsers = allUsersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as AppUser));
