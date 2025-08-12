@@ -81,11 +81,11 @@ export type Person = {
   callHistory?: { 
     remark: string; 
     calledAt: any; 
-    status?: CallStatus;
-    event?: string;
-    sg?: boolean;
-    ma?: boolean;
-    frp?: boolean;
+    status: CallStatus;
+    event: string;
+    sg: boolean | undefined;
+    ma: boolean | undefined;
+    frp: boolean | undefined;
     callerId: string;
     callerName: string;
     callerPhotoUrl: string;

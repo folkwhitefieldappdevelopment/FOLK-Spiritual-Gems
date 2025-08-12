@@ -317,13 +317,25 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
   const handleStartSession = React.useCallback(async (eventName: string, start: number, end: number) => {
     const slicedPeople = filteredAndSortedPeople.slice(start - 1, end);
+    const slicedPeopleIds = slicedPeople.map(p => p.id);
     
     setSessionPeople(slicedPeople);
     setSessionEvent(eventName);
     setSessionCurrentIndex(0);
     setIsCallingSessionDialogOpen(true);
     setIsConfirmSessionDialogOpen(false);
-  }, [filteredAndSortedPeople]);
+
+    // Save session state immediately
+    if (appUser) {
+        const pausedSession = {
+            event: eventName,
+            peopleIds: slicedPeopleIds,
+            currentIndex: 0,
+        };
+        await updateUser(appUser.id, { pausedCallingSession: pausedSession });
+        setAppUser(prev => prev ? {...prev, pausedCallingSession: pausedSession} : null);
+    }
+  }, [filteredAndSortedPeople, appUser, setAppUser]);
   
   const handleSessionSave = React.useCallback(async (
     personId: string,
@@ -335,7 +347,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   ) => {
     if (!appUser) return;
     
-    const callLog = {
+    const callLog: Person['callHistory'][number] = {
       remark,
       status,
       event: sessionEvent,
@@ -345,16 +357,17 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       callerId: appUser.id,
       callerName: appUser.name,
       callerPhotoUrl: appUser.photoUrl || '',
+      calledAt: new Date().toISOString(),
     };
     
     const updates: Partial<Person> = {
       lastCallRemark: remark,
       lastCallStatus: status,
-      lastCallAt: new Date().toISOString(),
+      lastCallAt: callLog.calledAt,
       lastSg: sg,
       lastMa: ma,
       lastFrp: frp,
-      callHistory: callLog as any,
+      callHistory: callLog,
     };
 
     try {
@@ -366,8 +379,8 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       
       setAllFetchedPeople(prev => prev.map(p => {
           if (p.id === personId) {
-              const newHistory = [...(p.callHistory || []), { ...callLog, calledAt: new Date().toISOString() }];
-              return { ...p, ...updates, callHistory: newHistory, lastCallAt: new Date().toISOString() };
+              const newHistory = [...(p.callHistory || []), { ...callLog }];
+              return { ...p, ...updates, callHistory: newHistory };
           }
           return p;
       }));
@@ -418,6 +431,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   const handleClearSession = async () => {
     if (!appUser) return;
     await updateUser(appUser.id, { pausedCallingSession: null });
+    setAppUser(prev => prev ? {...prev, pausedCallingSession: null} : null);
     setHasPausedSession(false); 
     toast({ title: 'Session Cleared', description: 'Your paused session has been cleared.'});
   };
