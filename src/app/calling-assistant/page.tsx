@@ -46,12 +46,6 @@ import { get } from 'lodash';
 const ROWS_PER_PAGE = 25;
 const FIRESTORE_QUERY_LIMIT = 10000;
 
-type UserInfo = {
-  id: string;
-  name: string;
-  role: UserRole[];
-};
-
 const CallingAssistantPageComponent = React.memo(function CallingAssistantPageComponent() {
   const { toast } = useToast();
   const { appUser, user } = useAuth();
