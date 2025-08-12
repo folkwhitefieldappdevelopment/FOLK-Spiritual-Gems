@@ -136,9 +136,9 @@ export function PersonTable({
   const columns: { key: keyof Person, label: string, filterable?: boolean }[] = React.useMemo(() => {
     return [
       { key: 'fullName', label: 'Name', filterable: true },
-      { key: 'phone', label: 'Phone' },
+      { key: 'phone', label: 'Phone', filterable: true },
       { key: 'enablerInTouchWith', label: 'Assignments', filterable: true },
-      { key: 'lastCallAt', label: 'Last Called' },
+      { key: 'lastCallAt', label: 'Last Called', filterable: true },
       { key: 'lastCallRemark', label: 'Last Remark', filterable: true }
     ];
   }, []);
@@ -146,9 +146,7 @@ export function PersonTable({
   const allColumnValues = React.useMemo(() => {
       const values: Record<string, (string | number)[]> = {};
       columns.forEach(col => {
-          if(col.filterable) {
-              values[col.key] = Array.from(new Set(allPeople.map(p => get(p, col.key, ''))));
-          }
+          values[col.key] = Array.from(new Set(allPeople.map(p => get(p, col.key, ''))));
       });
       return values;
   }, [allPeople, columns]);
@@ -195,8 +193,8 @@ export function PersonTable({
                       sortDescriptors={sortDescriptors}
                       setSortDescriptors={setSortDescriptors}
                       filter={filters[column.key]}
-                      onFilterChange={column.filterable ? handleFilterChange(column.key) : undefined}
-                      allValues={column.filterable ? allColumnValues[column.key] : undefined}
+                      onFilterChange={handleFilterChange(column.key)}
+                      allValues={allColumnValues[column.key]}
                      />
                 </TableHead>
               ))}
