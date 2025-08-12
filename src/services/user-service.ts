@@ -59,7 +59,7 @@ export const updateUser = async (id: string, userData: { [key: string]: any }): 
 
 
   await updateDoc(userDocRef, dataToUpdate);
-  await logAudit('Update User', `Updated user: ${userData.name || id}`);
+  await logAudit('Update User', `Updated user: ${userData.name || id}`, { id, name: userData.name, role: userData.role });
 };
 
 /**
