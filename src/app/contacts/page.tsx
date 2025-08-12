@@ -14,6 +14,7 @@ import {
   Info,
   UserPlus,
   Contact,
+  Search,
 } from "lucide-react";
 import { read, utils, write, type WorkSheet } from "xlsx";
 import JSZip from "jszip";
@@ -24,7 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AppSidebar } from "@/components/app-sidebar";
 import { PageHeader } from "@/components/page-header";
 import { PersonCard } from "@/components/person-card";
-import { PersonTable, type FilterState } from "@/components/person-table";
+import { PersonTable } from "@/components/person-table";
 import { CreateUpdatePersonDialog } from "@/components/create-update-person-dialog";
 import { FirebaseConfigError } from "@/components/firebase-config-error";
 import {
@@ -77,8 +78,11 @@ import { AssignCoEnablerDialog } from "@/components/assign-helper-dialog";
 import { AssignEnablerDialog } from "@/components/assign-enabler-dialog";
 import { logAudit } from '@/services/audit-service';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { applyClientSideFilters } from '@/lib/filters';
+import { applyClientSideFilters, type FilterState } from '@/lib/filters';
 import { get } from 'lodash';
+import { Input } from "@/components/ui/input";
+import { SortPopover, type SortDescriptor } from "@/components/sort-popover";
+import { FilterPopover, type FilterRule, type FilterableField } from "@/components/filter-popover";
 
 
 const ROWS_PER_PAGE = 25;
@@ -100,8 +104,10 @@ export default function ContactsPage() {
   const [isExporting, setIsExporting] = React.useState(false);
   
   const [view, setView] = React.useState<"table" | "card">("table");
-  const [filters, setFilters] = React.useState<FilterState>({});
-  const [sortDescriptors, setSortDescriptors] = React.useState<any[]>([]);
+  const [tableFilters, setTableFilters] = React.useState<FilterState>({});
+  const [globalSearch, setGlobalSearch] = React.useState('');
+  const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([]);
+  const [advancedFilters, setAdvancedFilters] = React.useState<FilterRule[]>([]);
   const [currentPage, setCurrentPage] = React.useState(1);
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
@@ -115,6 +121,11 @@ export default function ContactsPage() {
 
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
+  
+  const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
+  const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
+  const [occupationOptions, setOccupationOptions] = React.useState<string[]>([]);
+  const [stayingWithOptions, setStayingWithOptions] = React.useState<string[]>([]);
 
   
   React.useEffect(() => {
@@ -122,7 +133,9 @@ export default function ContactsPage() {
     const page = parseInt(params.get('page') || '1', 10);
     const view = params.get('view') as 'table' | 'card' || 'table';
     const sort = params.get('sort');
-    const filter = params.get('filters');
+    const tableFilter = params.get('tableFilters');
+    const advancedFilter = params.get('advancedFilters');
+    const search = params.get('search');
 
     setCurrentPage(page);
     setView(view);
@@ -131,8 +144,14 @@ export default function ContactsPage() {
     } else {
       setSortDescriptors([{ field: 'createdAt', direction: 'desc' }]);
     }
-    if (filter) {
-      try { setFilters(JSON.parse(filter)); } catch(e) {}
+    if (tableFilter) {
+      try { setTableFilters(JSON.parse(tableFilter)); } catch(e) {}
+    }
+     if(advancedFilter) {
+      try { setAdvancedFilters(JSON.parse(advancedFilter)); } catch(e) {}
+    }
+    if(search) {
+      setGlobalSearch(search);
     }
   }, []); 
 
@@ -143,12 +162,18 @@ export default function ContactsPage() {
     if (sortDescriptors.length > 0 && !(sortDescriptors.length === 1 && sortDescriptors[0].field === 'createdAt' && sortDescriptors[0].direction === 'desc')) {
       params.set('sort', JSON.stringify(sortDescriptors));
     }
-     if (Object.keys(filters).length > 0) {
-        params.set('filters', JSON.stringify(filters));
+     if (Object.keys(tableFilters).length > 0) {
+        params.set('tableFilters', JSON.stringify(tableFilters));
+    }
+     if (advancedFilters.length > 0) {
+        params.set('advancedFilters', JSON.stringify(advancedFilters));
+    }
+    if (globalSearch) {
+        params.set('search', globalSearch);
     }
     
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [currentPage, view, sortDescriptors, filters, router, pathname]);
+  }, [currentPage, view, sortDescriptors, tableFilters, advancedFilters, globalSearch, router, pathname]);
 
   const fetchPageData = React.useCallback(async () => {
     setIsLoading(true);
@@ -157,16 +182,24 @@ export default function ContactsPage() {
       const { people: peopleData } = await getPeople({ pageSize: FIRESTORE_QUERY_LIMIT });
       setAllFetchedPeople(peopleData);
       
-      const [allUsersData, groupsData, guidesData, customFieldsData] = await Promise.all([
+      const [allUsersData, groupsData, guidesData, customFieldsData, enablersData, sourcesData, occupationsData, stayingsData] = await Promise.all([
         getUsers(),
         getAllGroups(),
         getFolkGuides(),
         getCustomPersonFields(),
+        getEnablers('filter'),
+        getContactSources(),
+        getOccupationStatuses(),
+        getStayingWithOptions(),
       ]);
       setAllUsers(allUsersData);
       setGroups(groupsData);
       setFolkGuides(guidesData);
       setCustomFields(customFieldsData);
+      setEnablerOptions(enablersData);
+      setContactSourceOptions(sourcesData);
+      setOccupationOptions(occupationsData);
+      setStayingWithOptions(stayingsData);
     } catch (error) {
       console.error("Failed to load data:", error);
       if (error instanceof Error) {
@@ -186,12 +219,10 @@ export default function ContactsPage() {
   React.useEffect(() => {
     setCurrentPage(1);
     setSelectedIds(new Set());
-  }, [view, filters, sortDescriptors]);
+  }, [view, tableFilters, sortDescriptors, globalSearch, advancedFilters]);
   
   const filteredAndSortedPeople = React.useMemo(() => {
-    let people = [...allFetchedPeople];
-    
-    people = applyClientSideFilters(people, filters);
+    let people = applyClientSideFilters(allFetchedPeople, tableFilters, globalSearch, advancedFilters);
 
     if (sortDescriptors.length > 0) {
         people.sort((a, b) => {
@@ -212,7 +243,7 @@ export default function ContactsPage() {
     }
 
     return people;
-  }, [allFetchedPeople, filters, sortDescriptors]);
+  }, [allFetchedPeople, tableFilters, sortDescriptors, globalSearch, advancedFilters]);
 
   const totalPages = Math.ceil(filteredAndSortedPeople.length / ROWS_PER_PAGE);
   const paginatedPeople = React.useMemo(() => {
@@ -793,6 +824,17 @@ export default function ContactsPage() {
   const isLoadingAction = !!importingStatus || isExporting;
   const loadingText = typeof importingStatus === 'string' ? importingStatus : (isExporting ? 'Exporting...' : '');
   const isSelectionActive = selectedIds.size > 0;
+  
+  const filterableFields: FilterableField[] = React.useMemo(() => [
+    { value: 'occupation', label: 'Occupation', type: 'enum', options: occupationOptions.map(o => ({ value: o, label: o })) },
+    { value: 'stayingWith', label: 'Staying With', type: 'enum', options: stayingWithOptions.map(o => ({ value: o, label: o })) },
+    { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(o => ({ value: o, label: o }))},
+    { value: 'enablerInTouchWith', label: 'Enabler', type: 'enum', options: enablerOptions.map(o => ({ value: o.value, label: o.label })) },
+    { value: 'fromOtherCamp', label: 'From Other Camp', type: 'boolean' },
+    { value: 'age', label: 'Age', type: 'number' },
+    { value: 'sgRating', label: 'Rating', type: 'number' },
+    { value: 'chantingStatus', label: 'Chanting Rounds', type: 'number' },
+  ], [occupationOptions, stayingWithOptions, contactSourceOptions, enablerOptions]);
 
   const renderContent = () => {
     if (isLoading && allFetchedPeople.length === 0) {
@@ -810,7 +852,22 @@ export default function ContactsPage() {
     return (
       <>
         <div className="mb-6 flex flex-col gap-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col sm:flex-row gap-4 flex-1">
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search contacts..."
+                        className="pl-10 w-full sm:w-64"
+                        value={globalSearch}
+                        onChange={e => setGlobalSearch(e.target.value)}
+                    />
+                </div>
+                <div className="flex items-center gap-2">
+                    <FilterPopover filters={advancedFilters} setFilters={setAdvancedFilters} filterableFields={filterableFields} />
+                    <SortPopover sortDescriptors={sortDescriptors} setSortDescriptors={setSortDescriptors} />
+                </div>
+            </div>
             <div className="flex items-center gap-2">
               <div className="flex items-center rounded-md bg-muted p-1">
               <Button
@@ -947,8 +1004,8 @@ export default function ContactsPage() {
             isSelectionActive={isSelectionActive}
             sortDescriptors={sortDescriptors}
             setSortDescriptors={setSortDescriptors}
-            filters={filters}
-            setFilters={setFilters}
+            filters={tableFilters}
+            setFilters={setTableFilters}
           />
         )}
 

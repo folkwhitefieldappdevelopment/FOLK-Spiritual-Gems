@@ -2,13 +2,13 @@
 'use client';
 
 import * as React from "react";
-import { Loader2, Users, UserCheck, PlusCircle, AlertCircle, PhoneCall } from "lucide-react";
+import { Loader2, Users, UserCheck, PlusCircle, AlertCircle, PhoneCall, Search } from "lucide-react";
 import type { Person, CallStatus, CustomField, Group, AppUser, UserRole } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { AppSidebar } from "@/components/app-sidebar";
 import { PageHeader } from "@/components/page-header";
-import { PersonTable, type FilterState } from "@/components/person-table";
+import { PersonTable } from "@/components/person-table";
 import { CreateUpdatePersonDialog } from "@/components/create-update-person-dialog";
 import { FirebaseConfigError } from "@/components/firebase-config-error";
 import { getPeople, updatePerson, assignCoEnablerToPeople } from "@/services/people-service";
@@ -36,8 +36,11 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { CallingSessionDialog } from '@/components/calling-session-dialog';
 import { ConfirmSessionDialog } from '@/components/confirm-session-dialog';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { applyClientSideFilters } from '@/lib/filters';
+import { applyClientSideFilters, type FilterState } from '@/lib/filters';
 import { get } from 'lodash';
+import { Input } from "@/components/ui/input";
+import { SortPopover, type SortDescriptor } from "@/components/sort-popover";
+import { FilterPopover, type FilterRule, type FilterableField } from "@/components/filter-popover";
 
 
 const ROWS_PER_PAGE = 25;
@@ -54,8 +57,10 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   const [isDataLoading, setIsDataLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<Error | null>(null);
   
-  const [filters, setFilters] = React.useState<FilterState>({});
-  const [sortDescriptors, setSortDescriptors] = React.useState<any[]>([]);
+  const [tableFilters, setTableFilters] = React.useState<FilterState>({});
+  const [globalSearch, setGlobalSearch] = React.useState('');
+  const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([]);
+  const [advancedFilters, setAdvancedFilters] = React.useState<FilterRule[]>([]);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = React.useState(1);
 
@@ -86,7 +91,9 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     const params = new URLSearchParams(searchParams.toString());
     const page = parseInt(params.get('page') || '1', 10);
     const sort = params.get('sort');
-    const filter = params.get('filters');
+    const tableFilter = params.get('tableFilters');
+    const advancedFilter = params.get('advancedFilters');
+    const search = params.get('search');
 
     setCurrentPage(page);
     if (sort) {
@@ -94,8 +101,14 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     } else {
       setSortDescriptors([{ field: 'createdAt', direction: 'desc' }]);
     }
-    if (filter) {
-      try { setFilters(JSON.parse(filter)); } catch(e) {}
+    if (tableFilter) {
+      try { setTableFilters(JSON.parse(tableFilter)); } catch(e) {}
+    }
+    if(advancedFilter) {
+      try { setAdvancedFilters(JSON.parse(advancedFilter)); } catch(e) {}
+    }
+    if(search) {
+      setGlobalSearch(search);
     }
   }, []); 
 
@@ -109,12 +122,18 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     if (sortDescriptors.length > 0 && !(sortDescriptors.length === 1 && sortDescriptors[0].field === 'createdAt' && sortDescriptors[0].direction === 'desc')) {
       params.set('sort', JSON.stringify(sortDescriptors));
     }
-    if (Object.keys(filters).length > 0) {
-        params.set('filters', JSON.stringify(filters));
+    if (Object.keys(tableFilters).length > 0) {
+        params.set('tableFilters', JSON.stringify(tableFilters));
+    }
+     if (advancedFilters.length > 0) {
+        params.set('advancedFilters', JSON.stringify(advancedFilters));
+    }
+    if (globalSearch) {
+        params.set('search', globalSearch);
     }
     
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [currentPage, sortDescriptors, filters, router, pathname]);
+  }, [currentPage, sortDescriptors, tableFilters, advancedFilters, globalSearch, router, pathname]);
 
   const fetchPageData = React.useCallback(async () => {
      setIsDataLoading(true);
@@ -160,12 +179,10 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   React.useEffect(() => {
     setCurrentPage(1);
     setSelectedIds(new Set());
-  }, [filters, sortDescriptors]);
+  }, [tableFilters, sortDescriptors, globalSearch, advancedFilters]);
   
   const filteredAndSortedPeople = React.useMemo(() => {
-    let people = [...allFetchedPeople];
-    
-    people = applyClientSideFilters(people, filters);
+    let people = applyClientSideFilters(allFetchedPeople, tableFilters, globalSearch, advancedFilters);
 
     if (sortDescriptors.length > 0) {
         people.sort((a, b) => {
@@ -186,7 +203,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     }
 
     return people;
-  }, [allFetchedPeople, filters, sortDescriptors]);
+  }, [allFetchedPeople, tableFilters, sortDescriptors, globalSearch, advancedFilters]);
 
   const totalPages = Math.ceil(filteredAndSortedPeople.length / ROWS_PER_PAGE);
   const paginatedPeople = React.useMemo(() => {
@@ -279,7 +296,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     setIsCallingSessionDialogOpen(true);
     setIsConfirmSessionDialogOpen(false);
 
-    // Save session state immediately
     if (appUser) {
         const pausedSession = {
             event: eventName,
@@ -311,7 +327,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       callerId: appUser.id,
       callerName: appUser.name,
       callerPhotoUrl: appUser.photoUrl || '',
-      calledAt: new Date().toISOString(),
+      calledAt: new Date(),
     };
     
     const updates: Partial<Person> = {
@@ -333,8 +349,8 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       
       setAllFetchedPeople(prev => prev.map(p => {
           if (p.id === personId) {
-              const newHistory = [...(p.callHistory || []), { ...callLog }];
-              return { ...p, ...updates, lastCallAt: callLog.calledAt, callHistory: newHistory };
+              const newHistory = [...(p.callHistory || []), { ...callLog, calledAt: (callLog.calledAt as Date).toISOString() }];
+              return { ...p, ...updates, lastCallAt: (callLog.calledAt as Date).toISOString(), callHistory: newHistory };
           }
           return p;
       }));
@@ -388,6 +404,18 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     setHasPausedSession(false); 
     toast({ title: 'Session Cleared', description: 'Your paused session has been cleared.'});
   };
+  
+  const filterableFields: FilterableField[] = React.useMemo(() => [
+    { value: 'occupation', label: 'Occupation', type: 'enum', options: occupationOptions.map(o => ({ value: o, label: o })) },
+    { value: 'stayingWith', label: 'Staying With', type: 'enum', options: stayingWithOptions.map(o => ({ value: o, label: o })) },
+    { value: 'contactSource', label: 'Contact Source', type: 'enum', options: contactSourceOptions.map(o => ({ value: o, label: o }))},
+    { value: 'enablerInTouchWith', label: 'Enabler', type: 'enum', options: enablerOptions.map(o => ({ value: o.value, label: o.label })) },
+    { value: 'fromOtherCamp', label: 'From Other Camp', type: 'boolean' },
+    { value: 'age', label: 'Age', type: 'number' },
+    { value: 'sgRating', label: 'Rating', type: 'number' },
+    { value: 'chantingStatus', label: 'Chanting Rounds', type: 'number' },
+  ], [occupationOptions, stayingWithOptions, contactSourceOptions, enablerOptions]);
+
 
   const renderContent = () => {
     if (isDataLoading) {
@@ -418,11 +446,24 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
           </Alert>
         )}
         <div className="mb-6 flex flex-col gap-4">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
-                 <Button onClick={() => setIsConfirmSessionDialogOpen(true)} disabled={filteredAndSortedPeople.length === 0}>
-                    <PhoneCall className="mr-2 h-4 w-4"/>
-                    Begin Call Session
-                </Button>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search contacts..."
+                        className="pl-10 w-full sm:w-64"
+                        value={globalSearch}
+                        onChange={e => setGlobalSearch(e.target.value)}
+                    />
+                </div>
+                 <div className="flex items-center gap-2">
+                    <FilterPopover filters={advancedFilters} setFilters={setAdvancedFilters} filterableFields={filterableFields} />
+                    <SortPopover sortDescriptors={sortDescriptors} setSortDescriptors={setSortDescriptors} />
+                    <Button onClick={() => setIsConfirmSessionDialogOpen(true)} disabled={filteredAndSortedPeople.length === 0}>
+                        <PhoneCall className="mr-2 h-4 w-4"/>
+                        Begin Call Session
+                    </Button>
+                 </div>
             </div>
 
             {isSelectionActive && (
@@ -461,8 +502,8 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
           isSelectionActive={isSelectionActive}
           sortDescriptors={sortDescriptors}
           setSortDescriptors={setSortDescriptors}
-          filters={filters}
-          setFilters={setFilters}
+          filters={tableFilters}
+          setFilters={setTableFilters}
         />
         {totalPages > 1 && (
           <Pagination className="mt-8">

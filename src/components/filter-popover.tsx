@@ -8,9 +8,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "./ui/select";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
-import type { Person } from "@/lib/types";
-import { get } from 'lodash';
-
 
 type Operator = 'eq' | 'neq' | 'gt' | 'lt' | 'gte' | 'lte' | 'contains' | 'is_true' | 'is_false';
 
@@ -85,7 +82,7 @@ const renderValueInput = (
   switch (fieldDef.type) {
     case 'enum':
       return (
-        <Select value={value} onValueChange={onChange}>
+        <Select value={value || ''} onValueChange={onChange}>
           <SelectTrigger className="w-[150px]"><SelectValue placeholder="Select..." /></SelectTrigger>
           <SelectContent>
             {fieldDef.options?.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
@@ -101,29 +98,6 @@ const renderValueInput = (
   }
 };
 
-export const applyClientSideFilters = (people: Person[], filters: FilterRule[]): Person[] => {
-    if (filters.length === 0) return people;
-
-    return people.filter(person => {
-        return filters.every(filter => {
-            const personValue = get(person, filter.field);
-            const filterValue = filter.value;
-
-            switch (filter.operator) {
-                case 'eq': return personValue == filterValue;
-                case 'neq': return personValue != filterValue;
-                case 'gt': return personValue > filterValue;
-                case 'lt': return personValue < filterValue;
-                case 'gte': return personValue >= filterValue;
-                case 'lte': return personValue <= filterValue;
-                case 'contains': return typeof personValue === 'string' && personValue.toLowerCase().includes(String(filterValue).toLowerCase());
-                case 'is_true': return personValue === true;
-                case 'is_false': return personValue === false;
-                default: return true;
-            }
-        });
-    });
-};
 
 export function FilterPopover({ filters, setFilters, filterableFields }: FilterPopoverProps) {
   const [isOpen, setIsOpen] = React.useState(false);
