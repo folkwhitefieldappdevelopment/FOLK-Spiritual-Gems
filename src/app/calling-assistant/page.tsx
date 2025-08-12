@@ -493,7 +493,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
         
         <PersonTable
           people={paginatedPeople}
-          allPeople={filteredAndSortedPeople}
+          allPeople={allFetchedPeople}
           allPeopleCount={filteredAndSortedPeople.length}
           onEdit={handleEditPerson}
           onDelete={handleDeletePerson}

@@ -85,15 +85,25 @@ const renderValueInput = (
         <Select value={value || ''} onValueChange={onChange}>
           <SelectTrigger className="w-[150px]"><SelectValue placeholder="Select..." /></SelectTrigger>
           <SelectContent>
-            {fieldDef.options?.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+            {(fieldDef.options || []).map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
           </SelectContent>
         </Select>
       );
+    case 'boolean':
+        return (
+             <Select value={String(value)} onValueChange={(val) => onChange(val === 'true')}>
+                <SelectTrigger className="w-[150px]"><SelectValue placeholder="Select..." /></SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="true">True</SelectItem>
+                    <SelectItem value="false">False</SelectItem>
+                </SelectContent>
+             </Select>
+        );
     case 'number':
       return <Input type="number" value={value || ''} onChange={(e) => onChange(e.target.valueAsNumber)} className="w-[150px]" />;
     case 'date':
       return <Input type="date" value={value || ''} onChange={(e) => onChange(e.target.value)} className="w-[150px]" />;
-    default: // string and boolean
+    default: // string
       return <Input value={value || ''} onChange={(e) => onChange(e.target.value)} className="w-[150px]" />;
   }
 };
@@ -107,7 +117,7 @@ export function FilterPopover({ filters, setFilters, filterableFields }: FilterP
     const defaultField = filterableFields[0];
     setFilters([
       ...filters,
-      { id: crypto.randomUUID(), field: defaultField.value, operator: defaultOperatorForType(defaultField.type), value: '' },
+      { id: crypto.randomUUID(), field: defaultField.value, operator: defaultOperatorForType(defaultField.type), value: defaultField.type === 'boolean' ? true : '' },
     ]);
   };
   
@@ -145,7 +155,7 @@ export function FilterPopover({ filters, setFilters, filterableFields }: FilterP
                             onValueChange={field => {
                                 const newFieldDef = filterableFields.find(f => f.value === field);
                                 const newOperator = newFieldDef ? defaultOperatorForType(newFieldDef.type) : 'eq';
-                                updateFilter(filter.id, { field, operator: newOperator, value: '' });
+                                updateFilter(filter.id, { field, operator: newOperator, value: newFieldDef?.type === 'boolean' ? true : '' });
                             }}
                         >
                             <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
@@ -160,7 +170,7 @@ export function FilterPopover({ filters, setFilters, filterableFields }: FilterP
                             <SelectContent>{operators.map(op => <SelectItem key={op.value} value={op.value}>{op.label}</SelectItem>)}</SelectContent>
                         </Select>
                         
-                        {fieldDef?.type !== 'boolean' && renderValueInput(fieldDef, filter.value, value => updateFilter(filter.id, { value }))}
+                        {renderValueInput(fieldDef, filter.value, value => updateFilter(filter.id, { value }))}
                         
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeFilter(filter.id)}><X className="h-4 w-4" /></Button>
                       </div>
