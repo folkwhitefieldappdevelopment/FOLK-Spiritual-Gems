@@ -11,7 +11,6 @@ import {
   Users,
   Loader2,
   UserCheck,
-  Search,
   Info,
   UserPlus,
   Contact,
@@ -25,7 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AppSidebar } from "@/components/app-sidebar";
 import { PageHeader } from "@/components/page-header";
 import { PersonCard } from "@/components/person-card";
-import { PersonTable } from "@/components/person-table";
+import { PersonTable, type FilterState } from "@/components/person-table";
 import { CreateUpdatePersonDialog } from "@/components/create-update-person-dialog";
 import { FirebaseConfigError } from "@/components/firebase-config-error";
 import {
@@ -76,22 +75,14 @@ import { useAuth } from "@/contexts/auth-context";
 import { CreateUpdateGroupDialog } from "@/components/create-update-group-dialog";
 import { AssignCoEnablerDialog } from "@/components/assign-helper-dialog";
 import { AssignEnablerDialog } from "@/components/assign-enabler-dialog";
-import { Input } from "@/components/ui/input";
 import { logAudit } from '@/services/audit-service';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { applyClientSideFilters, type FilterRule } from '@/components/filter-popover';
-import { type SortDescriptor } from '@/components/sort-popover';
+import { applyClientSideFilters } from '@/lib/filters';
 import { get } from 'lodash';
 
 
 const ROWS_PER_PAGE = 25;
 const FIRESTORE_QUERY_LIMIT = 10000;
-
-type UserInfo = {
-  id: string;
-  name: string;
-  role: UserRole[];
-};
 
 export default function ContactsPage() {
   const { toast } = useToast();
@@ -109,9 +100,8 @@ export default function ContactsPage() {
   const [isExporting, setIsExporting] = React.useState(false);
   
   const [view, setView] = React.useState<"table" | "card">("table");
-  const [searchTerm, setSearchTerm] = React.useState("");
-  const [filters, setFilters] = React.useState<FilterRule[]>([]);
-  const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([]);
+  const [filters, setFilters] = React.useState<FilterState>({});
+  const [sortDescriptors, setSortDescriptors] = React.useState<any[]>([]);
   const [currentPage, setCurrentPage] = React.useState(1);
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
@@ -131,13 +121,11 @@ export default function ContactsPage() {
     const params = new URLSearchParams(searchParams.toString());
     const page = parseInt(params.get('page') || '1', 10);
     const view = params.get('view') as 'table' | 'card' || 'table';
-    const search = params.get('search') || '';
     const sort = params.get('sort');
     const filter = params.get('filters');
 
     setCurrentPage(page);
     setView(view);
-    setSearchTerm(search);
     if (sort) {
       try { setSortDescriptors(JSON.parse(sort)); } catch(e) {}
     } else {
@@ -152,14 +140,15 @@ export default function ContactsPage() {
     const params = new URLSearchParams();
     if (currentPage > 1) params.set('page', String(currentPage));
     if (view !== 'table') params.set('view', view);
-    if (searchTerm) params.set('search', searchTerm);
     if (sortDescriptors.length > 0 && !(sortDescriptors.length === 1 && sortDescriptors[0].field === 'createdAt' && sortDescriptors[0].direction === 'desc')) {
       params.set('sort', JSON.stringify(sortDescriptors));
     }
-    if (filters.length > 0) params.set('filters', JSON.stringify(filters));
+     if (Object.keys(filters).length > 0) {
+        params.set('filters', JSON.stringify(filters));
+    }
     
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [currentPage, view, searchTerm, sortDescriptors, filters, router, pathname]);
+  }, [currentPage, view, sortDescriptors, filters, router, pathname]);
 
   const fetchPageData = React.useCallback(async () => {
     setIsLoading(true);
@@ -197,19 +186,11 @@ export default function ContactsPage() {
   React.useEffect(() => {
     setCurrentPage(1);
     setSelectedIds(new Set());
-  }, [searchTerm, view, filters, sortDescriptors]);
+  }, [view, filters, sortDescriptors]);
   
   const filteredAndSortedPeople = React.useMemo(() => {
     let people = [...allFetchedPeople];
     
-    if (searchTerm.trim()) {
-        const lowercasedTerm = searchTerm.toLowerCase();
-        people = people.filter(p => 
-            p.fullName.toLowerCase().includes(lowercasedTerm) || 
-            p.phone.includes(lowercasedTerm)
-        );
-    }
-
     people = applyClientSideFilters(people, filters);
 
     if (sortDescriptors.length > 0) {
@@ -231,7 +212,7 @@ export default function ContactsPage() {
     }
 
     return people;
-  }, [allFetchedPeople, searchTerm, filters, sortDescriptors]);
+  }, [allFetchedPeople, filters, sortDescriptors]);
 
   const totalPages = Math.ceil(filteredAndSortedPeople.length / ROWS_PER_PAGE);
   const paginatedPeople = React.useMemo(() => {
@@ -829,16 +810,7 @@ export default function ContactsPage() {
     return (
       <>
         <div className="mb-6 flex flex-col gap-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name or phone..."
-                className="pl-10 w-full sm:w-64"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
             <div className="flex items-center gap-2">
               <div className="flex items-center rounded-md bg-muted p-1">
               <Button
@@ -966,6 +938,7 @@ export default function ContactsPage() {
         ) : (
           <PersonTable
             people={paginatedPeople}
+            allPeople={allFetchedPeople}
             allPeopleCount={filteredAndSortedPeople.length}
             onEdit={handleEditPerson}
             onDelete={handleDeletePerson}
@@ -974,6 +947,8 @@ export default function ContactsPage() {
             isSelectionActive={isSelectionActive}
             sortDescriptors={sortDescriptors}
             setSortDescriptors={setSortDescriptors}
+            filters={filters}
+            setFilters={setFilters}
           />
         )}
 

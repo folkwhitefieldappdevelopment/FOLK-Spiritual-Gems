@@ -43,19 +43,31 @@ import { Checkbox } from './ui/checkbox';
 import { useAuth } from '@/contexts/auth-context';
 import { getWhatsAppTemplate } from '@/services/settings-service';
 import { useToast } from '@/hooks/use-toast';
-import type { SortDescriptor } from './sort-popover';
 import { DataTableColumnHeader } from './data-table-column-header';
+import { get } from 'lodash';
+
+export type Filter = {
+  condition?: {
+    operator: 'contains' | 'eq' | 'neq' | 'gt' | 'lt';
+    value: string;
+  };
+  values?: Set<string>;
+};
+export type FilterState = Record<string, Filter | undefined>;
 
 type PersonTableProps = {
   people?: Person[];
+  allPeople: Person[];
   allPeopleCount: number;
   onEdit: (person: Person) => void;
   onDelete: (personId: string) => void;
   isSelectionActive?: boolean;
   selectedIds?: Set<string>;
   setSelectedIds?: React.Dispatch<React.SetStateAction<Set<string>>>;
-  sortDescriptors: SortDescriptor[];
-  setSortDescriptors: React.Dispatch<React.SetStateAction<SortDescriptor[]>>;
+  sortDescriptors: any[];
+  setSortDescriptors: React.Dispatch<React.SetStateAction<any[]>>;
+  filters: FilterState;
+  setFilters: React.Dispatch<React.SetStateAction<FilterState>>;
 };
 
 const safeDate = (timestamp: any): Date | null => {
@@ -66,6 +78,7 @@ const safeDate = (timestamp: any): Date | null => {
 
 export function PersonTable({ 
   people = [], 
+  allPeople,
   allPeopleCount,
   onEdit, 
   onDelete, 
@@ -73,7 +86,9 @@ export function PersonTable({
   selectedIds, 
   setSelectedIds,
   sortDescriptors,
-  setSortDescriptors
+  setSortDescriptors,
+  filters,
+  setFilters,
 }: PersonTableProps) {
   
   const { appUser } = useAuth();
@@ -94,7 +109,6 @@ export function PersonTable({
 
   const handleSelectAll = React.useCallback((checked: boolean) => {
     if (isSelectionEnabled && setSelectedIds) {
-      toast({ title: "Note", description: "Select All only works for contacts currently loaded on the page. To perform bulk actions on all contacts, please export, modify, and re-import."});
       if (checked) {
         setSelectedIds(new Set(people.map(p => p.id)));
       } else {
@@ -119,20 +133,42 @@ export function PersonTable({
 
   const numSelected = selectedIds ? selectedIds.size : 0;
   
-  const columns: { key: keyof Person, label: string }[] = React.useMemo(() => {
+  const columns: { key: keyof Person, label: string, filterable?: boolean }[] = React.useMemo(() => {
     return [
-      { key: 'fullName', label: 'Name' },
+      { key: 'fullName', label: 'Name', filterable: true },
       { key: 'phone', label: 'Phone' },
-      { key: 'enablerInTouchWith', label: 'Assignments' },
+      { key: 'enablerInTouchWith', label: 'Assignments', filterable: true },
       { key: 'lastCallAt', label: 'Last Called' },
-      { key: 'lastCallRemark', label: 'Last Remark' }
+      { key: 'lastCallRemark', label: 'Last Remark', filterable: true }
     ];
   }, []);
+  
+  const allColumnValues = React.useMemo(() => {
+      const values: Record<string, (string | number)[]> = {};
+      columns.forEach(col => {
+          if(col.filterable) {
+              values[col.key] = Array.from(new Set(allPeople.map(p => get(p, col.key, ''))));
+          }
+      });
+      return values;
+  }, [allPeople, columns]);
 
   const getColumnSortState = (columnId: string) => {
     const sort = sortDescriptors.find(s => s.field === columnId);
     if (!sort) return false;
     return sort.direction;
+  }
+  
+  const handleFilterChange = (field: string) => (filter: Filter | undefined) => {
+      setFilters(prev => {
+          const newFilters = { ...prev };
+          if (filter) {
+              newFilters[field] = filter;
+          } else {
+              delete newFilters[field];
+          }
+          return newFilters;
+      });
   }
 
   return (
@@ -158,6 +194,9 @@ export function PersonTable({
                       title={column.label} 
                       sortDescriptors={sortDescriptors}
                       setSortDescriptors={setSortDescriptors}
+                      filter={filters[column.key]}
+                      onFilterChange={column.filterable ? handleFilterChange(column.key) : undefined}
+                      allValues={column.filterable ? allColumnValues[column.key] : undefined}
                      />
                 </TableHead>
               ))}

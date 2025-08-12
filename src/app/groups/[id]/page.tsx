@@ -11,7 +11,6 @@ import {
   Users,
   UserCheck,
   Trash2,
-  Search,
   PlusCircle,
   Share2,
   Upload,
@@ -29,14 +28,12 @@ import { FirebaseConfigError } from '@/components/firebase-config-error';
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { PersonTable } from '@/components/person-table';
+import { PersonTable, type FilterState } from '@/components/person-table';
 import { PersonCard } from '@/components/person-card';
 import { CreateUpdatePersonDialog } from '@/components/create-update-person-dialog';
 import { ManageGroupMembersDialog } from '@/components/manage-group-members-dialog';
 import { AssignCoEnablerDialog } from '@/components/assign-helper-dialog';
-import { applyClientSideFilters, type FilterRule } from '@/components/filter-popover';
-import { type SortDescriptor } from '@/components/sort-popover';
+import { applyClientSideFilters } from '@/lib/filters';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -87,9 +84,8 @@ export default function GroupDetailPage() {
   const [members, setMembers] = React.useState<Person[]>([]);
   
   const [view, setView] = React.useState<'card' | 'table'>('table');
-  const [searchTerm, setSearchTerm] = React.useState('');
-  const [filters, setFilters] = React.useState<FilterRule[]>([]);
-  const [sortDescriptors, setSortDescriptors] = React.useState<SortDescriptor[]>([]);
+  const [filters, setFilters] = React.useState<FilterState>({});
+  const [sortDescriptors, setSortDescriptors] = React.useState<any[]>([]);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = React.useState(1);
   
@@ -109,13 +105,11 @@ export default function GroupDetailPage() {
     const params = new URLSearchParams(searchParams.toString());
     const page = parseInt(params.get('page') || '1', 10);
     const view = params.get('view') as 'table' | 'card' || 'table';
-    const search = params.get('search') || '';
     const sort = params.get('sort');
     const filter = params.get('filters');
 
     setCurrentPage(page);
     setView(view);
-    setSearchTerm(search);
     if (sort) {
       try { setSortDescriptors(JSON.parse(sort)); } catch(e) {}
     } else {
@@ -130,14 +124,15 @@ export default function GroupDetailPage() {
     const params = new URLSearchParams();
     if (currentPage > 1) params.set('page', String(currentPage));
     if (view !== 'table') params.set('view', view);
-    if (searchTerm) params.set('search', searchTerm);
     if (sortDescriptors.length > 0 && !(sortDescriptors.length === 1 && sortDescriptors[0].field === 'createdAt' && sortDescriptors[0].direction === 'desc')) {
       params.set('sort', JSON.stringify(sortDescriptors));
     }
-    if (filters.length > 0) params.set('filters', JSON.stringify(filters));
+    if (Object.keys(filters).length > 0) {
+        params.set('filters', JSON.stringify(filters));
+    }
     
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [currentPage, view, searchTerm, sortDescriptors, filters, router, pathname]);
+  }, [currentPage, view, sortDescriptors, filters, router, pathname]);
 
   const fetchPageData = React.useCallback(async () => {
     if (!groupId) return;
@@ -193,14 +188,6 @@ export default function GroupDetailPage() {
   const filteredAndSortedMembers = React.useMemo(() => {
     let people = [...members];
     
-    if (searchTerm.trim()) {
-        const lowercasedTerm = searchTerm.toLowerCase();
-        people = people.filter(p => 
-            p.fullName.toLowerCase().includes(lowercasedTerm) || 
-            p.phone.includes(lowercasedTerm)
-        );
-    }
-
     people = applyClientSideFilters(people, filters);
 
     if (sortDescriptors.length > 0) {
@@ -222,7 +209,7 @@ export default function GroupDetailPage() {
     }
 
     return people;
-  }, [members, searchTerm, filters, sortDescriptors]);
+  }, [members, filters, sortDescriptors]);
   
   const totalPages = Math.ceil(filteredAndSortedMembers.length / ROWS_PER_PAGE);
   const paginatedMembers = React.useMemo(() => {
@@ -233,7 +220,7 @@ export default function GroupDetailPage() {
   React.useEffect(() => {
     setCurrentPage(1);
     setSelectedIds(new Set());
-  }, [filters, sortDescriptors, searchTerm, view]);
+  }, [filters, sortDescriptors, view]);
 
   const handleEditPerson = React.useCallback((person: Person) => {
     setEditingPerson(person);
@@ -377,8 +364,7 @@ export default function GroupDetailPage() {
     return (
       <>
         <div className="mb-6 flex flex-col gap-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by name or phone..." className="pl-10 w-full sm:w-64" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
             <div className="flex items-center gap-2">
                 <div className="flex items-center rounded-md bg-muted p-1">
                     <Button variant={view === "card" ? "secondary" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setView("card")} aria-label="Card View"><LayoutGrid className="h-4 w-4" /></Button>
@@ -415,6 +401,7 @@ export default function GroupDetailPage() {
         {view === 'table' ? (
           <PersonTable 
             people={paginatedMembers} 
+            allPeople={allPeople}
             allPeopleCount={filteredAndSortedMembers.length}
             onEdit={handleEditPerson} 
             onDelete={(id) => handleRemoveMembers([id])} 
@@ -423,6 +410,8 @@ export default function GroupDetailPage() {
             isSelectionActive={isSelectionActive}
             sortDescriptors={sortDescriptors}
             setSortDescriptors={setSortDescriptors}
+            filters={filters}
+            setFilters={setFilters}
           />
         ) : (
            paginatedMembers.length > 0 ? (

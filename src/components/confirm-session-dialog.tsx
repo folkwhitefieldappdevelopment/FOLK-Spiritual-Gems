@@ -16,8 +16,6 @@ import {
 import { Button } from './ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from './ui/form';
 import { Input } from './ui/input';
-import { useToast } from '@/hooks/use-toast';
-import { getPeople } from '@/services/people-service';
 
 const createFormSchema = (max: number) => z.object({
   eventName: z.string().min(1, 'Event name is required.'),
@@ -33,10 +31,9 @@ type ConfirmSessionDialogProps = {
   setIsOpen: (open: boolean) => void;
   totalCount: number;
   onStartSession: (eventName: string, startIndex: number, endIndex: number) => void;
-  searchTerm: string;
 };
 
-export function ConfirmSessionDialog({ isOpen, setIsOpen, totalCount, onStartSession, searchTerm }: ConfirmSessionDialogProps) {
+export function ConfirmSessionDialog({ isOpen, setIsOpen, totalCount, onStartSession }: ConfirmSessionDialogProps) {
   
   const formSchema = React.useMemo(() => createFormSchema(totalCount), [totalCount]);
   type FormValues = z.infer<typeof formSchema>;

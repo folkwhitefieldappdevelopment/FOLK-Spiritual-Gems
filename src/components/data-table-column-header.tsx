@@ -6,8 +6,8 @@ import {
   ArrowUpIcon,
   ChevronsUpDown,
   EyeOff,
+  Filter as FilterIcon,
 } from "lucide-react"
-
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -18,13 +18,21 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import type { SortDescriptor } from "./sort-popover"
+import { DataTableFilter, type Filter } from "./data-table-filter"
 
 interface DataTableColumnHeaderProps<TData, TValue>
   extends React.HTMLAttributes<HTMLDivElement> {
-  column: { id: string; getIsSorted: () => 'asc' | 'desc' | false, toggleSorting: (desc?: boolean) => void }
+  column: { 
+      id: string; 
+      getIsSorted: () => 'asc' | 'desc' | false, 
+      toggleSorting: (desc?: boolean) => void 
+  }
   title: string
   sortDescriptors: SortDescriptor[]
   setSortDescriptors: React.Dispatch<React.SetStateAction<SortDescriptor[]>>
+  filter?: Filter
+  onFilterChange?: (filter: Filter | undefined) => void
+  allValues?: (string | number)[]
 }
 
 export function DataTableColumnHeader<TData, TValue>({
@@ -32,7 +40,10 @@ export function DataTableColumnHeader<TData, TValue>({
   title,
   className,
   sortDescriptors,
-  setSortDescriptors
+  setSortDescriptors,
+  filter,
+  onFilterChange,
+  allValues,
 }: DataTableColumnHeaderProps<TData, TValue>) {
   
   const handleSort = (direction: 'asc' | 'desc') => {
@@ -49,17 +60,28 @@ export function DataTableColumnHeader<TData, TValue>({
     }
   }
 
-  const clearSort = () => {
-    const newDescriptors = sortDescriptors.filter(d => d.field !== column.id);
-    if (newDescriptors.length === 0) {
-      setSortDescriptors([{ field: 'createdAt', direction: 'desc' }]);
-    } else {
-      setSortDescriptors(newDescriptors);
-    }
-  }
-
   const sortedState = column.getIsSorted();
 
+  if (onFilterChange && allValues) {
+    return (
+      <div className={cn("flex items-center space-x-2", className)}>
+        <DataTableFilter
+          columnName={title}
+          allValues={allValues}
+          filter={filter}
+          onFilterChange={onFilterChange}
+          onSort={handleSort}
+        />
+        {sortedState === "desc" ? (
+          <ArrowDownIcon className="h-3 w-3 text-muted-foreground" />
+        ) : sortedState === "asc" ? (
+          <ArrowUpIcon className="h-3 w-3 text-muted-foreground" />
+        ) : null}
+      </div>
+    )
+  }
+
+  // Fallback to simple sort-only dropdown if no filter props are provided
   return (
     <div className={cn("flex items-center space-x-2", className)}>
       <DropdownMenu>
@@ -87,11 +109,6 @@ export function DataTableColumnHeader<TData, TValue>({
           <DropdownMenuItem onClick={() => handleSort("desc")}>
             <ArrowDownIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
             Desc
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => clearSort()}>
-            <EyeOff className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
-            Clear
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
