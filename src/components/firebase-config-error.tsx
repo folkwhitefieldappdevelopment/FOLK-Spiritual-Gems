@@ -112,7 +112,7 @@ function ReferrerError() {
             <h3 className="font-semibold">Authorize Your Website Domains</h3>
         </div>
         <p className="text-sm text-muted-foreground">
-            Go to the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="underline text-primary">Google Cloud Credentials page</a>, edit your API key, and under "Website restrictions," add EACH of the following domains. **Do not include `https://`**.
+            Go to the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="underline text-primary">Google Cloud Credentials page</a>, find the API key named "Browser key (auto created by Firebase)", edit it, and under "Website restrictions," add EACH of the following domains. **Do not include `https://`**.
         </p>
         <pre className="bg-muted p-3 rounded-md mt-2 text-xs overflow-x-auto font-mono text-foreground leading-relaxed">
 {`studio--personal-data-hub-y5fe0.us-central1.hosted.app
