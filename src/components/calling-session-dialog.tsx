@@ -161,8 +161,6 @@ const CallingSessionDialogComponent = ({
   }, [isOpen]);
 
   React.useEffect(() => {
-    // This effect runs when the 'person' prop changes.
-    // It safely updates the form state without causing render loops.
     if (person) {
       form.setValue('remark', lastEventRemark);
       form.setValue('sg', typeof person.lastSg === 'boolean' ? (person.lastSg ? 'yes' : 'no') : '');
@@ -178,7 +176,8 @@ const CallingSessionDialogComponent = ({
   
   React.useEffect(() => {
     const saveSessionState = async () => {
-      if (isOpen && appUser) {
+      // **FIX**: Do not try to update the mock 'anonymous-user'
+      if (isOpen && appUser && appUser.id !== 'anonymous-user') {
           const pausedSession = {
               event: currentEvent,
               peopleIds: sessionPeopleIds,
