@@ -18,6 +18,15 @@ import { LogOut } from 'lucide-react';
 
 export function UserNav() {
   const { appUser, signOut } = useAuth();
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <Skeleton className="h-8 w-8 rounded-full" />;
+  }
 
   if (!appUser) {
     return <Skeleton className="h-8 w-8 rounded-full" />;
