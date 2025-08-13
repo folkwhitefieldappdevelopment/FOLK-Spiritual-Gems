@@ -117,6 +117,7 @@ function ReferrerError() {
         <pre className="bg-muted p-3 rounded-md mt-2 text-xs overflow-x-auto font-mono text-foreground leading-relaxed">
 {`studio--personal-data-hub-y5fe0.us-central1.hosted.app
 6000-firebase-studio-1751343902620.cluster-6dx7corvpngoivimwvvljgokdw.cloudworkstations.dev
+6000-firebase-spiritual-gemdup-1755005513029.cluster-6dx7corvpngoivimwvvljgokdw.cloudworkstations.dev
 localhost:9002
 personal-data-hub-y5fe0.firebaseapp.com`}
         </pre>
