@@ -2,7 +2,11 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import type { User } from 'firebase/auth';
+import { auth, configError as firebaseConfigError } from '@/lib/firebase';
+import { onAuthStateChanged, signOut as firebaseSignOut, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink as firebaseSignInWithEmailLink } from 'firebase/auth';
+import { getUserByEmail } from '@/services/user-service';
 import type { AppUser } from '@/lib/types';
 
 type AuthContextType = {
@@ -10,37 +14,99 @@ type AuthContextType = {
   appUser: AppUser | null;
   loading: boolean;
   error: Error | null;
-  signIn: (email: string, password: string) => Promise<void>;
+  sendSignInLink: (email: string) => Promise<void>;
+  signInWithEmailLink: (email: string, url: string) => Promise<void>;
   signOut: () => Promise<void>;
   setAppUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
 };
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-    
-  // By creating a static user object and providing a no-op setter,
-  // we ensure the context value is stable and does not trigger re-renders.
-  const mockUser: AppUser = React.useMemo(() => ({
-    id: 'anonymous-user',
-    name: 'Default User',
-    email: 'user@example.com',
-    phone: '0000000000',
-    role: ['Admin'],
-    createdAt: new Date(),
-  }), []);
+const actionCodeSettings = {
+  url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002/login',
+  handleCodeInApp: true,
+};
 
-  const value: AuthContextType = React.useMemo(() => ({
-    user: null, // Firebase user is null as we are not using Firebase Auth
-    appUser: mockUser,
-    loading: false, // No longer loading as the user is static
-    error: null,
-    // Provide no-op functions for signIn and signOut
-    signIn: async () => { console.warn("Sign-in functionality has been removed."); },
-    signOut: async () => { console.warn("Sign-out functionality has been removed."); },
-    // Provide a no-op setter to satisfy the type
-    setAppUser: () => {},
-  }), [mockUser]);
+// These paths do not require authentication
+const UNPROTECTED_PATHS = ['/login'];
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = React.useState<User | null>(null);
+  const [appUser, setAppUser] = React.useState<AppUser | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<Error | null>(firebaseConfigError);
+  const router = useRouter();
+  const pathname = usePathname();
+
+  React.useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setLoading(true);
+      if (firebaseUser) {
+        setUser(firebaseUser);
+        try {
+          const dbUser = await getUserByEmail(firebaseUser.email!);
+          if (dbUser) {
+            setAppUser(dbUser);
+          } else {
+            // This case occurs if a user is in Firebase Auth but not in Firestore 'users' collection.
+            // We sign them out to prevent access.
+            console.warn(`User ${firebaseUser.email} found in Auth but not in Firestore. Signing out.`);
+            await firebaseSignOut(auth);
+            setUser(null);
+            setAppUser(null);
+          }
+        } catch (e) {
+            console.error("Failed to fetch app user from Firestore", e);
+            setError(e instanceof Error ? e : new Error("Failed to fetch user data."));
+            await firebaseSignOut(auth);
+            setUser(null);
+            setAppUser(null);
+        }
+      } else {
+        setUser(null);
+        setAppUser(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+  
+  React.useEffect(() => {
+    if (!loading && !user && !UNPROTECTED_PATHS.includes(pathname)) {
+        router.push('/login');
+    }
+  }, [loading, user, pathname, router]);
+
+  const sendSignInLink = async (email: string) => {
+    window.localStorage.setItem('emailForSignIn', email);
+    await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+  };
+  
+  const signInWithEmailLink = async (email: string, url: string) => {
+      if (!isSignInWithEmailLink(auth, url)) {
+          throw new Error("Invalid sign-in link.");
+      }
+      await firebaseSignInWithEmailLink(auth, email, url);
+  }
+
+  const signOut = async () => {
+    await firebaseSignOut(auth);
+    setUser(null);
+    setAppUser(null);
+    router.push('/login');
+  };
+
+  const value: AuthContextType = {
+    user,
+    appUser,
+    loading,
+    error,
+    sendSignInLink,
+    signInWithEmailLink,
+    signOut,
+    setAppUser,
+  };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

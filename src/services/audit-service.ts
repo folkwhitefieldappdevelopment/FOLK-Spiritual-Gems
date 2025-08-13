@@ -16,10 +16,10 @@ export type AuditLog = {
 
 type AuditLogData = Omit<AuditLog, 'id' | 'timestamp'>;
 
-export const logAudit = async (action: string, details: string) => {
+export const logAudit = async (action: string, details: string, userInfo?: { id: string, name: string }) => {
     const auditData: AuditLogData = {
-        userId: "system",
-        userName: "System",
+        userId: userInfo?.id || "system",
+        userName: userInfo?.name || "System",
         action,
         details,
     };
