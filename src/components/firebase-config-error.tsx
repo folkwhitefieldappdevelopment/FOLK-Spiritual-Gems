@@ -111,11 +111,11 @@ function ReferrerError() {
             Go to the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="underline text-primary">Google Cloud Credentials page</a>, find the API key named "Browser key (auto created by Firebase)", edit it, and under "Website restrictions," add EACH of the following domains. **Do not include `https://`**.
         </p>
         <pre className="bg-muted p-3 rounded-md mt-2 text-xs overflow-x-auto font-mono text-foreground leading-relaxed">
-{`studio--personal-data-hub-y5fe0.us-central1.hosted.app
+{`studio--spiritual-gemdup.us-central1.hosted.app
 6000-firebase-studio-1751343902620.cluster-6dx7corvpngoivimwvvljgokdw.cloudworkstations.dev
 6000-firebase-spiritual-gemdup-1755005513029.cluster-6dx7corvpngoivimwvvljgokdw.cloudworkstations.dev
 localhost:9002
-personal-data-hub-y5fe0.firebaseapp.com
+spiritual-gemdup.firebaseapp.com
 studio--spiritual-gemdup.us-central1.hosted.app`}
         </pre>
          <p className="text-xs text-muted-foreground">

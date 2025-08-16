@@ -339,5 +339,12 @@ export const assignEnablerToPeople = async (personIds: string[], enabler: AppUse
 async function getUsers(): Promise<AppUser[]> {
     const usersCollection = collection(db, 'users');
     const snapshot = await getDocs(usersCollection);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppUser));
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      return { 
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString()
+      } as AppUser;
+    });
 }

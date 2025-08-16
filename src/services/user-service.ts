@@ -41,7 +41,7 @@ export const createUser = async (userData: Omit<AppUser, 'id' | 'createdAt'>): P
   return {
     id: docRef.id,
     ...userData,
-    createdAt: new Date(), // Represent as a Date object on client
+    createdAt: new Date().toISOString(), // Represent as a serializable string
   } as AppUser;
 };
 
@@ -104,7 +104,7 @@ export const getUsers = async (): Promise<AppUser[]> => {
       return { 
         id: doc.id,
         ...data,
-        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date()
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString()
       } as AppUser;
     });
 }
@@ -117,7 +117,14 @@ export const getFolkGuides = async (): Promise<AppUser[]> => {
     const usersCollection = collection(db, 'users');
     const q = query(usersCollection, where('role', 'array-contains', 'Folk Guide'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppUser));
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return { 
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString()
+        } as AppUser;
+    });
 }
 
 
@@ -136,7 +143,12 @@ export const getUserByEmail = async (email: string): Promise<AppUser | null> => 
     }
 
     const userDoc = querySnapshot.docs[0];
-    return { id: userDoc.id, ...userDoc.data() } as AppUser;
+    const data = userDoc.data();
+    return { 
+        id: userDoc.id, 
+        ...data,
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString()
+    } as AppUser;
 };
 
 /**
@@ -152,5 +164,12 @@ export const getEnablersForGuide = async (guideId: string): Promise<AppUser[]> =
         where('reportsTo.guideId', '==', guideId)
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppUser));
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return { 
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString()
+        } as AppUser;
+    });
 };
