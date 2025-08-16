@@ -51,6 +51,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             };
             dbUser = await createUser(newUser);
           }
+
+          // Ensure timestamps are serializable before setting state
+          if (dbUser.createdAt && typeof dbUser.createdAt !== 'string') {
+              const date = (dbUser.createdAt as any).toDate ? (dbUser.createdAt as any).toDate() : new Date(dbUser.createdAt);
+              dbUser.createdAt = date.toISOString();
+          }
+
           setAppUser(dbUser);
         } catch (e) {
             console.error("Failed to fetch or create app user in Firestore", e);

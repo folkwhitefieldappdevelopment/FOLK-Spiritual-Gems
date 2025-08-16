@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { db } from '@/lib/firebase';
@@ -114,7 +115,7 @@ export const addContactSource = async (newSource: string, userInfo: AppUser) => 
     if (!currentSources.includes(newSource)) {
         const updatedSources = [...currentSources, newSource];
         await updateDoc(settingsDocRef, { contactSources: updatedSources });
-        await logAudit('Add Contact Source', `Added source: ${newSource}`, userInfo);
+        if(userInfo) await logAudit('Add Contact Source', `Added source: ${newSource}`, userInfo);
         return updatedSources;
     }
     return currentSources;
@@ -126,7 +127,7 @@ export const updateContactSource = async (oldName: string, newName: string, user
     const currentSources = settings.contactSources;
     const updatedSources = currentSources.map((s:string) => s === oldName ? newName : s);
     await updateDoc(settingsDocRef, { contactSources: updatedSources });
-    await logAudit('Update Contact Source', `Renamed source from "${oldName}" to "${newName}"`, userInfo);
+    if(userInfo) await logAudit('Update Contact Source', `Renamed source from "${oldName}" to "${newName}"`, userInfo);
     return updatedSources;
 }
 
@@ -136,7 +137,7 @@ export const deleteContactSource = async (sourceToDelete: string, userInfo: AppU
     const currentSources = settings.contactSources;
     const updatedSources = currentSources.filter((s:string) => s !== sourceToDelete);
     await updateDoc(settingsDocRef, { contactSources: updatedSources });
-    await logAudit('Delete Contact Source', `Deleted source: ${sourceToDelete}`, userInfo);
+    if(userInfo) await logAudit('Delete Contact Source', `Deleted source: ${sourceToDelete}`, userInfo);
     return updatedSources;
 }
 
@@ -153,7 +154,7 @@ export const addOccupationStatus = async (newStatus: string, userInfo: AppUser) 
     if (!currentStatuses.includes(newStatus)) {
         const updatedStatuses = [...currentStatuses, newStatus];
         await updateDoc(settingsDocRef, { occupationStatuses: updatedStatuses });
-        await logAudit('Add Occupation Status', `Added status: ${newStatus}`, userInfo);
+        if(userInfo) await logAudit('Add Occupation Status', `Added status: ${newStatus}`, userInfo);
         return updatedStatuses;
     }
     return currentStatuses;
@@ -165,7 +166,7 @@ export const updateOccupationStatus = async (oldName: string, newName: string, u
     const currentStatuses = settings.occupationStatuses;
     const updatedStatuses = currentStatuses.map((s:string) => s === oldName ? newName : s);
     await updateDoc(settingsDocRef, { occupationStatuses: updatedStatuses });
-    await logAudit('Update Occupation Status', `Renamed status from "${oldName}" to "${newName}"`, userInfo);
+    if(userInfo) await logAudit('Update Occupation Status', `Renamed status from "${oldName}" to "${newName}"`, userInfo);
     return updatedStatuses;
 };
 
@@ -175,7 +176,7 @@ export const deleteOccupationStatus = async (statusToDelete: string, userInfo: A
     const currentStatuses = settings.occupationStatuses;
     const updatedStatuses = currentStatuses.filter((s:string) => s !== statusToDelete);
     await updateDoc(settingsDocRef, { occupationStatuses: updatedStatuses });
-    await logAudit('Delete Occupation Status', `Deleted status: ${statusToDelete}`, userInfo);
+    if(userInfo) await logAudit('Delete Occupation Status', `Deleted status: ${statusToDelete}`, userInfo);
     return updatedStatuses;
 };
 
@@ -193,7 +194,7 @@ export const addStayingWithOption = async (newOption: string, userInfo: AppUser)
     if (!currentOptions.includes(newOption)) {
         const updatedOptions = [...currentOptions, newOption];
         await updateDoc(settingsDocRef, { stayingWithOptions: updatedOptions });
-        await logAudit('Add Staying With Option', `Added option: ${newOption}`, userInfo);
+        if(userInfo) await logAudit('Add Staying With Option', `Added option: ${newOption}`, userInfo);
         return updatedOptions;
     }
     return currentOptions;
@@ -205,7 +206,7 @@ export const updateStayingWithOption = async (oldName: string, newName: string, 
     const currentOptions = settings.stayingWithOptions;
     const updatedOptions = currentOptions.map((s:string) => s === oldName ? newName : s);
     await updateDoc(settingsDocRef, { stayingWithOptions: updatedOptions });
-    await logAudit('Update Staying With Option', `Renamed option from "${oldName}" to "${newName}"`, userInfo);
+    if(userInfo) await logAudit('Update Staying With Option', `Renamed option from "${oldName}" to "${newName}"`, userInfo);
     return updatedOptions;
 };
 
@@ -215,7 +216,7 @@ export const deleteStayingWithOption = async (optionToDelete: string, userInfo: 
     const currentOptions = settings.stayingWithOptions;
     const updatedOptions = currentOptions.filter((s:string) => s !== optionToDelete);
     await updateDoc(settingsDocRef, { stayingWithOptions: updatedOptions });
-    await logAudit('Delete Staying With Option', `Deleted option: ${optionToDelete}`, userInfo);
+    if(userInfo) await logAudit('Delete Staying With Option', `Deleted option: ${optionToDelete}`, userInfo);
     return updatedOptions;
 };
 
@@ -234,7 +235,7 @@ export const getCustomPersonFields = async (userInfo?: AppUser): Promise<CustomF
 export const saveCustomPersonFields = async (fields: CustomField[], userInfo: AppUser) => {
     const settingsDocRef = doc(db, 'settings', 'options');
     await updateDoc(settingsDocRef, { customPersonFields: fields });
-    await logAudit('Update Custom Fields', `Updated custom fields definition.`, userInfo);
+    if(userInfo) await logAudit('Update Custom Fields', `Updated custom fields definition.`, userInfo);
 };
 
 // WhatsApp Template
@@ -246,5 +247,5 @@ export const getWhatsAppTemplate = async (userInfo?: AppUser): Promise<string> =
 export const saveWhatsAppTemplate = async (template: string, userInfo: AppUser) => {
     const settingsDocRef = doc(db, 'settings', 'options');
     await updateDoc(settingsDocRef, { whatsAppTemplate: template });
-    await logAudit('Update WhatsApp Template', `Updated WhatsApp message template.`, userInfo);
+    if(userInfo) await logAudit('Update WhatsApp Template', `Updated WhatsApp message template.`, userInfo);
 }

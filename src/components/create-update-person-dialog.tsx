@@ -302,6 +302,7 @@ export function CreateUpdatePersonDialog({
   };
 
   const onSubmit = async (data: PersonFormValues) => {
+    if (!appUser) return;
     setIsSubmitting(true);
     try {
       const saveData = {
