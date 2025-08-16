@@ -29,7 +29,7 @@ const GoogleIcon = () => (
     </svg>
 )
 
-export default function LoginPage() {
+const LoginPageComponent = () => {
   const { user, loading, error: authError, sendSignInLink, signInWithEmailLink, signInWithGoogle } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -188,4 +188,12 @@ export default function LoginPage() {
       </Card>
     </main>
   );
+}
+
+export default function LoginPage() {
+    return (
+        <React.Suspense fallback={<div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+            <LoginPageComponent />
+        </React.Suspense>
+    )
 }

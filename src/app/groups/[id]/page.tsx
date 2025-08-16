@@ -72,7 +72,7 @@ import { FilterPopover, type FilterRule, type FilterableField } from "@/componen
 const ROWS_PER_PAGE = 10;
 const FIRESTORE_QUERY_LIMIT = 10000;
 
-export default function GroupDetailPage() {
+const GroupDetailPageComponent = () => {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
@@ -493,7 +493,7 @@ export default function GroupDetailPage() {
               })}
             </div>
           ) : (
-            <div className="text-center py-12 text-muted-foreground"><p>No members found.</p><p className="text-sm">Try adjusting your search or filters.</p></div>
+            <div className="text-center py-12 text-muted-foreground"><p>No members found.</p><p className="text-sm">Try adjusting your filters or filters.</p></div>
           )
         )}
         {totalPages > 1 && (
@@ -556,4 +556,12 @@ export default function GroupDetailPage() {
       {group && <ShareGroupDialog isOpen={isShareGroupDialogOpen} setIsOpen={setIsShareGroupDialogOpen} group={group} members={members} />}
     </div>
   );
+}
+
+export default function GroupDetailSuspenseWrapper() {
+  return (
+    <React.Suspense fallback={<div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+      <GroupDetailPageComponent />
+    </React.Suspense>
+  )
 }
