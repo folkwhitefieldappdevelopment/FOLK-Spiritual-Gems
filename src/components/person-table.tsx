@@ -45,6 +45,7 @@ import { getWhatsAppTemplate } from '@/services/settings-service';
 import { useToast } from '@/hooks/use-toast';
 import { DataTableColumnHeader } from './data-table-column-header';
 import { get } from 'lodash';
+import { Badge } from './ui/badge';
 
 export type Filter = {
   condition?: {
@@ -139,6 +140,7 @@ export function PersonTable({
       { key: 'phone', label: 'Phone', filterable: true },
       { key: 'enablerInTouchWith', label: 'Assignments', filterable: true },
       { key: 'lastCallAt', label: 'Last Called', filterable: true },
+      { key: 'lastCallStatus', label: 'Last Call Status', filterable: true },
       { key: 'lastCallRemark', label: 'Last Remark', filterable: true }
     ];
   }, []);
@@ -303,6 +305,12 @@ export function PersonTable({
                                 </TooltipContent>
                             )}
                             </Tooltip>
+                        );
+                    case 'lastCallStatus':
+                        return person.lastCallStatus ? (
+                            <Badge variant="outline">{person.lastCallStatus}</Badge>
+                        ) : (
+                            <span className="text-muted-foreground text-xs">N/A</span>
                         );
                     case 'lastCallRemark':
                         return (
