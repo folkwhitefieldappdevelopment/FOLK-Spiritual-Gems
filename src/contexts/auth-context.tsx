@@ -5,7 +5,7 @@ import * as React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import type { User } from 'firebase/auth';
 import { auth, configError as firebaseConfigError } from '@/lib/firebase';
-import { onAuthStateChanged, signOut as firebaseSignOut, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink as firebaseSignInWithEmailLink, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { onAuthStateChanged, signOut as firebaseSignOut, signInWithEmailAndPassword } from 'firebase/auth';
 import { getUserByEmail, createUser } from '@/services/user-service';
 import type { AppUser } from '@/lib/types';
 
@@ -14,22 +14,15 @@ type AuthContextType = {
   appUser: AppUser | null;
   loading: boolean;
   error: Error | null;
-  sendSignInLink: (email: string) => Promise<void>;
-  signInWithEmailLink: (email: string, url: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  signIn: (email: string, pass: string) => Promise<void>;
   signOut: () => Promise<void>;
   setAppUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
 };
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 
-const actionCodeSettings = {
-  url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002/login',
-  handleCodeInApp: true,
-};
-
 // These paths do not require authentication
-const UNPROTECTED_PATHS = ['/login', '/google-login-demo'];
+const UNPROTECTED_PATHS = ['/login'];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
@@ -46,9 +39,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(firebaseUser);
         try {
           let dbUser = await getUserByEmail(firebaseUser.email!);
+          // This case should ideally not happen in a strict email/password flow
+          // where users are created by admins, but it's a good safeguard.
           if (!dbUser) {
-            // If user exists in Auth but not Firestore, create them.
-            // This handles users created via Google Sign-In for the first time.
+            console.warn("User exists in Auth but not in Firestore. This may indicate an issue.");
             const newUser: Omit<AppUser, 'id' | 'createdAt'> = {
               name: firebaseUser.displayName || 'New User',
               email: firebaseUser.email!,
@@ -81,23 +75,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         router.push('/login');
     }
   }, [loading, user, pathname, router]);
-
-  const sendSignInLink = async (email: string) => {
-    window.localStorage.setItem('emailForSignIn', email);
-    await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-  };
   
-  const signInWithEmailLink = async (email: string, url: string) => {
-      if (!isSignInWithEmailLink(auth, url)) {
-          throw new Error("Invalid sign-in link.");
-      }
-      await firebaseSignInWithEmailLink(auth, email, url);
+  const signIn = async (email: string, pass: string) => {
+      await signInWithEmailAndPassword(auth, email, pass);
   }
-
-  const signInWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
-  };
 
   const signOut = async () => {
     await firebaseSignOut(auth);
@@ -111,9 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     appUser,
     loading,
     error,
-    sendSignInLink,
-    signInWithEmailLink,
-    signInWithGoogle,
+    signIn,
     signOut,
     setAppUser,
   };

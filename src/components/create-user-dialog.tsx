@@ -43,11 +43,11 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertTitle, AlertDescription } from './ui/alert';
 import { createUserAction } from '@/app/user-management/actions';
 
-
 const userFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   email: z.string().email({ message: 'Please enter a valid email address.' }),
   phone: z.string().regex(/^[6-9]\d{9}$/, { message: 'Please enter a valid 10-digit Indian mobile number.' }),
+  password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
   role: z.array(z.string()).min(1, { message: 'Please select at least one role.' }),
   fgCode: z.string().optional(),
   guideId: z.string().optional(),
@@ -83,7 +83,6 @@ type CreateUserDialogProps = {
 export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, onUserCreated }: CreateUserDialogProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [signInLink, setSignInLink] = React.useState<string | null>(null);
   
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
@@ -91,6 +90,7 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
       name: '',
       email: '',
       phone: '',
+      password: '',
       role: [],
       fgCode: '',
       guideId: '',
@@ -103,12 +103,12 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
 
   React.useEffect(() => {
     if (isOpen) {
-      setSignInLink(null); 
       if (user) {
         form.reset({
           name: user.name,
           email: user.email,
           phone: user.phone,
+          password: '', // Password is not fetched, leave blank for updates
           role: user.role,
           fgCode: user.fgCode || '',
           guideId: user.reportsTo?.guideId || '',
@@ -118,6 +118,7 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
           name: '',
           email: '',
           phone: '',
+          password: '',
           role: [],
           fgCode: '',
           guideId: '',
@@ -129,20 +130,24 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
 
   async function onSubmit(data: UserFormValues) {
     setIsSubmitting(true);
-    setSignInLink(null);
     try {
         if (user) {
-            await onSave(data, user.id);
+            // For updates, we don't handle password changes here for simplicity.
+            // This would require a separate, more secure flow.
+            const updateData = { ...data };
+            // @ts-ignore
+            delete updateData.password;
+            await onSave(updateData, user.id);
             setIsOpen(false);
         } else {
             const result = await createUserAction(data);
             if (result.success) {
                 toast({
-                    title: 'User Record Created',
-                    description: `Record for ${data.name} saved.`,
+                    title: 'User Created',
+                    description: result.message,
                 });
-                setSignInLink(result.message);
                 onUserCreated();
+                setIsOpen(false);
             } else {
                 throw new Error(result.message);
             }
@@ -161,44 +166,16 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-        if (!open) setSignInLink(null);
-        setIsOpen(open);
-    }}>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{user ? 'Edit User' : 'Create New User'}</DialogTitle>
           <DialogDescription>
             {user
-              ? "Update the user's details below."
-              : 'Add a new user to the application. This will generate a sign-in link for you to send to them.'}
+              ? "Update the user's details below. Password cannot be changed here."
+              : 'Add a new user to the application and set their initial password.'}
           </DialogDescription>
         </DialogHeader>
-        {signInLink ? (
-          <div className="space-y-4 py-4">
-              <Alert variant="default">
-                <AlertTitle>Sign-In Link Generated!</AlertTitle>
-                <AlertDescription>
-                    The user has been created. Please copy the link below and send it to them. They must click this link to set their password and gain access.
-                </AlertDescription>
-              </Alert>
-              <div className="relative">
-                <Input readOnly value={signInLink} className="pr-10" />
-                <Button 
-                    type="button" 
-                    size="icon" 
-                    variant="ghost" 
-                    className="absolute right-1 top-1 h-8 w-8"
-                    onClick={() => {
-                        navigator.clipboard.writeText(signInLink);
-                        toast({ title: "Copied to clipboard!" });
-                    }}
-                >
-                    <Copy className="h-4 w-4" />
-                </Button>
-              </div>
-          </div>
-        ) : (
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
             <FormField
@@ -228,6 +205,21 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
                 </FormItem>
               )}
             />
+            {!user && (
+                <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                        <Input type="password" placeholder="Set initial password" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            )}
             <FormField
               control={form.control}
               name="phone"
@@ -329,12 +321,11 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
               </Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {user ? 'Save Changes' : 'Create User & Get Link'}
+                {user ? 'Save Changes' : 'Create User'}
               </Button>
             </DialogFooter>
           </form>
         </Form>
-        )}
       </DialogContent>
     </Dialog>
   );

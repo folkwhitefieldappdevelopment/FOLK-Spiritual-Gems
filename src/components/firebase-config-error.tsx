@@ -79,15 +79,11 @@ service cloud.firestore {
              <div className="flex-shrink-0 bg-primary/10 text-primary rounded-full h-8 w-8 flex items-center justify-center">
                 <LogIn className="h-5 w-5" />
             </div>
-            <h3 className="font-semibold">Step 2: Enable Authentication Providers</h3>
+            <h3 className="font-semibold">Step 2: Enable Authentication Provider</h3>
         </div>
         <p className="text-sm text-muted-foreground">
-          You need to enable the authentication providers your app uses. In the <a href="https://console.firebase.google.com" target="_blank" rel="noopener noreferrer" className="underline text-primary">Firebase Console</a>, go to <strong>Build &gt; Authentication &gt; Sign-in method</strong>. Find and enable both of the following providers:
+          You need to enable the Email/Password provider for your app. In the <a href="https://console.firebase.google.com" target="_blank" rel="noopener noreferrer" className="underline text-primary">Firebase Console</a>, go to <strong>Build &gt; Authentication &gt; Sign-in method</strong>. Find and enable the <strong>Email/Password</strong> provider.
         </p>
-        <ul className="list-disc pl-5 mt-2 space-y-1 text-sm text-muted-foreground">
-          <li><strong>Email/Password</strong>: Allows users to sign in with a traditional password.</li>
-          <li><strong>Email link (passwordless sign-in)</strong>: Allows new users to sign up via a link sent from the User Management page.</li>
-        </ul>
       </div>
     </>
   )
