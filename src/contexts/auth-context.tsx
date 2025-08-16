@@ -5,8 +5,8 @@ import * as React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import type { User } from 'firebase/auth';
 import { auth, configError as firebaseConfigError } from '@/lib/firebase';
-import { onAuthStateChanged, signOut as firebaseSignOut, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink as firebaseSignInWithEmailLink } from 'firebase/auth';
-import { getUserByEmail } from '@/services/user-service';
+import { onAuthStateChanged, signOut as firebaseSignOut, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink as firebaseSignInWithEmailLink, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { getUserByEmail, createUser } from '@/services/user-service';
 import type { AppUser } from '@/lib/types';
 
 type AuthContextType = {
@@ -16,6 +16,7 @@ type AuthContextType = {
   error: Error | null;
   sendSignInLink: (email: string) => Promise<void>;
   signInWithEmailLink: (email: string, url: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   setAppUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
 };
@@ -44,19 +45,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (firebaseUser) {
         setUser(firebaseUser);
         try {
-          const dbUser = await getUserByEmail(firebaseUser.email!);
-          if (dbUser) {
-            setAppUser(dbUser);
-          } else {
-            // This case occurs if a user is in Firebase Auth but not in Firestore 'users' collection.
-            // We sign them out to prevent access.
-            console.warn(`User ${firebaseUser.email} found in Auth but not in Firestore. Signing out.`);
-            await firebaseSignOut(auth);
-            setUser(null);
-            setAppUser(null);
+          let dbUser = await getUserByEmail(firebaseUser.email!);
+          if (!dbUser) {
+            // If user exists in Auth but not Firestore, create them.
+            // This handles users created via Google Sign-In for the first time.
+            const newUser: Omit<AppUser, 'id' | 'createdAt'> = {
+              name: firebaseUser.displayName || 'New User',
+              email: firebaseUser.email!,
+              phone: firebaseUser.phoneNumber || '',
+              role: ['Folk Enabler'], // Default role
+              photoUrl: firebaseUser.photoURL || '',
+            };
+            dbUser = await createUser(newUser);
           }
+          setAppUser(dbUser);
         } catch (e) {
-            console.error("Failed to fetch app user from Firestore", e);
+            console.error("Failed to fetch or create app user in Firestore", e);
             setError(e instanceof Error ? e : new Error("Failed to fetch user data."));
             await firebaseSignOut(auth);
             setUser(null);
@@ -90,6 +94,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await firebaseSignInWithEmailLink(auth, email, url);
   }
 
+  const signInWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  };
+
   const signOut = async () => {
     await firebaseSignOut(auth);
     setUser(null);
@@ -104,6 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     error,
     sendSignInLink,
     signInWithEmailLink,
+    signInWithGoogle,
     signOut,
     setAppUser,
   };

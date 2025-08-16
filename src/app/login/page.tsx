@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
+import { Separator } from '@/components/ui/separator';
 
 const loginFormSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -22,8 +23,14 @@ const loginFormSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginFormSchema>;
 
+const GoogleIcon = () => (
+    <svg role="img" viewBox="0 0 24 24" className="mr-2 h-4 w-4">
+        <path fill="currentColor" d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.2,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.1,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.25,22C17.6,22 21.5,18.33 21.5,12.91C21.5,11.76 21.35,11.1 21.35,11.1V11.1Z"></path>
+    </svg>
+)
+
 export default function LoginPage() {
-  const { user, loading, error: authError, sendSignInLink, signInWithEmailLink } = useAuth();
+  const { user, loading, error: authError, sendSignInLink, signInWithEmailLink, signInWithGoogle } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -31,6 +38,7 @@ export default function LoginPage() {
   const [formError, setFormError] = React.useState<string | null>(null);
   const [linkSent, setLinkSent] = React.useState(false);
   const [isVerifying, setIsVerifying] = React.useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = React.useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
@@ -81,6 +89,20 @@ export default function LoginPage() {
       setFormError(errorMessage);
     }
   };
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    setFormError(null);
+    try {
+        await signInWithGoogle();
+        // The onAuthStateChanged listener in AuthProvider will handle the redirect
+    } catch (error) {
+        console.error("Google Sign-In failed", error);
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred during Google Sign-In.";
+        setFormError(errorMessage);
+        setIsGoogleLoading(false);
+    }
+  };
   
   if (isVerifying || loading) {
      return (
@@ -106,48 +128,62 @@ export default function LoginPage() {
           <CardDescription>Sign in to your account</CardDescription>
         </CardHeader>
         <CardContent>
-          {linkSent ? (
-            <Alert variant="default" className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700">
-                <AlertCircle className="h-4 w-4 !text-green-600 dark:!text-green-400" />
-                <AlertTitle className="text-green-800 dark:text-green-300">Check Your Email</AlertTitle>
-                <AlertDescription className="text-green-700 dark:text-green-400">
-                    A secure sign-in link has been sent to your email address.
-                </AlertDescription>
-            </Alert>
-          ) : (
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email Address</FormLabel>
-                      <FormControl>
-                        <Input placeholder="name@example.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                 {formError && (
-                    <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>Login Failed</AlertTitle>
-                        <AlertDescription>{formError}</AlertDescription>
-                    </Alert>
-                )}
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={form.formState.isSubmitting}
-                >
-                  {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Send Sign-In Link
-                </Button>
-              </form>
-            </Form>
-          )}
+          <div className="space-y-4">
+            <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isGoogleLoading}>
+              {isGoogleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GoogleIcon />}
+              Sign in with Google
+            </Button>
+            
+            <div className="flex items-center space-x-2">
+                <Separator className="flex-1" />
+                <span className="text-xs text-muted-foreground">OR</span>
+                <Separator className="flex-1" />
+            </div>
+
+            {linkSent ? (
+                <Alert variant="default" className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700">
+                    <AlertCircle className="h-4 w-4 !text-green-600 dark:!text-green-400" />
+                    <AlertTitle className="text-green-800 dark:text-green-300">Check Your Email</AlertTitle>
+                    <AlertDescription className="text-green-700 dark:text-green-400">
+                        A secure sign-in link has been sent to your email address.
+                    </AlertDescription>
+                </Alert>
+            ) : (
+                <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Email Address</FormLabel>
+                        <FormControl>
+                            <Input placeholder="name@example.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={form.formState.isSubmitting}
+                    >
+                    {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Send Sign-In Link
+                    </Button>
+                </form>
+                </Form>
+            )}
+
+            {formError && (
+                <Alert variant="destructive" className="mt-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Login Failed</AlertTitle>
+                    <AlertDescription>{formError}</AlertDescription>
+                </Alert>
+            )}
+          </div>
         </CardContent>
       </Card>
     </main>

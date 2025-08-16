@@ -16,6 +16,36 @@ import type { AppUser, UserRole } from '@/lib/types';
 import { logAudit } from './audit-service';
 
 /**
+ * Creates a user record in the 'users' Firestore collection.
+ * This is used for both manual user creation and for users signing up via Google.
+ * @param userData The data for the new user.
+ * @returns The newly created AppUser object.
+ */
+export const createUser = async (userData: Omit<AppUser, 'id' | 'createdAt'>): Promise<AppUser> => {
+  const usersCollection = collection(db, 'users');
+  
+  // Ensure we are not creating a duplicate user by email
+  const q = query(usersCollection, where("email", "==", userData.email));
+  const existingUserSnapshot = await getDocs(q);
+  if (!existingUserSnapshot.empty) {
+    throw new Error(`A user with email ${userData.email} already exists.`);
+  }
+
+  const dataToSave = {
+    ...userData,
+    createdAt: serverTimestamp(),
+  };
+
+  const docRef = await addDoc(usersCollection, dataToSave);
+
+  return {
+    id: docRef.id,
+    ...userData,
+    createdAt: new Date(), // Represent as a Date object on client
+  } as AppUser;
+};
+
+/**
  * Updates a user record in the 'users' Firestore collection.
  * @param id The ID of the user to update.
  * @param userData The data to update.
