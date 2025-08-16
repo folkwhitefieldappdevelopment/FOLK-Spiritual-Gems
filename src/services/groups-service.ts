@@ -34,6 +34,11 @@ export const getAllGroups = async (userInfo: UserInfo): Promise<Group[]> => {
 export const getStaticGroups = async (userInfo: UserInfo): Promise<Group[]> => {
   const groupsCollection = collection(db, 'groups');
   
+  if (!userInfo || !userInfo.role) {
+    console.error("getStaticGroups called without valid userInfo");
+    return [];
+  }
+  
   // Admins see all groups, others see public groups or groups they created
   const q = userInfo.role.includes('Admin') 
     ? query(groupsCollection) 

@@ -26,6 +26,7 @@ import { getPeople, updatePerson, assignCoEnablerToPeople } from '@/services/peo
 import { getFolkGuides, updateUser } from '@/services/user-service';
 import { getEnablers, getContactSources, getCustomPersonFields, getOccupationStatuses, type EnablerOption, getStayingWithOptions } from '@/services/settings-service';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
+import { useAuth } from '@/contexts/auth-context';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { PageHeader } from '@/components/page-header';
@@ -76,6 +77,7 @@ const GroupDetailPageComponent = () => {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
+  const { appUser } = useAuth();
   const groupId = params.id as string;
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -160,11 +162,11 @@ const GroupDetailPageComponent = () => {
   }, [currentPage, view, sortDescriptors, tableFilters, advancedFilters, globalSearch, router, pathname]);
 
   const fetchPageData = React.useCallback(async () => {
-    if (!groupId) return;
+    if (!groupId || !appUser) return;
     setIsLoading(true);
     setFetchError(null);
     try {
-        const groupData = await getGroup(groupId);
+        const groupData = await getGroup(groupId, appUser);
         if (!groupData) {
              toast({ variant: 'destructive', title: 'Group not found' });
              router.push('/groups');
@@ -172,7 +174,7 @@ const GroupDetailPageComponent = () => {
         }
         setGroup(groupData);
         
-        const { people: allVisiblePeople } = await getPeople({ pageSize: FIRESTORE_QUERY_LIMIT });
+        const { people: allVisiblePeople } = await getPeople(appUser, { pageSize: FIRESTORE_QUERY_LIMIT });
         setAllPeople(allVisiblePeople);
 
         let memberData: Person[];
@@ -186,13 +188,13 @@ const GroupDetailPageComponent = () => {
         setMembers(memberData);
         
       const [allGroupsData, guidesData, customFieldsData, enablersData, sourcesData, occupationsData, stayingsData] = await Promise.all([
-        getStaticGroups(),
+        getStaticGroups(appUser),
         getFolkGuides(),
-        getCustomPersonFields(),
-        getEnablers('filter'),
-        getContactSources(),
-        getOccupationStatuses(),
-        getStayingWithOptions(),
+        getCustomPersonFields(appUser),
+        getEnablers(appUser, 'filter'),
+        getContactSources(appUser),
+        getOccupationStatuses(appUser),
+        getStayingWithOptions(appUser),
       ]);
       
       setAllGroups(allGroupsData);
@@ -210,7 +212,7 @@ const GroupDetailPageComponent = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [groupId, router, toast]);
+  }, [groupId, router, toast, appUser]);
 
   React.useEffect(() => {
     if (groupId) {
@@ -258,9 +260,9 @@ const GroupDetailPageComponent = () => {
   }, []);
   
   const handleRemoveMembers = React.useCallback(async (idsToRemove: string[]) => {
-    if (!group || group.isDynamic) return;
+    if (!group || group.isDynamic || !appUser) return;
     try {
-      await removePeopleFromGroup(group.id, idsToRemove);
+      await removePeopleFromGroup(group.id, idsToRemove, appUser);
       fetchPageData(); // Refetch data
       toast({
         title: 'Members Removed',
@@ -270,12 +272,12 @@ const GroupDetailPageComponent = () => {
     } catch(e) {
       toast({ variant: 'destructive', title: 'Error removing members' });
     }
-  }, [group, toast, fetchPageData]);
+  }, [group, toast, fetchPageData, appUser]);
   
   const handleSavePersonDialog = React.useCallback(async (personData: Omit<Person, 'id' | 'progress' | 'createdAt'>) => {
-    if (!editingPerson) return;
+    if (!editingPerson || !appUser) return;
     try {
-      await updatePerson(editingPerson.id, personData);
+      await updatePerson(editingPerson.id, personData, appUser);
       
       const updatedPerson = { ...editingPerson, ...personData };
       setMembers(members.map(m => m.id === updatedPerson.id ? updatedPerson : m));
@@ -286,18 +288,18 @@ const GroupDetailPageComponent = () => {
     } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not update person details.'});
     }
-  }, [editingPerson, members, allPeople, toast]);
+  }, [editingPerson, members, allPeople, toast, appUser]);
   
   const handleSaveMembers = React.useCallback(async (memberIds: string[]) => {
-    if (!group || group.isDynamic) return;
+    if (!group || group.isDynamic || !appUser) return;
     try {
-      await addPeopleToGroup(groupId, memberIds);
+      await addPeopleToGroup(groupId, memberIds, appUser);
       await fetchPageData(); 
       toast({title: 'Members Updated', description: `Group members for '${group.name}' have been saved.`});
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not update group members.'});
     }
-  }, [group, groupId, toast, fetchPageData]);
+  }, [group, groupId, toast, fetchPageData, appUser]);
   
   const handleSelectionChange = React.useCallback((personId: string, checked: boolean) => {
     setSelectedIds(prev => {
@@ -309,27 +311,27 @@ const GroupDetailPageComponent = () => {
   }, []);
 
   const handleAddToGroup = React.useCallback(async (targetGroupId: string) => {
-    if (selectedIds.size === 0) return;
+    if (selectedIds.size === 0 || !appUser) return;
     try {
-      await addPeopleToGroup(targetGroupId, Array.from(selectedIds));
+      await addPeopleToGroup(targetGroupId, Array.from(selectedIds), appUser);
       toast({ title: 'Members Added', description: `${selectedIds.size} contacts have been added to the other group.` });
       setSelectedIds(new Set());
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not add contacts to the group.'});
     }
-  }, [selectedIds, toast]);
+  }, [selectedIds, toast, appUser]);
 
   const handleAssignCoEnabler = React.useCallback(async (coEnabler: AppUser | null) => {
-    if (selectedIds.size === 0) return;
+    if (selectedIds.size === 0 || !appUser) return;
     try {
-      await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler);
+      await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler, appUser);
       toast({ title: coEnabler ? 'Co-Enabler Assigned' : 'Co-Enabler Unassigned', description: `${selectedIds.size} contacts have been updated.` });
       fetchPageData(); // Refetch to show changes
       setSelectedIds(new Set());
     } catch (error) {
        toast({ variant: "destructive", title: "Error", description: "Could not assign co-enabler." });
     }
-  }, [selectedIds, toast, fetchPageData]);
+  }, [selectedIds, toast, fetchPageData, appUser]);
 
   const handleExportMembers = React.useCallback(() => {
     if (!group || members.length === 0) return;
@@ -345,7 +347,7 @@ const GroupDetailPageComponent = () => {
 
   const handleImportMembers = React.useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !group) return;
+    if (!file || !group || !appUser) return;
     
     setIsImporting(true);
     
@@ -364,7 +366,7 @@ const GroupDetailPageComponent = () => {
                     throw new Error("No phone numbers found in the file.");
                 }
                 
-                const result = await addPeopleToGroupByPhone(groupId, phoneNumbers);
+                const result = await addPeopleToGroupByPhone(groupId, phoneNumbers, appUser);
 
                 toast({
                     title: 'Import Complete',
@@ -385,7 +387,7 @@ const GroupDetailPageComponent = () => {
         setIsImporting(false);
     }
 
-  }, [group, groupId, toast, fetchPageData]);
+  }, [group, groupId, toast, fetchPageData, appUser]);
   
   const filterableFields: FilterableField[] = React.useMemo(() => [
     { value: 'occupation', label: 'Occupation', type: 'enum', options: occupationOptions.map(o => ({ value: o, label: o })) },
@@ -551,8 +553,8 @@ const GroupDetailPageComponent = () => {
       
       <input type="file" ref={fileInputRef} onChange={handleImportMembers} className="hidden" accept=".xlsx, .xls" />
       {editingPerson && <CreateUpdatePersonDialog isOpen={!!editingPerson} setIsOpen={() => setEditingPerson(undefined)} onSave={handleSavePersonDialog} person={editingPerson} allPeople={allPeople} />}
-      {group && !group.isDynamic && <ManageGroupMembersDialog isOpen={isManageMembersDialogOpen} setIsOpen={setIsManageMembersDialogOpen} onSave={handleSaveMembers} group={group} allPeople={allPeople} />}
-      {isAssignCoEnablerDialogOpen && <AssignCoEnablerDialog isOpen={isAssignCoEnablerDialogOpen} setIsOpen={setIsAssignCoEnablerDialogOpen} onSave={handleAssignCoEnabler} peopleCount={selectedIds.size} />}
+      {group && !group.isDynamic && appUser && <ManageGroupMembersDialog isOpen={isManageMembersDialogOpen} setIsOpen={setIsManageMembersDialogOpen} onSave={handleSaveMembers} group={group} allPeople={allPeople} />}
+      {isAssignCoEnablerDialogOpen && appUser && <AssignCoEnablerDialog isOpen={isAssignCoEnablerDialogOpen} setIsOpen={setIsAssignCoEnablerDialogOpen} onSave={handleAssignCoEnabler} peopleCount={selectedIds.size} />}
       {group && <ShareGroupDialog isOpen={isShareGroupDialogOpen} setIsOpen={setIsShareGroupDialogOpen} group={group} members={members} />}
     </div>
   );

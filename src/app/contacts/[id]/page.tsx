@@ -58,7 +58,8 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
   const [isEditing, setIsEditing] = React.useState(false);
   
   const canEditGoals = React.useMemo(() => {
-    return appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
+    if (!appUser) return false;
+    return appUser.role.includes('Admin') || appUser.role.includes('Folk Guide');
   }, [appUser]);
 
   React.useEffect(() => {
@@ -77,7 +78,7 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
         }
 
         // Combine static and dynamic groups
-        const staticGroups = await getStaticGroups();
+        const staticGroups = await getStaticGroups(appUser);
         const personStaticGroups = staticGroups.filter(g => g.peopleIds.includes(personData.id));
 
         const personDynamicGroups = generateDynamicGroups([personData])
@@ -105,7 +106,7 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
   const handleSavePerson = async (formData: Partial<Person>) => {
     if (!person || !appUser) return;
     try {
-      await updatePerson(person.id, formData);
+      await updatePerson(person.id, formData, appUser);
       setPerson(prev => prev ? { ...prev, ...formData } : null);
       toast({ title: 'Person Updated', description: "The person's details have been saved." });
       setIsEditing(false);
@@ -117,7 +118,7 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
   const handleDeletePerson = async () => {
     if (!appUser) return;
     try {
-      await deletePerson(personId);
+      await deletePerson(personId, appUser);
       toast({
         title: 'Person Deleted',
         description: 'The person has been removed from your contacts.',
@@ -162,7 +163,7 @@ const PersonDetailPageComponent = React.memo(function PersonDetailPageComponent(
     setPerson(updatedPerson); // Optimistic update
     
     try {
-      await updatePerson(personId, { progress: newProgress });
+      await updatePerson(personId, { progress: newProgress }, appUser);
     } catch (error) {
       toast({
         variant: 'destructive',
