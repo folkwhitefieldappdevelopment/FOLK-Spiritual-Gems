@@ -133,6 +133,10 @@ const LoginPageComponent = () => {
       setFormError(errorMessage);
     }
   };
+  
+  const handleFormSubmit = form.handleSubmit(async (data) => {
+    await onSubmit(data);
+  });
 
   if (loading) {
      return (
@@ -161,7 +165,7 @@ const LoginPageComponent = () => {
         </CardHeader>
         <CardContent>
             <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={handleFormSubmit} className="space-y-4">
                 <FormField
                 control={form.control}
                 name="email"
