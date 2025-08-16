@@ -29,7 +29,7 @@ const actionCodeSettings = {
 };
 
 // These paths do not require authentication
-const UNPROTECTED_PATHS = ['/login'];
+const UNPROTECTED_PATHS = ['/login', '/google-login-demo'];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
