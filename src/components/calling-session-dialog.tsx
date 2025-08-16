@@ -228,12 +228,11 @@ const CallingSessionDialogComponent = ({
     try {
       await onSaveAndNext(person.id, data.remark || '', data.status as CallStatus, sg, ma, frp);
       
-      // Clear unsaved progress for this person since it's now saved
-      setSessionProgress(prev => {
-          const newProgress = {...prev};
-          delete newProgress[person.id];
-          return newProgress;
-      });
+      // Persist the just-submitted data in the session cache
+      setSessionProgress(prev => ({
+        ...prev,
+        [person.id]: data,
+      }));
 
       if (sessionCurrentNumber < sessionTotalCount) {
         onNavigate('next');
@@ -248,7 +247,7 @@ const CallingSessionDialogComponent = ({
   };
 
   const handleSaveDetails = React.useCallback(async (formData: Partial<Person>) => {
-    if (!person) return;
+    if (!person || !appUser) return;
     setIsSubmitting(true);
     try {
         await updatePerson(person.id, formData, appUser);
@@ -263,7 +262,7 @@ const CallingSessionDialogComponent = ({
   }, [person, toast, appUser]);
   
   const handleSaveNotes = React.useCallback(async () => {
-    if (!person || !isNotesDirty) return;
+    if (!person || !isNotesDirty || !appUser) return;
     setIsSavingNotes(true);
     try {
         await updatePerson(person.id, { generalRemarks: generalRemarks }, appUser);
