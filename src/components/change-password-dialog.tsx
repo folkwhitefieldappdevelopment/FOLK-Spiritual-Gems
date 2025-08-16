@@ -66,12 +66,12 @@ export function ChangePasswordDialog({ isOpen, setIsOpen }: ChangePasswordDialog
 
     setIsSubmitting(true);
     try {
-        // First, re-authenticate the user with their current password.
+        // Step 1: Re-authenticate the user on the client-side with their current password.
         const credential = EmailAuthProvider.credential(user.email, data.currentPassword);
         await reauthenticateWithCredential(user, credential);
 
-        // If re-authentication is successful, then proceed to change the password.
-        const result = await changePasswordAction({ newPassword: data.newPassword });
+        // Step 2: If re-authentication is successful, then call the server action to change the password.
+        const result = await changePasswordAction(data.newPassword);
 
         if (result.success) {
             toast({
@@ -80,15 +80,24 @@ export function ChangePasswordDialog({ isOpen, setIsOpen }: ChangePasswordDialog
             });
             setIsOpen(false);
         } else {
+            // This will catch errors from the server action, like a weak password.
             throw new Error(result.message);
         }
     } catch (error) {
         console.error('Password change failed:', error);
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        let errorMessage = 'An unexpected error occurred.';
+        if (error instanceof Error) {
+            if (error.message.includes('auth/invalid-credential') || error.message.includes('auth/wrong-password')) {
+                 errorMessage = 'The current password you entered is incorrect.';
+            } else {
+                 errorMessage = error.message;
+            }
+        }
+        
         toast({
             variant: 'destructive',
             title: 'Error',
-            description: errorMessage.includes('auth/invalid-credential') ? 'The current password you entered is incorrect.' : errorMessage,
+            description: errorMessage,
         });
     } finally {
         setIsSubmitting(false);

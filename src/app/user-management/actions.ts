@@ -140,24 +140,23 @@ export async function sendPasswordResetAction(email: string): Promise<{ success:
     }
 }
 
-export async function changePasswordAction(data: {newPassword: string}): Promise<{success: boolean, message: string}> {
+export async function changePasswordAction(newPassword: string): Promise<{success: boolean, message: string}> {
+    const user = clientAuth.currentUser;
+    if (!user) {
+        throw new Error('You must be logged in to change your password.');
+    }
+
     try {
-        const user = clientAuth.currentUser;
-        if (!user) {
-            throw new Error('You must be logged in to change your password.');
-        }
-
-        await updatePassword(user, data.newPassword);
+        await updatePassword(user, newPassword);
         return { success: true, message: 'Password updated successfully!' };
-
     } catch (error: any) {
         console.error("Error changing password:", error);
         let message = 'An unexpected error occurred.';
-        if (error.code === 'auth/requires-recent-login') {
-            message = 'This operation is sensitive and requires recent authentication. Please log out and sign in again before changing your password.';
-        } else if (error.code === 'auth/weak-password') {
+        // This server action is now only called *after* successful re-authentication,
+        // so the 'requires-recent-login' error should not happen here.
+        if (error.code === 'auth/weak-password') {
             message = 'The new password is too weak. Please choose a stronger password (at least 6 characters).';
         }
-        return { success: false, message: message };
+        return { success: false, message };
     }
 }
