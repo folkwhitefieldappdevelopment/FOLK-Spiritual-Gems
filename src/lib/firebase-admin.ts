@@ -1,6 +1,3 @@
-
-'use server';
-
 import * as admin from 'firebase-admin';
 
 // This is the object that will be used to initialize the app.
@@ -26,9 +23,16 @@ if (!admin.apps.length) {
         console.log("Initializing Firebase Admin with default credentials...");
         admin.initializeApp();
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Firebase admin initialization error', error);
-    throw new Error('Firebase Admin SDK initialization failed. Check your service account credentials and environment setup.');
+    // Throw a more specific error to help with debugging.
+    if (error.code === 'app/duplicate-app') {
+        // This can happen in hot-reload scenarios, so we'll just ignore it.
+    } else if (!serviceAccount.projectId || !serviceAccount.privateKey || !serviceAccount.clientEmail) {
+        throw new Error('Firebase Admin SDK initialization failed. Required service account environment variables are missing. Please check your `.env.local` file.');
+    } else {
+        throw new Error(`Firebase Admin SDK initialization failed: ${error.message}`);
+    }
   }
 }
 
