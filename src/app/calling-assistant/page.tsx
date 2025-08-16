@@ -111,7 +111,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     if(search) {
       setGlobalSearch(search);
     }
-  }, []); 
+  }, [searchParams]); 
 
   React.useEffect(() => {
     setHasPausedSession(!!appUser?.pausedCallingSession);
@@ -140,16 +140,17 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
      setIsDataLoading(true);
       setFetchError(null);
       try {
-        const { people: peopleData } = await getPeople({ pageSize: FIRESTORE_QUERY_LIMIT });
+        if (!appUser) return;
+        const { people: peopleData } = await getPeople(appUser, { pageSize: FIRESTORE_QUERY_LIMIT });
         setAllFetchedPeople(peopleData);
 
         const [customFieldsData, groupsData, enablersData, sourcesData, occupationsData, stayingsData, guidesData] = await Promise.all([
-          getCustomPersonFields(),
-          getAllGroups(),
-          getEnablers('filter'),
-          getContactSources(),
-          getOccupationStatuses(),
-          getStayingWithOptions(),
+          getCustomPersonFields(appUser),
+          getAllGroups(appUser),
+          getEnablers(appUser, 'filter'),
+          getContactSources(appUser),
+          getOccupationStatuses(appUser),
+          getStayingWithOptions(appUser),
           getFolkGuides(),
         ]);
         
@@ -171,7 +172,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       } finally {
         setIsDataLoading(false);
       }
-  }, []);
+  }, [appUser]);
 
   React.useEffect(() => {
     fetchPageData();
@@ -193,8 +194,13 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
                 let comparison = 0;
                 if (valA === null || valA === undefined) comparison = -1;
                 else if (valB === null || valB === undefined) comparison = 1;
-                else if (valA > valB) comparison = 1;
-                else if (valA < valB) comparison = -1;
+                else if (typeof valA === 'string' && typeof valB === 'string') {
+                    comparison = valA.localeCompare(valB);
+                } else if (valA > valB) {
+                    comparison = 1;
+                } else if (valA < valB) {
+                    comparison = -1;
+                }
                 if (comparison !== 0) {
                     return desc.direction === 'asc' ? comparison : -comparison;
                 }
@@ -225,34 +231,30 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   }, [toast]);
   
   const handleAddToGroup = React.useCallback(async (targetGroupId: string) => {
-    if (selectedIds.size === 0) return;
+    if (selectedIds.size === 0 || !appUser) return;
     try {
-        await addPeopleToGroup(targetGroupId, Array.from(selectedIds));
+        await addPeopleToGroup(targetGroupId, Array.from(selectedIds), appUser);
         toast({ title: 'Members Added', description: `${selectedIds.size} contacts have been added to the other group.` });
-        const updatedGroups = await getAllGroups();
+        const updatedGroups = await getAllGroups(appUser);
         setGroups(updatedGroups);
         setSelectedIds(new Set());
     } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not add contacts to the group.' });
     }
-  }, [selectedIds, toast]);
+  }, [selectedIds, toast, appUser]);
 
   const handleSaveGroupAndAddMembers = React.useCallback(async (groupData: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy">) => {
+    if (!appUser) return;
     try {
-        const newGroupData: Omit<Group, 'id' | 'createdBy'> = {
-            memberCount: 0,
-            peopleIds: [],
-            ...groupData,
-        };
-        const newGroup = await createGroup(newGroupData);
+        const newGroup = await createGroup(groupData, appUser);
         
         if (selectedIds.size > 0) {
-            await addPeopleToGroup(newGroup.id, Array.from(selectedIds));
+            await addPeopleToGroup(newGroup.id, Array.from(selectedIds), appUser);
             toast({
                 title: "Group Created & Members Added",
                 description: `The group "${newGroup.name}" was created and ${selectedIds.size} contacts were added.`,
             });
-            const updatedGroups = await getAllGroups();
+            const updatedGroups = await getAllGroups(appUser);
             setGroups(updatedGroups);
             setSelectedIds(new Set());
         } else {
@@ -270,12 +272,12 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
             description: "Could not create or add members to the new group.",
         });
     }
-  }, [selectedIds, toast]);
+  }, [selectedIds, toast, appUser]);
 
   const handleAssignCoEnabler = React.useCallback(async (coEnabler: AppUser | null) => {
-    if (selectedIds.size === 0) return;
+    if (selectedIds.size === 0 || !appUser) return;
     try {
-        await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler);
+        await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler, appUser);
         toast({
             title: coEnabler ? 'Co-Enabler Assigned' : 'Co-Enabler Unassigned',
             description: `${selectedIds.size} contacts have been updated.`,
@@ -285,7 +287,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     } catch (error) {
         toast({ variant: "destructive", title: "Error", description: "Could not assign co-enabler." });
     }
-  }, [selectedIds, toast, fetchPageData]);
+  }, [selectedIds, toast, fetchPageData, appUser]);
 
   const handleStartSession = React.useCallback(async (eventName: string, start: number, end: number) => {
     const slicedPeople = filteredAndSortedPeople.slice(start - 1, end);
@@ -297,7 +299,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     setIsCallingSessionDialogOpen(true);
     setIsConfirmSessionDialogOpen(false);
 
-    if (appUser) {
+    if (appUser && appUser.id !== 'anonymous-user') {
         const pausedSession = {
             event: eventName,
             peopleIds: slicedPeopleIds,
@@ -328,7 +330,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       callerId: appUser.id,
       callerName: appUser.name,
       callerPhotoUrl: appUser.photoUrl || '',
-      calledAt: new Date(),
+      calledAt: new Date().toISOString(),
     };
     
     const updates: Partial<Person> = {
@@ -342,7 +344,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     };
 
     try {
-      await updatePerson(personId, updates);
+      await updatePerson(personId, updates, appUser);
       toast({
           title: "Call Logged",
           description: `Status for the contact has been updated.`
@@ -350,8 +352,8 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
       
       setAllFetchedPeople(prev => prev.map(p => {
           if (p.id === personId) {
-              const newHistory = [...(p.callHistory || []), { ...callLog, calledAt: (callLog.calledAt as Date).toISOString() }];
-              return { ...p, ...updates, lastCallAt: (callLog.calledAt as Date).toISOString(), callHistory: newHistory };
+              const newHistory = [...(p.callHistory || []), { ...callLog, calledAt: (callLog.calledAt as string) }];
+              return { ...p, ...updates, lastCallAt: (callLog.calledAt as string), callHistory: newHistory };
           }
           return p;
       }));
@@ -371,7 +373,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
   const handleEndSession = async () => {
     setIsCallingSessionDialogOpen(false);
-    if (appUser) {
+    if (appUser && appUser.id !== 'anonymous-user') {
         await updateUser(appUser.id, { pausedCallingSession: null });
         setAppUser(prev => prev ? {...prev, pausedCallingSession: null} : null);
     }
@@ -565,7 +567,8 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
               setIsEditingDialogOpen(isOpen);
             }}
             onSave={async (data) => {
-              await updatePerson(editingPersonRef.current!.id, data);
+              if (!appUser) return;
+              await updatePerson(editingPersonRef.current!.id, data, appUser);
               setAllFetchedPeople(prev => prev.map(p => p.id === editingPersonRef.current!.id ? {...p, ...data} : p));
             }}
             person={editingPersonRef.current}
@@ -603,6 +606,8 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
 export default function CallingAssistantPage() {
     return (
-        <CallingAssistantPageComponent />
+        <React.Suspense fallback={<div className="flex min-h-screen w-full items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+            <CallingAssistantPageComponent />
+        </React.Suspense>
     );
 }
