@@ -3,7 +3,7 @@
 
 import { admin } from '@/lib/firebase-admin';
 import { db, auth as clientAuth } from '@/lib/firebase';
-import { sendPasswordResetEmail } from 'firebase/auth';
+import { sendPasswordResetEmail, reauthenticateWithCredential, EmailAuthProvider, updatePassword } from 'firebase/auth';
 import {
     collection,
     query,
@@ -76,7 +76,7 @@ export async function createUserAction(userData: UserFormValues, actorInfo: { id
         
         await setDoc(doc(db, 'users', uid), dataToSave);
 
-        await logAudit(`Create User Record by ${actorInfo.name}`, `Created Auth & Firestore record for ${userData.name} (${userData.email}).`, actorInfo);
+        await logAudit(`Create User Record by ${actorInfo.name}`, `Created Auth & Firestore record for ${userData.name} (${userData.email}).`, {id: actorInfo.id, name: actorInfo.name, role: []});
         
         return { 
             success: true, 
@@ -102,13 +102,13 @@ export async function deleteUserAction(userId: string, actorInfo: { id: string, 
   try {
     await admin.auth().deleteUser(userId);
     if (userData) {
-      await logAudit(`Delete User by ${actorInfo.name}`, `Deleted user: ${userData.name} (${userId}) from Auth and Firestore.`, actorInfo);
+      await logAudit(`Delete User by ${actorInfo.name}`, `Deleted user: ${userData.name} (${userId}) from Auth and Firestore.`, {id: actorInfo.id, name: actorInfo.name, role: []});
     }
     return { success: true, message: 'User deleted successfully from both app and authentication system.' };
   } catch (authError: any) {
     console.error(`Failed to delete user ${userId} from Firebase Auth:`, authError);
     if (userData) {
-      await logAudit(`Delete User (Firestore only) by ${actorInfo.name}`, `Deleted user: ${userData.name} (${userId}) from Firestore. Auth deletion failed.`, actorInfo);
+      await logAudit(`Delete User (Firestore only) by ${actorInfo.name}`, `Deleted user: ${userData.name} (${userId}) from Firestore. Auth deletion failed.`, {id: actorInfo.id, name: actorInfo.name, role: []});
     }
     return { 
       success: true, 
@@ -137,5 +137,27 @@ export async function sendPasswordResetAction(email: string): Promise<{ success:
             success: false,
             message: error.message || "An unexpected error occurred.",
         };
+    }
+}
+
+export async function changePasswordAction(data: {newPassword: string}): Promise<{success: boolean, message: string}> {
+    try {
+        const user = clientAuth.currentUser;
+        if (!user) {
+            throw new Error('You must be logged in to change your password.');
+        }
+
+        await updatePassword(user, data.newPassword);
+        return { success: true, message: 'Password updated successfully!' };
+
+    } catch (error: any) {
+        console.error("Error changing password:", error);
+        let message = 'An unexpected error occurred.';
+        if (error.code === 'auth/requires-recent-login') {
+            message = 'This operation is sensitive and requires recent authentication. Please log out and sign in again before changing your password.';
+        } else if (error.code === 'auth/weak-password') {
+            message = 'The new password is too weak. Please choose a stronger password (at least 6 characters).';
+        }
+        return { success: false, message: message };
     }
 }
