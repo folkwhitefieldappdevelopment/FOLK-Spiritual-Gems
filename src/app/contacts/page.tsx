@@ -89,7 +89,7 @@ import { FilterPopover, type FilterRule, type FilterableField } from "@/componen
 const ROWS_PER_PAGE = 25;
 const FIRESTORE_QUERY_LIMIT = 10000;
 
-export default function ContactsPage() {
+const ContactsPageComponent = React.memo(function ContactsPageComponent() {
   const { toast } = useToast();
   const { appUser } = useAuth();
   const router = useRouter();
@@ -180,18 +180,19 @@ export default function ContactsPage() {
     setIsLoading(true);
     setFetchError(null);
     try {
-      const { people: peopleData } = await getPeople({ pageSize: FIRESTORE_QUERY_LIMIT });
+      if (!appUser) return;
+      const { people: peopleData } = await getPeople(appUser, { pageSize: FIRESTORE_QUERY_LIMIT });
       setAllFetchedPeople(peopleData);
       
       const [allUsersData, groupsData, guidesData, customFieldsData, enablersData, sourcesData, occupationsData, stayingsData] = await Promise.all([
         getUsers(),
-        getAllGroups(),
+        getAllGroups(appUser),
         getFolkGuides(),
-        getCustomPersonFields(),
-        getEnablers('filter'),
-        getContactSources(),
-        getOccupationStatuses(),
-        getStayingWithOptions(),
+        getCustomPersonFields(appUser),
+        getEnablers(appUser, 'filter'),
+        getContactSources(appUser),
+        getOccupationStatuses(appUser),
+        getStayingWithOptions(appUser),
       ]);
       setAllUsers(allUsersData);
       setGroups(groupsData);
@@ -211,11 +212,11 @@ export default function ContactsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [appUser]);
 
   React.useEffect(() => {
-    fetchPageData();
-  }, [fetchPageData]);
+    if (appUser) fetchPageData();
+  }, [appUser, fetchPageData]);
   
   React.useEffect(() => {
     setCurrentPage(1);
@@ -472,7 +473,7 @@ export default function ContactsPage() {
         title: 'Export Successful',
         description: `Exported ${filteredAndSortedPeople.length} contacts in contacts_export.zip.`,
       });
-      if (appUser) await logAudit('Export Contacts', `Exported ${filteredAndSortedPeople.length} contacts.`);
+      if (appUser) await logAudit('Export Contacts', `Exported ${filteredAndSortedPeople.length} contacts.`, appUser);
 
     } catch (err) {
       console.error("Failed to generate zip file:", err);
@@ -548,7 +549,7 @@ export default function ContactsPage() {
 
   const handleFileImport = React.useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || !appUser) return;
 
     setImportingStatus("Reading file...");
 
@@ -633,7 +634,7 @@ export default function ContactsPage() {
         for (let i = 0; i < allNewPeople.length; i += 50) {
             const batch = allNewPeople.slice(i, i + 50);
             setImportingStatus(`Importing ${i + batch.length} of ${allNewPeople.length}...`);
-            await importPeople(batch);
+            await importPeople(batch, appUser);
         }
 
         await fetchPageData();
@@ -657,7 +658,7 @@ export default function ContactsPage() {
       }
     };
     reader.readAsArrayBuffer(file);
-  }, [toast, customFields, fetchPageData]);
+  }, [toast, customFields, fetchPageData, appUser]);
 
   const handleAddPerson = React.useCallback(() => {
     setEditingPerson(undefined);
@@ -670,8 +671,9 @@ export default function ContactsPage() {
   }, []);
 
   const handleDeletePerson = React.useCallback(async (personId: string) => {
+    if (!appUser) return;
     try {
-      await deletePerson(personId);
+      await deletePerson(personId, appUser);
       toast({
         title: "Person Deleted",
         description: "The person has been removed from your contacts.",
@@ -684,11 +686,12 @@ export default function ContactsPage() {
         description: "Could not delete person.",
       });
     }
-  }, [toast, fetchPageData]);
+  }, [toast, fetchPageData, appUser]);
 
   const handleDeleteSelected = React.useCallback(async () => {
+    if (!appUser) return;
     try {
-      await deletePeople(Array.from(selectedIds));
+      await deletePeople(Array.from(selectedIds), appUser);
       toast({
         title: "Contacts Deleted",
         description: `${selectedIds.size} contacts have been removed.`,
@@ -702,13 +705,14 @@ export default function ContactsPage() {
         description: "Could not delete the selected contacts.",
       });
     }
-  }, [selectedIds, toast, fetchPageData]);
+  }, [selectedIds, toast, fetchPageData, appUser]);
 
 
   const handleSavePerson = React.useCallback(async (personData: Omit<Person, "id" | "progress" | "createdAt">) => {
+    if (!appUser) return;
     try {
       if (editingPerson) {
-        await updatePerson(editingPerson.id, personData);
+        await updatePerson(editingPerson.id, personData, appUser);
         toast({
           title: "Person Updated",
           description: "The person's details have been saved.",
@@ -718,7 +722,7 @@ export default function ContactsPage() {
           ...personData,
           progress: createInitialProgress(),
         };
-        await createPerson(newPersonData as Omit<Person, 'id' | 'createdAt'>);
+        await createPerson(newPersonData as Omit<Person, 'id' | 'createdAt'>, appUser);
         toast({
           title: "Person Added",
           description: "The new person has been added to your contacts.",
@@ -735,12 +739,12 @@ export default function ContactsPage() {
       });
       throw error;
     }
-  }, [toast, editingPerson, fetchPageData]);
+  }, [toast, editingPerson, fetchPageData, appUser]);
   
   const handleAddToGroup = React.useCallback(async (groupId: string) => {
-    if (selectedIds.size === 0) return;
+    if (selectedIds.size === 0 || !appUser) return;
     try {
-      await addPeopleToGroup(groupId, Array.from(selectedIds));
+      await addPeopleToGroup(groupId, Array.from(selectedIds), appUser);
       toast({
         title: "Members Added",
         description: `${selectedIds.size} contacts have been added to the group.`,
@@ -753,19 +757,15 @@ export default function ContactsPage() {
         description: "Could not add contacts to the group.",
       });
     }
-  }, [selectedIds, toast]);
+  }, [selectedIds, toast, appUser]);
 
   const handleSaveGroupAndAddMembers = React.useCallback(async (groupData: Omit<Group, "id" | "memberCount" | "peopleIds" | "createdBy">) => {
+    if (!appUser) return;
     try {
-      const newGroupData: Omit<Group, 'id' | 'createdBy'> = {
-        memberCount: 0,
-        peopleIds: [],
-        ...groupData,
-      };
-      const newGroup = await createGroup(newGroupData);
+      const newGroup = await createGroup(groupData, appUser);
       
       if (selectedIds.size > 0) {
-        await addPeopleToGroup(newGroup.id, Array.from(selectedIds));
+        await addPeopleToGroup(newGroup.id, Array.from(selectedIds), appUser);
          toast({
           title: "Group Created & Members Added",
           description: `The group "${newGroup.name}" was created and ${selectedIds.size} contacts were added.`,
@@ -786,12 +786,12 @@ export default function ContactsPage() {
         description: "Could not create or add members to the new group.",
       });
     }
-  }, [selectedIds, toast, fetchPageData]);
+  }, [selectedIds, toast, fetchPageData, appUser]);
   
   const handleAssignCoEnabler = React.useCallback(async (coEnabler: AppUser | null) => {
-    if (selectedIds.size === 0) return;
+    if (selectedIds.size === 0 || !appUser) return;
     try {
-      await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler);
+      await assignCoEnablerToPeople(Array.from(selectedIds), coEnabler, appUser);
       toast({
         title: coEnabler ? 'Co-Enabler Assigned' : 'Co-Enabler Unassigned',
         description: `${selectedIds.size} contacts have been updated.`,
@@ -805,12 +805,12 @@ export default function ContactsPage() {
         description: "Could not assign co-enabler.",
       });
     }
-  }, [selectedIds, toast, fetchPageData]);
+  }, [selectedIds, toast, fetchPageData, appUser]);
 
   const handleAssignEnabler = React.useCallback(async (enabler: AppUser) => {
-    if (selectedIds.size === 0) return;
+    if (selectedIds.size === 0 || !appUser) return;
     try {
-        await assignEnablerToPeople(Array.from(selectedIds), enabler);
+        await assignEnablerToPeople(Array.from(selectedIds), enabler, appUser);
         toast({
             title: 'Enabler Assigned',
             description: `${selectedIds.size} contacts have been assigned to ${enabler.name}.`,
@@ -820,7 +820,7 @@ export default function ContactsPage() {
     } catch (error) {
         toast({ variant: "destructive", title: "Error", description: "Could not assign the enabler." });
     }
-  }, [selectedIds, toast, fetchPageData]);
+  }, [selectedIds, toast, fetchPageData, appUser]);
 
   const isLoadingAction = !!importingStatus || isExporting;
   const loadingText = typeof importingStatus === 'string' ? importingStatus : (isExporting ? 'Exporting...' : '');
@@ -944,7 +944,7 @@ export default function ContactsPage() {
                           <AlertDialogHeader>
                           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                           <AlertDialogDescription>
-                              This will permanently delete the selected {selectedIds.size} contacts. This action cannot be undone.
+                              This will permanently delete the selected ${selectedIds.size} contacts. This action cannot be undone.
                           </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
@@ -1138,4 +1138,12 @@ export default function ContactsPage() {
       />
     </div>
   );
+});
+
+export default function ContactsPage() {
+    return (
+        <React.Suspense fallback={<div className="flex min-h-screen w-full items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+            <ContactsPageComponent />
+        </React.Suspense>
+    );
 }
