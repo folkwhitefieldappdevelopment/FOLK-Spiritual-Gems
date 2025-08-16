@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from "react";
-import { Loader2, Users, UserCheck, PlusCircle, AlertCircle, PhoneCall, Search } from "lucide-react";
+import { Loader2, Users, UserCheck, PlusCircle, AlertCircle, PhoneCall, Search, UsersRound } from "lucide-react";
 import type { Person, CallStatus, CustomField, Group, AppUser, UserRole } from "@/lib/types";
 import { callStatuses } from '@/lib/types';
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,8 @@ import { get } from 'lodash';
 import { Input } from "@/components/ui/input";
 import { SortPopover, type SortDescriptor } from "@/components/sort-popover";
 import { FilterPopover, type FilterRule, type FilterableField } from "@/components/filter-popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { generateDynamicGroups } from '@/lib/dynamic-groups';
 
 
 const ROWS_PER_PAGE = 25;
@@ -76,6 +78,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   const [groups, setGroups] = React.useState<Group[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = React.useState<string>('all');
   const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
   const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
   const [occupationOptions, setOccupationOptions] = React.useState<string[]>([]);
@@ -93,8 +96,10 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     const tableFilter = params.get('tableFilters');
     const advancedFilter = params.get('advancedFilters');
     const search = params.get('search');
+    const group = params.get('group');
 
     setCurrentPage(page);
+    if (group) setSelectedGroupId(group);
     if (sort) {
       try { setSortDescriptors(JSON.parse(sort)); } catch(e) {}
     } else {
@@ -114,6 +119,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   React.useEffect(() => {
     const params = new URLSearchParams();
     if (currentPage > 1) params.set('page', String(currentPage));
+    if (selectedGroupId !== 'all') params.set('group', selectedGroupId);
     if (sortDescriptors.length > 0 && !(sortDescriptors.length === 1 && sortDescriptors[0].field === 'createdAt' && sortDescriptors[0].direction === 'desc')) {
       params.set('sort', JSON.stringify(sortDescriptors));
     }
@@ -128,7 +134,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     }
     
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [currentPage, sortDescriptors, tableFilters, advancedFilters, globalSearch, router, pathname]);
+  }, [currentPage, sortDescriptors, tableFilters, advancedFilters, globalSearch, selectedGroupId, router, pathname]);
 
   const fetchPageData = React.useCallback(async () => {
      if (!appUser?.id) return;
@@ -149,7 +155,8 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
         ]);
         
         setCustomFields(customFieldsData);
-        setGroups(groupsData);
+        const dynamicGroups = generateDynamicGroups(peopleData);
+        setGroups([...groupsData, ...dynamicGroups].sort((a,b) => a.name.localeCompare(b.name)));
         setEnablerOptions(enablersData);
         setContactSourceOptions(sourcesData);
         setOccupationOptions(occupationsData);
@@ -175,10 +182,18 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   React.useEffect(() => {
     setCurrentPage(1);
     setSelectedIds(new Set());
-  }, [tableFilters, sortDescriptors, globalSearch, advancedFilters]);
+  }, [tableFilters, sortDescriptors, globalSearch, advancedFilters, selectedGroupId]);
   
   const filteredAndSortedPeople = React.useMemo(() => {
     let people = applyClientSideFilters(allFetchedPeople, tableFilters, globalSearch, advancedFilters);
+
+    if (selectedGroupId !== 'all') {
+      const group = groups.find(g => g.id === selectedGroupId);
+      if (group) {
+        const memberIds = new Set(group.peopleIds);
+        people = people.filter(p => memberIds.has(p.id));
+      }
+    }
 
     if (sortDescriptors.length > 0) {
         people.sort((a, b) => {
@@ -204,7 +219,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     }
 
     return people;
-  }, [allFetchedPeople, tableFilters, sortDescriptors, globalSearch, advancedFilters]);
+  }, [allFetchedPeople, tableFilters, sortDescriptors, globalSearch, advancedFilters, selectedGroupId, groups]);
 
   const totalPages = Math.ceil(filteredAndSortedPeople.length / ROWS_PER_PAGE);
   const paginatedPeople = React.useMemo(() => {
@@ -447,14 +462,28 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
         )}
         <div className="mb-6 flex flex-col gap-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Search contacts..."
-                        className="pl-10 w-full sm:w-64"
-                        value={globalSearch}
-                        onChange={e => setGlobalSearch(e.target.value)}
-                    />
+                <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search contacts..."
+                            className="pl-10 w-full sm:w-64"
+                            value={globalSearch}
+                            onChange={e => setGlobalSearch(e.target.value)}
+                        />
+                    </div>
+                    <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
+                      <SelectTrigger className="w-full sm:w-[240px]">
+                        <div className="flex items-center gap-2">
+                            <UsersRound className="h-4 w-4 text-muted-foreground" />
+                            <SelectValue placeholder="Filter by Group..." />
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Contacts</SelectItem>
+                        {groups.map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                 </div>
                  <div className="flex items-center gap-2">
                     <FilterPopover filters={advancedFilters} setFilters={setAdvancedFilters} filterableFields={filterableFields} />
