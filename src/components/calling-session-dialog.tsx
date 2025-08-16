@@ -7,9 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import type { Person, CallStatus, Group, CustomField, UserRole } from "@/lib/types";
 import { callStatuses } from "@/lib/types";
-import { Phone, CheckSquare, Loader2, Edit, Save, XCircle, ArrowLeft, ArrowRight, Trash2, MessageSquare } from "lucide-react";
+import { Phone, CheckSquare, Loader2, Edit, Save, XCircle, ArrowLeft, ArrowRight, Trash2, MessageSquare, Clock, Calendar, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import debounce from 'lodash/debounce';
 
 import {
   Dialog,
@@ -53,7 +52,8 @@ import { updatePerson } from "@/services/people-service";
 import { getWhatsAppTemplate } from "@/services/settings-service";
 import { EditablePersonDetailsForm } from "./editable-person-details-form";
 import { useAuth } from "@/contexts/auth-context";
-import { updateUser } from "@/services/user-service";
+import { ScrollArea } from "./ui/scroll-area";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 const callFormSchema = z.object({
   remark: z.string().trim().optional(),
@@ -138,20 +138,15 @@ const CallingSessionDialogComponent = ({
     return groups.filter(g => g.peopleIds.includes(person.id));
   }, [person, groups]);
   
-  const lastEventRemark = React.useMemo(() => {
-    if (!person.callHistory || !currentEvent) return person.lastCallRemark || '';
-
-    const lastCallForEvent = [...person.callHistory]
-      .filter(log => log.event === currentEvent)
-      .sort((a,b) => {
-          const dateA = safeDate(a.calledAt);
-          const dateB = safeDate(b.calledAt);
-          if (!dateA || !dateB) return 0;
-          return dateB.getTime() - a.getTime();
-      })[0];
-      
-    return lastCallForEvent?.remark || person.lastCallRemark || '';
-  }, [person, currentEvent]);
+  const sortedHistory = React.useMemo(() => {
+    if (!person.callHistory || !Array.isArray(person.callHistory)) return [];
+    return [...person.callHistory].sort((a, b) => {
+        const dateA = safeDate(a.calledAt);
+        const dateB = safeDate(b.calledAt);
+        if (!dateA || !dateB) return 0;
+        return dateB.getTime() - a.getTime();
+    });
+  }, [person.callHistory]);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -182,13 +177,22 @@ const CallingSessionDialogComponent = ({
   React.useEffect(() => {
     if (person) {
       const unsavedProgress = sessionProgress[person.id];
+      const lastCallForEvent = [...(person.callHistory || [])]
+          .filter(log => log.event === currentEvent)
+          .sort((a,b) => {
+              const dateA = safeDate(a.calledAt);
+              const dateB = safeDate(b.calledAt);
+              if (!dateA || !dateB) return 0;
+              return dateB.getTime() - a.getTime();
+          })[0];
+
       if (unsavedProgress) {
         // If there's unsaved progress, use it to populate the form
         form.reset(unsavedProgress);
       } else {
         // Otherwise, reset to the database state
         form.reset({
-          remark: lastEventRemark,
+          remark: lastCallForEvent?.remark || '',
           status: '', // Always reset status for a new contact
           sg: typeof person.lastSg === 'boolean' ? (person.lastSg ? 'yes' : 'no') : '',
           ma: typeof person.lastMa === 'boolean' ? (person.lastMa ? 'yes' : 'no') : '',
@@ -200,7 +204,7 @@ const CallingSessionDialogComponent = ({
       setIsNotesDirty(false);
       setIsEditingDetails(false);
     }
-  }, [person, lastEventRemark, form, sessionProgress]);
+  }, [person, currentEvent, form, sessionProgress]);
 
 
   const onSubmit = async (data: CallFormValues) => {
@@ -308,17 +312,44 @@ const CallingSessionDialogComponent = ({
                         </div>
                     </div>
                     
-                    {lastEventRemark && (
-                        <div className="p-3 rounded-md bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
-                           <p className="text-xs font-semibold text-yellow-800 dark:text-yellow-300 flex items-center gap-2">
-                                <MessageSquare className="h-4 w-4" />
-                                Last Remark for this Event:
-                           </p>
-                           <p className="text-sm text-yellow-900 dark:text-yellow-200 mt-1 pl-6">
-                             {lastEventRemark}
-                           </p>
-                        </div>
-                    )}
+                    <div className="space-y-2">
+                        <Label>Call History</Label>
+                        <ScrollArea className="h-32 rounded-md border p-3 bg-muted/30">
+                           {sortedHistory.length > 0 ? (
+                                <div className="space-y-4">
+                                    {sortedHistory.map((log, index) => (
+                                        <div key={index} className="space-y-1 text-xs">
+                                            <div className="flex items-center justify-between">
+                                                <p className="font-medium flex items-center gap-2">
+                                                    <Clock className="h-3 w-3 text-muted-foreground" />
+                                                    <span>{safeDate(log.calledAt)?.toLocaleString() ?? 'N/A'}</span>
+                                                </p>
+                                                {log.callerName && (
+                                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                                        <span>by:</span>
+                                                        <Avatar className="h-4 w-4">
+                                                            <AvatarImage src={log.callerPhotoUrl} alt={log.callerName} />
+                                                            <AvatarFallback className="text-[9px]">{log.callerName.charAt(0)}</AvatarFallback>
+                                                        </Avatar>
+                                                        <span className="font-medium text-foreground">{log.callerName}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                             <div className="pl-5">
+                                                <p className="text-foreground">{log.remark || <span className="italic text-muted-foreground">No remark.</span>}</p>
+                                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-muted-foreground">
+                                                    {log.event && <div className="flex items-center gap-1"><Calendar className="h-3 w-3" /><span>{log.event}</span></div>}
+                                                    {log.status && <div className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /><span>{log.status}</span></div>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-center text-xs text-muted-foreground pt-4">No call history recorded yet.</p>
+                            )}
+                        </ScrollArea>
+                    </div>
 
                     <Form {...form}>
                         <form id="call-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
