@@ -119,6 +119,9 @@ const CallingSessionDialogComponent = ({
   const [isNotesDirty, setIsNotesDirty] = React.useState(false);
   const [isSavingNotes, setIsSavingNotes] = React.useState(false);
   
+  // State to hold unsaved progress for each person in the session
+  const [sessionProgress, setSessionProgress] = React.useState<Record<string, Partial<CallFormValues>>>({});
+
   const form = useForm<CallFormValues>({
     resolver: zodResolver(callFormSchema),
     defaultValues: {
@@ -157,22 +160,47 @@ const CallingSessionDialogComponent = ({
           setWhatsAppTemplate(template);
       };
       fetchTemplate();
+      // Clear session progress when dialog opens for a new session
+      setSessionProgress({});
     }
   }, [isOpen]);
+  
+  // Store unsaved form data before navigating
+  const handleNavigation = (direction: 'next' | 'prev') => {
+    const currentFormData = form.getValues();
+    const isFormDirty = form.formState.isDirty;
+
+    if (isFormDirty) {
+      setSessionProgress(prev => ({
+        ...prev,
+        [person.id]: currentFormData,
+      }));
+    }
+    onNavigate(direction);
+  }
 
   React.useEffect(() => {
     if (person) {
-      form.setValue('remark', lastEventRemark);
-      form.setValue('sg', typeof person.lastSg === 'boolean' ? (person.lastSg ? 'yes' : 'no') : '');
-      form.setValue('ma', typeof person.lastMa === 'boolean' ? (person.lastMa ? 'yes' : 'no') : '');
-      form.setValue('frp', typeof person.lastFrp === 'boolean' ? (person.lastFrp ? 'yes' : 'no') : '');
-      form.setValue('status', ''); // Always reset status for a new contact
+      const unsavedProgress = sessionProgress[person.id];
+      if (unsavedProgress) {
+        // If there's unsaved progress, use it to populate the form
+        form.reset(unsavedProgress);
+      } else {
+        // Otherwise, reset to the database state
+        form.reset({
+          remark: lastEventRemark,
+          status: '', // Always reset status for a new contact
+          sg: typeof person.lastSg === 'boolean' ? (person.lastSg ? 'yes' : 'no') : '',
+          ma: typeof person.lastMa === 'boolean' ? (person.lastMa ? 'yes' : 'no') : '',
+          frp: typeof person.lastFrp === 'boolean' ? (person.lastFrp ? 'yes' : 'no') : '',
+        });
+      }
 
       setGeneralRemarks(person.generalRemarks || '');
       setIsNotesDirty(false);
       setIsEditingDetails(false);
     }
-  }, [person, lastEventRemark, form]);
+  }, [person, lastEventRemark, form, sessionProgress]);
   
   React.useEffect(() => {
     const saveSessionState = async () => {
@@ -199,6 +227,14 @@ const CallingSessionDialogComponent = ({
 
     try {
       await onSaveAndNext(person.id, data.remark || '', data.status as CallStatus, sg, ma, frp);
+      
+      // Clear unsaved progress for this person since it's now saved
+      setSessionProgress(prev => {
+          const newProgress = {...prev};
+          delete newProgress[person.id];
+          return newProgress;
+      });
+
       if (sessionCurrentNumber < sessionTotalCount) {
         onNavigate('next');
       } else {
@@ -215,7 +251,7 @@ const CallingSessionDialogComponent = ({
     if (!person) return;
     setIsSubmitting(true);
     try {
-        await updatePerson(person.id, formData);
+        await updatePerson(person.id, formData, appUser);
         toast({ title: 'Details Updated', description: "The contact's details have been saved." });
         setIsEditingDetails(false);
         // Note: We don't need to update local state here as the parent will send a new 'person' prop on next render
@@ -224,13 +260,13 @@ const CallingSessionDialogComponent = ({
     } finally {
         setIsSubmitting(false);
     }
-  }, [person, toast]);
+  }, [person, toast, appUser]);
   
   const handleSaveNotes = React.useCallback(async () => {
     if (!person || !isNotesDirty) return;
     setIsSavingNotes(true);
     try {
-        await updatePerson(person.id, { generalRemarks: generalRemarks });
+        await updatePerson(person.id, { generalRemarks: generalRemarks }, appUser);
         toast({ title: 'Progress Notes Saved' });
         setIsNotesDirty(false);
     } catch (error) {
@@ -238,7 +274,7 @@ const CallingSessionDialogComponent = ({
     } finally {
         setIsSavingNotes(false);
     }
-  }, [person, isNotesDirty, generalRemarks, toast]);
+  }, [person, isNotesDirty, generalRemarks, toast, appUser]);
   
   const whatsAppLink = () => {
     if (!person) return '#';
@@ -489,11 +525,11 @@ const CallingSessionDialogComponent = ({
             </AlertDialog>
            </div>
            <div className="flex items-center gap-2 justify-center sm:justify-end">
-                <Button variant="outline" size="icon" onClick={() => onNavigate('prev')} disabled={sessionCurrentNumber <= 1}>
+                <Button variant="outline" size="icon" onClick={() => handleNavigation('prev')} disabled={sessionCurrentNumber <= 1}>
                     <ArrowLeft className="h-4 w-4"/>
                     <span className="sr-only">Previous Contact</span>
                 </Button>
-                <Button variant="outline" size="icon" onClick={() => onNavigate('next')} disabled={sessionCurrentNumber >= sessionTotalCount}>
+                <Button variant="outline" size="icon" onClick={() => handleNavigation('next')} disabled={sessionCurrentNumber >= sessionTotalCount}>
                     <ArrowRight className="h-4 w-4"/>
                     <span className="sr-only">Next Contact</span>
                 </Button>
