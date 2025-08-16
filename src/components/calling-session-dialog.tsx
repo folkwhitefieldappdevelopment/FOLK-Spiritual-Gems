@@ -109,7 +109,7 @@ const CallingSessionDialogComponent = ({
   sessionPeopleIds,
 }: CallingSessionDialogProps) => {
   const { toast } = useToast();
-  const { appUser, setAppUser } = useAuth();
+  const { appUser } = useAuth();
   
   const [isEditingDetails, setIsEditingDetails] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -119,7 +119,6 @@ const CallingSessionDialogComponent = ({
   const [isNotesDirty, setIsNotesDirty] = React.useState(false);
   const [isSavingNotes, setIsSavingNotes] = React.useState(false);
   
-  // State to hold unsaved progress for each person in the session
   const [sessionProgress, setSessionProgress] = React.useState<Record<string, Partial<CallFormValues>>>({});
 
   const form = useForm<CallFormValues>({
@@ -144,7 +143,7 @@ const CallingSessionDialogComponent = ({
         const dateA = safeDate(a.calledAt);
         const dateB = safeDate(b.calledAt);
         if (!dateA || !dateB) return 0;
-        return dateB.getTime() - a.getTime();
+        return dateB.getTime() - dateA.getTime();
     });
   }, [person.callHistory]);
 
@@ -155,12 +154,10 @@ const CallingSessionDialogComponent = ({
           setWhatsAppTemplate(template);
       };
       fetchTemplate();
-      // Clear session progress when dialog opens for a new session
       setSessionProgress({});
     }
   }, [isOpen]);
   
-  // Store unsaved form data before navigating
   const handleNavigation = (direction: 'next' | 'prev') => {
     const currentFormData = form.getValues();
     const isFormDirty = form.formState.isDirty;
@@ -183,17 +180,15 @@ const CallingSessionDialogComponent = ({
               const dateA = safeDate(a.calledAt);
               const dateB = safeDate(b.calledAt);
               if (!dateA || !dateB) return 0;
-              return dateB.getTime() - a.getTime();
+              return dateB.getTime() - dateA.getTime();
           })[0];
 
       if (unsavedProgress) {
-        // If there's unsaved progress, use it to populate the form
         form.reset(unsavedProgress);
       } else {
-        // Otherwise, reset to the database state
         form.reset({
           remark: lastCallForEvent?.remark || '',
-          status: '', // Always reset status for a new contact
+          status: '',
           sg: typeof person.lastSg === 'boolean' ? (person.lastSg ? 'yes' : 'no') : '',
           ma: typeof person.lastMa === 'boolean' ? (person.lastMa ? 'yes' : 'no') : '',
           frp: typeof person.lastFrp === 'boolean' ? (person.lastFrp ? 'yes' : 'no') : '',
@@ -216,11 +211,11 @@ const CallingSessionDialogComponent = ({
     try {
       await onSaveAndNext(person.id, data.remark || '', data.status as CallStatus, sg, ma, frp);
       
-      // Persist the just-submitted data in the session cache
-      setSessionProgress(prev => ({
-        ...prev,
-        [person.id]: data,
-      }));
+      setSessionProgress(prev => {
+        const newProgress = { ...prev };
+        newProgress[person.id] = data;
+        return newProgress;
+      });
 
       if (sessionCurrentNumber < sessionTotalCount) {
         onNavigate('next');
@@ -228,7 +223,6 @@ const CallingSessionDialogComponent = ({
         handleEndAndClose();
       }
     } catch (e) {
-      // Errors are toasted in the parent
     } finally {
       setIsSubmitting(false);
     }
@@ -241,7 +235,6 @@ const CallingSessionDialogComponent = ({
         await updatePerson(person.id, formData, appUser);
         toast({ title: 'Details Updated', description: "The contact's details have been saved." });
         setIsEditingDetails(false);
-        // Note: We don't need to update local state here as the parent will send a new 'person' prop on next render
     } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not update contact details.' });
     } finally {
@@ -285,7 +278,6 @@ const CallingSessionDialogComponent = ({
         
         <div className="flex-1 min-h-0 overflow-y-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 p-6">
-                {/* Left Column: Form */}
                 <div className="space-y-4">
                     <div className="flex items-center justify-between rounded-lg border p-3">
                         <div className="flex items-center gap-2">
@@ -458,7 +450,6 @@ const CallingSessionDialogComponent = ({
                     </Form>
                 </div>
 
-                {/* Right Column: Person Details */}
                 <div className="md:border-l md:pl-8 space-y-4">
                   <div className="flex justify-end mb-4 -mt-2">
                      {isEditingDetails ? (
