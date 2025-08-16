@@ -119,7 +119,8 @@ function ReferrerError() {
 6000-firebase-studio-1751343902620.cluster-6dx7corvpngoivimwvvljgokdw.cloudworkstations.dev
 6000-firebase-spiritual-gemdup-1755005513029.cluster-6dx7corvpngoivimwvvljgokdw.cloudworkstations.dev
 localhost:9002
-personal-data-hub-y5fe0.firebaseapp.com`}
+personal-data-hub-y5fe0.firebaseapp.com
+studio--spiritual-gemdup.us-central1.hosted.app`}
         </pre>
          <p className="text-xs text-muted-foreground">
           It may take a minute or two for the changes to apply after you save them.
