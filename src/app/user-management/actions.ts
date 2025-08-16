@@ -2,7 +2,8 @@
 'use server';
 
 import { admin } from '@/lib/firebase-admin';
-import { db } from '@/lib/firebase';
+import { db, auth as clientAuth } from '@/lib/firebase';
+import { sendPasswordResetEmail } from 'firebase/auth';
 import {
     collection,
     query,
@@ -114,4 +115,27 @@ export async function deleteUserAction(userId: string, actorInfo: { id: string, 
       message: 'User deleted from app. You should manually delete them from the Firebase Authentication console to fully remove their account.'
     };
   }
+}
+
+export async function sendPasswordResetAction(email: string): Promise<{ success: boolean; message: string }> {
+    try {
+        await sendPasswordResetEmail(clientAuth, email);
+        return {
+            success: true,
+            message: "If an account with that email exists, a password reset link has been sent.",
+        };
+    } catch (error: any) {
+        console.error("Error sending password reset email:", error);
+        // Firebase returns 'auth/invalid-email' for non-existent users, but we don't want to reveal that.
+        if (error.code === 'auth/invalid-email') {
+            return {
+                success: true,
+                message: "If an account with that email exists, a password reset link has been sent.",
+            };
+        }
+        return {
+            success: false,
+            message: error.message || "An unexpected error occurred.",
+        };
+    }
 }

@@ -15,7 +15,17 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
-import { Separator } from '@/components/ui/separator';
+import { sendPasswordResetAction } from '@/app/user-management/actions';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
 
 const loginFormSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -23,6 +33,73 @@ const loginFormSchema = z.object({
 });
 
 type LoginFormValues = z.infer<typeof loginFormSchema>;
+
+const ForgotPasswordDialog = () => {
+    const { toast } = useToast();
+    const [email, setEmail] = React.useState('');
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const [error, setError] = React.useState('');
+
+    const handlePasswordReset = async () => {
+        if (!email) {
+            setError('Please enter your email address.');
+            return;
+        }
+        setError('');
+        setIsSubmitting(true);
+        const result = await sendPasswordResetAction(email);
+        if (result.success) {
+            toast({
+                title: 'Password Reset Email Sent',
+                description: result.message,
+            });
+            // Find the button and click it to close the dialog
+            document.getElementById('close-forgot-password-dialog')?.click();
+        } else {
+            setError(result.message);
+        }
+        setIsSubmitting(false);
+    };
+
+    return (
+        <Dialog>
+            <DialogTrigger asChild>
+                <Button variant="link" className="w-full text-sm font-normal">
+                    Forgot Password?
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Reset Your Password</DialogTitle>
+                    <DialogDescription>
+                        Enter your email address and we will send you a link to reset your password.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4 space-y-2">
+                    <Label htmlFor="reset-email">Email Address</Label>
+                    <Input
+                        id="reset-email"
+                        type="email"
+                        placeholder="name@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                    />
+                    {error && <p className="text-sm text-destructive">{error}</p>}
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button id="close-forgot-password-dialog" type="button" variant="outline">Cancel</Button>
+                    </DialogClose>
+                    <Button onClick={handlePasswordReset} disabled={isSubmitting}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Send Reset Link
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
 
 const LoginPageComponent = () => {
   const { user, loading, error: authError, signIn } = useAuth();
@@ -120,6 +197,10 @@ const LoginPageComponent = () => {
                 </Button>
             </form>
             </Form>
+
+            <div className="mt-4">
+              <ForgotPasswordDialog />
+            </div>
 
             {formError && (
               isReferrerError ? (

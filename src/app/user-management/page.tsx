@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { Loader2, ShieldAlert, Search, PlusCircle, MoreHorizontal, Edit, Trash2, RefreshCw } from 'lucide-react';
+import { Loader2, ShieldAlert, Search, PlusCircle, MoreHorizontal, Edit, Trash2, RefreshCw, KeyRound } from 'lucide-react';
 import { format } from 'date-fns';
 import { logAudit } from '@/services/audit-service';
 
@@ -43,7 +43,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/auth-context';
-import { deleteUserAction } from './actions';
+import { deleteUserAction, sendPasswordResetAction } from './actions';
 
 type UserInfo = {
   id: string;
@@ -147,6 +147,22 @@ export default function UserManagementPage() {
     }
   };
 
+  const handleSendPasswordReset = async (email: string) => {
+    const result = await sendPasswordResetAction(email);
+    if (result.success) {
+      toast({
+        title: 'Password Reset Email Sent',
+        description: result.message,
+      });
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: result.message,
+      });
+    }
+  };
+
   const handleSaveUser = async (data: UserFormValues, userId?: string) => {
     if (!appUser) return;
     try {
@@ -243,7 +259,7 @@ export default function UserManagementPage() {
                     <ShieldAlert className="h-4 w-4" />
                     <AlertTitle>Manual Action Required</AlertTitle>
                     <AlertDescription>
-                       To grant access, you must create a user record here and then **manually send the generated sign-in link** to their email. To fully revoke access, delete the user record from this page.
+                       To grant access, you must create a user record here. The user can then sign in or use the "Forgot Password" feature to set their password. To fully revoke access, delete the user record from this page.
                     </AlertDescription>
                  </Alert>
               <Card>
@@ -329,6 +345,10 @@ export default function UserManagementPage() {
                                                 <DropdownMenuItem onSelect={() => handleEditUser(user)}>
                                                     <Edit className="mr-2 h-4 w-4" />
                                                     Edit
+                                                </DropdownMenuItem>
+                                                 <DropdownMenuItem onSelect={() => handleSendPasswordReset(user.email)}>
+                                                    <KeyRound className="mr-2 h-4 w-4" />
+                                                    Send Password Reset
                                                 </DropdownMenuItem>
                                                 {!isSelf && (
                                                   <DropdownMenuItem onSelect={() => setUserToDelete(user)} className="text-destructive focus:text-destructive">
