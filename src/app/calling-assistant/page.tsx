@@ -131,7 +131,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   }, [currentPage, sortDescriptors, tableFilters, advancedFilters, globalSearch, router, pathname]);
 
   const fetchPageData = React.useCallback(async () => {
-     if (!appUser) return;
+     if (!appUser?.id) return;
      setIsDataLoading(true);
       setFetchError(null);
       try {
