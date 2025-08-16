@@ -1,4 +1,6 @@
 
+'use server';
+
 import * as admin from 'firebase-admin';
 
 // This is the object that will be used to initialize the app.
@@ -11,7 +13,7 @@ const serviceAccount = {
 
 if (!admin.apps.length) {
   try {
-    if (serviceAccount.privateKey) {
+    if (serviceAccount.projectId && serviceAccount.privateKey && serviceAccount.clientEmail) {
         // This is the recommended way to initialize in local/CI environments
         // where you can set environment variables for the service account.
         admin.initializeApp({
@@ -20,10 +22,13 @@ if (!admin.apps.length) {
     } else {
         // This is the recommended way to initialize in Google Cloud environments
         // It will automatically use the service account attached to the environment.
+        // If it fails here, it's likely because the service account is not configured correctly.
+        console.log("Initializing Firebase Admin with default credentials...");
         admin.initializeApp();
     }
   } catch (error) {
     console.error('Firebase admin initialization error', error);
+    throw new Error('Firebase Admin SDK initialization failed. Check your service account credentials and environment setup.');
   }
 }
 
