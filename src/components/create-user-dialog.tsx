@@ -42,12 +42,13 @@ import { userRoles, type AppUser, type UserRole } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertTitle, AlertDescription } from './ui/alert';
 import { createUserAction } from '@/app/user-management/actions';
+import { useAuth } from '@/contexts/auth-context';
 
 const userFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   email: z.string().email({ message: 'Please enter a valid email address.' }),
   phone: z.string().regex(/^[6-9]\d{9}$/, { message: 'Please enter a valid 10-digit Indian mobile number.' }),
-  password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+  password: z.string().min(6, { message: 'Password must be at least 6 characters.' }).optional().or(z.literal('')),
   role: z.array(z.string()).min(1, { message: 'Please select at least one role.' }),
   fgCode: z.string().optional(),
   guideId: z.string().optional(),
@@ -82,6 +83,7 @@ type CreateUserDialogProps = {
 
 export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, onUserCreated }: CreateUserDialogProps) {
   const { toast } = useToast();
+  const { appUser } = useAuth();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   
   const form = useForm<UserFormValues>({
@@ -129,29 +131,32 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
   }, [isOpen, user, form]);
 
   async function onSubmit(data: UserFormValues) {
+    if (!appUser) return;
     setIsSubmitting(true);
     try {
-        if (user) {
-            // For updates, we don't handle password changes here for simplicity.
-            // This would require a separate, more secure flow.
+        if (user) { // This is an update.
             const updateData = { ...data };
-            // @ts-ignore
+            // Password is not passed during updates.
             delete updateData.password;
             await onSave(updateData, user.id);
-            setIsOpen(false);
-        } else {
-            const result = await createUserAction(data);
+        } else { // This is a creation.
+             if (!data.password) {
+                toast({ variant: 'destructive', title: 'Error', description: 'Password is required for new users.' });
+                setIsSubmitting(false);
+                return;
+            }
+            const result = await createUserAction(data as Required<UserFormValues>, {id: appUser.id, name: appUser.name});
             if (result.success) {
                 toast({
                     title: 'User Created',
                     description: result.message,
                 });
                 onUserCreated();
-                setIsOpen(false);
             } else {
                 throw new Error(result.message);
             }
         }
+        setIsOpen(false);
     } catch (error) {
         console.error("Error in onSubmit:", error);
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
@@ -295,7 +300,7 @@ export function CreateUserDialog({ isOpen, setIsOpen, onSave, user, folkGuides, 
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>Assign to Folk Guide</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                     <SelectTrigger>
                                     <SelectValue placeholder="Select a Folk Guide" />
