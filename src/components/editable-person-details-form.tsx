@@ -159,11 +159,11 @@ export function EditablePersonDetailsForm({
       const loadOptions = async () => {
           try {
               const [enablers, sources, occupations, stayings, fields] = await Promise.all([
-                getEnablers('assignment'), 
-                getContactSources(),
-                getOccupationStatuses(),
-                getStayingWithOptions(),
-                getCustomPersonFields()
+                getEnablers(appUser, 'assignment'), 
+                getContactSources(appUser),
+                getOccupationStatuses(appUser),
+                getStayingWithOptions(appUser),
+                getCustomPersonFields(appUser)
               ]);
               setEnablerOptions(enablers);
               setContactSourceOptions(sources);

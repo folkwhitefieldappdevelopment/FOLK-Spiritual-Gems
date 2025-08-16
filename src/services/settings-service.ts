@@ -108,7 +108,7 @@ export const getContactSources = async (userInfo?: AppUser): Promise<string[]> =
     return settings.contactSources.sort((a:string, b:string) => a.localeCompare(b));
 }
 
-export const addContactSource = async (newSource: string, userInfo: AppUser) => {
+export const addContactSource = async (newSource: string, userInfo?: AppUser) => {
     const settingsDocRef = doc(db, 'settings', 'options');
     const settings = await ensureSettingsDoc();
     const currentSources = settings.contactSources;
@@ -121,7 +121,7 @@ export const addContactSource = async (newSource: string, userInfo: AppUser) => 
     return currentSources;
 }
 
-export const updateContactSource = async (oldName: string, newName: string, userInfo: AppUser) => {
+export const updateContactSource = async (oldName: string, newName: string, userInfo?: AppUser) => {
     const settingsDocRef = doc(db, 'settings', 'options');
     const settings = await ensureSettingsDoc();
     const currentSources = settings.contactSources;
@@ -131,7 +131,7 @@ export const updateContactSource = async (oldName: string, newName: string, user
     return updatedSources;
 }
 
-export const deleteContactSource = async (sourceToDelete: string, userInfo: AppUser) => {
+export const deleteContactSource = async (sourceToDelete: string, userInfo?: AppUser) => {
     const settingsDocRef = doc(db, 'settings', 'options');
     const settings = await ensureSettingsDoc();
     const currentSources = settings.contactSources;
@@ -147,7 +147,7 @@ export const getOccupationStatuses = async (userInfo?: AppUser): Promise<string[
     return settings.occupationStatuses.sort((a:string, b:string) => a.localeCompare(b));
 };
 
-export const addOccupationStatus = async (newStatus: string, userInfo: AppUser) => {
+export const addOccupationStatus = async (newStatus: string, userInfo?: AppUser) => {
     const settingsDocRef = doc(db, 'settings', 'options');
     const settings = await ensureSettingsDoc();
     const currentStatuses = settings.occupationStatuses;
@@ -160,7 +160,7 @@ export const addOccupationStatus = async (newStatus: string, userInfo: AppUser) 
     return currentStatuses;
 };
 
-export const updateOccupationStatus = async (oldName: string, newName: string, userInfo: AppUser) => {
+export const updateOccupationStatus = async (oldName: string, newName: string, userInfo?: AppUser) => {
     const settingsDocRef = doc(db, 'settings', 'options');
     const settings = await ensureSettingsDoc();
     const currentStatuses = settings.occupationStatuses;
@@ -170,7 +170,7 @@ export const updateOccupationStatus = async (oldName: string, newName: string, u
     return updatedStatuses;
 };
 
-export const deleteOccupationStatus = async (statusToDelete: string, userInfo: AppUser) => {
+export const deleteOccupationStatus = async (statusToDelete: string, userInfo?: AppUser) => {
     const settingsDocRef = doc(db, 'settings', 'options');
     const settings = await ensureSettingsDoc();
     const currentStatuses = settings.occupationStatuses;
@@ -187,7 +187,7 @@ export const getStayingWithOptions = async (userInfo?: AppUser): Promise<string[
     return settings.stayingWithOptions.sort((a:string, b:string) => a.localeCompare(b));
 };
 
-export const addStayingWithOption = async (newOption: string, userInfo: AppUser) => {
+export const addStayingWithOption = async (newOption: string, userInfo?: AppUser) => {
     const settingsDocRef = doc(db, 'settings', 'options');
     const settings = await ensureSettingsDoc();
     const currentOptions = settings.stayingWithOptions;
@@ -200,7 +200,7 @@ export const addStayingWithOption = async (newOption: string, userInfo: AppUser)
     return currentOptions;
 };
 
-export const updateStayingWithOption = async (oldName: string, newName: string, userInfo: AppUser) => {
+export const updateStayingWithOption = async (oldName: string, newName: string, userInfo?: AppUser) => {
     const settingsDocRef = doc(db, 'settings', 'options');
     const settings = await ensureSettingsDoc();
     const currentOptions = settings.stayingWithOptions;
@@ -210,7 +210,7 @@ export const updateStayingWithOption = async (oldName: string, newName: string, 
     return updatedOptions;
 };
 
-export const deleteStayingWithOption = async (optionToDelete: string, userInfo: AppUser) => {
+export const deleteStayingWithOption = async (optionToDelete: string, userInfo?: AppUser) => {
     const settingsDocRef = doc(db, 'settings', 'options');
     const settings = await ensureSettingsDoc();
     const currentOptions = settings.stayingWithOptions;
@@ -232,7 +232,7 @@ export const getCustomPersonFields = async (userInfo?: AppUser): Promise<CustomF
     }));
 };
 
-export const saveCustomPersonFields = async (fields: CustomField[], userInfo: AppUser) => {
+export const saveCustomPersonFields = async (fields: CustomField[], userInfo?: AppUser) => {
     const settingsDocRef = doc(db, 'settings', 'options');
     await updateDoc(settingsDocRef, { customPersonFields: fields });
     if(userInfo) await logAudit('Update Custom Fields', `Updated custom fields definition.`, userInfo);
@@ -244,7 +244,7 @@ export const getWhatsAppTemplate = async (userInfo?: AppUser): Promise<string> =
     return settings.whatsAppTemplate;
 }
 
-export const saveWhatsAppTemplate = async (template: string, userInfo: AppUser) => {
+export const saveWhatsAppTemplate = async (template: string, userInfo?: AppUser) => {
     const settingsDocRef = doc(db, 'settings', 'options');
     await updateDoc(settingsDocRef, { whatsAppTemplate: template });
     if(userInfo) await logAudit('Update WhatsApp Template', `Updated WhatsApp message template.`, userInfo);
