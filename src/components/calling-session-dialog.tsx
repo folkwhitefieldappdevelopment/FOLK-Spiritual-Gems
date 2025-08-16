@@ -201,22 +201,6 @@ const CallingSessionDialogComponent = ({
       setIsEditingDetails(false);
     }
   }, [person, lastEventRemark, form, sessionProgress]);
-  
-  React.useEffect(() => {
-    const saveSessionState = async () => {
-      // **FIX**: Do not try to update the mock 'anonymous-user'
-      if (isOpen && appUser && appUser.id !== 'anonymous-user') {
-          const pausedSession = {
-              event: currentEvent,
-              peopleIds: sessionPeopleIds,
-              currentIndex: sessionCurrentNumber - 1,
-          };
-          await updateUser(appUser.id, { pausedCallingSession: pausedSession });
-          setAppUser(prev => prev ? {...prev, pausedCallingSession: pausedSession} : null);
-      }
-    }
-    saveSessionState();
-  }, [person, isOpen, appUser, currentEvent, sessionPeopleIds, sessionCurrentNumber, setAppUser]);
 
 
   const onSubmit = async (data: CallFormValues) => {
