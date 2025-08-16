@@ -73,8 +73,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   const [sessionPeople, setSessionPeople] = React.useState<Person[]>([]);
   const [sessionEvent, setSessionEvent] = React.useState('');
   const [sessionCurrentIndex, setSessionCurrentIndex] = React.useState(0);
-  const [hasPausedSession, setHasPausedSession] = React.useState(false);
-
 
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   const [groups, setGroups] = React.useState<Group[]>([]);
@@ -114,10 +112,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   }, [searchParams]); 
 
   React.useEffect(() => {
-    setHasPausedSession(!!appUser?.pausedCallingSession);
-  }, [appUser]);
-
-  React.useEffect(() => {
     const params = new URLSearchParams();
     if (currentPage > 1) params.set('page', String(currentPage));
     if (sortDescriptors.length > 0 && !(sortDescriptors.length === 1 && sortDescriptors[0].field === 'createdAt' && sortDescriptors[0].direction === 'desc')) {
@@ -137,10 +131,10 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
   }, [currentPage, sortDescriptors, tableFilters, advancedFilters, globalSearch, router, pathname]);
 
   const fetchPageData = React.useCallback(async () => {
+     if (!appUser) return;
      setIsDataLoading(true);
       setFetchError(null);
       try {
-        if (!appUser) return;
         const { people: peopleData } = await getPeople(appUser, { pageSize: FIRESTORE_QUERY_LIMIT });
         setAllFetchedPeople(peopleData);
 
@@ -404,7 +398,6 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
     if (!appUser) return;
     await updateUser(appUser.id, { pausedCallingSession: null });
     setAppUser(prev => prev ? {...prev, pausedCallingSession: null} : null);
-    setHasPausedSession(false); 
     toast({ title: 'Session Cleared', description: 'Your paused session has been cleared.'});
   };
   
@@ -439,7 +432,7 @@ const CallingAssistantPageComponent = React.memo(function CallingAssistantPageCo
 
     return (
       <>
-        {hasPausedSession && (
+        {appUser?.pausedCallingSession && (
           <Alert variant="default" className="mb-4 bg-yellow-100/50 border-yellow-300 dark:bg-yellow-900/20 dark:border-yellow-700">
             <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
             <AlertTitle className="text-yellow-800 dark:text-yellow-300">Paused Session Found</AlertTitle>
