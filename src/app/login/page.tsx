@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { FirebaseConfigError } from '@/components/firebase-config-error';
 import { sendPasswordResetAction } from '@/app/user-management/actions';
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
