@@ -39,10 +39,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(firebaseUser);
         try {
           let dbUser = await getUserByEmail(firebaseUser.email!);
-          // This case should ideally not happen in a strict email/password flow
-          // where users are created by admins, but it's a good safeguard.
+          
           if (!dbUser) {
-            console.warn("User exists in Auth but not in Firestore. This may indicate an issue.");
+            console.warn("User exists in Auth but not in Firestore. This may indicate an issue if this was not a new sign-up.");
             const newUser: Omit<AppUser, 'id' | 'createdAt'> = {
               name: firebaseUser.displayName || 'New User',
               email: firebaseUser.email!,

@@ -69,6 +69,8 @@ const LoginPageComponent = () => {
       return <FirebaseConfigError error={authError} />
   }
 
+  const isReferrerError = formError && formError.includes('auth/requests-from-referer');
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm">
@@ -120,11 +122,28 @@ const LoginPageComponent = () => {
             </Form>
 
             {formError && (
+              isReferrerError ? (
+                <Alert variant="destructive" className="mt-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Action Required: Authorize Domain</AlertTitle>
+                  <AlertDescription>
+                    <p>Your app's domain is not authorized for Firebase Authentication.</p>
+                    <p className="font-semibold mt-2">To fix this:</p>
+                     <ol className="list-decimal pl-5 mt-1 text-xs">
+                        <li>Go to the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="underline">Google Cloud Credentials page</a>.</li>
+                        <li>Find and edit the API key named "Browser key (auto created by Firebase)".</li>
+                        <li>Under "Website restrictions," add the domain from the error message to the list.</li>
+                        <li>Save the changes and refresh this page.</li>
+                    </ol>
+                  </AlertDescription>
+                </Alert>
+              ) : (
                 <Alert variant="destructive" className="mt-4">
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Login Failed</AlertTitle>
                     <AlertDescription>{formError}</AlertDescription>
                 </Alert>
+              )
             )}
         </CardContent>
       </Card>
