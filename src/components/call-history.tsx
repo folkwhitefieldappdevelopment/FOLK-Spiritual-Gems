@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Badge } from '@/badge';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
   Clock, 

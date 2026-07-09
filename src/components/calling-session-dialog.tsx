@@ -53,7 +53,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { ScrollArea } from "./ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Input } from "./ui/input";
-import { Badge } from "@/badge";
+import { Badge } from "@/components/ui/badge";
 import { safeDate } from "@/utils/date";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Calendar } from "./ui/calendar";
