@@ -81,7 +81,7 @@ export function IntelligentReportView({ group, people }: { group: Group, people:
     return (
       <div className="flex flex-col items-center justify-center py-24 space-y-4 opacity-50">
         <Activity className="h-10 w-10 animate-pulse text-primary" />
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Processing Statistical Pulse...</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Processing Statistical Pulse...</p>
       </div>
     );
   }
@@ -92,19 +92,19 @@ export function IntelligentReportView({ group, people }: { group: Group, people:
     <div className="space-y-12 pb-32 animate-in fade-in duration-700">
       <div className="flex flex-col xl:flex-row items-center justify-between gap-8">
           <div className="space-y-1 text-center xl:text-left">
-              <h2 className="text-2xl sm:text-4xl font-black text-white uppercase tracking-tighter">Group Intelligence</h2>
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.3em]">Statistical Pulse for {group.name}</p>
+              <h2 className="text-2xl sm:text-4xl font-black text-foreground uppercase tracking-tighter">Group Intelligence</h2>
+              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-[0.3em]">Statistical Pulse for {group.name}</p>
           </div>
           
           <div className="flex flex-col md:flex-row items-stretch gap-4 w-full xl:w-auto">
-              <div className="bg-[#1e1e2e] p-6 rounded-[2.5rem] border border-white/5 shadow-2xl flex-1 md:min-w-[400px]">
-                  <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest ml-1 mb-2 block">Email Performance Summary</Label>
+              <div className="bg-popover p-6 rounded-[2.5rem] border border-border shadow-2xl flex-1 md:min-w-[400px]">
+                  <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest ml-1 mb-2 block">Email Performance Summary</Label>
                   <div className="flex gap-2">
                       <Input 
                         placeholder="Recipient email address..." 
                         value={email} 
                         onChange={e => setEmail(e.target.value)}
-                        className="h-14 bg-[#161623] border-white/5 text-white font-black rounded-2xl focus-visible:ring-primary shadow-inner text-sm"
+                        className="h-14 bg-muted border-border text-foreground font-black rounded-2xl focus-visible:ring-primary shadow-inner text-sm"
                       />
                       <Button 
                         size="icon" 
@@ -117,9 +117,9 @@ export function IntelligentReportView({ group, people }: { group: Group, people:
                   </div>
               </div>
 
-              <div className="bg-[#1e1e2e] p-6 rounded-[2.5rem] border border-white/5 flex items-center gap-8 shadow-2xl justify-center shrink-0">
+              <div className="bg-popover p-6 rounded-[2.5rem] border border-border flex items-center gap-8 shadow-2xl justify-center shrink-0">
                   <div className="text-center">
-                      <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Health Score</p>
+                      <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mb-1">Health Score</p>
                       <div className="flex items-center justify-center gap-2">
                         <span className={cn(
                             "text-3xl font-black",
@@ -138,35 +138,35 @@ export function IntelligentReportView({ group, people }: { group: Group, people:
             <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20 shadow-lg">
                 <Flame className="h-6 w-6 text-primary" />
             </div>
-            <h3 className="text-xl font-black text-white uppercase tracking-tight">Chanting Progress</h3>
+            <h3 className="text-xl font-black text-foreground uppercase tracking-tight">Chanting Progress</h3>
         </div>
         
         <ScrollArea className="w-full pb-4">
           <div className="flex gap-6 min-w-max pb-4">
             {Object.entries(chantingBrackets).map(([key, bracket]) => (
-                <Card key={key} className="w-[300px] sm:w-[340px] bg-[#1e1e2e] border-none rounded-[2.5rem] overflow-hidden shadow-2xl">
-                    <CardHeader className="bg-[#1b1d32] border-b border-white/5 py-5 px-8">
+                <Card key={key} className="w-[300px] sm:w-[340px] bg-popover border-none rounded-[2.5rem] overflow-hidden shadow-2xl">
+                    <CardHeader className="bg-card border-b border-border py-5 px-8">
                         <div className="flex items-center justify-between">
                             <CardTitle className="text-sm font-black text-[#FF9800] uppercase tracking-widest">{bracket.label}</CardTitle>
-                            <Badge className="bg-white/5 text-white/40 border-none font-black">{bracket.count} souls</Badge>
+                            <Badge className="bg-muted/50 text-muted-foreground border-none font-black">{bracket.count} souls</Badge>
                         </div>
                     </CardHeader>
                     <CardContent className="p-0">
                         <ScrollArea className="h-[320px]">
                             <div className="p-6 space-y-3">
                                 {bracket.people.map(p => (
-                                    <div key={p.id} className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                                    <div key={p.id} className="flex items-center gap-4 p-4 rounded-2xl bg-muted/20 border border-border">
                                         <Avatar className="h-12 w-12 border-2 border-primary/20 shrink-0">
                                             <AvatarImage src={p.photoUrl} className="object-cover" />
-                                            <AvatarFallback className="bg-[#161623] text-white font-black">{p.fullName[0]}</AvatarFallback>
+                                            <AvatarFallback className="bg-muted text-foreground font-black">{p.fullName[0]}</AvatarFallback>
                                         </Avatar>
                                         <div className="min-w-0 flex-1">
-                                            <p className="text-sm font-black text-white uppercase truncate">{p.fullName}</p>
+                                            <p className="text-sm font-black text-foreground uppercase truncate">{p.fullName}</p>
                                             <div className="flex items-center gap-2 mt-1">
                                                 <StarRating value={p.sgRating || 0} size={10} />
-                                                <span className="text-[8px] font-black text-slate-500 uppercase truncate">By {p.enablerInTouchWith || 'Unassigned'}</span>
+                                                <span className="text-[8px] font-black text-muted-foreground uppercase truncate">By {p.enablerInTouchWith || 'Unassigned'}</span>
                                             </div>
-                                            <div className="flex items-center gap-1 text-[8px] font-bold text-slate-600 uppercase mt-1.5">
+                                            <div className="flex items-center gap-1 text-[8px] font-bold text-muted-foreground uppercase mt-1.5">
                                                 <Clock className="h-2 w-2" />
                                                 {p.lastCallAt ? formatDistanceToNow(safeDate(p.lastCallAt)!, { addSuffix: true }) : 'Never'}
                                             </div>
@@ -174,7 +174,7 @@ export function IntelligentReportView({ group, people }: { group: Group, people:
                                     </div>
                                 ))}
                                 {bracket.people.length === 0 && (
-                                    <div className="py-20 text-center opacity-20 italic text-[10px] font-black uppercase tracking-widest text-white">No entries found</div>
+                                    <div className="py-20 text-center opacity-20 italic text-[10px] font-black uppercase tracking-widest text-foreground">No entries found</div>
                                 )}
                             </div>
                         </ScrollArea>
@@ -182,20 +182,20 @@ export function IntelligentReportView({ group, people }: { group: Group, people:
                 </Card>
             ))}
           </div>
-          <ScrollBar orientation="horizontal" className="bg-white/5" />
+          <ScrollBar orientation="horizontal" className="bg-muted/50" />
         </ScrollArea>
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <Card className="lg:col-span-7 bg-[#1e1e2e] border-none rounded-[3rem] shadow-2xl overflow-hidden">
-              <CardHeader className="p-10 pb-4 bg-[#1b1d32] border-b border-white/5">
+          <Card className="lg:col-span-7 bg-popover border-none rounded-[3rem] shadow-2xl overflow-hidden">
+              <CardHeader className="p-10 pb-4 bg-card border-b border-border">
                 <div className="flex items-center justify-between">
                     <div className="space-y-1">
-                        <CardTitle className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
+                        <CardTitle className="text-xl font-black text-foreground uppercase tracking-tight flex items-center gap-3">
                             <AlertCircle className="h-6 w-6 text-red-500" />
                             Danger Zone
                         </CardTitle>
-                        <CardDescription className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Stagnant for 4+ days</CardDescription>
+                        <CardDescription className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Stagnant for 4+ days</CardDescription>
                     </div>
                     <Badge variant="destructive" className="font-black text-[10px] px-4 h-7 rounded-full bg-red-500/20 text-red-500 border-none">{dangerZone.length}</Badge>
                 </div>
@@ -204,21 +204,21 @@ export function IntelligentReportView({ group, people }: { group: Group, people:
                 <ScrollArea className="h-[500px]">
                     <div className="p-8 space-y-3">
                         {dangerZone.length > 0 ? dangerZone.map(p => (
-                            <div key={p.id} className="flex items-center justify-between p-5 rounded-[2rem] bg-white/[0.02] border border-white/5">
+                            <div key={p.id} className="flex items-center justify-between p-5 rounded-[2rem] bg-muted/20 border border-border">
                                 <div className="flex items-center gap-4">
                                     <Avatar className="h-14 w-14 border-2 border-red-500/20 rounded-2xl shrink-0"><AvatarImage src={p.photoUrl} className="object-cover" /><AvatarFallback>{p.fullName[0]}</AvatarFallback></Avatar>
                                     <div className="min-w-0">
-                                        <p className="text-base font-black text-white uppercase truncate">{p.fullName}</p>
-                                        <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mt-1">Enabler: {p.enablerInTouchWith || 'Unassigned'}</p>
+                                        <p className="text-base font-black text-foreground uppercase truncate">{p.fullName}</p>
+                                        <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mt-1">Enabler: {p.enablerInTouchWith || 'Unassigned'}</p>
                                     </div>
                                 </div>
                                 <div className="text-right shrink-0">
                                     <p className="text-[9px] font-black text-red-400 uppercase tracking-widest mb-1">STAGNANT</p>
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase">{p.lastCallAt ? formatDistanceToNow(safeDate(p.lastCallAt)!, { addSuffix: true }) : 'Forever'}</p>
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase">{p.lastCallAt ? formatDistanceToNow(safeDate(p.lastCallAt)!, { addSuffix: true }) : 'Forever'}</p>
                                 </div>
                             </div>
                         )) : (
-                            <div className="py-24 text-center opacity-20 italic text-xs font-black uppercase tracking-[0.4em] text-white">Zone is Clear</div>
+                            <div className="py-24 text-center opacity-20 italic text-xs font-black uppercase tracking-[0.4em] text-foreground">Zone is Clear</div>
                         )}
                     </div>
                 </ScrollArea>
@@ -226,21 +226,21 @@ export function IntelligentReportView({ group, people }: { group: Group, people:
           </Card>
 
           <div className="lg:col-span-5 space-y-8">
-              <Card className="bg-[#1e1e2e] border-none rounded-[3rem] shadow-2xl overflow-hidden">
-                <CardHeader className="p-10 pb-4 bg-[#1b1d32] border-b border-white/5">
-                    <CardTitle className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
+              <Card className="bg-popover border-none rounded-[3rem] shadow-2xl overflow-hidden">
+                <CardHeader className="p-10 pb-4 bg-card border-b border-border">
+                    <CardTitle className="text-xl font-black text-foreground uppercase tracking-tight flex items-center gap-3">
                         <Trophy className="h-6 w-6 text-[#FF9800]" />
                         Active Souls (Top 6)
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="p-8 space-y-4">
                     {starPerformers.length > 0 ? starPerformers.map((p, idx) => (
-                        <div key={p.id} className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                        <div key={p.id} className="flex items-center justify-between p-4 rounded-2xl bg-muted/20 border border-border">
                             <div className="flex items-center gap-4">
-                                <span className="text-[10px] font-black text-slate-700 w-4">{idx + 1}</span>
+                                <span className="text-[10px] font-black text-muted-foreground w-4">{idx + 1}</span>
                                 <Avatar className="h-10 w-10 border-2 border-primary/20"><AvatarImage src={p.photoUrl} className="object-cover"/><AvatarFallback>{p.fullName[0]}</AvatarFallback></Avatar>
                                 <div className="min-w-0">
-                                    <p className="text-sm font-black text-white uppercase truncate">{p.fullName}</p>
+                                    <p className="text-sm font-black text-foreground uppercase truncate">{p.fullName}</p>
                                     <p className="text-[9px] font-bold text-[#FF9800] uppercase">Active Participant</p>
                                 </div>
                             </div>
@@ -249,23 +249,23 @@ export function IntelligentReportView({ group, people }: { group: Group, people:
                             </div>
                         </div>
                     )) : (
-                        <div className="py-20 text-center opacity-20 italic text-xs font-black uppercase tracking-[0.4em] text-white">No activity yet</div>
+                        <div className="py-20 text-center opacity-20 italic text-xs font-black uppercase tracking-[0.4em] text-foreground">No activity yet</div>
                     )}
                 </CardContent>
               </Card>
 
-              <Card className="bg-[#1b1d32] border-none rounded-[3rem] shadow-2xl overflow-hidden">
-                <CardHeader className="p-10 pb-4"><CardTitle className="text-lg font-black text-white uppercase tracking-tight">Team Reach Dashboard</CardTitle></CardHeader>
+              <Card className="bg-card border-none rounded-[3rem] shadow-2xl overflow-hidden">
+                <CardHeader className="p-10 pb-4"><CardTitle className="text-lg font-black text-foreground uppercase tracking-tight">Team Reach Dashboard</CardTitle></CardHeader>
                 <CardContent className="p-10 pt-0 space-y-8">
                     {enablerLeaderboard.length > 0 ? enablerLeaderboard.map((e, idx) => (
                         <div key={idx} className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <span className="text-xs font-black text-white uppercase truncate">{e.name}</span>
+                                <span className="text-xs font-black text-foreground uppercase truncate">{e.name}</span>
                                 <Badge className="bg-primary/10 text-primary border-none font-black text-[10px] h-6 px-3">{e.a1Count} Total Confirmed</Badge>
                             </div>
                         </div>
                     )) : (
-                        <div className="py-10 text-center opacity-20 italic text-[10px] font-black uppercase tracking-[0.3em] text-white">No data</div>
+                        <div className="py-10 text-center opacity-20 italic text-[10px] font-black uppercase tracking-[0.3em] text-foreground">No data</div>
                     )}
                 </CardContent>
               </Card>

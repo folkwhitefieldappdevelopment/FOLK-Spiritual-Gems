@@ -6,46 +6,21 @@ import {
   ArrowLeft,
   Loader2,
   Users,
-  PlusCircle,
   RefreshCw,
-  Tag,
   Trash2,
-  SlidersHorizontal,
-  ChevronDown,
   Wrench,
   QrCode,
-  Download,
-  CalendarCheck,
-  Maximize2,
-  BadgeCheck,
-  UserPlus,
-  Edit,
-  RotateCcw,
   CalendarDays,
-  FolderOpen,
-  Calendar,
-  Disc,
-  Search,
-  Zap,
-  History,
-  User,
-  X,
-  PhoneCall
 } from 'lucide-react';
-import type { Person, Group, AppUser, GroupEvent } from '@/lib/types';
+import type { Person, Group, GroupEvent } from '@/lib/types';
 import { useAppToast } from '@/contexts/toast-context';
-import { getGroup, getStaticGroups, addPeopleToGroup, deleteGroup as deleteGroupSvc, updateGroup as updateGroupSvc } from '@/services/groups-service';
+import { getGroup, deleteGroup as deleteGroupSvc, updateGroup as updateGroupSvc } from '@/services/groups-service';
 import { 
   getPeople, 
   updatePerson, 
   deletePerson, 
-  deletePeople,
-  assignEnablerToPeople,
-  assignCoEnablerToPeople,
-  updatePeopleContactSource
 } from '@/services/people-service';
-import { getEnablers, getContactSources, getStayingWithOptions, type EnablerOption } from '@/services/settings-service';
-import { getGroupEvents, createGroupEvent, markAttendance, removeAttendance } from '@/services/attendance-service';
+import { getGroupEvents, markAttendance } from '@/services/attendance-service';
 import { useAuth } from '@/contexts/auth-context';
 import { updateUser } from '@/services/user-service';
 import { trackSessionStart } from '@/services/session-history-service';
@@ -53,9 +28,6 @@ import { Button } from '@/components/ui/button';
 import { PersonTable } from '@/components/person-table';
 import { ConfirmSessionDialog } from '@/components/confirm-session-dialog';
 import { CreateUpdatePersonDialog } from '@/components/create-update-person-dialog';
-import { AssignEnablerDialog } from '@/components/assign-enabler-dialog';
-import { AssignCoEnablerDialog } from '@/components/assign-helper-dialog';
-import { UpdateContactSourceDialog } from '@/components/update-contact-source-dialog';
 import { FreshLeadQRDialog } from '@/components/fresh-lead-qr-dialog';
 import { ContactGalleryDialog } from '@/components/contact-gallery-dialog';
 import { CreateUpdateGroupDialog } from '@/components/create-update-group-dialog';
@@ -76,27 +48,20 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format } from 'date-fns';
-import { exportContactsToExcel } from '@/services/import-export-service';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Checkbox } from '@/components/ui/checkbox';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Input } from './ui/input';
+import { Search } from 'lucide-react';
 
 export default function GroupDetailClient({ groupId }: { groupId: string }) {
   const router = useRouter();
   const { toast } = useAppToast();
-  const { appUser } = useAuth();
+  const { appUser, setAppUser } = useAuth();
 
   const [activeTab, setActiveTab] = React.useState('members');
   const [isLoading, setIsLoading] = React.useState(true);
@@ -117,30 +82,17 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
   const [isEventCreateOpen, setIsEventCreateOpen] = React.useState(false);
   const [isGalleryOpen, setIsGalleryOpen] = React.useState(false);
   const [qrEvent, setQrEvent] = React.useState<{ id: string, name: string } | null>(null);
-  const [isAssignEnablerDialogOpen, setIsAssignEnablerDialogOpen] = React.useState(false);
-  const [isAssignCoEnablerDialogOpen, setIsAssignCoEnablerDialogOpen] = React.useState(false);
-  const [isUpdateSourceDialogOpen, setIsUpdateSourceDialogOpen] = React.useState(false);
-  const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
-  const [contactSourceOptions, setContactSourceOptions] = React.useState<string[]>([]);
-  const [stayingWithOptions, setStayingWithOptions] = React.useState<string[]>([]);
   const [attendanceSearchQuery, setAttendanceSearchQuery] = React.useState('');
 
   const fetchData = React.useCallback(async () => {
     if (!groupId || !appUser) return;
     setIsLoading(true);
     try {
-      const [g, enablers, sources, stayings, eventsData] = await Promise.all([
-        getGroup(groupId, appUser), getEnablers(appUser, 'assignment'), getContactSources(appUser), getStayingWithOptions(appUser), getGroupEvents(groupId)
-      ]);
+      const [g, eventsData] = await Promise.all([ getGroup(groupId, appUser), getGroupEvents(groupId) ]);
       if (!g) { router.push('/groups'); return; }
-      setGroup(g);
-      setEnablerOptions(enablers);
-      setContactSourceOptions(sources);
-      setStayingWithOptions(stayings);
-      setEvents(eventsData);
+      setGroup(g); setEvents(eventsData);
       const membersResult = await getPeople(appUser, { personIds: g.peopleIds, ignoreLimit: true });
-      setMembers(membersResult.people);
-      setTotalCount(membersResult.totalCount);
+      setMembers(membersResult.people); setTotalCount(membersResult.totalCount);
     } finally { setIsLoading(false); }
   }, [groupId, appUser, router]);
 
@@ -168,26 +120,26 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
     router.push('/session');
   };
 
-  if (isLoading && !group) return <div className="flex h-screen items-center justify-center bg-[#11121d]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (isLoading && !group) return <div className="flex h-screen items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!group) return null;
 
   return (
     <>
-        <header className="sticky top-0 z-30 flex h-auto flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 bg-[#11121d]/95 backdrop-blur px-4 py-4 sm:px-6">
+        <header className="sticky top-0 z-30 flex h-auto flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border bg-background/95 backdrop-blur px-4 py-4 sm:px-6">
             <div className="flex flex-col min-w-0">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] leading-none mb-1">Outreach Group</span>
-                <h1 className="font-black text-xl sm:text-2xl md:text-3xl leading-none truncate text-white uppercase tracking-tighter">{group.name}</h1>
+                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] leading-none mb-1">Outreach Group</span>
+                <h1 className="font-black text-xl sm:text-2xl md:text-3xl leading-none truncate text-foreground uppercase tracking-tighter">{group.name}</h1>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => router.back()} className="h-10 px-4 font-bold border-white/10 text-slate-400 bg-white/5 rounded-xl"><ArrowLeft className="h-4 w-4 mr-2" /> Back</Button>
+                <Button variant="outline" size="sm" onClick={() => router.back()} className="h-10 px-4 font-bold border-border text-muted-foreground bg-muted/50 rounded-xl"><ArrowLeft className="h-4 w-4 mr-2" /> Back</Button>
                 <Button size="sm" onClick={() => setIsAddMembersDialogOpen(true)} className="h-10 px-4 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 font-bold rounded-xl border-2"><Users className="h-4 w-4 mr-2" /> Members</Button>
-                <Button size="sm" onClick={() => setIsEventCreateOpen(true)} className="h-10 px-4 bg-[#FF9800]/10 text-[#FF9800] border-[#FF9800]/20 font-black rounded-xl border-2"><CalendarDays className="h-4 w-4 mr-2" /> Create Milestone</Button>
+                <Button size="sm" onClick={() => setIsEventCreateOpen(true)} className="h-10 px-4 bg-orange-500/10 text-orange-500 border-orange-500/20 hover:bg-orange-500/20 font-black rounded-xl border-2"><CalendarDays className="h-4 w-4 mr-2" /> Create Milestone</Button>
                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-10 px-4 font-bold border-white/10 text-white bg-white/5 rounded-xl"><Wrench className="h-4 w-4 mr-2" /> Tools</Button></DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56 bg-[#1e1e2e] border-white/5 text-white">
+                    <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-10 px-4 font-bold border-border text-foreground bg-muted/50 rounded-xl"><Wrench className="h-4 w-4 mr-2" /> Tools</Button></DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56 bg-popover border-border text-foreground">
                         <DropdownMenuItem onSelect={() => setIsGroupEditDialogOpen(true)} className="font-bold"><Edit className="mr-2 h-4 w-4" /> Edit Group</DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => { setQrEvent(null); setIsQRDialogOpen(true); }} className="font-bold"><QrCode className="mr-2 h-4 w-4" /> Group QR</DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-500 font-black" onSelect={() => deleteGroupSvc(group.id, appUser!).then(() => router.push('/groups'))}><Trash2 className="mr-2 h-4 w-4" /> Delete Group</DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive font-black" onSelect={() => deleteGroupSvc(group.id, appUser!).then(() => router.push('/groups'))}><Trash2 className="mr-2 h-4 w-4" /> Delete Group</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
@@ -195,10 +147,10 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
 
         <main className="flex-1 p-4 sm:p-6 space-y-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="members" className="w-full">
-                <TabsList className="grid w-fit grid-cols-3 h-16 p-1 bg-[#1b1d32] border-none rounded-3xl gap-1 mb-8">
-                    <TabsTrigger value="members" className="px-8 py-3 font-black uppercase tracking-widest text-[11px] rounded-2xl data-[state=active]:bg-[#929DD8]">Members ({totalCount || members.length})</TabsTrigger>
-                    <TabsTrigger value="attendance" className="px-8 py-3 font-black uppercase tracking-widest text-[11px] rounded-2xl data-[state=active]:bg-[#929DD8]">History</TabsTrigger>
-                    <TabsTrigger value="pulse" className="px-8 py-3 font-black uppercase tracking-widest text-[11px] rounded-2xl data-[state=active]:bg-[#929DD8]">Report</TabsTrigger>
+                <TabsList className="grid w-fit grid-cols-3 h-16 p-1 bg-card border-none rounded-3xl gap-1 mb-8">
+                    <TabsTrigger value="members" className="px-8 py-3 font-black uppercase tracking-widest text-[11px] rounded-2xl data-[state=active]:bg-primary/20 data-[state=active]:text-primary">Members ({totalCount || members.length})</TabsTrigger>
+                    <TabsTrigger value="attendance" className="px-8 py-3 font-black uppercase tracking-widest text-[11px] rounded-2xl data-[state=active]:bg-primary/20 data-[state=active]:text-primary">History</TabsTrigger>
+                    <TabsTrigger value="pulse" className="px-8 py-3 font-black uppercase tracking-widest text-[11px] rounded-2xl data-[state=active]:bg-primary/20 data-[state=active]:text-primary">Report</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="members" className="mt-6 space-y-6">
@@ -206,13 +158,13 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
                 </TabsContent>
 
                 <TabsContent value="attendance" className="mt-6 space-y-6">
-                    <div className="bg-[#1b1d32]/30 border border-white/5 rounded-[2.5rem] overflow-hidden">
+                    <div className="bg-card/30 border border-border rounded-[2.5rem] overflow-hidden">
                         {events.length > 0 ? (
-                            <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Mark</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
+                            <Table><TableHeader><TableRow className="border-border"><TableHead className="text-muted-foreground">Name</TableHead><TableHead className="text-muted-foreground">Mark</TableHead><TableHead className="text-right text-muted-foreground">Action</TableHead></TableRow></TableHeader>
                             <TableBody>{events.map(event => (
-                                <TableRow key={event.id}><TableCell className="font-bold text-white uppercase">{event.name}</TableCell><TableCell><Button size="sm" variant="outline" onClick={() => handleMarkAttendance(event)}>Mark Present</Button></TableCell><TableCell className="text-right"><Button variant="ghost" size="icon" onClick={async () => { await deleteDoc(doc(db, 'groups', groupId, 'events', event.id)); fetchData(); }}><Trash2 className="h-4 w-4" /></Button></TableCell></TableRow>
+                                <TableRow key={event.id} className="border-border"><TableCell className="font-bold text-foreground uppercase">{event.name}</TableCell><TableCell><Button size="sm" variant="outline" onClick={() => handleMarkAttendance(event)}>Mark Present</Button></TableCell><TableCell className="text-right"><Button variant="ghost" size="icon" onClick={async () => { await deleteDoc(doc(db, 'groups', groupId, 'events', event.id)); fetchData(); }} className="text-muted-foreground hover:text-foreground"><Trash2 className="h-4 w-4" /></Button></TableCell></TableRow>
                             ))}</TableBody></Table>
-                        ) : <div className="py-24 text-center opacity-30">No history logged yet.</div>}
+                        ) : <div className="py-24 text-center text-muted-foreground opacity-30">No history logged yet.</div>}
                     </div>
                 </TabsContent>
 
@@ -222,11 +174,46 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
 
         <CreateUpdateGroupDialog isOpen={isGroupEditDialogOpen} setIsOpen={setIsGroupEditDialogOpen} group={group} onSave={(d) => updateGroupSvc(group.id, d, appUser!).then(() => fetchData())} />
         <AddMembersToGroupDialog isOpen={isAddMembersDialogOpen} setIsOpen={setIsAddMembersDialogOpen} groupId={groupId} groupName={group.name} existingMemberIds={group.peopleIds} onSuccess={() => fetchData()} />
-        <CreateEventDialog isOpen={isEventCreateOpen} setIsOpen={setIsEventCreateOpen} onSave={handleCreateEvent} />
+        <CreateEventDialog isOpen={isEventCreateOpen} setIsOpen={setIsEventCreateOpen} onSave={async d => { await createGroupEvent(groupId, d); fetchData(); }} />
         <FreshLeadQRDialog isOpen={isQRDialogOpen} setIsOpen={setIsQRDialogOpen} groupId={groupId} eventId={qrEvent?.id} eventName={qrEvent?.name || group.name} />
         <ConfirmSessionDialog isOpen={isConfirmSessionDialogOpen} setIsOpen={setIsConfirmSessionDialogOpen} onStartSession={handleStartSession} totalCount={selectedIds.size || group.peopleIds.length} singlePersonName={selectedIds.size === 1 ? members.find(m => m.id === Array.from(selectedIds)[0])?.fullName : group.name} />
         <ContactGalleryDialog isOpen={isGalleryOpen} onClose={() => setIsGalleryOpen(false)} people={members} />
         {editingPerson && <CreateUpdatePersonDialog isOpen={!!editingPerson} setIsOpen={() => setEditingPerson(undefined)} onSave={async (d) => { await updatePerson(editingPerson.id, d, appUser!); fetchData(); return {success:true}; }} person={editingPerson} allPeople={members} />}
+
+        <Dialog open={!!markingEvent} onOpenChange={(o) => !o && setMarkingEvent(null)}>
+            <DialogContent className="sm:max-w-2xl bg-popover border-none rounded-[2.5rem] p-0 overflow-hidden shadow-2xl">
+                <DialogHeader className="p-8 pb-4 bg-card border-b border-border">
+                    <DialogTitle className="text-foreground font-black uppercase tracking-tight">Manual Log: {markingEvent?.name}</DialogTitle>
+                    <div className="relative mt-4">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input placeholder="Search member..." className="pl-10 bg-muted border-border text-foreground rounded-xl h-11" value={attendanceSearchQuery} onChange={e => setAttendanceSearchQuery(e.target.value)} />
+                    </div>
+                </DialogHeader>
+                <ScrollArea className="max-h-[60vh]">
+                    <div className="p-8 space-y-2">
+                        {isViewingAttendanceLoading ? (
+                            <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                        ) : attendanceMembers.length > 0 ? (
+                            attendanceMembers.filter(p => p.fullName.toLowerCase().includes(attendanceSearchQuery.toLowerCase())).map(p => (
+                                <div key={p.id} className="flex items-center justify-between p-3 rounded-2xl bg-muted/20 hover:bg-muted/40 transition-colors">
+                                    <div className="flex items-center gap-3">
+                                        <Avatar className="h-9 w-9"><AvatarImage src={p.photoUrl} /><AvatarFallback>{p.fullName.charAt(0)}</AvatarFallback></Avatar>
+                                        <div><p className="text-foreground font-bold text-sm">{p.fullName}</p><p className="text-muted-foreground text-[10px]">{p.phone}</p></div>
+                                    </div>
+                                    {(p as any).isMarked ? (
+                                        <Badge className="bg-green-500/20 text-green-500 border-none">PRESENT</Badge>
+                                    ) : (
+                                        <Button size="sm" variant="outline" className="h-8 rounded-lg border-primary/20 text-primary font-bold hover:bg-primary hover:text-primary-foreground" onClick={async () => { await markAttendance(p.id, groupId, group!.name, markingEvent!.id, markingEvent!.name); handleMarkAttendance(markingEvent!); }}>MARK</Button>
+                                    )}
+                                </div>
+                            ))
+                        ) : (
+                            <p className="text-center py-10 text-muted-foreground font-bold uppercase tracking-widest text-xs">No entries.</p>
+                        )}
+                    </div>
+                </ScrollArea>
+            </DialogContent>
+        </Dialog>
     </>
   );
 }

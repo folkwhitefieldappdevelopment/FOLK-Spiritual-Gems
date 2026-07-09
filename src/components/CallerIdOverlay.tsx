@@ -15,7 +15,6 @@ import {
     PhoneOutgoing, 
     X, 
     User, 
-    MessageSquare, 
     ExternalLink, 
     PlayCircle,
     Loader2,
@@ -112,7 +111,7 @@ export function CallerIdOverlay() {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="fixed top-10 left-1/2 -translate-x-1/2 sm:max-w-md w-[90vw] p-0 overflow-hidden bg-[#1e1e2e] border-none shadow-2xl rounded-[2.5rem] z-[1000]">
+      <DialogContent className="fixed top-10 left-1/2 -translate-x-1/2 sm:max-w-md w-[90vw] p-0 overflow-hidden bg-popover border-none shadow-2xl rounded-[2.5rem] z-[1000]">
         <DialogHeader className="sr-only"><DialogTitle>Caller Context</DialogTitle></DialogHeader>
         <div className="relative">
             <div className={cn("h-2 w-full animate-pulse", activeCall?.type === 'INCOMING' ? "bg-blue-500" : "bg-green-500")} />
@@ -120,28 +119,28 @@ export function CallerIdOverlay() {
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         {activeCall?.type === 'INCOMING' ? <div className="bg-blue-500/20 p-2 rounded-lg"><PhoneIncoming className="h-4 w-4 text-blue-400" /></div> : <div className="bg-green-500/20 p-2 rounded-lg"><PhoneOutgoing className="h-4 w-4 text-green-400" /></div>}
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{activeCall?.type === 'INCOMING' ? 'Incoming Preaching' : 'Outgoing Preaching'}</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{activeCall?.type === 'INCOMING' ? 'Incoming Preaching' : 'Outgoing Preaching'}</span>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500" onClick={() => setIsOpen(false)}><X className="h-5 w-5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => setIsOpen(false)}><X className="h-5 w-5" /></Button>
                 </div>
-                {isLoading ? <div className="flex flex-col items-center py-10 space-y-4"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Identifying...</p></div> : contact ? (
+                {isLoading ? <div className="flex flex-col items-center py-10 space-y-4"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Identifying...</p></div> : contact ? (
                     <div className="space-y-8">
                         <div className="flex items-center gap-5">
-                            <Avatar className="h-20 w-20 border-4 border-primary/20 shadow-xl rounded-3xl"><AvatarImage src={contact.photoUrl} className="object-cover" /><AvatarFallback className="bg-[#161623] text-primary text-xl font-black">{contact.fullName[0]}</AvatarFallback></Avatar>
+                            <Avatar className="h-20 w-20 border-4 border-primary/20 shadow-xl rounded-3xl"><AvatarImage src={contact.photoUrl} className="object-cover" /><AvatarFallback className="bg-muted text-primary text-xl font-black">{contact.fullName[0]}</AvatarFallback></Avatar>
                             <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5"><h3 className="text-xl font-black text-white truncate uppercase leading-none">{contact.fullName}</h3>{contact.verifiedByFg === 'Yes' && <BadgeCheck className="h-4 w-4 text-blue-500 shrink-0" />}</div>
+                                <div className="flex items-center gap-1.5"><h3 className="text-xl font-black text-foreground truncate uppercase leading-none">{contact.fullName}</h3>{contact.verifiedByFg === 'Yes' && <BadgeCheck className="h-4 w-4 text-blue-500 shrink-0" />}</div>
                                 <p className="text-sm font-black text-primary/80 tracking-widest mt-1.5">{activeCall?.phoneNumber}</p>
                                 <div className="mt-3"><Badge className="bg-primary/10 text-primary border-none text-[9px] font-black uppercase tracking-tight py-1 px-3">{contact.currentFolkStage || 'Fresh Lead'}</Badge></div>
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4 bg-[#161623] p-5 rounded-2xl border border-white/5">
-                            <div className="space-y-1"><p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Rating</p><StarRating value={contact.sgRating || 0} size={12} /></div>
-                            <div className="space-y-1"><p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Age / Status</p><p className="text-[10px] font-bold text-white uppercase">{contact.age}y • {contact.relationshipStatus || 'Single'}</p></div>
+                        <div className="grid grid-cols-2 gap-4 bg-muted p-5 rounded-2xl border border-border">
+                            <div className="space-y-1"><p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Rating</p><StarRating value={contact.sgRating || 0} size={12} /></div>
+                            <div className="space-y-1"><p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Age / Status</p><p className="text-[10px] font-bold text-foreground uppercase">{contact.age}y • {contact.relationshipStatus || 'Single'}</p></div>
                         </div>
-                        {contact.lastCallRemark && (<div className="bg-primary/5 p-5 rounded-2xl border border-primary/10 space-y-2"><div className="flex items-center justify-between"><div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-primary/60"><MessageSquare className="h-3 w-3" />Last Note</div>{contact.lastCallAt && <div className="flex items-center gap-1 text-[8px] font-bold text-slate-500 uppercase"><Clock className="h-2 w-2" />{formatDistanceToNow(safeDate(contact.lastCallAt)!, { addSuffix: true })}</div>}</div><p className="text-xs font-bold text-slate-300 leading-relaxed italic line-clamp-3">"{contact.lastCallRemark}"</p></div>)}
-                        <div className="pt-2 flex flex-col gap-3"><Button className="w-full h-14 rounded-2xl bg-[#FF9800] text-black font-black uppercase tracking-widest text-[10px] shadow-xl shadow-[#FF9800]/20" onClick={handleQuickStartSession} disabled={isStartingSession}>{isStartingSession ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlayCircle className="mr-2 h-4 w-4" />} Initialize Interaction</Button><Button variant="outline" className="w-full h-12 rounded-2xl border-white/10 text-slate-400 hover:text-white bg-white/5 font-black uppercase tracking-widest text-[10px]" onClick={() => { setIsOpen(false); router.push(`/contacts/profile?id=${contact.id}`); }}><ExternalLink className="mr-2 h-4 w-4" /> Open Journey</Button></div>
+                        {contact.lastCallRemark && (<div className="bg-primary/5 p-5 rounded-2xl border border-primary/10 space-y-2"><div className="flex items-center justify-between"><div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-primary/60">Note</div>{contact.lastCallAt && <div className="flex items-center gap-1 text-[8px] font-bold text-muted-foreground uppercase"><Clock className="h-2" />{formatDistanceToNow(safeDate(contact.lastCallAt)!, { addSuffix: true })}</div>}</div><p className="text-xs font-bold text-foreground/80 leading-relaxed italic line-clamp-3">"{contact.lastCallRemark}"</p></div>)}
+                        <div className="pt-2 flex flex-col gap-3"><Button className="w-full h-14 rounded-2xl bg-orange-500 text-black font-black uppercase tracking-widest text-[10px] shadow-xl shadow-orange-500/20" onClick={handleQuickStartSession} disabled={isStartingSession}>{isStartingSession ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlayCircle className="mr-2 h-4 w-4" />} Initialize Interaction</Button><Button variant="outline" className="w-full h-12 rounded-2xl border-border text-muted-foreground hover:text-foreground bg-muted/50 font-black uppercase tracking-widest text-[10px]" onClick={() => { setIsOpen(false); router.push(`/contacts/profile?id=${contact.id}`); }}><ExternalLink className="mr-2 h-4 w-4" /> Open Journey</Button></div>
                     </div>
-                ) : <div className="flex flex-col items-center py-10 space-y-4 text-center"><div className="bg-white/5 p-5 rounded-full"><User className="h-10 w-10 text-slate-700" /></div><div className="space-y-1"><p className="text-white font-black text-lg uppercase tracking-tight">{activeCall?.phoneNumber}</p><p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Not in database</p></div><Button variant="outline" className="rounded-xl border-white/10 text-slate-400 hover:text-white" onClick={() => setIsOpen(false)}>Dismiss</Button></div>}
+                ) : <div className="flex flex-col items-center py-10 space-y-4 text-center"><div className="bg-muted/50 p-5 rounded-full"><User className="h-10 w-10 text-muted-foreground" /></div><div className="space-y-1"><p className="text-foreground text-lg font-black uppercase tracking-tight">{activeCall?.phoneNumber}</p><p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Not in database</p></div><Button variant="outline" className="rounded-xl border-border text-muted-foreground hover:text-foreground" onClick={() => setIsOpen(false)}>Dismiss</Button></div>}
             </div>
         </div>
       </DialogContent>

@@ -121,7 +121,6 @@ export function PersonTable({
   isSelectionActive = false,
   allGroups = [],
   showEnablerColumn = true,
-  showCoEnablerColumn = false,
   navigationContext,
   totalCount,
   onSelectAllGlobal,
@@ -233,14 +232,14 @@ export function PersonTable({
             )}
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex bg-[#1b1d32] p-1 rounded-2xl border border-white/5 shadow-inner">
+          <div className="flex bg-card p-1 rounded-2xl border border-border shadow-inner">
             <Button
               variant={viewMode === 'table' ? 'secondary' : 'ghost'}
               size="sm"
               onClick={() => setViewMode('table')}
               className={cn(
                 "h-10 px-6 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all", 
-                viewMode === 'table' ? "bg-primary text-white shadow-lg" : "text-slate-500 hover:text-white"
+                viewMode === 'table' ? "bg-primary text-primary-foreground shadow-lg" : "text-muted-foreground hover:text-foreground"
               )}
             >
               <List className="h-3.5 w-3.5 mr-2" />
@@ -252,7 +251,7 @@ export function PersonTable({
               onClick={() => setViewMode('grid')}
               className={cn(
                 "h-10 px-6 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all", 
-                viewMode === 'grid' ? "bg-primary text-white shadow-lg" : "text-slate-500 hover:text-white"
+                viewMode === 'grid' ? "bg-primary text-primary-foreground shadow-lg" : "text-muted-foreground hover:text-foreground"
               )}
             >
               <LayoutGrid className="h-3.5 w-3.5 mr-2" />
@@ -262,14 +261,14 @@ export function PersonTable({
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-12 px-6 font-black uppercase tracking-widest text-[10px] rounded-2xl border-white/5 bg-[#1b1d32] text-white hover:bg-white/10 shadow-2xl">
+              <Button variant="outline" size="sm" className="h-12 px-6 font-black uppercase tracking-widest text-[10px] rounded-2xl border-border bg-card text-foreground hover:bg-muted shadow-2xl">
                 <Settings2 className="h-4 w-4 mr-2" />
                 Columns
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64 p-0 overflow-hidden flex flex-col rounded-3xl shadow-2xl border-none bg-[#1e1e2e] text-white">
-              <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 p-4">VISIBLE ATTRIBUTES</DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-white/5 m-0" />
+            <DropdownMenuContent align="end" className="w-64 p-0 overflow-hidden flex flex-col rounded-3xl shadow-2xl border-none bg-popover text-foreground">
+              <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground p-4">VISIBLE ATTRIBUTES</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-border m-0" />
               <div className="max-h-[350px] overflow-y-auto p-2 scrollbar-hide">
                   {Object.keys(COLUMN_LABELS).map((col) => (
                     <DropdownMenuCheckboxItem
@@ -288,47 +287,47 @@ export function PersonTable({
       </div>
 
       {viewMode === 'table' ? (
-        <div className="bg-[#1b1d32]/30 border border-white/5 rounded-[2.5rem] overflow-hidden shadow-2xl">
+        <div className="bg-card/30 border border-border rounded-[2.5rem] overflow-hidden shadow-2xl">
           <div className="overflow-x-auto scrollbar-hide">
             <Table>
               <TableHeader className="bg-black/20">
-                <TableRow className="hover:bg-transparent border-b border-white/5 h-20">
+                <TableRow className="hover:bg-transparent border-b border-border h-20">
                   <TableHead className="w-[100px] px-8">
                     <div className="flex items-center gap-2">
                       <Checkbox
                         checked={isAllOnPageSelected}
                         onCheckedChange={handleSelectAllOnPage}
-                        className="h-5 w-5 rounded-md border-white/20"
+                        className="h-5 w-5 rounded-md border-border"
                       />
                       <Popover>
                         <PopoverTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 p-0 rounded-lg hover:bg-white/5">
-                            <ChevronDown className="h-4 w-4 text-slate-500" />
+                          <Button variant="ghost" size="icon" className="h-8 w-8 p-0 rounded-lg hover:bg-muted">
+                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-80 p-6 rounded-[2rem] shadow-2xl border-none bg-[#1e1e2e] text-white" align="start">
+                        <PopoverContent className="w-80 p-6 rounded-[2rem] shadow-2xl border-none bg-popover text-foreground" align="start">
                           <div className="space-y-6">
                             <div className="flex items-center gap-3">
                               <ListChecks className="h-6 w-6 text-primary" />
                               <h4 className="font-black text-sm uppercase tracking-tight">Precision Selection</h4>
                             </div>
                             <div className="grid gap-3">
-                              <Button variant="outline" size="sm" className="justify-start font-black uppercase text-[10px] h-12 rounded-xl bg-white/5 border-white/10 text-white" onClick={() => handleSelectAllOnPage(true)}>Select This Page ({people.length})</Button>
+                              <Button variant="outline" size="sm" className="justify-start font-black uppercase text-[10px] h-12 rounded-xl bg-muted/50 border-border text-foreground" onClick={() => handleSelectAllOnPage(true)}>Select This Page ({people.length})</Button>
                               {onSelectAllGlobal && totalCount !== null && totalCount > people.length && (
                                 <Button size="sm" className="justify-start font-black uppercase text-[10px] h-12 rounded-xl shadow-xl shadow-primary/20" onClick={onSelectAllGlobal} disabled={isSelectingAll}>
                                   {isSelectingAll ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Selecting Database...</> : <><CheckCircle2 className="mr-2 h-4 w-4" /> Select All {totalCount} Contacts</>}
                                 </Button>
                               )}
-                              <div className="space-y-3 pt-2 border-t border-white/5">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Select Row Range</Label>
+                              <div className="space-y-3 pt-2 border-t border-border">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Select Row Range</Label>
                                 <div className="flex items-end gap-3">
                                   <div className="flex-1 space-y-1.5">
                                     <Label className="text-[9px] uppercase opacity-50 ml-1">From</Label>
-                                    <Input type="number" value={rangeFrom} onChange={e => setRangeFrom(e.target.value)} className="h-10 bg-[#161623] border-none text-white font-black rounded-lg" />
+                                    <Input type="number" value={rangeFrom} onChange={e => setRangeFrom(e.target.value)} className="h-10 bg-muted border-none text-foreground font-black rounded-lg" />
                                   </div>
                                   <div className="flex-1 space-y-1.5">
                                     <Label className="text-[9px] uppercase opacity-50 ml-1">To</Label>
-                                    <Input type="number" value={rangeTo} onChange={e => setRangeTo(e.target.value)} className="h-10 bg-[#161623] border-none text-white font-black rounded-lg" />
+                                    <Input type="number" value={rangeTo} onChange={e => setRangeTo(e.target.value)} className="h-10 bg-muted border-none text-foreground font-black rounded-lg" />
                                   </div>
                                   <Button size="sm" className="h-10 font-black px-6 rounded-lg" onClick={() => handleSelectRange(rangeFrom, rangeTo)}>Select</Button>
                                 </div>
@@ -339,15 +338,15 @@ export function PersonTable({
                       </Popover>
                     </div>
                   </TableHead>
-                  <TableHead className="font-black text-[11px] uppercase tracking-[0.2em] text-slate-500 min-w-[300px]">CONTACT PROFILE</TableHead>
+                  <TableHead className="font-black text-[11px] uppercase tracking-[0.2em] text-muted-foreground min-w-[300px]">CONTACT PROFILE</TableHead>
                   {Object.keys(COLUMN_LABELS).map(key => (
                     visibleColumns[key] && (
-                      <TableHead key={key} className="font-black text-[11px] uppercase tracking-[0.2em] text-slate-500 whitespace-nowrap px-6">
+                      <TableHead key={key} className="font-black text-[11px] uppercase tracking-[0.2em] text-muted-foreground whitespace-nowrap px-6">
                         {COLUMN_LABELS[key]}
                       </TableHead>
                     )
                   ))}
-                  <TableHead className="text-right pr-10 font-black text-[11px] uppercase tracking-[0.2em] text-slate-500"></TableHead>
+                  <TableHead className="text-right pr-10 font-black text-[11px] uppercase tracking-[0.2em] text-muted-foreground"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

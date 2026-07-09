@@ -1,8 +1,8 @@
 'use client';
 
 import * as React from "react";
-import { Loader2, Users, UserCheck, PlusCircle, AlertCircle, PhoneCall, UsersRound, UserPlus, RefreshCw, Tag, Trash2, X } from "lucide-react";
-import type { Person, CallStatus, CustomField, Group, AppUser } from "@/lib/types";
+import { Loader2, PlusCircle, PhoneCall, UsersRound, RefreshCw, Trash2, X, AlertCircle } from "lucide-react";
+import type { Person, CustomField, Group } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { useAppToast } from "@/contexts/toast-context";
 import { PageHeader } from "@/components/page-header";
@@ -52,7 +52,6 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PersonTableRowSkeleton } from "@/components/skeleton-loaders";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 const CallingAssistantPageComponent = () => {
@@ -222,8 +221,8 @@ const CallingAssistantPageComponent = () => {
         <PageHeader title="Calling Assistant" description="A focused view to help you call contacts efficiently." />
         <main className="flex-1 p-4 sm:p-6 sm:pt-0">
           {appUser?.pausedCallingSession && (
-            <Alert className="mb-4 bg-yellow-100/50 border-yellow-300">
-              <AlertCircle className="h-4 w-4 text-yellow-600" />
+            <Alert className="mb-4 bg-yellow-100/50 border-yellow-300 dark:bg-yellow-900/20 dark:border-yellow-900/50">
+              <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
               <AlertTitle>Active Session Progress</AlertTitle>
               <AlertDescription>
                 You have an ongoing calling session.
@@ -254,20 +253,20 @@ const CallingAssistantPageComponent = () => {
                   </div>
               </div>
               {isSelectionActive && (
-                <div className="flex flex-col sm:flex-row items-center gap-4 p-2 bg-[#929DD8] rounded-2xl sticky top-20 z-50 shadow-2xl animate-in fade-in slide-in-from-top-4 duration-300">
+                <div className="flex flex-col sm:flex-row items-center gap-4 p-2 bg-primary rounded-2xl sticky top-20 z-50 shadow-2xl animate-in fade-in slide-in-from-top-4 duration-300">
                   <div className="flex items-center gap-3 px-4">
-                      <div className="bg-white/20 px-4 py-1.5 rounded-full text-xs font-black text-white shadow-inner uppercase tracking-wider">
+                      <div className="bg-primary-foreground/20 px-4 py-1.5 rounded-full text-xs font-black text-primary-foreground shadow-inner uppercase tracking-wider">
                           {selectedIds.size} selected
                       </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 ml-auto pr-2">
-                      <Button variant="ghost" size="sm" onClick={() => setIsConfirmSessionDialogOpen(true)} className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-white hover:bg-white/10 rounded-xl">
+                      <Button variant="ghost" size="sm" onClick={() => setIsConfirmSessionDialogOpen(true)} className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-primary-foreground hover:bg-primary-foreground/10 rounded-xl">
                           <PhoneCall className="mr-2 h-4 w-4" /> Start Session
                       </Button>
                       
                       <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-white hover:bg-white/10 rounded-xl">
+                              <Button variant="ghost" size="sm" className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-primary-foreground hover:bg-primary-foreground/10 rounded-xl">
                                   Group
                               </Button>
                           </DropdownMenuTrigger>
@@ -285,15 +284,15 @@ const CallingAssistantPageComponent = () => {
                           </DropdownMenuContent>
                       </DropdownMenu>
 
-                      <Button variant="ghost" size="sm" onClick={() => setIsAssignEnablerDialogOpen(true)} className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-white hover:bg-white/10 rounded-xl">
+                      <Button variant="ghost" size="sm" onClick={() => setIsAssignEnablerDialogOpen(true)} className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-primary-foreground hover:bg-primary-foreground/10 rounded-xl">
                           Enabler
                       </Button>
 
-                      <Button variant="ghost" size="sm" onClick={() => setIsAssignCoEnablerDialogOpen(true)} className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-white hover:bg-white/10 rounded-xl">
+                      <Button variant="ghost" size="sm" onClick={() => setIsAssignCoEnablerDialogOpen(true)} className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-primary-foreground hover:bg-primary-foreground/10 rounded-xl">
                           Co-Enabler
                       </Button>
 
-                      <Button variant="ghost" size="sm" onClick={() => setIsUpdateSourceDialogOpen(true)} className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-white hover:bg-white/10 rounded-xl">
+                      <Button variant="ghost" size="sm" onClick={() => setIsUpdateSourceDialogOpen(true)} className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-primary-foreground hover:bg-primary-foreground/10 rounded-xl">
                           Source
                       </Button>
 
@@ -303,21 +302,21 @@ const CallingAssistantPageComponent = () => {
                                   <Trash2 className="h-4 w-4" />
                               </Button>
                           </AlertDialogTrigger>
-                          <AlertDialogContent className="bg-[#1e1e2e] border-none text-white rounded-[2rem]">
+                          <AlertDialogContent className="bg-popover border-none text-foreground rounded-[2rem]">
                               <AlertDialogHeader>
                                   <AlertDialogTitle className="font-black uppercase tracking-tight">Bulk Delete Contacts</AlertDialogTitle>
-                                  <AlertDialogDescription className="text-slate-400 font-bold">
+                                  <AlertDialogDescription className="text-muted-foreground font-bold">
                                       Are you sure you want to delete {selectedIds.size} selected contacts? This action cannot be undone.
                                   </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                  <AlertDialogCancel className="bg-white/5 border-white/10 text-white rounded-xl">Cancel</AlertDialogCancel>
+                                  <AlertDialogCancel className="bg-muted border-border text-foreground rounded-xl">Cancel</AlertDialogCancel>
                                   <AlertDialogAction onClick={handleBulkDelete} className="bg-red-600 rounded-xl font-black uppercase tracking-widest">Delete All</AlertDialogAction>
                               </AlertDialogFooter>
                           </AlertDialogContent>
                       </AlertDialog>
 
-                      <Button variant="ghost" size="icon" onClick={() => setSelectedIds(new Set())} className="h-10 w-10 rounded-xl text-white/60 hover:text-white hover:bg-white/10">
+                      <Button variant="ghost" size="icon" onClick={() => setSelectedIds(new Set())} className="h-10 w-10 rounded-xl text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10">
                           <X className="h-5 w-5" />
                       </Button>
                   </div>
@@ -345,7 +344,7 @@ const CallingAssistantPageComponent = () => {
                       onClick={() => fetchData(lastDocId || undefined)} 
                       disabled={isLoadingMore}
                       variant="outline"
-                      className="font-black px-8 h-12 rounded-xl border-white/10 text-white bg-white/5 uppercase tracking-widest text-[10px]"
+                      className="font-black px-8 h-12 rounded-xl border-border text-foreground bg-muted/50 uppercase tracking-widest text-[10px]"
                   >
                       {isLoadingMore ? (
                           <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading more...</>
@@ -367,5 +366,5 @@ const CallingAssistantPageComponent = () => {
 };
 
 export default function CallingAssistantPage() {
-    return <React.Suspense fallback={<div className="flex h-screen w-full items-center justify-center bg-[#11121d]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}><CallingAssistantPageComponent /></React.Suspense>;
+    return <React.Suspense fallback={<div className="flex h-screen w-full items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}><CallingAssistantPageComponent /></React.Suspense>;
 }

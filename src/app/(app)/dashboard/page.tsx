@@ -20,7 +20,6 @@ import {
     Activity,
     Smartphone,
     Trophy,
-    Timer,
     UserCheck,
     Contact,
     UserPlus,
@@ -61,7 +60,7 @@ export default function DashboardPage() {
   const [selectedFolkGuideId, setSelectedFolkGuideId] = useState<string>('all');
   const [folkGuides, setFGuides] = useState<AppUser[]>([]);
   
-  const { data, syncStatus, isLoading, isRefetching } = useDashboardStats(dateRange, selectedFolkGuideId);
+  const { data, syncStatus, isLoading } = useDashboardStats(dateRange, selectedFolkGuideId);
 
   useEffect(() => {
     if (appUser?.role.includes('Admin')) {
@@ -100,7 +99,7 @@ export default function DashboardPage() {
                            <Wifi className="h-3 w-3" /> Live & Synchronized
                         </span>
                     ) : syncStatus === 'syncing' ? (
-                        <span className="flex items-center gap-1.5 text-[#FF9800] animate-pulse">
+                        <span className="flex items-center gap-1.5 text-orange-500 animate-pulse">
                            <RefreshCw className="h-3 w-3 animate-spin" /> Fetching updates...
                         </span>
                     ) : syncStatus === 'cached' ? (
@@ -108,7 +107,7 @@ export default function DashboardPage() {
                            <Activity className="h-3 w-3" /> Using Cached Records
                         </span>
                     ) : syncStatus === 'timeout' ? (
-                        <span className="flex items-center gap-1.5 text-slate-500 italic">
+                        <span className="flex items-center gap-1.5 text-muted-foreground italic">
                            Offline mode active
                         </span>
                     ) : "Initializing statistics..."}
@@ -118,11 +117,11 @@ export default function DashboardPage() {
             <div className="flex items-center gap-2">
                 {isAdmin && (
                     <Select value={selectedFolkGuideId} onValueChange={setSelectedFolkGuideId}>
-                        <SelectTrigger className="w-[180px] h-9 rounded-xl border-white/10 bg-white/5 text-white font-black text-[10px] uppercase">
+                        <SelectTrigger className="w-[180px] h-9 rounded-xl border-border bg-muted/50 text-foreground font-black text-[10px] uppercase">
                             <UsersRound className="h-3 w-3 mr-2" />
                             <SelectValue placeholder="All Guides" />
                         </SelectTrigger>
-                        <SelectContent className="bg-[#1e1e2e] border-white/10 text-white">
+                        <SelectContent className="bg-popover border-border text-foreground">
                             <SelectItem value="all">All Teams</SelectItem>
                             {folkGuides.map(guide => (
                                 <SelectItem key={guide.id} value={guide.id}>{guide.name}</SelectItem>
@@ -133,7 +132,7 @@ export default function DashboardPage() {
                 
                 <Popover>
                     <PopoverTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-9 rounded-xl border-white/10 text-white bg-white/5 font-black px-4 gap-2">
+                        <Button variant="outline" size="sm" className="h-9 rounded-xl border-border text-foreground bg-muted/50 font-black px-4 gap-2">
                             <CalendarIcon className="h-3.5 w-3.5" />
                             {dateRange?.from ? (
                                 dateRange.to && !isSameDay(dateRange.from, dateRange.to) ? (
@@ -148,7 +147,7 @@ export default function DashboardPage() {
                             )}
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 border-none bg-[#1e1e2e]" align="end">
+                    <PopoverContent className="w-auto p-0 border-none bg-popover" align="end">
                         <Calendar
                             initialFocus
                             mode="range"
@@ -169,32 +168,32 @@ export default function DashboardPage() {
                     value={stats?.myContactsCount} 
                     icon={UserCircle} 
                     onClick={() => navigateToContacts({ scope: 'my' })}
-                    barColor="bg-[#3F51B5]"
+                    barColor="bg-primary"
                 />
                 <MiniStatCard 
                     title="TOTAL" 
                     value={stats?.totalContactsCount} 
                     icon={Users} 
                     onClick={() => navigateToContacts({ scope: 'all' })}
-                    barColor="bg-[#929DD8]"
+                    barColor="bg-primary/40"
                 />
                 <MiniStatCard 
                     title="MY NEW" 
                     value={stats?.myNewInRange} 
                     icon={UserPlus} 
                     isTrend
-                    colorClass="text-[#FF9800]"
+                    colorClass="text-orange-500"
                     onClick={() => navigateToContacts({ scope: 'my' })}
-                    barColor="bg-[#FF9800]"
+                    barColor="bg-orange-500"
                 />
                 <MiniStatCard 
                     title="ALL NEW" 
                     value={stats?.allNewInRange} 
                     icon={Users} 
                     isTrend 
-                    colorClass="text-[#FF9800]"
+                    colorClass="text-orange-500"
                     onClick={() => navigateToContacts({ scope: 'all' })}
-                    barColor="bg-[#FF9800]"
+                    barColor="bg-orange-500"
                 />
             </div>
 
@@ -206,69 +205,69 @@ export default function DashboardPage() {
                     <div className="flex items-center justify-between">
                         <div className="space-y-1">
                             <p className="text-[10px] font-black text-primary uppercase tracking-widest">Interaction Pulse</p>
-                            <h3 className="text-xl font-black text-white uppercase tracking-tight">Pending Logs</h3>
+                            <h3 className="text-xl font-black text-foreground uppercase tracking-tight">Pending Logs</h3>
                         </div>
-                        <div className="h-12 w-12 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform">
+                        <div className="h-12 w-12 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform">
                             <ClipboardCheck className="h-6 w-6" />
                         </div>
                     </div>
-                    <div className="mt-4 flex items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest group-hover:text-white transition-colors">
+                    <div className="mt-4 flex items-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest group-hover:text-foreground transition-colors">
                         Clear Documentation Queue <ArrowRight className="ml-2 h-3 w-3" />
                     </div>
                 </Card>
             </div>
 
-            <Card className="bg-[#1e1e2e] border-none rounded-[2rem] shadow-2xl overflow-hidden">
-                <CardHeader className="p-8 pb-4 flex flex-row items-center justify-between bg-[#1b1d32] border-b border-white/5">
+            <Card className="bg-popover border-none rounded-[2rem] shadow-2xl overflow-hidden">
+                <CardHeader className="p-8 pb-4 flex flex-row items-center justify-between bg-card border-b border-border">
                     <div className="space-y-1">
-                        <CardTitle className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
-                            <Trophy className="h-6 w-6 text-[#FF9800]" />
+                        <CardTitle className="text-xl font-black text-foreground uppercase tracking-tight flex items-center gap-3">
+                            <Trophy className="h-6 w-6 text-orange-500" />
                             Outreach Leaderboard
                         </CardTitle>
-                        <CardDescription className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em]">
+                        <CardDescription className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em]">
                             Cumulative activity metrics for callers in the selected range
                         </CardDescription>
                     </div>
                 </CardHeader>
                 <CardContent className="p-0 overflow-x-auto">
                     <Table>
-                        <TableHeader className="bg-white/5">
+                        <TableHeader className="bg-muted/30">
                             <TableRow className="hover:bg-transparent border-none">
-                                <TableHead className="text-[9px] font-black uppercase tracking-widest text-slate-500 pl-8 h-12">Caller Profile</TableHead>
-                                <TableHead className="text-[9px] font-black uppercase tracking-widest text-slate-500 text-center h-12">Total Interactions</TableHead>
-                                <TableHead className="text-[9px] font-black uppercase tracking-widest text-slate-500 text-center h-12">Spoken Duration</TableHead>
-                                <TableHead className="text-[9px] font-black uppercase tracking-widest text-slate-500 text-right pr-8 h-12">Daily Activity</TableHead>
+                                <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground pl-8 h-12">Caller Profile</TableHead>
+                                <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-center h-12">Total Interactions</TableHead>
+                                <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-center h-12">Spoken Duration</TableHead>
+                                <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-right pr-8 h-12">Daily Activity</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {leaderboard.length > 0 ? leaderboard.map((entry) => (
-                                <TableRow key={entry.callerId} className="border-b border-white/5 hover:bg-white/[0.02]">
+                                <TableRow key={entry.callerId} className="border-b border-border hover:bg-muted/50">
                                     <TableCell className="pl-8 py-5">
                                         <div className="flex items-center gap-4">
                                             <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-lg">
                                                 <AvatarImage src={entry.photoUrl} />
-                                                <AvatarFallback className="bg-[#161623] text-white font-black">{entry.callerName.charAt(0)}</AvatarFallback>
+                                                <AvatarFallback className="bg-muted text-foreground font-black">{entry.callerName.charAt(0)}</AvatarFallback>
                                             </Avatar>
-                                            <span className="text-sm font-black text-white uppercase truncate">{entry.callerName}</span>
+                                            <span className="text-sm font-black text-foreground uppercase truncate">{entry.callerName}</span>
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-center">
-                                        <Badge className="bg-[#FF9800]/10 text-[#FF9800] border-none font-black text-lg h-9 px-4">
+                                        <Badge className="bg-orange-500/10 text-orange-500 border-none font-black text-lg h-9 px-4">
                                             {entry.totalCalls}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="text-center font-mono text-sm text-slate-300">
+                                    <TableCell className="text-center font-mono text-sm text-foreground">
                                         {formatDuration(entry.totalDuration)}
                                     </TableCell>
                                     <TableCell className="text-right pr-8">
                                         <div className="flex flex-col items-end gap-1.5">
                                             {Object.entries(entry.dailyStats).map(([dateKey, stat]) => (
                                                 <div key={dateKey} className="flex items-center gap-3">
-                                                    <span className="text-[9px] font-black uppercase text-slate-500">{format(new Date(dateKey), 'MMM dd')}</span>
-                                                    <Badge variant="outline" className="text-[9px] font-black border-white/10 text-primary bg-white/5">
+                                                    <span className="text-[9px] font-black uppercase text-muted-foreground">{format(new Date(dateKey), 'MMM dd')}</span>
+                                                    <Badge variant="outline" className="text-[9px] font-black border-border text-primary bg-muted/50">
                                                         {stat.count} calls
                                                     </Badge>
-                                                    <span className="text-[9px] font-mono text-slate-400">{formatDuration(stat.duration)}</span>
+                                                    <span className="text-[9px] font-mono text-muted-foreground">{formatDuration(stat.duration)}</span>
                                                 </div>
                                             ))}
                                         </div>
@@ -276,7 +275,7 @@ export default function DashboardPage() {
                                 </TableRow>
                             )) : (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="h-32 text-center opacity-30 italic font-bold text-white">
+                                    <TableCell colSpan={4} className="h-32 text-center opacity-30 italic font-bold text-foreground">
                                         {syncStatus === 'syncing' ? 'Analyzing interaction data...' : 'No interactions recorded for this period.'}
                                     </TableCell>
                                 </TableRow>
@@ -287,9 +286,9 @@ export default function DashboardPage() {
             </Card>
 
             <div className="grid gap-6 grid-cols-1 lg:grid-cols-12">
-                <Card className="lg:col-span-4 bg-[#1e1e2e] border-none rounded-[2rem] shadow-2xl overflow-hidden">
+                <Card className="lg:col-span-4 bg-popover border-none rounded-[2rem] shadow-2xl overflow-hidden">
                     <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                        <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Manual Log Breakdown</CardTitle>
+                        <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Manual Log Breakdown</CardTitle>
                         <Activity className="h-4 w-4 text-primary opacity-20" />
                     </CardHeader>
                     <CardContent className="p-0">
@@ -315,7 +314,7 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="lg:col-span-4 bg-[#1e1e2e] border-none rounded-[2rem] shadow-2xl overflow-hidden border-l-4 border-l-primary/10">
+                <Card className="lg:col-span-4 bg-popover border-none rounded-[2rem] shadow-2xl overflow-hidden border-l-4 border-l-primary/10">
                     <CardHeader className="pb-2 flex flex-row items-center justify-between">
                         <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Native App Activity</CardTitle>
                         <Smartphone className="h-4 w-4 text-primary opacity-40" />
@@ -348,7 +347,7 @@ export default function DashboardPage() {
                         title="TOTAL INTERACTIONS" 
                         value={reportAll?.totalCalls || 0} 
                         icon={PhoneIncoming}
-                        className="bg-[#1b1d32]"
+                        className="bg-card"
                         onClick={() => navigateToContacts({ scope: 'all' })}
                     />
                     <SummaryMetricCard 
@@ -365,7 +364,7 @@ export default function DashboardPage() {
                         value={reportAll?.notPicked || 0} 
                         percentage={reportAll?.percentages.notPicked || 0}
                         icon={PhoneOff}
-                        color="bg-yellow-600"
+                        color="bg-orange-600"
                         showProgress
                         onClick={() => navigateToContacts({ scope: 'all', callStatus: 'B - Not Answering' })}
                     />
@@ -381,18 +380,18 @@ function MiniStatCard({ title, value, icon: Icon, isTrend, onClick, colorClass, 
         <Card 
             onClick={onClick}
             className={cn(
-                "bg-[#1e1e2e] border-none rounded-[1.5rem] p-5 pl-7 shadow-xl relative overflow-hidden group transition-all",
-                onClick && "cursor-pointer hover:bg-[#252538] hover:scale-[1.02] active:scale-95"
+                "bg-popover border-none rounded-[1.5rem] p-5 pl-7 shadow-xl relative overflow-hidden group transition-all",
+                onClick && "cursor-pointer hover:bg-muted hover:scale-[1.02] active:scale-95"
             )}
         >
             <div className={cn("absolute left-0 top-4 bottom-4 w-1 rounded-r-full transition-colors", barColor)} />
             <div className="relative z-10 space-y-1">
-                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{title}</p>
-                <h3 className={cn("text-3xl font-black text-white tracking-tighter truncate", colorClass)}>
+                <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">{title}</p>
+                <h3 className={cn("text-3xl font-black text-foreground tracking-tighter truncate", colorClass)}>
                     {value === undefined ? <span className="opacity-20">...</span> : (isTrend ? `+${value}` : value)}
                 </h3>
             </div>
-            <Icon className="absolute top-4 right-4 h-5 w-5 text-slate-500/20 group-hover:text-primary/40 transition-colors" />
+            <Icon className="absolute top-4 right-4 h-5 w-5 text-muted-foreground/20 group-hover:text-primary/40 transition-colors" />
         </Card>
     );
 }
@@ -404,40 +403,40 @@ function StatusAccordion({ label, count, breakdown, onHeaderClick, onEventClick 
     return (
         <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full">
             <div className={cn(
-                "flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-transparent hover:bg-white/[0.04] transition-all group",
-                isOpen && "bg-white/[0.05] border-white/5"
+                "flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-transparent hover:bg-muted/40 transition-all group",
+                isOpen && "bg-muted/50 border-border"
             )}>
                 <div className="flex-1 cursor-pointer flex items-center gap-2" onClick={onHeaderClick}>
-                    <span className={cn("text-[11px] font-bold text-slate-300 group-hover:text-white transition-colors", label.includes('Device') && "text-blue-400")}>{label}</span>
+                    <span className={cn("text-[11px] font-bold text-foreground/80 group-hover:text-foreground transition-colors", label.includes('Device') && "text-blue-400")}>{label}</span>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Badge className={cn("border-none font-black text-[10px] min-w-[32px] h-6 justify-center", hasData ? "bg-primary/20 text-primary" : "bg-white/5 text-slate-600")}>{count}</Badge>
+                    <Badge className={cn("border-none font-black text-[10px] min-w-[32px] h-6 justify-center", hasData ? "bg-primary/20 text-primary" : "bg-muted/50 text-muted-foreground")}>{count}</Badge>
                     <CollapsibleTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 p-0 hover:bg-white/10" disabled={!hasData}>
-                            <ChevronDown className={cn("h-3.5 w-3.5 text-slate-600 transition-transform duration-200", isOpen && "rotate-180")} />
+                        <Button variant="ghost" size="icon" className="h-6 w-6 p-0 hover:bg-muted" disabled={!hasData}>
+                            <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform duration-200", isOpen && "rotate-180")} />
                         </Button>
                     </CollapsibleTrigger>
                 </div>
             </div>
             <CollapsibleContent className="px-1 py-3 space-y-2 animate-in slide-in-from-top-1 duration-200">
                 {Object.values(breakdown).map((item: any, idx) => (
-                    <div key={idx} onClick={() => onEventClick(item)} className="p-4 rounded-xl bg-white/[0.03] border border-white/5 hover:bg-white/5 cursor-pointer group/item space-y-3">
+                    <div key={idx} onClick={() => onEventClick(item)} className="p-4 rounded-xl bg-muted/30 border border-border hover:bg-muted/50 cursor-pointer group/item space-y-3">
                         <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-black uppercase text-white truncate leading-none">{item.event}</span>
+                            <span className="text-[11px] font-black uppercase text-foreground truncate leading-none">{item.event}</span>
                             <div className="flex items-center gap-2">
                                 <Badge variant="outline" className="text-[9px] font-black border-primary/20 text-primary">{item.count}</Badge>
-                                <span className="text-[8px] font-mono text-slate-500">{formatDuration(item.totalDuration)}</span>
+                                <span className="text-[8px] font-mono text-muted-foreground">{formatDuration(item.totalDuration)}</span>
                             </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                             <div className="flex items-center gap-1.5 opacity-60">
                                 <UserCheck className="h-3 w-3 text-primary" />
-                                <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wide">Caller: {item.callerName}</span>
+                                <span className="text-[9px] font-bold text-foreground/70 uppercase tracking-wide">Caller: {item.callerName}</span>
                             </div>
                             {item.ownerName && (
                                 <div className="flex items-center gap-1.5 opacity-60">
                                     <Contact className="h-3 w-3 text-orange-400" />
-                                    <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wide">Event Owner: {item.ownerName}</span>
+                                    <span className="text-[9px] font-bold text-foreground/70 uppercase tracking-wide">Event Owner: {item.ownerName}</span>
                                 </div>
                             )}
                         </div>
@@ -450,20 +449,20 @@ function StatusAccordion({ label, count, breakdown, onHeaderClick, onEventClick 
 
 function SummaryMetricCard({ title, value, percentage, icon: Icon, color = "bg-primary", showProgress = false, className, onClick }: { title: string, value: number, percentage?: number, icon: any, color?: string, showProgress?: boolean, className?: string, onClick?: () => void }) {
     return (
-        <Card onClick={onClick} className={cn("bg-[#1e1e2e] border-none rounded-3xl p-6 relative overflow-hidden transition-all", className, onClick && "cursor-pointer hover:bg-white/[0.02] active:scale-95")}>
+        <Card onClick={onClick} className={cn("bg-popover border-none rounded-3xl p-6 relative overflow-hidden transition-all", className, onClick && "cursor-pointer hover:bg-muted/20 active:scale-95")}>
             <div className="flex items-start justify-between">
                 <div className="space-y-1">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{title}</p>
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{title}</p>
                     <div className="flex items-baseline gap-2">
-                        <h3 className="text-3xl font-black text-white">{value}</h3>
-                        {percentage !== undefined && <span className="text-xs font-bold text-slate-500">({percentage}%)</span>}
+                        <h3 className="text-3xl font-black text-foreground">{value}</h3>
+                        {percentage !== undefined && <span className="text-xs font-bold text-muted-foreground">({percentage}%)</span>}
                     </div>
                 </div>
-                <div className={cn("p-2 rounded-xl bg-white/5", !className && "text-primary")}><Icon className="h-5 w-5" /></div>
+                <div className={cn("p-2 rounded-xl bg-muted/50", !className && "text-primary")}><Icon className="h-5 w-5" /></div>
             </div>
             {showProgress && (
                 <div className="mt-6 space-y-1.5">
-                    <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-2 w-full bg-muted/50 rounded-full overflow-hidden">
                         <div className={cn("h-full rounded-full transition-all duration-1000", color)} style={{ width: `${percentage}%` }} />
                     </div>
                 </div>

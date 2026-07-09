@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Loader2, ClipboardCheck, PhoneIncoming, PhoneOutgoing, PhoneMissed, Clock, User, ArrowRight, RefreshCw } from 'lucide-react';
+import { Loader2, ClipboardCheck, PhoneIncoming, PhoneOutgoing, PhoneMissed, Clock, ArrowRight, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { getPendingCallLogs } from '@/services/call-log-service';
 import { useAuth } from '@/contexts/auth-context';
@@ -80,30 +80,30 @@ export default function PendingLogsPage() {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 opacity-50 space-y-4">
              <Loader2 className="h-10 w-10 animate-spin text-primary" />
-             <p className="text-[10px] font-black uppercase tracking-[0.4em]">Checking phone sync...</p>
+             <p className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground">Checking phone sync...</p>
           </div>
         ) : logs.length > 0 ? (
           <div className="space-y-4 pb-20">
             {logs.map((log) => (
-              <Card key={log.id} className="bg-[#1e1e2e] border-none shadow-xl rounded-[2rem] overflow-hidden group hover:shadow-2xl transition-all">
+              <Card key={log.id} className="bg-popover border-none shadow-xl rounded-[2rem] overflow-hidden group hover:shadow-2xl transition-all">
                 <CardContent className="p-6">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                     <div className="flex items-center gap-4 min-w-0">
                       <Avatar className="h-14 w-14 border-2 border-primary/20 rounded-2xl shadow-lg">
                         <AvatarImage src={log.person.photoUrl} className="object-cover" />
-                        <AvatarFallback className="bg-[#161623] text-white font-black">{log.person.fullName[0]}</AvatarFallback>
+                        <AvatarFallback className="bg-muted text-foreground font-black">{log.person.fullName[0]}</AvatarFallback>
                       </Avatar>
                       <div className="min-w-0">
-                        <h3 className="font-black text-white uppercase truncate">{log.person.fullName}</h3>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">{log.phoneNumber}</p>
+                        <h3 className="font-black text-foreground uppercase truncate">{log.person.fullName}</h3>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">{log.phoneNumber}</p>
                         <div className="flex items-center gap-3 mt-2">
-                           <Badge variant="outline" className="h-5 px-2 border-white/5 bg-white/5 text-[8px] font-black uppercase text-slate-500">
+                           <Badge variant="outline" className="h-5 px-2 border-border bg-muted/50 text-[8px] font-black uppercase text-muted-foreground">
                               {log.type === 'INCOMING' ? <PhoneIncoming className="h-2.5 w-2.5 mr-1 text-blue-400" /> : 
                                log.type === 'MISSED' ? <PhoneMissed className="h-2.5 w-2.5 mr-1 text-red-400" /> : 
                                <PhoneOutgoing className="h-2.5 w-2.5 mr-1 text-green-400" />}
                               {log.type}
                            </Badge>
-                           <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600">
+                           <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground">
                               <Clock className="h-3 w-3" />
                               {format(new Date(log.timestamp), 'dd MMM, p')}
                            </div>
@@ -113,8 +113,8 @@ export default function PendingLogsPage() {
                     
                     <div className="flex items-center gap-4 shrink-0 justify-between sm:justify-end">
                       <div className="text-right hidden xs:block">
-                        <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Duration</p>
-                        <p className="text-lg font-black text-white leading-none">{log.duration}s</p>
+                        <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Duration</p>
+                        <p className="text-lg font-black text-foreground leading-none">{log.duration}s</p>
                       </div>
                       <DetailedLogCallDialog 
                         onLogCall={(details) => handleLogSave(log.person.id, log.timestamp, details)}
@@ -136,8 +136,8 @@ export default function PendingLogsPage() {
                 <ClipboardCheck className="h-16 w-16 text-green-500" />
              </div>
              <div className="space-y-2">
-                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Queue is empty</h2>
-                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">All recent native calls have been documented.</p>
+                <h2 className="text-2xl font-black text-foreground uppercase tracking-tighter">Queue is empty</h2>
+                <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">All recent native calls have been documented.</p>
              </div>
           </div>
         )}

@@ -7,7 +7,7 @@ import * as z from "zod";
 import { format } from "date-fns";
 import type { Person, CallStatus, Group, CustomField, ActivityFieldLabels, CallLog } from "@/lib/types";
 import { callStatuses } from "@/lib/types";
-import { Phone, CheckSquare, Loader2, Edit, Save, XCircle, ArrowLeft, ArrowRight, Trash2, Clock, Calendar as CalendarIcon, CheckCircle2, BellRing, MessageSquare, Search, PhoneIncoming, User, History } from "lucide-react";
+import { Phone, Loader2, Edit, Save, XCircle, ArrowLeft, ArrowRight, Trash2, Clock, Calendar as CalendarIcon, BellRing, User, History } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 import {
@@ -15,8 +15,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -55,7 +53,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { ScrollArea } from "./ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Input } from "./ui/input";
-import { Badge } from "./ui/badge";
+import { Badge } from "@/badge";
 import { safeDate } from "@/utils/date";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Calendar } from "./ui/calendar";
@@ -108,9 +106,7 @@ const CallingSessionDialogComponent = ({
   currentEvent,
   sessionCurrentNumber,
   sessionTotalCount,
-  customFields,
   groups,
-  sessionPeopleIds,
   onPersonUpdate,
 }: CallingSessionDialogProps) => {
   const { toast } = useToast();
@@ -400,15 +396,15 @@ const CallingSessionDialogComponent = ({
   
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-4xl flex flex-col max-h-[95vh] p-0 bg-[#1e1e2e] border-none shadow-2xl overflow-hidden rounded-[2.5rem]" onPointerDownOutside={(e) => e.preventDefault()}>
-        <DialogHeader className="flex-shrink-0 p-6 sm:p-8 pb-4 border-b border-white/5 bg-[#1b1d32]">
+      <DialogContent className="sm:max-w-4xl flex flex-col max-h-[95vh] p-0 bg-popover border-none shadow-2xl overflow-hidden rounded-[2.5rem]" onPointerDownOutside={(e) => e.preventDefault()}>
+        <DialogHeader className="flex-shrink-0 p-6 sm:p-8 pb-4 border-b border-border bg-card">
           <div className="flex items-center justify-between">
             <div className="min-w-0">
-              <DialogTitle className="flex items-center gap-2 text-white font-black text-xl sm:text-2xl uppercase tracking-tight">
+              <DialogTitle className="flex items-center gap-2 text-foreground font-black text-xl sm:text-2xl uppercase tracking-tight">
                 {isDetour && <Badge variant="destructive" className="animate-pulse font-black text-[9px] h-6 px-3">CALLBACK MODE</Badge>}
                 Outreach Center
               </DialogTitle>
-              <div className="text-[10px] sm:text-xs text-slate-500 font-bold flex items-center gap-2 flex-wrap mt-1.5 uppercase tracking-widest">
+              <div className="text-[10px] sm:text-xs text-muted-foreground font-bold flex items-center gap-2 flex-wrap mt-1.5 uppercase tracking-widest">
                   {isDetour ? (
                     <>Logging callback: <span className="font-black text-[#FF9800]">{currentActivePerson.fullName}</span></>
                   ) : (
@@ -419,7 +415,7 @@ const CallingSessionDialogComponent = ({
                               <Input 
                                   value={jumpIndex} 
                                   onChange={e => setJumpIndex(e.target.value)} 
-                                  className="h-6 px-1 text-center text-[11px] font-black bg-white/5 border-white/10 text-white rounded-lg"
+                                  className="h-6 px-1 text-center text-[11px] font-black bg-muted/50 border-border text-foreground rounded-lg"
                               />
                           </form>
                           OF {sessionTotalCount} FOR:
@@ -430,14 +426,14 @@ const CallingSessionDialogComponent = ({
               </div>
             </div>
             {isDetour && (
-              <Button variant="ghost" size="sm" onClick={() => setSelectedCallbackPerson(null)} className="text-slate-400 hover:text-white font-bold h-9">
+              <Button variant="ghost" size="sm" onClick={() => setSelectedCallbackPerson(null)} className="text-muted-foreground hover:text-foreground font-bold h-9">
                 <ArrowLeft className="mr-2 h-4 w-4" /> Cancel Callback
               </Button>
             )}
           </div>
         </DialogHeader>
         
-        <div className="flex-1 min-h-0 overflow-y-auto bg-[#11121d]">
+        <div className="flex-1 min-h-0 overflow-y-auto bg-background">
             {isCallbackSearchOpen && !selectedCallbackPerson ? (
               <div className="p-8 space-y-10 flex flex-col items-center justify-center min-h-[400px]">
                 <div className="max-w-md w-full space-y-8 text-center">
@@ -445,13 +441,13 @@ const CallingSessionDialogComponent = ({
                     <PhoneIncoming className="h-12 w-12 text-primary opacity-50" />
                   </div>
                   <div className="space-y-2">
-                    <h3 className="text-2xl font-black text-white uppercase tracking-tight">Callback Received?</h3>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest px-4">Search for the contact who called back to log their status before continuing your session.</p>
+                    <h3 className="text-2xl font-black text-foreground uppercase tracking-tight">Callback Received?</h3>
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest px-4">Search for the contact who called back to log their status before continuing your session.</p>
                   </div>
-                  <div className="flex gap-2 p-1 bg-[#1e1e2e] rounded-2xl border border-white/5 shadow-2xl">
+                  <div className="flex gap-2 p-1 bg-popover rounded-2xl border border-border shadow-2xl">
                     <Input 
                       placeholder="Enter 10-digit number..." 
-                      className="h-14 text-xl font-black border-none bg-transparent text-white px-5"
+                      className="h-14 text-xl font-black border-none bg-transparent text-foreground px-5"
                       value={callbackSearchQuery}
                       onChange={(e) => setCallbackSearchQuery(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleSearchCallback()}
@@ -463,15 +459,15 @@ const CallingSessionDialogComponent = ({
                   
                   <div className="space-y-3 pt-4">
                     {callbackResults.map(p => (
-                      <div key={p.id} className="p-4 bg-[#1e1e2e] border border-white/5 rounded-2xl flex items-center justify-between hover:bg-white/5 transition-all cursor-pointer group" onClick={() => setSelectedCallbackPerson(p)}>
+                      <div key={p.id} className="p-4 bg-popover border border-border rounded-2xl flex items-center justify-between hover:bg-muted transition-all cursor-pointer group" onClick={() => setSelectedCallbackPerson(p)}>
                         <div className="flex items-center gap-4">
                           <Avatar className="h-12 w-12 border-2 border-primary/20 shadow-lg">
                             <AvatarImage src={p.photoUrl} />
-                            <AvatarFallback className="bg-slate-800 text-white font-black">{p.fullName.charAt(0)}</AvatarFallback>
+                            <AvatarFallback className="bg-muted text-foreground font-black">{p.fullName.charAt(0)}</AvatarFallback>
                           </Avatar>
                           <div className="text-left">
-                            <p className="text-base font-black text-white">{p.fullName}</p>
-                            <p className="text-xs text-slate-500 font-bold tracking-widest">{p.phone}</p>
+                            <p className="text-base font-black text-foreground">{p.fullName}</p>
+                            <p className="text-xs text-muted-foreground font-bold tracking-widest">{p.phone}</p>
                           </div>
                         </div>
                         <ArrowRight className="h-5 w-5 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -479,18 +475,18 @@ const CallingSessionDialogComponent = ({
                     ))}
                   </div>
                   
-                  <Button variant="ghost" className="text-[10px] font-black uppercase tracking-widest text-slate-600 hover:text-white" onClick={() => setIsCallbackSearchOpen(false)}>Return to Queue</Button>
+                  <Button variant="ghost" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground" onClick={() => setIsCallbackSearchOpen(false)}>Return to Queue</Button>
                 </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-0 min-h-full">
-                <div className="p-6 sm:p-10 space-y-10 border-b md:border-b-0 md:border-r border-white/5 bg-[#161623]/30">
-                    <div className="flex items-center justify-between bg-[#1e1e2e] rounded-3xl border border-white/5 p-5 shadow-2xl">
+                <div className="p-6 sm:p-10 space-y-10 border-b md:border-b-0 md:border-r border-border bg-muted/30">
+                    <div className="flex items-center justify-between bg-popover rounded-3xl border border-border p-5 shadow-2xl">
                         <div className="flex items-center gap-4">
                             <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20">
                                 <Phone className="h-6 w-6 text-primary" />
                             </div>
-                            <span className="text-2xl font-black text-white tracking-tighter">{currentActivePerson.phone}</span>
+                            <span className="text-2xl font-black text-foreground tracking-tighter">{currentActivePerson.phone}</span>
                         </div>
                         <div className="flex items-center gap-3">
                           <Button asChild className="h-12 px-6 rounded-xl bg-primary font-black uppercase tracking-widest shadow-xl shadow-primary/20"><a href={`tel:${currentActivePerson.phone}`}>Call</a></Button>
@@ -504,42 +500,42 @@ const CallingSessionDialogComponent = ({
 
                     <div className="space-y-6">
                         <div className="flex items-center justify-between">
-                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Interaction Milestone</h3>
-                            <Badge variant="outline" className="text-[9px] font-bold border-white/5 text-slate-600">{sortedHistory.length} logs</Badge>
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Interaction Milestone</h3>
+                            <Badge variant="outline" className="text-[9px] font-bold border-border text-muted-foreground">{sortedHistory.length} logs</Badge>
                         </div>
-                        <ScrollArea className="h-[340px] pr-4 rounded-[2rem] border border-white/5 bg-[#1e1e2e]/50">
+                        <ScrollArea className="h-[340px] pr-4 rounded-[2rem] border border-border bg-popover/50">
                             <div className="p-6 space-y-6">
                                 {sortedHistory.length > 0 ? (
                                     sortedHistory.map((log, idx) => {
                                         const date = safeDate(log.calledAt);
                                         return (
-                                            <div key={idx} className="flex items-start gap-4 border-b border-white/5 pb-5 last:border-0 last:pb-0">
+                                            <div key={idx} className="flex items-start gap-4 border-b border-border pb-5 last:border-0 last:pb-0">
                                                 <div className="mt-1 shrink-0 bg-primary/10 p-2 rounded-lg">
                                                     <Clock className="h-3 w-3 text-primary" />
                                                 </div>
                                                 <div className="flex-1 space-y-2">
                                                     <div className="flex flex-wrap items-center justify-between gap-2">
-                                                        <span className="text-[10px] font-black text-white/70 uppercase tracking-tighter">
+                                                        <span className="text-[10px] font-black text-foreground/70 uppercase tracking-tighter">
                                                             {date ? format(date, 'dd MMM, HH:mm') : 'N/A'}
                                                         </span>
                                                         <Badge variant="secondary" className="bg-primary/5 text-primary text-[9px] font-black h-5 uppercase border-none px-2.5">
                                                             {log.status}
                                                         </Badge>
                                                     </div>
-                                                    <p className="text-xs font-bold leading-relaxed text-slate-300 italic">
+                                                    <p className="text-xs font-bold leading-relaxed text-foreground/80 italic">
                                                         "{log.remark || 'No specific notes left.'}"
                                                     </p>
                                                     <div className="flex items-center gap-1.5 opacity-40">
                                                         <User className="h-2.5 w-2.5" />
-                                                        <span className="text-[9px] font-black uppercase">{log.callerName}</span>
-                                                        {log.event && <span className="text-[9px] font-bold">via {log.event}</span>}
+                                                        <span className="text-[9px] font-black uppercase text-foreground">{log.callerName}</span>
+                                                        {log.event && <span className="text-[9px] font-bold text-foreground">via {log.event}</span>}
                                                     </div>
                                                 </div>
                                             </div>
                                         );
                                     })
                                 ) : (
-                                    <div className="flex flex-col items-center justify-center py-20 text-slate-600 opacity-30">
+                                    <div className="flex flex-col items-center justify-center py-20 text-muted-foreground opacity-30">
                                         <History className="h-10 w-10 mb-3" />
                                         <p className="text-[10px] font-black uppercase tracking-widest">No history yet</p>
                                     </div>
@@ -549,17 +545,17 @@ const CallingSessionDialogComponent = ({
                     </div>
                 </div>
 
-                <div className="p-6 sm:p-10 space-y-8 bg-[#11121d]">
+                <div className="p-6 sm:p-10 space-y-8 bg-background">
                     <div className="flex items-center justify-between">
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Log outreach</h3>
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Log outreach</h3>
                         <div className="flex items-center gap-2">
                           {isEditingDetails ? (
                               <div className="flex items-center gap-2">
-                                  <Button variant="ghost" size="sm" onClick={() => setIsEditingDetails(false)} className="h-8 text-[10px] font-black text-slate-500 uppercase">Cancel</Button>
+                                  <Button variant="ghost" size="sm" onClick={() => setIsEditingDetails(false)} className="h-8 text-[10px] font-black text-muted-foreground uppercase">Cancel</Button>
                                   <Button size="sm" onClick={() => detailsFormRef.current?.submit()} disabled={isSubmitting} className="h-8 px-4 bg-primary font-black uppercase text-[10px] rounded-lg">Save</Button>
                               </div>
                           ) : (
-                              <Button variant="outline" size="sm" onClick={() => setIsEditingDetails(true)} className="h-8 px-4 border-white/5 bg-white/5 text-slate-400 hover:text-white font-black uppercase text-[10px] rounded-lg">
+                              <Button variant="outline" size="sm" onClick={() => setIsEditingDetails(true)} className="h-8 px-4 border-border bg-muted/50 text-muted-foreground hover:text-foreground font-black uppercase text-[10px] rounded-lg">
                                 <Edit className="mr-1.5 h-3 w-3" /> Profile
                               </Button>
                           )}
@@ -570,14 +566,14 @@ const CallingSessionDialogComponent = ({
                         <form id="call-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                             <FormField control={form.control} name="status" render={({ field }) => (
                                 <FormItem className="space-y-2">
-                                    <FormLabel className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Call Status</FormLabel>
+                                    <FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Call Status</FormLabel>
                                     <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl>
-                                            <SelectTrigger className="h-12 rounded-xl border-white/5 bg-[#161623] text-white font-black text-xs uppercase tracking-tight focus:ring-primary">
+                                            <SelectTrigger className="h-12 rounded-xl border-border bg-muted text-foreground font-black text-xs uppercase tracking-tight focus:ring-primary">
                                                 <SelectValue placeholder="Select outcome..." />
                                             </SelectTrigger>
                                         </FormControl>
-                                        <SelectContent className="bg-[#1e1e2e] border-white/10 text-white">
+                                        <SelectContent className="bg-popover border-border text-foreground">
                                             {callStatuses.map(s => (<SelectItem key={s} value={s} className="font-bold text-[10px] py-3">{s}</SelectItem>))}
                                         </SelectContent>
                                     </Select>
@@ -587,7 +583,7 @@ const CallingSessionDialogComponent = ({
 
                             <FormField control={form.control} name="nextFollowUpAt" render={({ field }) => (
                                 <FormItem className="space-y-2">
-                                    <FormLabel className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1 flex items-center gap-2">
+                                    <FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1 flex items-center gap-2">
                                         <BellRing className="h-3 w-3 text-[#FF9800]" /> Schedule Follow-up
                                     </FormLabel>
                                     <Popover>
@@ -596,7 +592,7 @@ const CallingSessionDialogComponent = ({
                                                 <Button
                                                     variant="outline"
                                                     className={cn(
-                                                        "w-full h-12 rounded-xl border-white/5 bg-[#161623] text-white font-bold px-5 text-left justify-start",
+                                                        "w-full h-12 rounded-xl border-border bg-muted text-foreground font-bold px-5 text-left justify-start",
                                                         !field.value && "text-muted-foreground"
                                                     )}
                                                 >
@@ -605,7 +601,7 @@ const CallingSessionDialogComponent = ({
                                                 </Button>
                                             </FormControl>
                                         </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0 border-none shadow-2xl bg-[#1e1e2e]" align="start">
+                                        <PopoverContent className="w-auto p-0 border-none shadow-2xl bg-popover" align="start">
                                             <div className="p-4 space-y-4">
                                                 <Calendar
                                                     mode="single"
@@ -620,8 +616,8 @@ const CallingSessionDialogComponent = ({
                                                     }}
                                                     initialFocus
                                                 />
-                                                <div className="p-3 border-t border-white/5 flex flex-col gap-3">
-                                                    <Label className="text-[10px] font-black uppercase text-slate-500">Pick Time</Label>
+                                                <div className="p-3 border-t border-border flex flex-col gap-3">
+                                                    <Label className="text-[10px] font-black uppercase text-muted-foreground">Pick Time</Label>
                                                     <div className="flex items-center gap-2">
                                                         <Select
                                                             value={field.value ? format(new Date(field.value), "HH") : "10"}
@@ -631,14 +627,14 @@ const CallingSessionDialogComponent = ({
                                                                 field.onChange(date.toISOString());
                                                             }}
                                                         >
-                                                            <SelectTrigger className="h-9 bg-[#161623] border-white/5 text-white flex-1"><SelectValue placeholder="Hr"/></SelectTrigger>
-                                                            <SelectContent className="bg-[#1e1e2e] text-white">
+                                                            <SelectTrigger className="h-9 bg-muted border-border text-foreground flex-1"><SelectValue placeholder="Hr"/></SelectTrigger>
+                                                            <SelectContent className="bg-popover text-foreground">
                                                                 {Array.from({length: 24}, (_, i) => i.toString().padStart(2, '0')).map(h => (
                                                                     <SelectItem key={h} value={h}>{h}</SelectItem>
                                                                 ))}
                                                             </SelectContent>
                                                         </Select>
-                                                        <span className="text-white font-black">:</span>
+                                                        <span className="text-foreground font-black">:</span>
                                                         <Select
                                                             value={field.value ? format(new Date(field.value), "mm") : "00"}
                                                             onValueChange={(m) => {
@@ -647,8 +643,8 @@ const CallingSessionDialogComponent = ({
                                                                 field.onChange(date.toISOString());
                                                             }}
                                                         >
-                                                            <SelectTrigger className="h-9 bg-[#161623] border-white/5 text-white flex-1"><SelectValue placeholder="Min"/></SelectTrigger>
-                                                            <SelectContent className="bg-[#1e1e2e] text-white">
+                                                            <SelectTrigger className="h-9 bg-muted border-border text-foreground flex-1"><SelectValue placeholder="Min"/></SelectTrigger>
+                                                            <SelectContent className="bg-popover text-foreground">
                                                                 {["00", "15", "30", "45"].map(m => (
                                                                     <SelectItem key={m} value={m}>{m}</SelectItem>
                                                                 ))}
@@ -665,39 +661,39 @@ const CallingSessionDialogComponent = ({
                             <div className="grid grid-cols-3 gap-2">
                                 <FormField control={form.control} name="sg" render={({ field }) => (
                                     <FormItem className="space-y-1.5">
-                                        <FormLabel className="text-[9px] font-black uppercase text-slate-600 ml-1">{activityLabels.sg}</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-10 text-[10px] font-bold rounded-lg border-white/5 bg-[#161623] text-white px-2"><SelectValue /></SelectTrigger></FormControl><SelectContent className="bg-[#1e1e2e] border-white/5 text-white">{sgOptions.map(o => <SelectItem key={o} value={o} className="font-bold text-[10px]">{o}</SelectItem>)}</SelectContent></Select>
+                                        <FormLabel className="text-[9px] font-black uppercase text-muted-foreground ml-1">{activityLabels.sg}</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-10 text-[10px] font-bold rounded-lg border-border bg-muted text-foreground px-2"><SelectValue /></SelectTrigger></FormControl><SelectContent className="bg-popover border-border text-foreground">{sgOptions.map(o => <SelectItem key={o} value={o} className="font-bold text-[10px]">{o}</SelectItem>)}</SelectContent></Select>
                                     </FormItem>
                                 )} />
                                 <FormField control={form.control} name="ma" render={({ field }) => (
                                     <FormItem className="space-y-1.5">
-                                        <FormLabel className="text-[9px] font-black uppercase text-slate-600 ml-1">{activityLabels.ma}</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-10 text-[10px] font-bold rounded-lg border-white/5 bg-[#161623] text-white px-2"><SelectValue /></SelectTrigger></FormControl><SelectContent className="bg-[#1e1e2e] border-white/5 text-white">{maOptions.map(o => <SelectItem key={o} value={o} className="font-bold text-[10px]">{o}</SelectItem>)}</SelectContent></Select>
+                                        <FormLabel className="text-[9px] font-black uppercase text-muted-foreground ml-1">{activityLabels.ma}</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-10 text-[10px] font-bold rounded-lg border-border bg-muted text-foreground px-2"><SelectValue /></SelectTrigger></FormControl><SelectContent className="bg-popover border-border text-foreground">{maOptions.map(o => <SelectItem key={o} value={o} className="font-bold text-[10px]">{o}</SelectItem>)}</SelectContent></Select>
                                     </FormItem>
                                 )} />
                                 <FormField control={form.control} name="frp" render={({ field }) => (
                                     <FormItem className="space-y-1.5">
-                                        <FormLabel className="text-[9px] font-black uppercase text-slate-600 ml-1">{activityLabels.frp}</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-10 text-[10px] font-bold rounded-lg border-white/5 bg-[#161623] text-white px-2"><SelectValue /></SelectTrigger></FormControl><SelectContent className="bg-[#1e1e2e] border-white/5 text-white">{frpOptions.map(o => <SelectItem key={o} value={o} className="font-bold text-[10px]">{o}</SelectItem>)}</SelectContent></Select>
+                                        <FormLabel className="text-[9px] font-black uppercase text-muted-foreground ml-1">{activityLabels.frp}</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-10 text-[10px] font-bold rounded-lg border-border bg-muted text-foreground px-2"><SelectValue /></SelectTrigger></FormControl><SelectContent className="bg-popover border-border text-foreground">{frpOptions.map(o => <SelectItem key={o} value={o} className="font-bold text-[10px]">{o}</SelectItem>)}</SelectContent></Select>
                                     </FormItem>
                                 )} />
                             </div>
 
                             <FormField control={form.control} name="remark" render={({ field }) => (
                                 <FormItem className="space-y-2">
-                                    <FormLabel className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Call Remark</FormLabel>
-                                    <FormControl><Textarea placeholder="Type conversation notes..." className="min-h-[120px] resize-none rounded-xl border-white/5 bg-[#161623] text-white font-bold p-4" {...field} /></FormControl>
+                                    <FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Call Remark</FormLabel>
+                                    <FormControl><Textarea placeholder="Type conversation notes..." className="min-h-[120px] resize-none rounded-xl border-border bg-muted text-foreground font-bold p-4" {...field} /></FormControl>
                                 </FormItem>
                             )} />
                         </form>
                     </Form>
 
-                    <div className="pt-6 border-t border-white/5 space-y-4">
-                        <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-1">Progress Notes</Label>
+                    <div className="pt-6 border-t border-border space-y-4">
+                        <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground ml-1">Progress Notes</Label>
                         <Textarea 
                             value={generalRemarks} 
                             onChange={e => { setGeneralRemarks(e.target.value); setIsNotesDirty(true); }} 
-                            className="min-h-[140px] text-xs font-bold leading-relaxed p-4 border-none shadow-inner bg-[#161623] text-slate-300 rounded-[2rem]"
+                            className="min-h-[140px] text-xs font-bold leading-relaxed p-4 border-none shadow-inner bg-muted text-foreground/80 rounded-[2rem]"
                             placeholder="Add important journey insights..." 
                         />
                         <div className="flex justify-end">
@@ -712,19 +708,19 @@ const CallingSessionDialogComponent = ({
             )}
         </div>
 
-        <DialogFooter className="p-6 sm:p-8 border-t border-white/5 bg-[#1b1d32] flex flex-col sm:flex-row justify-between gap-4 shrink-0">
+        <DialogFooter className="p-6 sm:p-8 border-t border-border bg-card flex flex-col sm:flex-row justify-between gap-4 shrink-0">
            <div className="flex items-center gap-3">
               {!isDetour && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild><Button variant="destructive" className="h-12 px-6 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-red-500/10"><Trash2 className="mr-2 h-4 w-4"/> END SESSION</Button></AlertDialogTrigger>
-                  <AlertDialogContent className="bg-[#1e1e2e] border-white/10 text-white rounded-[2rem]">
-                    <AlertDialogHeader><AlertDialogTitle className="font-black uppercase">Finish outreach?</AlertDialogTitle><AlertDialogDescription className="text-slate-400 font-bold">Your progress is saved. You can always resume from Live Activity.</AlertDialogDescription></AlertDialogHeader>
-                    <AlertDialogFooter><AlertDialogCancel className="bg-white/5 border-white/10 text-white rounded-xl">Stay</AlertDialogCancel><AlertDialogAction onClick={onEndSession} className="bg-destructive rounded-xl font-black uppercase">End Now</AlertDialogAction></AlertDialogFooter>
+                  <AlertDialogContent className="bg-popover border-border text-foreground rounded-[2rem]">
+                    <AlertDialogHeader><AlertDialogTitle className="font-black uppercase">Finish outreach?</AlertDialogTitle><AlertDialogDescription className="text-muted-foreground font-bold">Your progress is saved. You can always resume from Live Activity.</AlertDialogDescription></AlertDialogHeader>
+                    <AlertDialogFooter><AlertDialogCancel className="bg-muted border-border text-foreground rounded-xl">Stay</AlertDialogCancel><AlertDialogAction onClick={onEndSession} className="bg-destructive rounded-xl font-black uppercase">End Now</AlertDialogAction></AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
               )}
               {!isCallbackSearchOpen && !isDetour && (
-                <Button variant="secondary" className="h-12 px-6 rounded-xl font-black uppercase text-[10px] tracking-widest bg-white/5 border-white/10 text-slate-400 hover:text-white" onClick={() => setIsCallbackSearchOpen(true)}>
+                <Button variant="secondary" className="h-12 px-6 rounded-xl font-black uppercase text-[10px] tracking-widest bg-muted/50 border-border text-muted-foreground hover:text-foreground" onClick={() => setIsCallbackSearchOpen(true)}>
                   <PhoneIncoming className="mr-2 h-4 w-4" /> CALLBACK?
                 </Button>
               )}
@@ -732,23 +728,23 @@ const CallingSessionDialogComponent = ({
            
            <div className="flex items-center gap-3">
                 {!isDetour && sessionTotalCount > 1 && (
-                  <div className="flex items-center bg-white/5 p-1 rounded-xl border border-white/10">
-                    <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-400 hover:text-white" onClick={() => handleNavigation('prev')} disabled={sessionCurrentNumber <= 1 || isNavigating}><ArrowLeft className="h-5 w-5"/></Button>
-                    <div className="px-2 text-[10px] font-black text-white/40">{sessionCurrentNumber} / {sessionTotalCount}</div>
-                    <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-400 hover:text-white" onClick={() => handleNavigation('next')} disabled={sessionCurrentNumber >= sessionTotalCount || isNavigating}><ArrowRight className="h-5 w-5"/></Button>
+                  <div className="flex items-center bg-muted/50 p-1 rounded-xl border border-border">
+                    <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-foreground" onClick={() => handleNavigation('prev')} disabled={sessionCurrentNumber <= 1 || isNavigating}><ArrowLeft className="h-5 w-5"/></Button>
+                    <div className="px-2 text-[10px] font-black text-foreground/40">{sessionCurrentNumber} / {sessionTotalCount}</div>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-foreground" onClick={() => handleNavigation('next')} disabled={sessionCurrentNumber >= sessionTotalCount || isNavigating}><ArrowRight className="h-5 w-5"/></Button>
                   </div>
                 )}
-                <Button form="call-form" type="submit" disabled={isSubmitting || isNavigating} className="min-w-[160px] h-12 rounded-xl bg-primary text-white font-black uppercase text-[10px] tracking-widest shadow-xl shadow-primary/20">
+                <Button form="call-form" type="submit" disabled={isSubmitting || isNavigating} className="min-w-[160px] h-12 rounded-xl bg-primary text-primary-foreground font-black uppercase text-[10px] tracking-widest shadow-xl shadow-primary/20">
                   {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : (isDetour ? 'LOG CALLBACK RESULT' : (sessionCurrentNumber < sessionTotalCount ? 'SAVE & NEXT' : 'FINISH OUTREACH'))}
                 </Button>
            </div>
         </DialogFooter>
 
         {isEditingDetails && (
-            <div className="absolute inset-0 z-50 bg-[#11121d] flex flex-col animate-in fade-in">
-                <div className="p-6 sm:p-8 flex items-center justify-between border-b border-white/5 bg-[#1b1d32]">
-                    <h3 className="font-black text-white uppercase tracking-tight">Edit Profile: {currentActivePerson.fullName}</h3>
-                    <Button variant="ghost" size="icon" onClick={() => setIsEditingDetails(false)} className="text-slate-400"><XCircle className="h-6 w-6" /></Button>
+            <div className="absolute inset-0 z-50 bg-background flex flex-col animate-in fade-in">
+                <div className="p-6 sm:p-8 flex items-center justify-between border-b border-border bg-card">
+                    <h3 className="font-black text-foreground uppercase tracking-tight">Edit Profile: {currentActivePerson.fullName}</h3>
+                    <Button variant="ghost" size="icon" onClick={() => setIsEditingDetails(false)} className="text-muted-foreground"><XCircle className="h-6 w-6" /></Button>
                 </div>
                 <div className="flex-1 overflow-y-auto p-6 sm:p-10">
                     <div className="max-w-xl mx-auto">
@@ -765,9 +761,9 @@ const CallingSessionDialogComponent = ({
                         />
                     </div>
                 </div>
-                <div className="p-8 border-t border-white/5 bg-[#1b1d32] flex justify-end gap-3">
-                    <Button variant="ghost" onClick={() => setIsEditingDetails(false)} className="font-bold text-slate-400 hover:text-white">Cancel</Button>
-                    <Button onClick={() => detailsFormRef.current?.submit()} className="bg-primary font-black uppercase px-8 h-12 rounded-xl shadow-lg">Save Profile</Button>
+                <div className="p-8 border-t border-border bg-card flex justify-end gap-3">
+                    <Button variant="ghost" onClick={() => setIsEditingDetails(false)} className="font-bold text-muted-foreground hover:text-foreground">Cancel</Button>
+                    <Button onClick={() => detailsFormRef.current?.submit()} className="bg-primary text-primary-foreground font-black uppercase px-8 h-12 rounded-xl shadow-lg">Save Profile</Button>
                 </div>
             </div>
         )}

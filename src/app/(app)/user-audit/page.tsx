@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Loader2, History, RefreshCw, User, ShieldCheck } from 'lucide-react';
+import { Loader2, RefreshCw, User, ShieldCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { getAudits, type AuditLog } from '@/services/audit-service';
 import { PageHeader } from '@/components/page-header';
@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 export default function UserAuditPage() {
   const [audits, setAudits] = React.useState<AuditLog[]>([]);
@@ -43,42 +44,42 @@ export default function UserAuditPage() {
         </Button>
       </PageHeader>
       <main className="flex-1 p-4 sm:p-6 sm:pt-0">
-        <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-[#1e1e2e]">
-          <CardHeader className="p-8 pb-4 bg-[#1b1d32] border-b border-white/5">
-            <CardTitle className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
+        <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-popover">
+          <CardHeader className="p-8 pb-4 bg-card border-b border-border">
+            <CardTitle className="text-xl font-black text-foreground uppercase tracking-tight flex items-center gap-3">
               <ShieldCheck className="h-6 w-6 text-primary" />
               Security Logs
             </CardTitle>
-            <CardDescription className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">
+            <CardDescription className="text-muted-foreground font-bold uppercase text-[10px] tracking-widest">
               Last 100 operations across the platform
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             <ScrollArea className="h-[calc(100vh-280px)]">
               <Table>
-                <TableHeader className="bg-white/5">
-                  <TableRow className="hover:bg-transparent border-white/5">
-                    <TableHead className="text-[10px] font-black uppercase text-slate-500 pl-8">Timestamp</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase text-slate-500">Operator</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase text-slate-500">Action</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase text-slate-500">Details</TableHead>
+                <TableHeader className="bg-muted/30">
+                  <TableRow className="hover:bg-transparent border-border">
+                    <TableHead className="text-[10px] font-black uppercase text-muted-foreground pl-8">Timestamp</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase text-muted-foreground">Operator</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase text-muted-foreground">Action</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase text-muted-foreground">Details</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
                     [...Array(10)].map((_, i) => (
-                      <TableRow key={i} className="border-white/5"><TableCell colSpan={4} className="h-12"><div className="h-4 w-full bg-white/5 animate-pulse rounded" /></TableCell></TableRow>
+                      <TableRow key={i} className="border-border"><TableCell colSpan={4} className="h-12"><div className="h-4 w-full bg-muted/20 animate-pulse rounded" /></TableCell></TableRow>
                     ))
                   ) : audits.length > 0 ? (
                     audits.map((log) => (
-                      <TableRow key={log.id} className="border-white/5 hover:bg-white/[0.02]">
-                        <TableCell className="pl-8 py-5 text-[11px] font-mono text-slate-400">
+                      <TableRow key={log.id} className="border-border hover:bg-muted/50">
+                        <TableCell className="pl-8 py-5 text-[11px] font-mono text-muted-foreground">
                           {format(new Date(log.timestamp), 'dd MMM, HH:mm:ss')}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <User className="h-3 w-3 text-slate-600" />
-                            <span className="text-xs font-black text-white uppercase truncate max-w-[120px]">{log.userName}</span>
+                            <User className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs font-black text-foreground uppercase truncate max-w-[120px]">{log.userName}</span>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -86,13 +87,13 @@ export default function UserAuditPage() {
                             {log.action}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-xs font-medium text-slate-300 pr-8">
+                        <TableCell className="text-xs font-medium text-foreground/80 pr-8">
                           {log.details}
                         </TableCell>
                       </TableRow>
                     ))
                   ) : (
-                    <TableRow><TableCell colSpan={4} className="h-32 text-center text-slate-500 font-bold uppercase tracking-widest text-xs">No audit records found.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={4} className="h-32 text-center text-muted-foreground font-bold uppercase tracking-widest text-xs">No audit records found.</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
@@ -103,5 +104,3 @@ export default function UserAuditPage() {
     </>
   );
 }
-
-import { cn } from '@/lib/utils';

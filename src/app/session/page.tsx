@@ -21,7 +21,6 @@ import {
   BellRing, 
   PhoneIncoming, 
   User,
-  MessageSquare,
   BadgeCheck,
   ChevronLeft,
   ChevronRight,
@@ -519,22 +518,22 @@ export default function SessionPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-[#11121d] overflow-hidden">
-      <header className="flex-shrink-0 border-b border-white/5 bg-[#1e1e2e] px-4 py-2 sm:py-4 z-10 shadow-sm overflow-hidden">
+    <div className="flex h-screen flex-col bg-background overflow-hidden">
+      <header className="flex-shrink-0 border-b border-border bg-popover px-4 py-2 sm:py-4 z-10 shadow-sm overflow-hidden">
         <div className="flex items-center justify-between gap-2 max-w-full">
           <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-            <button onClick={() => handleEndSession(false)} className="h-8 w-8 sm:h-9 sm:w-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
+            <button onClick={() => handleEndSession(false)} className="h-8 w-8 sm:h-9 sm:w-9 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
               <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </button>
             <div className="min-w-0">
-              <h1 className="text-[10px] sm:text-xl font-black tracking-tight text-white flex items-center gap-1.5 truncate uppercase">
+              <h1 className="text-[10px] sm:text-xl font-black tracking-tight text-foreground flex items-center gap-1.5 truncate uppercase">
                 {isCallbackSearchOpen ? 'Detour' : 'Outreach Center'}
               </h1>
-              <div className="text-[8px] sm:text-xs text-slate-500 flex items-center gap-1 sm:gap-2 mt-0.5 truncate uppercase font-bold tracking-widest">
+              <div className="text-[8px] sm:text-xs text-muted-foreground flex items-center gap-1 sm:gap-2 mt-0.5 truncate uppercase font-bold tracking-widest">
                 <span className="text-primary truncate max-w-[60px] sm:max-w-none">{sessionEvent}</span>
                 {!selectedCallbackPerson && (
                   <>
-                    <Separator orientation="vertical" className="h-2.5 bg-white/10" />
+                    <Separator orientation="vertical" className="h-2.5 bg-border" />
                     <div className="flex items-center gap-1 whitespace-nowrap">
                       <span className="hidden xs:inline">Row</span>
                       <form onSubmit={handleJump} className="flex items-center gap-1">
@@ -542,7 +541,7 @@ export default function SessionPage() {
                           value={jumpIndex} 
                           onChange={e => setJumpIndex(e.target.value)} 
                           onBlur={() => setJumpIndex(String(currentIndex + 1))}
-                          className="h-4 sm:h-6 w-8 sm:w-12 px-1 text-center text-[8px] sm:text-xs font-black bg-white/5 border-white/10 text-white"
+                          className="h-4 sm:h-6 w-8 sm:w-12 px-1 text-center text-[8px] sm:text-xs font-black bg-muted/50 border-border text-foreground"
                         />
                       </form>
                       <span className="hidden xs:inline">of {people.length}</span>
@@ -553,7 +552,7 @@ export default function SessionPage() {
             </div>
           </div>
           <div className="flex items-center gap-1 sm:gap-3 shrink-0">
-            <Badge variant="outline" className="hidden sm:flex h-9 px-3 gap-2 border-white/10 text-white bg-white/5 rounded-xl font-mono">
+            <Badge variant="outline" className="hidden sm:flex h-9 px-3 gap-2 border-border text-foreground bg-muted/50 rounded-xl font-mono">
                 <Activity className="h-3 w-3 text-primary animate-pulse" />
                 Session: {formatDuration(sessionDuration)}
             </Badge>
@@ -564,7 +563,7 @@ export default function SessionPage() {
               </Badge>
             )}
             {!selectedCallbackPerson && !isCallbackSearchOpen && (
-              <Button variant="outline" size="sm" onClick={() => setIsCallbackSearchOpen(true)} className="h-7 sm:h-9 px-1.5 sm:px-3 text-[8px] sm:text-[10px] font-black uppercase tracking-widest border-white/10 text-slate-400 bg-white/5 hover:text-white">
+              <Button variant="outline" size="sm" onClick={() => setIsCallbackSearchOpen(true)} className="h-7 sm:h-9 px-1.5 sm:px-3 text-[8px] sm:text-[10px] font-black uppercase tracking-widest border-border text-muted-foreground bg-muted/50 hover:text-foreground">
                 <PhoneIncoming className="sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Detour</span>
               </Button>
             )}
@@ -574,13 +573,13 @@ export default function SessionPage() {
                   <Trash2 className="sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">End</span>
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent className="bg-[#1e1e2e] border-white/10 text-white rounded-[2rem]">
+              <AlertDialogContent className="bg-popover border-border text-foreground rounded-[2rem]">
                 <AlertDialogHeader>
                   <AlertDialogTitle className="font-black uppercase tracking-tight">End Session?</AlertDialogTitle>
-                  <AlertDialogDescription className="text-slate-400 font-bold">Progress will be finalized and cleared from live dashboards.</AlertDialogDescription>
+                  <AlertDialogDescription className="text-muted-foreground font-bold">Progress will be finalized and cleared from live dashboards.</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel className="bg-white/5 border-white/10 text-white rounded-xl font-bold">Stay</AlertDialogCancel>
+                  <AlertDialogCancel className="bg-muted/50 border-border text-foreground rounded-xl font-bold">Stay</AlertDialogCancel>
                   <AlertDialogAction onClick={() => handleEndSession(true)} className="bg-destructive hover:bg-destructive/90 rounded-xl font-black uppercase tracking-widest">End Now</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -589,7 +588,7 @@ export default function SessionPage() {
         </div>
       </header>
 
-      <main className="flex-1 min-0 bg-[#11121d] overflow-y-auto">
+      <main className="flex-1 min-0 bg-background overflow-y-auto">
         {isCallbackSearchOpen && !selectedCallbackPerson ? (
           <div className="h-full flex flex-col items-center justify-center p-4 sm:p-8">
             <div className="max-w-md w-full space-y-8 text-center">
@@ -597,16 +596,16 @@ export default function SessionPage() {
                 <PhoneIncoming className="h-10 w-10 sm:h-16 sm:w-16 text-primary" />
               </div>
               <div className="space-y-2">
-                <h3 className="text-xl sm:text-3xl font-black text-white uppercase tracking-tight">Logging a Detour</h3>
-                <p className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-[0.2em]">Find the contact by phone to record their milestone.</p>
+                <h3 className="text-xl sm:text-3xl font-black text-foreground uppercase tracking-tight">Logging a Detour</h3>
+                <p className="text-[10px] sm:text-xs text-muted-foreground font-bold uppercase tracking-[0.2em]">Find the contact by phone to record their milestone.</p>
               </div>
-              <div className="flex gap-2 p-1 bg-[#1e1e2e] rounded-2xl border border-white/5 shadow-2xl">
+              <div className="flex gap-2 p-1 bg-popover rounded-2xl border border-border shadow-2xl">
                 <Input 
                   placeholder="10-digit number..." 
                   value={callbackSearchQuery}
                   onChange={e => setCallbackSearchQuery(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleSearchCallback()}
-                  className="h-12 sm:h-14 text-base sm:text-xl font-black border-none bg-transparent text-white px-5"
+                  className="h-12 sm:h-14 text-base sm:text-xl font-black border-none bg-transparent text-foreground px-5"
                 />
                 <Button className="h-12 sm:h-14 px-6 sm:px-10 rounded-xl font-black uppercase tracking-widest shadow-xl" onClick={handleSearchCallback} disabled={isSearchingCallback}>
                   {isSearchingCallback ? <Loader2 className="animate-spin h-5 w-5" /> : 'Find'}
@@ -614,54 +613,54 @@ export default function SessionPage() {
               </div>
               <div className="space-y-3 mt-8">
                 {callbackResults.map(p => (
-                  <Button key={p.id} variant="outline" className="w-full h-16 sm:h-20 justify-between p-4 sm:p-5 rounded-2xl bg-[#1e1e2e] border-white/5 hover:bg-white/5 transition-all text-white group" onClick={() => setSelectedCallbackPerson(p)}>
+                  <Button key={p.id} variant="outline" className="w-full h-16 sm:h-20 justify-between p-4 sm:p-5 rounded-2xl bg-popover border-border hover:bg-muted transition-all text-foreground group" onClick={() => setSelectedCallbackPerson(p)}>
                     <div className="flex items-center gap-4">
-                      <Avatar className="h-10 w-10 sm:h-12 sm:w-12 border-2 border-primary/20"><AvatarImage src={p.photoUrl} /><AvatarFallback className="bg-slate-800"><User /></AvatarFallback></Avatar>
+                      <Avatar className="h-10 w-10 sm:h-12 sm:w-12 border-2 border-primary/20"><AvatarImage src={p.photoUrl} /><AvatarFallback className="bg-muted"><User /></AvatarFallback></Avatar>
                       <div className="text-left overflow-hidden">
                         <p className="text-sm sm:text-base font-black truncate">{p.fullName}</p>
-                        <p className="text-[10px] sm:text-xs text-slate-500 font-bold mt-0.5 tracking-wider">{p.phone}</p>
+                        <p className="text-[10px] sm:text-xs text-muted-foreground font-bold mt-0.5 tracking-wider">{p.phone}</p>
                       </div>
                     </div>
                     <ArrowRight className="h-5 w-5 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
                   </Button>
                 ))}
               </div>
-              <Button variant="ghost" className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 hover:text-white" onClick={() => setIsCallbackSearchOpen(false)}>Cancel & Return</Button>
+              <Button variant="ghost" className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground" onClick={() => setIsCallbackSearchOpen(false)}>Cancel & Return</Button>
             </div>
           </div>
         ) : currentActivePerson ? (
           <div className="h-full flex flex-col lg:grid lg:grid-cols-12 relative">
             {isFinishing && (
-                <div className="fixed inset-0 z-[200] bg-[#11121d]/90 backdrop-blur-md flex flex-col items-center justify-center space-y-6">
+                <div className="fixed inset-0 z-[200] bg-background/90 backdrop-blur-md flex flex-col items-center justify-center space-y-6">
                     <Loader2 className="h-16 w-16 animate-spin text-primary opacity-50" />
                     <div className="text-center space-y-2">
-                        <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Cleaning Up</h3>
-                        <p className="text-xs text-slate-500 font-bold uppercase tracking-[0.3em]">Finalizing logs & clearing live trackers...</p>
+                        <h3 className="text-2xl font-black text-foreground uppercase tracking-tighter">Cleaning Up</h3>
+                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-[0.3em]">Finalizing logs & clearing live trackers...</p>
                     </div>
                 </div>
             )}
-            <div className="lg:col-span-4 border-r border-white/5 bg-[#1e1e2e]/30 flex flex-col min-h-0">
+            <div className="lg:col-span-4 border-r border-border bg-popover/30 flex flex-col min-h-0">
               <ScrollArea className="flex-1">
                 <div className="p-4 sm:p-8 space-y-8 sm:space-y-10 pb-32 sm:pb-8">
                   <div className="flex flex-col items-center text-center">
                     <Avatar className="h-24 w-24 sm:h-40 sm:w-40 border-4 border-primary/20 mb-4 shadow-2xl rounded-[2.5rem]">
                       <AvatarImage src={currentActivePerson.photoUrl} className="object-cover" />
-                      <AvatarFallback className="text-2xl sm:text-5xl font-black bg-[#161623]">{currentActivePerson.fullName.charAt(0)}</AvatarFallback>
+                      <AvatarFallback className="text-2xl sm:text-5xl font-black bg-muted">{currentActivePerson.fullName.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div className="flex items-center justify-center gap-2 max-w-full px-2">
-                      <h2 className="text-xl sm:text-3xl font-black text-white tracking-tighter truncate leading-none uppercase">{currentActivePerson.fullName}</h2>
+                      <h2 className="text-xl sm:text-3xl font-black text-foreground tracking-tighter truncate leading-none uppercase">{currentActivePerson.fullName}</h2>
                       {currentActivePerson.verifiedByFg === 'Yes' && <BadgeCheck className="h-5 w-5 sm:h-6 sm:w-6 text-blue-500 shrink-0" />}
                     </div>
-                    <p className="text-[10px] sm:text-base text-slate-500 font-black tracking-widest mt-1.5">{currentActivePerson.phone}</p>
+                    <p className="text-[10px] sm:text-base text-muted-foreground font-black tracking-widest mt-1.5">{currentActivePerson.phone}</p>
                     <div className="mt-4 flex flex-wrap justify-center gap-2">
                       <Badge className="bg-primary/10 text-primary border-primary/20 text-[9px] font-black uppercase tracking-widest py-1.5 px-4 rounded-full">{currentActivePerson.currentFolkStage}</Badge>
-                      <Badge variant="outline" className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest border-white/10 text-slate-400 py-1.5 px-4 rounded-full">{currentActivePerson.age} Years</Badge>
+                      <Badge variant="outline" className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest border-border text-muted-foreground py-1.5 px-4 rounded-full">{currentActivePerson.age} Years</Badge>
                     </div>
                   </div>
 
                   <div className="space-y-6">
                     <div className="flex items-center justify-between px-1">
-                      <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Log Interaction</h3>
+                      <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Log Interaction</h3>
                       <div className="flex gap-2">
                         <Button size="sm" className="h-10 px-4 sm:px-6 font-black uppercase text-[10px] tracking-widest rounded-xl shadow-xl shadow-primary/20" onClick={handleMakeCall}>Call</Button>
                         <Button asChild size="sm" variant="outline" className="h-10 px-4 sm:px-6 font-black uppercase text-[10px] tracking-widest rounded-xl border-green-500/20 text-green-500 hover:bg-green-500/10">
@@ -674,14 +673,14 @@ export default function SessionPage() {
                       <form id="call-form" onSubmit={form.handleSubmit(onCallSubmit)} className="space-y-5">
                       <FormField control={form.control} name="status" render={({ field }) => (
                         <FormItem className="space-y-2">
-                          <FormLabel className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Call Status</FormLabel>
+                          <FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Call Status</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
-                              <SelectTrigger className="h-12 sm:h-14 rounded-xl border-white/5 bg-[#161623] text-white font-black text-sm uppercase tracking-tight focus:ring-primary">
+                              <SelectTrigger className="h-12 sm:h-14 rounded-xl border-border bg-muted text-foreground font-black text-sm uppercase tracking-tight focus:ring-primary">
                                 <SelectValue placeholder="Select outcome..." />
                               </SelectTrigger>
                             </FormControl>
-                            <SelectContent className="bg-[#1e1e2e] border-white/10 text-white">
+                            <SelectContent className="bg-popover border-border text-foreground">
                               {callStatuses.map(s => (
                                 <SelectItem key={s} value={s} className="font-bold text-[11px] py-3">{s}</SelectItem>
                               ))}
@@ -693,44 +692,44 @@ export default function SessionPage() {
                         <div className="grid grid-cols-3 gap-2">
                           <FormField control={form.control} name="sg" render={({ field }) => (
                             <FormItem className="space-y-1.5">
-                              <FormLabel className="text-[9px] font-black uppercase text-slate-600 truncate tracking-widest ml-1">{activityLabels.sg}</FormLabel>
+                              <FormLabel className="text-[9px] font-black uppercase text-muted-foreground truncate tracking-widest ml-1">{activityLabels.sg}</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl><SelectTrigger className="h-10 text-[10px] font-bold rounded-lg border-white/5 bg-[#161623] text-white px-2"><SelectValue/></SelectTrigger></FormControl>
-                                <SelectContent className="bg-[#1e1e2e] border-white/10 text-white">{sgOptions.map(o => <SelectItem key={o} value={o} className="font-bold text-xs">{o}</SelectItem>)}</SelectContent>
+                                <FormControl><SelectTrigger className="h-10 text-[10px] font-bold rounded-lg border-border bg-muted text-foreground px-2"><SelectValue/></SelectTrigger></FormControl>
+                                <SelectContent className="bg-popover border-border text-foreground">{sgOptions.map(o => <SelectItem key={o} value={o} className="font-bold text-xs">{o}</SelectItem>)}</SelectContent>
                               </Select>
                             </FormItem>
                           )} />
 
                           <FormField control={form.control} name="ma" render={({ field }) => (
                             <FormItem className="space-y-1.5">
-                              <FormLabel className="text-[9px] font-black uppercase text-slate-600 truncate tracking-widest ml-1">{activityLabels.ma}</FormLabel>
+                              <FormLabel className="text-[9px] font-black uppercase text-muted-foreground truncate tracking-widest ml-1">{activityLabels.ma}</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl><SelectTrigger className="h-10 text-[10px] font-bold rounded-lg border-white/5 bg-[#161623] text-white px-2"><SelectValue/></SelectTrigger></FormControl>
-                                <SelectContent className="bg-[#1e1e2e] border-white/10 text-white">{maOptions.map(o => <SelectItem key={o} value={o} className="font-bold text-xs">{o}</SelectItem>)}</SelectContent>
+                                <FormControl><SelectTrigger className="h-10 text-[10px] font-bold rounded-lg border-border bg-muted text-foreground px-2"><SelectValue/></SelectTrigger></FormControl>
+                                <SelectContent className="bg-popover border-border text-foreground">{maOptions.map(o => <SelectItem key={o} value={o} className="font-bold text-xs">{o}</SelectItem>)}</SelectContent>
                               </Select>
                             </FormItem>
                           )} />
 
                           <FormField control={form.control} name="frp" render={({ field }) => (
                             <FormItem className="space-y-1.5">
-                              <FormLabel className="text-[9px] font-black uppercase text-slate-600 truncate tracking-widest ml-1">{activityLabels.frp}</FormLabel>
+                              <FormLabel className="text-[9px] font-black uppercase text-muted-foreground truncate tracking-widest ml-1">{activityLabels.frp}</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl><SelectTrigger className="h-10 text-[10px] font-bold rounded-lg border-white/5 bg-[#161623] text-white px-2"><SelectValue/></SelectTrigger></FormControl>
-                                <SelectContent className="bg-[#1e1e2e] border-white/10 text-white">{frpOptions.map(o => <SelectItem key={o} value={o} className="font-bold text-xs">{o}</SelectItem>)}</SelectContent>
+                                <FormControl><SelectTrigger className="h-10 text-[10px] font-bold rounded-lg border-border bg-muted text-foreground px-2"><SelectValue/></SelectTrigger></FormControl>
+                                <SelectContent className="bg-popover border-border text-foreground">{frpOptions.map(o => <SelectItem key={o} value={o} className="font-bold text-xs">{o}</SelectItem>)}</SelectContent>
                               </Select>
                             </FormItem>
                           )} />
                         </div>
                         <FormField control={form.control} name="nextFollowUpAt" render={({ field }) => (
                           <FormItem className="space-y-2">
-                             <FormLabel className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1 flex items-center gap-2"><BellRing className="h-3 w-3 text-[#FF9800]" /> Follow-up Schedule</FormLabel>
+                             <FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1 flex items-center gap-2"><BellRing className="h-3 w-3 text-[#FF9800]" /> Follow-up Schedule</FormLabel>
                              <Popover>
                                 <PopoverTrigger asChild>
                                     <FormControl>
                                         <Button
                                             variant={"outline"}
                                             className={cn(
-                                                "w-full h-12 rounded-xl border-white/5 bg-[#161623] text-white font-bold px-5 text-left justify-start",
+                                                "w-full h-12 rounded-xl border-border bg-muted text-foreground font-bold px-5 text-left justify-start",
                                                 !field.value && "text-muted-foreground"
                                             )}
                                         >
@@ -739,7 +738,7 @@ export default function SessionPage() {
                                         </Button>
                                     </FormControl>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0 border-none shadow-2xl bg-[#1e1e2e]" align="start">
+                                <PopoverContent className="w-auto p-0 border-none shadow-2xl bg-popover" align="start">
                                     <div className="p-4 space-y-4">
                                         <Calendar
                                             mode="single"
@@ -754,8 +753,8 @@ export default function SessionPage() {
                                             }}
                                             initialFocus
                                         />
-                                        <div className="p-3 border-t border-white/5 flex flex-col gap-3">
-                                            <Label className="text-[10px] font-black uppercase text-slate-500">Pick Time</Label>
+                                        <div className="p-3 border-t border-border flex flex-col gap-3">
+                                            <Label className="text-[10px] font-black uppercase text-muted-foreground">Pick Time</Label>
                                             <div className="flex items-center gap-2">
                                                 <Select
                                                   value={field.value ? format(new Date(field.value), "HH") : "10"}
@@ -765,14 +764,14 @@ export default function SessionPage() {
                                                       field.onChange(date.toISOString());
                                                   }}
                                                 >
-                                                  <SelectTrigger className="h-9 bg-[#161623] border-white/5 text-white"><SelectValue/></SelectTrigger>
-                                                  <SelectContent className="bg-[#1e1e2e] text-white">
+                                                  <SelectTrigger className="h-9 bg-muted border-border text-foreground"><SelectValue/></SelectTrigger>
+                                                  <SelectContent className="bg-popover text-foreground">
                                                       {Array.from({length: 24}, (_, i) => i.toString().padStart(2, '0')).map(h => (
                                                           <SelectItem key={h} value={h}>{h}</SelectItem>
                                                       ))}
                                                   </SelectContent>
                                                 </Select>
-                                                <span className="text-white font-black">:</span>
+                                                <span className="text-foreground font-black">:</span>
                                                 <Select
                                                   value={field.value ? format(new Date(field.value), "mm") : "00"}
                                                   onValueChange={(m) => {
@@ -781,8 +780,8 @@ export default function SessionPage() {
                                                       field.onChange(date.toISOString());
                                                   }}
                                                 >
-                                                  <SelectTrigger className="h-9 bg-[#161623] border-white/5 text-white"><SelectValue/></SelectTrigger>
-                                                  <SelectContent className="bg-[#1e1e2e] text-white">
+                                                  <SelectTrigger className="h-9 bg-muted border-border text-foreground"><SelectValue/></SelectTrigger>
+                                                  <SelectContent className="bg-popover text-foreground">
                                                       {["00", "15", "30", "45"].map(m => (
                                                           <SelectItem key={m} value={m}>{m}</SelectItem>
                                                       ))}
@@ -796,7 +795,7 @@ export default function SessionPage() {
                           </FormItem>
                         )} />
                         <FormField control={form.control} name="remark" render={({ field }) => (
-                          <FormItem className="space-y-2"><FormLabel className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Call Remark</FormLabel><FormControl><Textarea placeholder="Interaction notes..." className="min-h-[100px] resize-none rounded-xl border-white/5 bg-[#161623] text-white font-bold p-5" {...field} /></FormControl></FormItem>
+                          <FormItem className="space-y-2"><FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Call Remark</FormLabel><FormControl><Textarea placeholder="Interaction notes..." className="min-h-[100px] resize-none rounded-xl border-border bg-muted text-foreground font-bold p-5" {...field} /></FormControl></FormItem>
                         )} />
                       </form>
                     </Form>
@@ -815,25 +814,25 @@ export default function SessionPage() {
               </ScrollArea>
             </div>
 
-            <div className="lg:col-span-8 flex flex-col min-h-0 flex-1 bg-[#11121d]">
-              <div className="flex-shrink-0 flex items-center justify-between px-4 sm:px-10 py-3 sm:py-6 border-b border-white/5 bg-[#1e1e2e]/50 backdrop-blur-xl">
+            <div className="lg:col-span-8 flex flex-col min-h-0 flex-1 bg-background">
+              <div className="flex-shrink-0 flex items-center justify-between px-4 sm:px-10 py-3 sm:py-6 border-b border-border bg-popover/50 backdrop-blur-xl">
                 <div className="flex items-center gap-3 sm:gap-6 min-w-0">
-                  <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-[0.3em] text-slate-500 truncate">Journey Overview</h3>
-                  <Badge variant="outline" className="h-6 text-[8px] sm:text-[9px] font-black uppercase tracking-widest px-3 border-white/10 text-slate-400 bg-white/5">
+                  <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-[0.3em] text-muted-foreground truncate">Journey Overview</h3>
+                  <Badge variant="outline" className="h-6 text-[8px] sm:text-[9px] font-black uppercase tracking-widest px-3 border-border text-muted-foreground bg-muted/50">
                     {currentPersonGroups.length} Active Lists
                   </Badge>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {isEditingDetails ? (
                     <>
-                      <Button variant="ghost" size="sm" onClick={() => setIsEditingDetails(false)} className="h-9 px-4 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white"><XCircle className="h-4 w-4 mr-2" /> Cancel</Button>
+                      <Button variant="ghost" size="sm" onClick={() => setIsEditingDetails(false)} className="h-9 px-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground"><XCircle className="h-4 w-4 mr-2" /> Cancel</Button>
                       <Button size="sm" onClick={() => detailsFormRef.current?.submit()} disabled={isSubmitting} className="h-10 px-6 text-[10px] font-black uppercase tracking-widest bg-primary shadow-lg shadow-primary/20 rounded-xl">
                         {isSubmitting ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4 mr-2" />}
                         Apply
                       </Button>
                     </>
                   ) : (
-                    <Button variant="outline" size="sm" onClick={() => setIsEditingDetails(true)} className="h-10 px-6 text-[10px] font-black uppercase tracking-widest border-white/10 text-white bg-white/5 hover:bg-white/10 rounded-xl">
+                    <Button variant="outline" size="sm" onClick={() => setIsEditingDetails(true)} className="h-10 px-6 text-[10px] font-black uppercase tracking-widest border-border text-foreground bg-muted/50 hover:bg-muted rounded-xl">
                       <Edit className="h-4 w-4 mr-2" /> Edit
                     </Button>
                   )}
@@ -843,7 +842,7 @@ export default function SessionPage() {
               <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
                 <ScrollArea className="flex-1">
                   <div className="flex flex-col xl:grid xl:grid-cols-2 min-h-0">
-                    <div className="border-b xl:border-b-0 xl:border-r border-white/5 p-4 sm:p-10 bg-[#161623]/30 overflow-hidden">
+                    <div className="border-b xl:border-b-0 xl:border-r border-border p-4 sm:p-10 bg-muted/30 overflow-hidden">
                       <EditablePersonDetailsForm 
                         ref={detailsFormRef}
                         person={currentActivePerson}
@@ -856,14 +855,14 @@ export default function SessionPage() {
                       />
                     </div>
 
-                    <div className="p-4 sm:p-10 space-y-6 bg-[#11121d] relative pb-40 xl:pb-10">
+                    <div className="p-4 sm:p-10 space-y-6 bg-background relative pb-40 xl:pb-10">
                       <div className="space-y-4">
-                        <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-1">Spiritual Insights</Label>
+                        <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground ml-1">Spiritual Insights</Label>
                         <div className="relative group">
                             <Textarea 
                               value={generalRemarks} 
                               onChange={e => { setGeneralRemarks(e.target.value); setIsNotesDirty(true); }}
-                              className="min-h-[250px] sm:min-h-[500px] text-sm sm:text-lg font-bold leading-relaxed p-6 sm:p-10 border-none shadow-2xl bg-[#161623] text-slate-300 focus-visible:ring-1 focus-visible:ring-primary rounded-[2rem]"
+                              className="min-h-[250px] sm:min-h-[500px] text-sm sm:text-lg font-bold leading-relaxed p-6 sm:p-10 border-none shadow-2xl bg-muted text-foreground focus-visible:ring-1 focus-visible:ring-primary rounded-[2rem]"
                               placeholder="Track their spiritual progress here..."
                             />
                             {isNotesDirty && (
@@ -887,12 +886,12 @@ export default function SessionPage() {
                   </div>
                 </ScrollArea>
 
-                <div className="hidden lg:block absolute bottom-0 left-0 right-0 p-8 border-t border-white/5 bg-[#1e1e2e]/95 backdrop-blur-xl z-20">
+                <div className="hidden lg:block absolute bottom-0 left-0 right-0 p-8 border-t border-border bg-popover/95 backdrop-blur-xl z-20">
                   <div className="mx-auto max-w-2xl flex items-center justify-between gap-6">
                     <div className="flex items-center gap-3">
                       <Button 
                         variant="outline" 
-                        className="h-14 w-14 rounded-2xl border-white/10 bg-white/5 text-white hover:bg-white/10"
+                        className="h-14 w-14 rounded-2xl border-border bg-muted/50 text-foreground hover:bg-muted"
                         onClick={() => {
                             const newIdx = Math.max(0, currentIndex - 1);
                             setCurrentIndex(newIdx);
@@ -904,7 +903,7 @@ export default function SessionPage() {
                       </Button>
                       <Button 
                         variant="outline" 
-                        className="h-14 w-14 rounded-2xl border-white/10 bg-white/5 text-white hover:bg-white/10"
+                        className="h-14 w-14 rounded-2xl border-border bg-muted/50 text-foreground hover:bg-muted"
                         onClick={() => {
                             const newIdx = Math.min(people.length - 1, currentIndex + 1);
                             setCurrentIndex(newIdx);
@@ -934,23 +933,23 @@ export default function SessionPage() {
             </div>
           </div>
         ) : (
-          <div className="h-full flex items-center justify-center p-8 bg-[#11121d]">
+          <div className="h-full flex items-center justify-center p-8 bg-background">
             <div className="text-center space-y-6">
-                <div className="bg-[#1e1e2e] p-8 rounded-[3rem] w-fit mx-auto shadow-2xl border border-white/5">
-                    <User className="h-16 w-16 text-slate-500 opacity-20" />
+                <div className="bg-popover p-8 rounded-[3rem] w-fit mx-auto shadow-2xl border border-border">
+                    <User className="h-16 w-16 text-muted-foreground opacity-20" />
                 </div>
                 <div className="space-y-1">
-                    <p className="text-white text-lg font-black uppercase tracking-tight">Queue Empty</p>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">No session data loaded.</p>
+                    <p className="text-foreground text-lg font-black uppercase tracking-tight">Queue Empty</p>
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">No session data loaded.</p>
                 </div>
-                <Button variant="outline" onClick={() => router.push('/dashboard/')} className="rounded-xl border-white/10 text-white font-black uppercase text-[10px] tracking-widest px-8">Back to Dashboard</Button>
+                <Button variant="outline" onClick={() => router.push('/dashboard/')} className="rounded-xl border-border text-foreground font-black uppercase text-[10px] tracking-widest px-8">Back to Dashboard</Button>
             </div>
           </div>
         )}
       </main>
 
       {!isCallbackSearchOpen && (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 p-3 sm:p-5 border-t border-white/5 bg-[#1e1e2e]/95 backdrop-blur-xl z-[100] shadow-2xl">
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 p-3 sm:p-5 border-t border-border bg-popover/95 backdrop-blur-xl z-[100] shadow-2xl">
           <div className="max-w-md mx-auto flex items-center justify-between gap-3">
             {!selectedCallbackPerson ? (
               <>
@@ -958,7 +957,7 @@ export default function SessionPage() {
                   <Button 
                     variant="outline" 
                     size="icon"
-                    className="h-12 w-12 rounded-xl border-white/10 bg-white/5 text-white"
+                    className="h-12 w-12 rounded-xl border-border bg-muted/50 text-foreground"
                     onClick={() => {
                         const newIdx = Math.max(0, currentIndex - 1);
                         setCurrentIndex(newIdx);
@@ -971,7 +970,7 @@ export default function SessionPage() {
                   <Button 
                     variant="outline" 
                     size="icon" 
-                    className="h-12 w-12 rounded-xl border-white/10 bg-white/5 text-white"
+                    className="h-12 w-12 rounded-xl border-border bg-muted/50 text-foreground"
                     onClick={() => {
                         const newIdx = Math.min(people.length - 1, currentIndex + 1);
                         setCurrentIndex(newIdx);

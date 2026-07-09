@@ -6,10 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRouter } from 'next/navigation';
 
-/**
- * Robust global error boundary.
- * Optimized to handle common reference errors and provide a clear recovery path.
- */
 export default function Error({
   error,
   reset,
@@ -21,34 +17,33 @@ export default function Error({
 
   React.useEffect(() => {
     if (error) {
-        // Safe logging that won't trigger reference errors
         const msg = error.message || 'Unknown application error';
         console.error('Next.js Runtime Error:', msg, error);
     }
   }, [error]);
 
   return (
-    <div className="min-h-screen bg-[#11121d] flex flex-col items-center justify-center p-4">
-      <Card className="max-w-md w-full bg-[#1e1e2e] border-none rounded-[3rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-500">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+      <Card className="max-w-md w-full bg-popover border-none rounded-[3rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-500">
         <CardHeader className="pt-12 pb-4 text-center space-y-4">
           <div className="mx-auto bg-destructive/10 p-6 rounded-full w-fit border border-destructive/20">
             <AlertTriangle className="h-12 w-12 text-destructive" />
           </div>
           <div className="space-y-2">
-            <CardTitle className="text-3xl font-black text-white tracking-tight leading-none uppercase">
+            <CardTitle className="text-3xl font-black text-foreground tracking-tight leading-none uppercase">
               Oops! 🚧
             </CardTitle>
-            <CardDescription className="text-sm font-bold text-slate-400 px-6">
+            <CardDescription className="text-sm font-bold text-muted-foreground px-6">
               A temporary runtime exception occurred. Your outreach data is safe in the cloud.
             </CardDescription>
           </div>
         </CardHeader>
         <CardContent className="p-10 pt-4 text-center space-y-8">
-          <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-2">
+          <div className="p-4 rounded-2xl bg-muted/30 border border-border space-y-2">
             <div className="flex items-center justify-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest">
                 <ShieldAlert className="h-3 w-3" /> System Notice
             </div>
-            <p className="text-xs text-slate-300 font-medium leading-relaxed">
+            <p className="text-xs text-foreground/80 font-medium leading-relaxed">
               Please try refreshing. If this persists, the database may be busy syncing your large contact list.
             </p>
           </div>
@@ -63,7 +58,7 @@ export default function Error({
             <Button 
               variant="ghost" 
               onClick={() => router.push('/dashboard')} 
-              className="w-full h-12 font-bold text-slate-500 hover:text-white"
+              className="w-full h-12 font-bold text-muted-foreground hover:text-foreground"
             >
               <Home className="mr-2 h-4 w-4" /> Return to Dashboard
             </Button>

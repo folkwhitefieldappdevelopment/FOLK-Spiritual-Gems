@@ -28,7 +28,7 @@ export function SplashManager({ children }: { children: React.ReactNode }) {
               <Image src="https://picsum.photos/seed/gems/200/200" alt="Logo" fill className="object-cover" />
             </div>
             <h1 className="text-white text-2xl font-black tracking-tighter uppercase">FOLK GEMS</h1>
-            <p className="text-primary text-[10px] font-black tracking-[0.4em] mt-2">OFFLINE READY</p>
+            <p className="text-[#929DD8] text-[10px] font-black tracking-[0.4em] mt-2">OFFLINE READY</p>
           </div>
         </div>
       )}

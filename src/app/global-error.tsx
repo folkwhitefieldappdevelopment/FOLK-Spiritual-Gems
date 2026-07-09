@@ -5,7 +5,6 @@ import { AlertTriangle, RefreshCw, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function GlobalError({
-  error,
   reset,
 }: {
   error: Error & { digest?: string };
@@ -14,26 +13,26 @@ export default function GlobalError({
   return (
     <html>
       <body className="font-sans antialiased">
-        <div className="min-h-screen bg-[#11121d] flex flex-col items-center justify-center p-4">
-          <div className="max-w-md w-full bg-[#1e1e2e] rounded-[3rem] p-10 text-center shadow-2xl space-y-8 border-none">
-            <div className="mx-auto bg-destructive/10 p-6 rounded-full w-fit border border-destructive/20 animate-bounce-subtle">
+        <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+          <div className="max-w-md w-full bg-popover rounded-[3rem] p-10 text-center shadow-2xl space-y-8 border-none">
+            <div className="mx-auto bg-destructive/10 p-6 rounded-full w-fit border border-destructive/20">
               <AlertTriangle className="h-12 w-12 text-destructive" />
             </div>
             
             <div className="space-y-2">
-              <h1 className="text-3xl font-black text-white tracking-tight leading-none uppercase">
+              <h1 className="text-3xl font-black text-foreground tracking-tight leading-none uppercase">
                 System Error 🚧
               </h1>
-              <p className="text-sm font-bold text-slate-400 px-6">
+              <p className="text-sm font-bold text-muted-foreground px-6">
                 A critical exception occurred. We recommend restarting the application.
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-2">
+            <div className="p-4 rounded-2xl bg-muted/30 border border-border space-y-2">
               <div className="flex items-center justify-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest">
                   <ShieldAlert className="h-3 w-3" /> Admin Notice
               </div>
-              <p className="text-xs text-slate-300 font-medium leading-relaxed">
+              <p className="text-xs text-foreground/80 font-medium leading-relaxed">
                 Please contact your <span className="text-[#FF9800] font-black uppercase">App Admin</span> if you see this screen repeatedly.
               </p>
             </div>

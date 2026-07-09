@@ -10,9 +10,9 @@ export default function LiveSessionDetailsPage() {
 
   if (!id) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#11121d]">
+      <div className="flex h-screen items-center justify-center bg-background">
         <div className="text-center space-y-4">
-          <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Invalid session ID provided.</p>
+          <p className="text-muted-foreground font-bold uppercase tracking-widest text-xs">Invalid session ID provided.</p>
         </div>
       </div>
     );
