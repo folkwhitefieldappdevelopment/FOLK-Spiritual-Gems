@@ -1,3 +1,6 @@
-// Redundant redirect stub removed to fix infinite loop.
-// Implementation lives in src/app/(app)/user-management/page.tsx
-export default function RedundantPage() { return null; }
+/**
+ * NEUTRALIZED: This file is no longer a route. 
+ * The implementation now lives in src/app/(app)/user-management/page.tsx
+ * PLEASE MANUALLY DELETE THIS FILE FROM THE FILESYSTEM.
+ */
+export {};
