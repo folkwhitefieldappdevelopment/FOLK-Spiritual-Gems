@@ -380,7 +380,7 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
                                         <FormItem className="space-y-2">
                                             <FormLabel className="text-[11px] font-bold text-muted-foreground flex items-center gap-2">
                                                 <MapPin className="h-3.5 w-3.5 text-red-400" /> Where in Bangalore?
-                                            </Label>
+                                            </FormLabel>
                                             <FormControl><Input placeholder="Whitefield, Marathalli..." className="h-14 rounded-xl border-none bg-muted text-foreground font-bold px-6 focus-visible:ring-orange-500" {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>

@@ -24,6 +24,13 @@ import Image from 'next/image';
 import { format } from 'date-fns';
 import placeholderData from '@/app/lib/placeholder-images.json';
 import { cn } from '@/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function EventCheckInClient({ groupId, eventId }: { groupId: string, eventId: string }) {
   const router = useRouter();
@@ -117,35 +124,35 @@ export default function EventCheckInClient({ groupId, eventId }: { groupId: stri
 
   const logo = placeholderData.app_logo;
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-[#11121d]"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
 
-  if (!group || !event) return <div className="min-h-screen flex items-center justify-center bg-[#11121d] p-4 text-center"><Card className="max-w-md w-full p-8 bg-[#1e1e2e] border-none rounded-[2rem] shadow-2xl"><AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" /><CardTitle className="text-white">Event Unavailable</CardTitle></Card></div>;
+  if (!group || !event) return <div className="min-h-screen flex items-center justify-center bg-background p-4 text-center"><Card className="max-w-md w-full p-8 bg-popover border-none rounded-[2rem] shadow-2xl"><AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" /><CardTitle className="text-foreground">Event Unavailable</CardTitle></Card></div>;
 
   return (
-    <div className="min-h-screen bg-[#11121d] flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md space-y-12">
         <div className="flex flex-col items-center gap-6">
           <div className="bg-primary p-3 rounded-full shadow-2xl border-4 border-primary/20 h-24 w-24 flex items-center justify-center overflow-hidden">
             <Image src={logo.url} alt={logo.alt} width={64} height={64} className="object-contain" />
           </div>
           <div className="text-center space-y-2">
-            <h1 className="text-3xl font-black text-white tracking-tighter uppercase leading-none">SUBMIT THE FORM</h1>
+            <h1 className="text-3xl font-black text-foreground tracking-tighter uppercase leading-none">SUBMIT THE FORM</h1>
             <p className="text-[10px] text-[#FF9800] font-black uppercase tracking-[0.4em]">{event.name}</p>
           </div>
         </div>
 
         {status === 'idle' && (
-          <Card className="shadow-2xl rounded-[3rem] border-none bg-[#1e1e2e] overflow-hidden">
+          <Card className="shadow-2xl rounded-[3rem] border-none bg-popover overflow-hidden">
             <CardHeader className="text-center pt-10 pb-4">
-                <CardTitle className="text-2xl font-black text-white">Welcome Back! 👋</CardTitle>
+                <CardTitle className="text-2xl font-black text-foreground">Welcome Back! 👋</CardTitle>
             </CardHeader>
             <CardContent className="p-10 pt-4">
                 <form onSubmit={handleCheckIn} className="space-y-6">
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Registered Phone</Label>
+                        <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Registered Phone</Label>
                         <div className="relative">
-                            <Phone className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
-                            <Input placeholder="10-digit number" className="pl-14 h-16 text-2xl font-black rounded-2xl border-white/5 bg-[#161623] text-white focus:ring-[#FF9800]" value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} type="tel" required />
+                            <Phone className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <Input placeholder="10-digit number" className="pl-14 h-16 text-2xl font-black rounded-2xl border-border bg-muted text-foreground focus:ring-[#FF9800]" value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} type="tel" required />
                         </div>
                     </div>
                     <Button className="w-full h-16 text-lg font-black rounded-2xl shadow-xl bg-[#FF9800] hover:bg-[#F57C00] text-black transition-all hover:scale-[1.01]" disabled={isSubmitting || phone.length < 10}>
@@ -157,57 +164,57 @@ export default function EventCheckInClient({ groupId, eventId }: { groupId: stri
         )}
 
         {status === 'success' && (
-          <Card className="shadow-2xl rounded-[3rem] border-none bg-[#1e1e2e] overflow-hidden text-center p-12 space-y-6">
+          <Card className="shadow-2xl rounded-[3rem] border-none bg-popover overflow-hidden text-center p-12 space-y-6">
              <div className="mx-auto bg-green-500/10 p-6 rounded-[2rem] w-fit border border-green-500/20">
                 {statusMsg.includes('already') ? <CalendarCheck2 className="h-16 w-16 text-green-500" /> : <CheckCircle2 className="h-16 w-16 text-green-500" />}
              </div>
              <div className="space-y-2">
-                <h2 className="text-3xl font-black text-white uppercase tracking-tight">
+                <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">
                     {statusMsg.includes('already') ? 'ALREADY FILLED' : 'THANK YOU! ✨'}
                 </h2>
                 <div className="space-y-1">
-                    <p className="text-slate-400 font-bold">
+                    <p className="text-muted-foreground font-bold">
                         {statusMsg.includes('already') ? "You already filled form previously." : "Thank you for filling the form."}
                     </p>
-                    <p className="text-white font-black text-lg">{foundPerson?.fullName}</p>
+                    <p className="text-foreground font-black text-lg">{foundPerson?.fullName}</p>
                 </div>
              </div>
-             <Badge className="bg-white/5 text-slate-500 border-none font-black text-[10px] uppercase tracking-[0.2em] py-2 px-6">
+             <Badge className="bg-muted text-muted-foreground border-none font-black text-[10px] uppercase tracking-[0.2em] py-2 px-6">
                 {format(new Date(), 'PPPP')}
              </Badge>
           </Card>
         )}
 
         {status === 'assignment' && (
-           <Card className="shadow-2xl rounded-[3rem] border-none bg-[#1e1e2e] overflow-hidden p-10 text-center space-y-8">
+           <Card className="shadow-2xl rounded-[3rem] border-none bg-popover overflow-hidden p-10 text-center space-y-8">
               <div className="mx-auto bg-amber-500/10 p-6 rounded-[2rem] w-fit border border-amber-500/20">
                  <AlertCircle className="h-12 w-12 text-amber-500" />
               </div>
               <div className="space-y-2">
-                 <h2 className="text-2xl font-black text-white">Contact Not Found</h2>
-                 <p className="text-sm text-slate-400 font-bold leading-relaxed">
+                 <h2 className="text-2xl font-black text-foreground">Contact Not Found</h2>
+                 <p className="text-sm text-muted-foreground font-bold leading-relaxed">
                     We couldn't find a record for <span className="text-[#FF9800]">{phone}</span>. Please select your coordinator below to register.
                  </p>
               </div>
               
               <div className="space-y-4 text-left">
                   <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Folk Guide</Label>
+                      <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Folk Guide</Label>
                       <Select value={selectedGuideId} onValueChange={setSelectedGuideId}>
-                          <SelectTrigger className="h-14 rounded-xl border-white/5 bg-[#161623] text-white font-bold"><SelectValue placeholder="Select Guide..." /></SelectTrigger>
-                          <SelectContent className="bg-[#1e1e2e] border-white/5 text-white">
+                          <SelectTrigger className="h-14 rounded-xl border-border bg-muted text-foreground font-bold"><SelectValue placeholder="Select Guide..." /></SelectTrigger>
+                          <SelectContent className="bg-popover border-border text-foreground">
                               {folkGuides.map(g => <SelectItem key={g.id} value={g.id} className="font-bold">{g.name}</SelectItem>)}
                           </SelectContent>
                       </Select>
                   </div>
                   <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Enabler</Label>
+                      <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Enabler</Label>
                       <Select value={selectedEnablerId} onValueChange={setSelectedEnablerId} disabled={!selectedGuideId || isEnablersLoading}>
-                          <SelectTrigger className="h-14 rounded-xl border-white/5 bg-[#161623] text-white font-bold">
+                          <SelectTrigger className="h-14 rounded-xl border-border bg-muted text-foreground font-bold">
                               {isEnablersLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                               <SelectValue placeholder="Select Enabler..." />
                           </SelectTrigger>
-                          <SelectContent className="bg-[#1e1e2e] border-white/5 text-white">
+                          <SelectContent className="bg-popover border-border text-foreground">
                               {enablers.map(e => <SelectItem key={e.id} value={e.id} className="font-bold">{e.name}</SelectItem>)}
                           </SelectContent>
                       </Select>
