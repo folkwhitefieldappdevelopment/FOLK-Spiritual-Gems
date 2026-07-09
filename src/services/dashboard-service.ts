@@ -20,6 +20,8 @@ import { callStatuses, isAssignedToUser } from '@/lib/types';
 import { safeDate } from '@/utils/date';
 import { startOfDay, endOfDay, isWithinInterval, format } from 'date-fns';
 import { getCachedPeople } from './people-service';
+import { getAssignableUsersForAssignments } from './user-service';
+import { computeEnablerStageBreakdown } from '@/lib/dynamic-groups';
 
 /**
  * High-performance summary fetcher.
@@ -165,6 +167,13 @@ export async function getDashboardStats(
       else byChanting['0-1 R']++;
   });
 
+  // Calculate Enabler Breakdown for the dashboard table
+  let enablerRoster = await getAssignableUsersForAssignments(appUser);
+  if (appUser.role.includes('Folk Enabler') && !enablerRoster.some(e => e.id === appUser.id)) {
+    enablerRoster = [appUser, ...enablerRoster];
+  }
+  const enablerBreakdown = computeEnablerStageBreakdown(activePeople, enablerRoster);
+
   return {
     stats: { 
         myContactsCount, 
@@ -173,7 +182,8 @@ export async function getDashboardStats(
         allNewInRange, 
         byEnabler, 
         byYear, 
-        byChantingCategory: byChanting 
+        byChantingCategory: byChanting,
+        enablerBreakdown
     },
     callingReportAll: buildReport(activePeople),
     callingReportMy: buildReport(activePeople, appUser.id),

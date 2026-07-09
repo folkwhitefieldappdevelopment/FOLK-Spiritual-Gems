@@ -38,7 +38,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { callStatuses } from '@/lib/types';
-import type { AppUser } from '@/lib/types';
+import type { AppUser, EnablerStageBreakdown } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
   Collapsible,
@@ -71,6 +71,7 @@ export default function DashboardPage() {
   const stats = data?.stats;
   const reportAll = data?.callingReportAll;
   const leaderboard = data?.leaderboard || [];
+  const enablerBreakdown = stats?.enablerBreakdown || [];
 
   const navigateToContacts = (params: Record<string, string>) => {
     const searchParams = new URLSearchParams();
@@ -216,6 +217,91 @@ export default function DashboardPage() {
                     </div>
                 </Card>
             </div>
+
+            {/* Stage Breakdown Section */}
+            <Card className="bg-popover border-none rounded-[2rem] shadow-2xl overflow-hidden">
+                <CardHeader className="p-8 pb-4 flex flex-row items-center justify-between bg-card border-b border-border">
+                    <div className="space-y-1">
+                        <CardTitle className="text-xl font-black text-foreground uppercase tracking-tight flex items-center gap-3">
+                            <UsersRound className="h-6 w-6 text-primary" />
+                            Stage Breakdown by Enabler
+                        </CardTitle>
+                        <CardDescription className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em]">
+                            Live distribution of active contacts across key preaching stages
+                        </CardDescription>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <div className="hidden md:block overflow-x-auto">
+                        <Table>
+                            <TableHeader className="bg-muted/30">
+                                <TableRow className="hover:bg-transparent border-none">
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground pl-8 h-12">Enabler</TableHead>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-center h-12">FRP</TableHead>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-center h-12">SG-S</TableHead>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-center h-12">SG-W</TableHead>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-center h-12">16+ Rounds</TableHead>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-right pr-8 h-12">Total</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {enablerBreakdown.length > 0 ? enablerBreakdown.map((entry) => (
+                                    <TableRow key={entry.enablerId} className="border-b border-border hover:bg-muted/50">
+                                        <TableCell className="pl-8 py-5 font-black text-foreground uppercase text-xs">
+                                            {entry.enablerName}
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <Badge variant="outline" className="font-black border-green-500/20 text-green-500 bg-green-500/5 h-7 px-3">
+                                                {entry.frp}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <Badge variant="outline" className="font-black border-yellow-500/20 text-yellow-600 bg-yellow-500/5 h-7 px-3">
+                                                {entry.sgS}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <Badge variant="outline" className="font-black border-yellow-500/20 text-yellow-600 bg-yellow-500/5 h-7 px-3">
+                                                {entry.sgW}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <Badge variant="outline" className="font-black border-primary/20 text-primary bg-primary/5 h-7 px-3">
+                                                {entry.sixteenRounder}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right pr-8 font-black text-sm text-muted-foreground">
+                                            {entry.totalContacts}
+                                        </TableCell>
+                                    </TableRow>
+                                )) : (
+                                    <TableRow>
+                                        <TableCell colSpan={6} className="h-32 text-center opacity-30 italic font-bold text-foreground">
+                                            No breakdown data available.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                    <div className="md:hidden p-6 space-y-4">
+                        {enablerBreakdown.map((entry) => (
+                            <Card key={entry.enablerId} className="bg-muted/10 border-border p-5 rounded-[1.5rem] shadow-sm">
+                                <div className="flex justify-between items-center mb-4">
+                                    <span className="font-black text-xs uppercase text-foreground">{entry.enablerName}</span>
+                                    <Badge variant="secondary" className="text-[9px] font-black uppercase bg-muted/50 text-muted-foreground">{entry.totalContacts} Contacts</Badge>
+                                </div>
+                                <div className="grid grid-cols-4 gap-2">
+                                    <MobileBreakdownItem label="FRP" count={entry.frp} color="text-green-500" />
+                                    <MobileBreakdownItem label="SG-S" count={entry.sgS} color="text-yellow-600" />
+                                    <MobileBreakdownItem label="SG-W" count={entry.sgW} color="text-yellow-600" />
+                                    <MobileBreakdownItem label="16+ R" count={entry.sixteenRounder} color="text-primary" />
+                                </div>
+                            </Card>
+                        ))}
+                    </div>
+                </CardContent>
+            </Card>
 
             <Card className="bg-popover border-none rounded-[2rem] shadow-2xl overflow-hidden">
                 <CardHeader className="p-8 pb-4 flex flex-row items-center justify-between bg-card border-b border-border">
@@ -468,5 +554,14 @@ function SummaryMetricCard({ title, value, percentage, icon: Icon, color = "bg-p
                 </div>
             )}
         </Card>
+    );
+}
+
+function MobileBreakdownItem({ label, count, color }: { label: string, count: number, color: string }) {
+    return (
+        <div className="flex flex-col items-center gap-1.5">
+            <span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest text-center leading-none h-4 flex items-center">{label}</span>
+            <span className={cn("text-xl font-black leading-none", color)}>{count}</span>
+        </div>
     );
 }

@@ -1,5 +1,4 @@
-
-import type { Person, Group, FolkStage } from './types';
+import type { Person, Group, FolkStage, EnablerStageBreakdown, AppUser } from './types';
 import { ELIMINATED_STATUSES } from './types';
 
 // The structure for defining a dynamic group
@@ -113,3 +112,32 @@ export const generateDynamicGroups = (people: Person[]): Group[] => {
     };
   });
 };
+
+/**
+ * Computes the stage distribution for each enabler in the roster.
+ */
+export function computeEnablerStageBreakdown(people: Person[], enablers: AppUser[]): EnablerStageBreakdown[] {
+  const frpFilter = dynamicGroupDefinitions.find(d => d.id === 'dynamic-frp')?.filter;
+  const sgsFilter = dynamicGroupDefinitions.find(d => d.id === 'dynamic-sg-s')?.filter;
+  const sgwFilter = dynamicGroupDefinitions.find(d => d.id === 'dynamic-sg-w')?.filter;
+
+  return enablers.map(enabler => {
+    const enablerPeople = people.filter(p => {
+      if (p.isDeleted) return false;
+      const matchesId = p.enablerId === enabler.id;
+      // Legacy fallback: check name if ID is missing
+      const matchesName = !p.enablerId && p.enablerInTouchWith && p.enablerInTouchWith.split('::')[0].trim() === enabler.name.trim();
+      return matchesId || matchesName;
+    });
+
+    return {
+      enablerId: enabler.id,
+      enablerName: enabler.name,
+      frp: enablerPeople.filter(p => frpFilter ? frpFilter(p) : p.currentFolkStage === 'FRP').length,
+      sgS: enablerPeople.filter(p => sgsFilter ? sgsFilter(p) : p.currentFolkStage === 'SG-S').length,
+      sgW: enablerPeople.filter(p => sgwFilter ? sgwFilter(p) : p.currentFolkStage === 'SG-W').length,
+      sixteenRounder: enablerPeople.filter(p => (p.chantingStatus || 0) >= 16).length,
+      totalContacts: enablerPeople.length
+    };
+  });
+}

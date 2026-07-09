@@ -275,6 +275,16 @@ export type LeaderboardEntry = {
   dailyStats: Record<string, { count: number; duration: number }>;
 };
 
+export type EnablerStageBreakdown = {
+  enablerId: string;
+  enablerName: string;
+  frp: number;
+  sgS: number;
+  sgW: number;
+  sixteenRounder: number;
+  totalContacts: number;
+};
+
 export type DashboardData = {
   stats: {
     myContactsCount: number;
@@ -284,6 +294,7 @@ export type DashboardData = {
     byEnabler: Record<string, number>;
     byYear: Record<string, number>;
     byChantingCategory: Record<string, number>;
+    enablerBreakdown?: EnablerStageBreakdown[];
   };
   callingReportAll: CallingReport;
   callingReportMy: CallingReport;
@@ -388,3 +399,5 @@ export type Goal = {
   createdAt: any;
   updatedAt: any;
 };
+
+export type GoalRecord = Goal; // Alias for clarity if needed
