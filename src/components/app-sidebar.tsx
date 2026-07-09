@@ -13,6 +13,8 @@ import {
   UsersRound,
   Activity,
   Clock,
+  ChevronLeft,
+  ChevronRight,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
@@ -20,6 +22,17 @@ import { cn } from '@/lib/utils';
 import { UserNav } from './user-nav';
 import type { UserRole } from '@/lib/types';
 import placeholderData from '@/app/lib/placeholder-images.json';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+  useSidebar,
+} from '@/components/ui/sidebar';
 
 type NavItem = {
   href: string;
@@ -51,11 +64,13 @@ const allNavItems: NavItem[] = [
 export function AppSidebar() {
   const pathname = usePathname();
   const { appUser } = useAuth();
+  const { state, toggleSidebar } = useSidebar();
+  const isCollapsed = state === 'collapsed';
 
   const navItems = React.useMemo(() => {
     if (!appUser) return [];
     return allNavItems.filter((item) => {
-      if (!item.roles) return true; // Public item
+      if (!item.roles) return true;
       return item.roles.some((role) => appUser.role.includes(role));
     });
   }, [appUser]);
@@ -72,47 +87,96 @@ export function AppSidebar() {
   const logo = placeholderData.app_logo;
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-50 hidden w-14 flex-col border-r bg-background sm:flex shadow-2xl">
-      <nav className="flex flex-col items-center gap-4 px-2 py-4">
-        <Link href="/" className="mb-2 p-1 bg-primary rounded-full border shadow-sm h-10 w-10 flex items-center justify-center overflow-hidden hover:scale-105 transition-transform">
-          <Image 
-            src={logo.url} 
-            alt={logo.alt} 
-            width={32} 
-            height={32}
-            className="object-contain"
-            data-ai-hint={logo.hint}
-          />
+    <Sidebar collapsible="icon" className="border-r shadow-sm">
+      <SidebarHeader className="flex h-16 items-center px-4">
+        <Link href="/dashboard" className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shrink-0 overflow-hidden">
+            <Image 
+              src={logo.url} 
+              alt={logo.alt} 
+              width={24} 
+              height={24}
+              className="object-contain invert brightness-0"
+            />
+          </div>
+          {!isCollapsed && (
+            <span className="text-sm font-black uppercase tracking-tight text-foreground truncate">
+              FOLK GEMS
+            </span>
+          )}
         </Link>
-        {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
+      </SidebarHeader>
+      
+      <SidebarContent className="px-2 pt-4">
+        <SidebarMenu>
+          {navItems.map((item) => (
+            <SidebarMenuItem key={item.href}>
+              <SidebarMenuButton
+                asChild
+                isActive={isActive(item.href)}
+                tooltip={item.label}
+                className={cn(
+                  "h-10 transition-all",
+                  isActive(item.href) 
+                    ? "bg-accent text-accent-foreground font-bold" 
+                    : "text-muted-foreground hover:bg-muted"
+                )}
+              >
+                <Link href={item.href}>
+                  <item.icon className={cn("h-5 w-5", isActive(item.href) && "text-primary")} />
+                  <span>{item.label}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </SidebarContent>
+
+      <SidebarFooter className="p-2 space-y-2">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname.startsWith('/settings')}
+              tooltip="Settings"
               className={cn(
-                  "flex h-12 w-12 flex-col items-center justify-center gap-1 rounded-lg text-muted-foreground transition-all hover:text-foreground hover:bg-muted/50",
-                  isActive(item.href) && "bg-accent text-accent-foreground shadow-lg shadow-accent/20"
+                "h-10 transition-all",
+                pathname.startsWith('/settings')
+                  ? "bg-accent text-accent-foreground font-bold"
+                  : "text-muted-foreground hover:bg-muted"
               )}
-          >
-              <item.icon className="h-5 w-5" />
-              <span className="text-[9px] font-black uppercase leading-none tracking-tighter">{item.label}</span>
-          </Link>
-        ))}
-      </nav>
-      <nav className="mt-auto flex flex-col items-center gap-4 px-2 py-4">
-         <Link
-              href="/settings"
-              className={cn(
-                  "flex h-12 w-12 flex-col items-center justify-center gap-1 rounded-lg text-muted-foreground transition-all hover:text-foreground",
-                  pathname.startsWith('/settings') && "bg-accent text-accent-foreground"
-              )}
-          >
-              <Settings className="h-5 w-5" />
-              <span className="text-[10px] font-medium leading-none">Settings</span>
-          </Link>
-         <div className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-4">
+            >
+              <Link href="/settings">
+                <Settings className={cn("h-5 w-5", pathname.startsWith('/settings') && "text-primary")} />
+                <span>Settings</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+
+        <div className="px-1 py-2 flex flex-col items-center gap-4">
+          <div className={cn("w-full flex items-center justify-center", !isCollapsed && "justify-between px-2")}>
             <UserNav />
+            {!isCollapsed && (
+               <button 
+                  onClick={toggleSidebar}
+                  className="h-7 w-7 rounded-md border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+               >
+                 <ChevronLeft className="h-4 w-4" />
+               </button>
+            )}
+          </div>
+          {isCollapsed && (
+             <button 
+                onClick={toggleSidebar}
+                className="h-7 w-7 rounded-md border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+             >
+               <ChevronRight className="h-4 w-4" />
+             </button>
+          )}
         </div>
-      </nav>
-    </aside>
+      </SidebarFooter>
+      <SidebarRail />
+    </Sidebar>
   );
 }
