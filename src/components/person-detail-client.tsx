@@ -10,7 +10,6 @@ import {
   CalendarCheck, 
   Clock, 
   BadgeCheck, 
-  PlayCircle, 
   PlusCircle, 
   AlertCircle,
   Save,
@@ -46,6 +45,7 @@ import { EditablePersonDetailsForm, type EditablePersonDetailsFormRef } from '@/
 import { format, isValid } from 'date-fns';
 import { ConfirmSessionDialog } from '@/components/confirm-session-dialog';
 import { FullPageLoader } from './loader';
+import { CallLog } from '@/lib/call-log';
 
 const AttendanceHistoryCard = ({ person }: { person: Person }) => {
     const history = person.attendanceHistory || [];
@@ -113,6 +113,19 @@ export default function PersonDetailClient({ personId }: { personId: string }) {
     router.push('/session');
   };
 
+  const handleDirectCall = async () => {
+    if (!person || !person.phone) {
+        toast({ variant: 'destructive', title: 'Error', description: 'No phone number available.' });
+        return;
+    }
+    try {
+        await CallLog.makeCall({ phoneNumber: person.phone });
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Call Failed', description: 'Could not initiate the call.' });
+        console.error("Failed to make call:", error);
+    }
+  };
+
   if (isLoading && !person) return <FullPageLoader />;
   if (!person || !appUser) return null;
 
@@ -125,7 +138,14 @@ export default function PersonDetailClient({ personId }: { personId: string }) {
                     <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" disabled={!navIds.prev} onClick={() => navIds.prev && router.push(`/contacts/profile?id=${navIds.prev}&scope=${contextScope}`)}><ChevronLeft className="h-5 w-5" /></Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" disabled={!navIds.next} onClick={() => navIds.next && router.push(`/contacts/profile?id=${navIds.next}&scope=${contextScope}`)}><ChevronRight className="h-5 w-5" /></Button>
                 </div>
-                <Button onClick={() => setIsConfirmSessionDialogOpen(true)} className="h-9 font-black uppercase text-[10px] rounded-xl bg-primary"><PlusCircle className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">Interaction</span></Button>
+                <div className="flex items-center gap-2">
+                    <Button onClick={handleDirectCall} className="h-9 font-black uppercase text-[10px] rounded-xl bg-green-500 hover:bg-green-600 shadow-lg shadow-green-500/10">
+                        <PhoneCall className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">Call Now</span>
+                    </Button>
+                    <Button onClick={() => setIsConfirmSessionDialogOpen(true)} className="h-9 font-black uppercase text-[10px] rounded-xl bg-primary">
+                        <PlusCircle className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">Interaction</span>
+                    </Button>
+                </div>
               </div>
           </PageHeader>
 
