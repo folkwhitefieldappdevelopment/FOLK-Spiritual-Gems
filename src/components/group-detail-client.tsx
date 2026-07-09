@@ -11,6 +11,10 @@ import {
   Wrench,
   QrCode,
   CalendarDays,
+  Edit,
+  CalendarCheck,
+  Zap,
+  Search,
 } from 'lucide-react';
 import type { Person, Group, GroupEvent } from '@/lib/types';
 import { useAppToast } from '@/contexts/toast-context';
@@ -56,7 +60,6 @@ import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { Input } from './ui/input';
-import { Search } from 'lucide-react';
 
 export default function GroupDetailClient({ groupId }: { groupId: string }) {
   const router = useRouter();
@@ -148,9 +151,15 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
         <main className="flex-1 p-4 sm:p-6 space-y-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="members" className="w-full">
                 <TabsList className="grid w-fit grid-cols-3 h-16 p-1 bg-card border-none rounded-3xl gap-1 mb-8">
-                    <TabsTrigger value="members" className="px-8 py-3 font-black uppercase tracking-widest text-[11px] rounded-2xl data-[state=active]:bg-primary/20 data-[state=active]:text-primary">Members ({totalCount || members.length})</TabsTrigger>
-                    <TabsTrigger value="attendance" className="px-8 py-3 font-black uppercase tracking-widest text-[11px] rounded-2xl data-[state=active]:bg-primary/20 data-[state=active]:text-primary">History</TabsTrigger>
-                    <TabsTrigger value="pulse" className="px-8 py-3 font-black uppercase tracking-widest text-[11px] rounded-2xl data-[state=active]:bg-primary/20 data-[state=active]:text-primary">Report</TabsTrigger>
+                    <TabsTrigger value="members" className="px-8 py-3 font-black uppercase tracking-widest text-[11px] rounded-2xl data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+                        <Users className="h-4 w-4 mr-2" /> Members ({totalCount || members.length})
+                    </TabsTrigger>
+                    <TabsTrigger value="attendance" className="px-8 py-3 font-black uppercase tracking-widest text-[11px] rounded-2xl data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+                        <CalendarCheck className="h-4 w-4 mr-2" /> History
+                    </TabsTrigger>
+                    <TabsTrigger value="pulse" className="px-8 py-3 font-black uppercase tracking-widest text-[11px] rounded-2xl data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+                        <Zap className="h-4 w-4 mr-2" /> Report
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="members" className="mt-6 space-y-6">
