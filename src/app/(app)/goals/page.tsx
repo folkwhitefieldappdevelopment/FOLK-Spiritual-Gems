@@ -52,7 +52,7 @@ export default function GoalsPage() {
     try {
       const [goalsData, enablersData] = await Promise.all([
         getGoals(appUser),
-        isPrivileged ? getAssignableUsersForAssignments(appUser) : Promise.resolve([])
+        getAssignableUsersForAssignments(appUser)
       ]);
       setGoals(goalsData);
       setEnablers(enablersData);
@@ -63,7 +63,7 @@ export default function GoalsPage() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [appUser, isPrivileged, toast]);
+  }, [appUser, toast]);
 
   React.useEffect(() => {
     fetchData();
@@ -84,7 +84,7 @@ export default function GoalsPage() {
     try {
         await updateGoalProgress(selectedGoal.id, { achievedCount, remark }, appUser);
         toast({ title: 'Progress Updated' });
-        fetchData(true);
+        fetchData(silent = true);
     } catch (e) {
         toast({ variant: 'destructive', title: 'Update Failed' });
     }
@@ -95,14 +95,13 @@ export default function GoalsPage() {
     try {
         await createGoal(data, appUser);
         toast({ title: 'Goal Created' });
-        fetchData(true);
+        fetchData(silent = true);
     } catch (e) {
         toast({ variant: 'destructive', title: 'Creation Failed' });
     }
   };
 
   const stats = React.useMemo(() => {
-    const active = goals.filter(g => !g.deadlineDate || new Date(g.deadlineDate) >= new Date());
     const statuses = goals.map(g => computeGoalStatus(g));
     
     return {
@@ -153,6 +152,7 @@ export default function GoalsPage() {
         <div className="hidden md:block">
             <GoalsMatrix 
               goals={goals} 
+              enablers={enablers}
               onUpdateProgress={handleUpdateProgress}
               isPrivileged={isPrivileged}
             />

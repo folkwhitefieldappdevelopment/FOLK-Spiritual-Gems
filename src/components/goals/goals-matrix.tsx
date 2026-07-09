@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { format } from 'date-fns';
-import type { Goal, GoalStatus } from '@/lib/types';
+import type { Goal, GoalStatus, AppUser } from '@/lib/types';
 import { computeGoalStatus } from '@/lib/data';
 import { 
   Table, 
@@ -19,13 +19,16 @@ import { safeDate } from '@/utils/date';
 
 type GoalsMatrixProps = {
   goals: Goal[];
+  enablers: AppUser[];
   onUpdateProgress: (goal: Goal) => void;
   isPrivileged: boolean;
 };
 
-export function GoalsMatrix({ goals, onUpdateProgress, isPrivileged }: GoalsMatrixProps) {
+export function GoalsMatrix({ goals, enablers, onUpdateProgress, isPrivileged }: GoalsMatrixProps) {
   // 1. Logic to extract unique enablers (Rows) and titles (Columns)
-  const enablers = Array.from(new Set(goals.map(g => g.enablerName))).sort();
+  const rosterNames = enablers.map(e => e.name);
+  const goalEnablerNames = goals.map(g => g.enablerName);
+  const enablerNames = Array.from(new Set([...rosterNames, ...goalEnablerNames])).sort();
   
   const categories = ['Trip Goal', 'Events'] as const;
   const columnsByCat = categories.map(cat => ({
@@ -33,12 +36,10 @@ export function GoalsMatrix({ goals, onUpdateProgress, isPrivileged }: GoalsMatr
       titles: Array.from(new Set(goals.filter(g => g.category === cat).map(g => g.title))).sort()
   }));
 
-  const totalCols = columnsByCat.reduce((acc, cat) => acc + cat.titles.length, 0);
-
-  if (goals.length === 0) {
+  if (enablerNames.length === 0 && goals.length === 0) {
       return (
           <div className="py-24 text-center bg-muted/20 border-2 border-dashed rounded-[3rem]">
-              <p className="text-muted-foreground font-bold uppercase tracking-widest text-xs">No goals initialized yet.</p>
+              <p className="text-muted-foreground font-bold uppercase tracking-widest text-xs">No goals or enablers found in this view.</p>
           </div>
       );
   }
@@ -83,7 +84,7 @@ export function GoalsMatrix({ goals, onUpdateProgress, isPrivileged }: GoalsMatr
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {enablers.map(enablerName => (
+                    {enablerNames.map(enablerName => (
                         <TableRow key={enablerName} className="hover:bg-muted/30 border-b border-border transition-colors">
                             <TableCell className="w-[240px] sticky left-0 z-10 bg-background/95 backdrop-blur font-black text-xs uppercase text-foreground/80 pl-8 border-r border-border py-6">
                                 {enablerName}

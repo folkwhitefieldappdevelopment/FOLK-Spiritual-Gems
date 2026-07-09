@@ -16,8 +16,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Target, Calendar } from 'lucide-react';
-import type { AppUser, GoalCategory } from '@/lib/types';
+import { Loader2, Target } from 'lucide-react';
+import type { AppUser } from '@/lib/types';
 import { Timestamp } from 'firebase/firestore';
 
 const goalSchema = z.object({
@@ -132,7 +132,7 @@ export function CreateGoalDialog({ isOpen, setIsOpen, enablers, onSave }: Create
                 name="title"
                 render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Goal Title</res:Label>
+                        <FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Goal Title</FormLabel>
                         <FormControl><Input placeholder="e.g. DD Hills Trip, Jagannath Puri" {...field} className="h-12 rounded-xl bg-muted border-border font-bold px-4" /></FormControl>
                         <FormMessage />
                     </FormItem>
