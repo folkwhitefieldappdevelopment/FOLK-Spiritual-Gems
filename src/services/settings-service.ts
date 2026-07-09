@@ -12,7 +12,7 @@ const defaultContactSources = ['Govinda Temple', 'ITPL', 'HK hill', 'Govinda Res
 const defaultOccupationStatuses = ['Working', 'Student', 'Searching for job', 'Self Employed'];
 const defaultStayingWithOptions = ['PG / Hostel', 'Flat', 'Family', 'Temple Residency'];
 const defaultActivityOptions = ['Yes', 'No', 'Partial'];
-const defaultActivityFieldLabels: ActivityFieldLabels = { sg: 'SG', ma: 'MA', frp: 'FRP' };
+const defaultActivityFieldLabels: ActivityFieldLabels = { sg: 'SG-S', ma: 'SG-W', frp: 'FRP' };
 
 export type EnablerOption = { value: string; label: string };
 

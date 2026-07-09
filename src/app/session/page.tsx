@@ -125,7 +125,7 @@ export default function SessionPage() {
   const [sgOptions, setSgOptions] = React.useState<string[]>([]);
   const [maOptions, setMaOptions] = React.useState<string[]>([]);
   const [frpOptions, setFrpOptions] = React.useState<string[]>([]);
-  const [activityLabels, setActivityLabels] = React.useState<ActivityFieldLabels>({ sg: 'SG', ma: 'MA', frp: 'FRP' });
+  const [activityLabels, setActivityLabels] = React.useState<ActivityFieldLabels>({ sg: 'SG-S', ma: 'SG-W', frp: 'FRP' });
   const [allGroups, setAllGroups] = React.useState<Group[]>([]);
 
   const [isEditingDetails, setIsEditingDetails] = React.useState(false);
@@ -392,6 +392,12 @@ export default function SessionPage() {
           duration = 10;
       }
 
+      // Sync stage based on markings with precedence: FRP > SG-W > SG-S
+      let newStage: string | undefined = undefined;
+      if (data.frp) newStage = 'FRP';
+      else if (data.ma) newStage = 'SG-W';
+      else if (data.sg) newStage = 'SG-S';
+
       const callLog: Partial<CallLogType> = {
         calledAt: new Date().toISOString(),
         remark: data.remark || '',
@@ -417,6 +423,7 @@ export default function SessionPage() {
         lastFrp: data.frp,
         nextFollowUpAt: data.nextFollowUpAt,
         reminderSetName: data.nextFollowUpAt ? appUser.name : '',
+        ...(newStage ? { currentFolkStage: newStage as any } : {})
       };
 
       if (data.nextFollowUpAt) {

@@ -128,7 +128,7 @@ const CallingSessionDialogComponent = ({
   const [sgOptions, setSgOptions] = React.useState<string[]>([]);
   const [maOptions, setMaOptions] = React.useState<string[]>([]);
   const [frpOptions, setFrpOptions] = React.useState<string[]>([]);
-  const [activityLabels, setActivityLabels] = React.useState<ActivityFieldLabels>({ sg: 'SG', ma: 'MA', frp: 'FRP' });
+  const [activityLabels, setActivityLabels] = React.useState<ActivityFieldLabels>({ sg: 'SG-S', ma: 'SG-W', frp: 'FRP' });
 
   const [isCallbackSearchOpen, setIsCallbackSearchOpen] = React.useState(false);
   const [callbackSearchQuery, setCallbackSearchQuery] = React.useState('');
@@ -286,6 +286,12 @@ const CallingSessionDialogComponent = ({
     setIsSubmitting(true);
     setIsNavigating(true);
     try {
+      // Sync stage based on markings with precedence: FRP > SG-W > SG-S
+      let newStage: string | undefined = undefined;
+      if (data.frp) newStage = 'FRP';
+      else if (data.ma) newStage = 'SG-W';
+      else if (data.sg) newStage = 'SG-S';
+
       if (selectedCallbackPerson) {
         const callLog: Partial<CallLog> = {
           calledAt: new Date().toISOString(),
@@ -309,6 +315,7 @@ const CallingSessionDialogComponent = ({
           lastMa: data.ma,
           lastFrp: data.frp,
           nextFollowUpAt: data.nextFollowUpAt,
+          ...(newStage ? { currentFolkStage: newStage as any } : {})
         };
 
         const updatedPerson = {

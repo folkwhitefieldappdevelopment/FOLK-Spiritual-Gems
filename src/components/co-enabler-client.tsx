@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -65,8 +64,38 @@ export default function CoEnablerClient({ sessionId }: { sessionId: string }) {
 
   const handleSessionSave = async (personId: string, remark: string, status: CallStatus, sg: string | undefined, ma: string | undefined, frp: string | undefined, nextFollowUpAt: string | undefined) => {
     if (!session) return;
-    const callLog: Partial<CallLog> = { calledAt: new Date().toISOString(), remark, status, event: `${session.task} (Co-Enabler)`, sg, ma, frp, nextFollowUpAt, callerId: `co-${session.id}`, callerName: session.name, sessionCreatorId: session.creatorId };
-    const updates: Partial<Person> = { lastCallRemark: remark, lastCallStatus: status, lastCallAt: '__now__', lastSg: sg, lastMa: ma, lastFrp: frp, nextFollowUpAt: nextFollowUpAt };
+
+    // Sync stage based on markings with precedence: FRP > SG-W > SG-S
+    let newStage: string | undefined = undefined;
+    if (frp) newStage = 'FRP';
+    else if (ma) newStage = 'SG-W';
+    else if (sg) newStage = 'SG-S';
+
+    const callLog: Partial<CallLog> = { 
+        calledAt: new Date().toISOString(), 
+        remark, 
+        status, 
+        event: `${session.task} (Co-Enabler)`, 
+        sg, 
+        ma, 
+        frp, 
+        nextFollowUpAt, 
+        callerId: `co-${session.id}`, 
+        callerName: session.name, 
+        sessionCreatorId: session.creatorId 
+    };
+    
+    const updates: Partial<Person> = { 
+        lastCallRemark: remark, 
+        lastCallStatus: status, 
+        lastCallAt: '__now__', 
+        lastSg: sg, 
+        lastMa: ma, 
+        lastFrp: frp, 
+        nextFollowUpAt: nextFollowUpAt,
+        ...(newStage ? { currentFolkStage: newStage as any } : {})
+    };
+
     try {
       await updatePerson(personId, { ...updates, callHistory: [callLog as CallLog] });
       await updateSessionHistory(session.id, sessionCurrentIndex);
