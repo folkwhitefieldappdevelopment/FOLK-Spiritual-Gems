@@ -1,3 +1,4 @@
+
 'use client';
 
 import { LocalNotifications } from '@capacitor/local-notifications';
@@ -99,7 +100,7 @@ export const sendNotification = async (title: string, options?: any) => {
     return;
   }
 
-  if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted' || typeof window.Notification !== 'function') return;
+  if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted') return;
 
   const defaultOptions = {
     icon: LOGO_URL,
@@ -108,15 +109,15 @@ export const sendNotification = async (title: string, options?: any) => {
     ...options,
   };
 
-  try {
-    if ('serviceWorker' in navigator) {
+  // Only attempt to show notification if service worker is supported
+  // We avoid `new window.Notification()` because it throws "Illegal constructor"
+  // when the app is embedded in an iframe (e.g. Firebase Studio preview).
+  if ('serviceWorker' in navigator) {
+    try {
       const reg = await navigator.serviceWorker.ready;
       await reg.showNotification(title, defaultOptions);
-    } else {
-      // Use window.Notification to prevent Illegal constructor if shadowed
-      new window.Notification(title, defaultOptions);
+    } catch (e) {
+      console.warn('Could not show notification via service worker', e);
     }
-  } catch (e) {
-    console.error('Notif failed', e);
   }
 };
