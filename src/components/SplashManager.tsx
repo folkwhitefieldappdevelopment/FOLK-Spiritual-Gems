@@ -9,10 +9,12 @@ export function SplashManager({ children }: { children: React.ReactNode }) {
   const [fadeOut, setFadeOut] = React.useState(false);
 
   React.useEffect(() => {
+    // Total duration: 3.5s visible + 0.8s fade out = 4.3s total app lock
     const timer = setTimeout(() => {
       setFadeOut(true);
       setTimeout(() => setShowSplash(false), 800);
-    }, 2000);
+    }, 3500); 
+    
     return () => clearTimeout(timer);
   }, []);
 
@@ -23,12 +25,40 @@ export function SplashManager({ children }: { children: React.ReactNode }) {
           "fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#1b1d32] transition-opacity duration-700",
           fadeOut ? "opacity-0" : "opacity-100"
         )}>
-          <div className="flex flex-col items-center animate-in zoom-in-95 duration-500">
-            <div className="relative w-32 h-32 mb-6 rounded-3xl overflow-hidden shadow-2xl border border-white/10">
-              <Image src="https://picsum.photos/seed/gems/200/200" alt="Logo" fill className="object-cover" />
+          <div className="flex flex-col items-center gap-10">
+            {/* Circular Portrait with subtle golden glow */}
+            <div className="relative w-56 h-56 rounded-full overflow-hidden shadow-[0_0_30px_rgba(255,215,0,0.1)] border-2 border-[#FFD700]/10 animate-in fade-in zoom-in-95 duration-1000">
+              <Image 
+                src="/images/prabhupada.jpg" 
+                alt="Srila Prabhupada" 
+                fill 
+                className="object-cover" 
+                priority 
+              />
             </div>
-            <h1 className="text-white text-2xl font-black tracking-tighter uppercase">FOLK GEMS</h1>
-            <p className="text-[#929DD8] text-[10px] font-black tracking-[0.4em] mt-2">OFFLINE READY</p>
+
+            <div className="flex flex-col items-center text-center space-y-3">
+              {/* Caption: Italic, Muted, Serif */}
+              <p 
+                className="italic font-serif text-[#929DD8]/80 text-base sm:text-lg animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-both"
+                style={{ animationDelay: '600ms' }}
+              >
+                Humbly Dedicated to
+              </p>
+
+              {/* Title: Large, Bold, Ivory, Serif */}
+              <h1 
+                className="font-serif font-bold text-[#fdf6e3] text-2xl sm:text-4xl tracking-tight animate-in fade-in slide-in-from-bottom-4 duration-1000 fill-mode-both"
+                style={{ animationDelay: '1000ms' }}
+              >
+                Vishwa Guru Srila Prabhupada
+              </h1>
+            </div>
+          </div>
+          
+          {/* Subtle footer credit */}
+          <div className="absolute bottom-10 opacity-20">
+             <p className="text-[#929DD8] text-[8px] font-black tracking-[0.6em] uppercase">FOLK Spiritual Gems</p>
           </div>
         </div>
       )}
