@@ -13,6 +13,7 @@ import {
   UsersRound,
   Activity,
   Clock,
+  Target,
   ChevronLeft,
   ChevronRight,
   type LucideIcon,
@@ -44,6 +45,7 @@ type NavItem = {
 const allNavItems: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: Gem },
   { href: '/contacts', label: 'Contacts', icon: Users },
+  { href: '/goals', label: 'Goals', icon: Target },
   { href: '/pending-logs', label: 'Pending', icon: Clock },
   { href: '/live-activity', label: 'Activity', icon: Activity },
   { href: '/assignments', label: 'Assign', icon: UsersRound, roles: ['Admin', 'Folk Guide'] },
