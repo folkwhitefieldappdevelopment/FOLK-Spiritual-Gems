@@ -5,7 +5,6 @@ import {
   collection,
   getDocs,
   doc,
-  getDoc,
   setDoc,
   updateDoc,
   deleteDoc,
@@ -13,9 +12,8 @@ import {
   where,
   serverTimestamp,
   orderBy,
-  Timestamp,
 } from 'firebase/firestore';
-import type { Goal, AppUser, GoalCategory } from '@/lib/types';
+import type { Goal, AppUser } from '@/lib/types';
 import { logAudit } from '@/services/audit-service';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
@@ -42,9 +40,13 @@ export async function getGoals(user: AppUser): Promise<Goal[]> {
       id: d.id,
       ...d.data(),
     } as Goal));
-  } catch (e: any) {
-    console.error("[GoalsService] Fetch failed:", e);
-    return [];
+  } catch (err: any) {
+    const permissionError = new FirestorePermissionError({
+      path: goalsRef.path,
+      operation: 'list',
+    } satisfies SecurityRuleContext);
+    errorEmitter.emit('permission-error', permissionError);
+    throw err;
   }
 }
 
