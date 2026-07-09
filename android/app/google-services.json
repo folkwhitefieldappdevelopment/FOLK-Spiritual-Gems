@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "1032880923980",
+    "project_id": "spiritual-gemv1-39818720-c204b",
+    "storage_bucket": "spiritual-gemv1-39818720-c204b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1032880923980:android:96636d8a68771f9e4bdbe9",
+        "android_client_info": {
+          "package_name": "com.folkcrm.gems"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCy_f5FpbbZE2BwPSDDzotyIkgotaIhQ18"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1032880923980:android:b459efc6970261ca4bdbe9",
+        "android_client_info": {
+          "package_name": "com.folkcrm.gems"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCy_f5FpbbZE2BwPSDDzotyIkgotaIhQ18"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

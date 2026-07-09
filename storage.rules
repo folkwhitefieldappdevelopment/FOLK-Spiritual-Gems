@@ -1,0 +1,18 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow public read for all files to ensure visual elements load correctly
+    match /{allPaths=**} {
+      allow read: if true;
+    }
+    
+    // Allow write access to contacts and groups
+    // In a prototype environment, we relax these rules to unblock development
+    match /contacts/{personId}/{allPaths=**} {
+      allow write: if request.auth != null || true;
+    }
+    match /groups/{groupId}/{allPaths=**} {
+      allow write: if request.auth != null || true;
+    }
+  }
+}

@@ -1,0 +1,76 @@
+
+{
+  "collections": {
+    "people": [
+      {
+        "id": "person_001",
+        "fullName": "Rahul Sharma",
+        "phone": "9876543210",
+        "age": 22,
+        "currentFolkStage": "SG-W",
+        "enablerInTouchWith": "Sarthak Gupta",
+        "enablerId": "admin_user_id",
+        "lastCallStatus": "A1 - Coming",
+        "lastCallRemark": "Very interested in the upcoming retreat.",
+        "chantingStatus": 4,
+        "sgRating": 4,
+        "progress": [],
+        "callHistory": [
+          {
+            "calledAt": "2024-05-20T10:30:00Z",
+            "status": "A1 - Coming",
+            "remark": "Confirmed for Sunday Feast.",
+            "event": "Sunday Program Invite",
+            "callerName": "Sarthak Gupta",
+            "duration": 120
+          }
+        ],
+        "attendanceHistory": [
+          {
+            "groupName": "Sunday Feast",
+            "date": "2024-05-12",
+            "timestamp": "2024-05-12T17:00:00Z"
+          }
+        ]
+      }
+    ],
+    "calling_sessions": [
+      {
+        "id": "active_session_001",
+        "name": "Janmashtami Outreach 2024",
+        "status": "active",
+        "currentIndex": 5,
+        "peopleIds": ["person_001", "person_002", "person_003"],
+        "createdBy": "admin_user_id",
+        "creatorName": "Sarthak Gupta",
+        "lastActivity": "2024-05-20T11:00:00Z"
+      }
+    ],
+    "groups": [
+      {
+        "id": "group_001",
+        "name": "Engineering College Batch",
+        "memberCount": 45,
+        "isDynamic": false,
+        "peopleIds": ["person_001", "person_002"]
+      }
+    ],
+    "users": [
+      {
+        "id": "admin_user_id",
+        "name": "Sarthak Gupta",
+        "email": "sarthakg187@gmail.com",
+        "role": ["Admin", "Folk Enabler"],
+        "fgCode": "SG001"
+      }
+    ],
+    "settings": [
+      {
+        "id": "options",
+        "contactSources": ["Temple", "Booth", "Referral"],
+        "folkStages": ["Fresh Lead", "Interested", "SG-W", "SG-S", "FRP", "FRJ", "Diamond-club 16"],
+        "activityFieldLabels": { "sg": "SG", "ma": "MA", "frp": "FRP" }
+      }
+    ]
+  }
+}

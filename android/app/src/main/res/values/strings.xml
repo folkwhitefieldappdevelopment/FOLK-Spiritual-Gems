@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">FOLK Spiritual Gems</string>
+    <string name="title_activity_main">FOLK Spiritual Gems</string>
+    <string name="package_name">com.folkcrm.gems</string>
+    <string name="custom_url_scheme">com.folkcrm.gems</string>
+</resources>

@@ -1,0 +1,26 @@
+{
+  "indexes": [
+    { "collectionGroup": "people", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "isDeleted", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" } ] },
+    { "collectionGroup": "people", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "isDeleted", "order": "ASCENDING" }, { "fieldPath": "lastCallStatus", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" } ] },
+    { "collectionGroup": "people", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "isDeleted", "order": "ASCENDING" }, { "fieldPath": "location", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" } ] },
+    { "collectionGroup": "people", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "isDeleted", "order": "ASCENDING" }, { "fieldPath": "stayingWith", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" } ] },
+    { "collectionGroup": "people", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "isDeleted", "order": "ASCENDING" }, { "fieldPath": "contactSource", "arrayConfig": "CONTAINS" }, { "fieldPath": "createdAt", "order": "DESCENDING" } ] },
+    { "collectionGroup": "people", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "isDeleted", "order": "ASCENDING" }, { "fieldPath": "chantingStatus", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" } ] },
+    { "collectionGroup": "people", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "isDeleted", "order": "ASCENDING" }, { "fieldPath": "fullName_lowercase", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" } ] },
+    { "collectionGroup": "people", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "isDeleted", "order": "ASCENDING" }, { "fieldPath": "phone", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" } ] },
+    { "collectionGroup": "people", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "isDeleted", "order": "ASCENDING" }, { "fieldPath": "nextFollowUpAt", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" } ] },
+    
+    { "collectionGroup": "people", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "folkGuideId", "order": "ASCENDING" }, { "fieldPath": "isDeleted", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" } ] },
+    { "collectionGroup": "people", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "enablerInTouchWith", "order": "ASCENDING" }, { "fieldPath": "isDeleted", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" } ] },
+    { "collectionGroup": "people", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "coEnablerId", "order": "ASCENDING" }, { "fieldPath": "isDeleted", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" } ] },
+    
+    { "collectionGroup": "people", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "enablerInTouchWith", "order": "ASCENDING" }, { "fieldPath": "folkGuideId", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" } ] },
+    { "collectionGroup": "people", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "coEnablerId", "order": "ASCENDING" }, { "fieldPath": "folkGuideId", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" } ] },
+
+    { "collectionGroup": "groups", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "createdBy", "order": "ASCENDING" }, { "fieldPath": "name", "order": "ASCENDING" } ] },
+    { "collectionGroup": "groups", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "visibility", "arrayConfig": "CONTAINS" }, { "fieldPath": "name", "order": "ASCENDING" } ] },
+
+    { "collectionGroup": "calling_sessions", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "status", "order": "ASCENDING" }, { "fieldPath": "lastActivity", "order": "DESCENDING" } ] }
+  ],
+  "fieldOverrides": []
+}

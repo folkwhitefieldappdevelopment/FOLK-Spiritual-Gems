@@ -1,0 +1,427 @@
+
+'use client';
+
+import { db } from '@/lib/firebase';
+import {
+  collection,
+  getDocs,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  query,
+  where,
+  type DocumentSnapshot,
+  limit,
+  arrayUnion,
+  Timestamp,
+  serverTimestamp,
+  documentId,
+  onSnapshot,
+} from 'firebase/firestore';
+import type { Person, AppUser, UserRole, FolkStage, CoEnablerSession } from '@/lib/types';
+import { isAssignedToUser } from '@/lib/types';
+import { logAudit } from '@/services/audit-service';
+import { generateDynamicGroups, dynamicGroupDefinitions } from '@/lib/dynamic-groups';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
+import { createInitialProgress } from '@/lib/data';
+import { safeDate } from '@/utils/date';
+import { startOfDay, endOfDay } from 'date-fns';
+
+const PAGE_SIZE = 100;
+const MAX_FIRESTORE_LIMIT = 5000;
+
+let masterPeopleCache: Person[] | null = null;
+let masterPeopleMap: Map<string, Person> = new Map();
+let masterUnsubscribe: (() => void) | null = null;
+let cachePromise: Promise<Person[]> | null = null;
+
+export const initMasterPeopleStream = (): Promise<Person[]> => {
+  if (cachePromise) return cachePromise;
+
+  cachePromise = new Promise((resolve) => {
+    const peopleRef = collection(db, 'people');
+    // For large databases, we use a greedy background sync after initial UI load
+    const q = query(peopleRef, limit(MAX_FIRESTORE_LIMIT));
+
+    masterUnsubscribe = onSnapshot(q, { includeMetadataChanges: false }, (snap) => {
+      const results: Person[] = [];
+      const newMap = new Map<string, Person>();
+
+      snap.docs.forEach((d) => {
+        const p = processPersonDoc(d);
+        results.push(p);
+        newMap.set(p.id, p);
+      });
+
+      masterPeopleCache = results;
+      masterPeopleMap = newMap;
+      resolve(results);
+    }, (err) => {
+      console.error("[MasterStream] Listener failed:", err);
+      resolve([]);
+    });
+  });
+
+  return cachePromise;
+};
+
+export const getCachedPeople = async (): Promise<Person[]> => {
+  if (masterPeopleCache) return masterPeopleCache;
+  return initMasterPeopleStream();
+};
+
+export const normalizePhone = (phone: string): string => {
+  return String(phone || '').replace(/\D/g, '').slice(-10);
+};
+
+const sanitizeData = (data: any): any => {
+  if (data === undefined) return null;
+  if (Array.isArray(data)) return data.map(sanitizeData);
+  if (data !== null && typeof data === 'object' && data.constructor === Object) {
+    const sanitized: any = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined) {
+        sanitized[key] = sanitizeData(value);
+      }
+    }
+    return sanitized;
+  }
+  return data;
+};
+
+export const processPersonDoc = (doc: DocumentSnapshot): Person => {
+  const data = doc.data() as any;
+  if (!data.fullName) {
+    if (data.firstName || data.lastName) {
+      data.fullName = `${data.firstName || ''} ${data.lastName || ''}`.trim();
+    } else {
+      data.fullName = 'Unknown Contact';
+    }
+  }
+  if (data.createdAt?.toDate) data.createdAt = data.createdAt.toDate().toISOString();
+  if (data.lastCallAt?.toDate) data.lastCallAt = data.lastCallAt.toDate().toISOString();
+  if (Array.isArray(data.callHistory)) {
+    data.callHistory = data.callHistory.map((log: any) => {
+      if (log.calledAt?.toDate) log.calledAt = log.calledAt.toDate().toISOString();
+      return log;
+    });
+  }
+  return { id: doc.id, ...data } as Person;
+};
+
+export async function getPeopleByIds(ids: string[]): Promise<Person[]> {
+  if (ids.length === 0) return [];
+  const cached = ids.map(id => masterPeopleMap.get(id)).filter((p): p is Person => !!p);
+  if (cached.length === ids.length) return cached;
+
+  const peopleCollection = collection(db, 'people');
+  const results: Person[] = [];
+  const CHUNK_SIZE = 30;
+  for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+    const chunk = ids.slice(i, i + CHUNK_SIZE);
+    const q = query(peopleCollection, where(documentId(), 'in', chunk));
+    const snap = await getDocs(q);
+    snap.docs.forEach((d) => {
+      results.push(processPersonDoc(d));
+    });
+  }
+  return results;
+}
+
+export const getPersonByPhone = async (phone: string, userInfo: { id: string; name: string; role: UserRole[] }): Promise<Person | null> => {
+  const norm = normalizePhone(phone);
+  if (norm.length < 10) return null;
+  if (masterPeopleCache) {
+    const match = masterPeopleCache.find(p => normalizePhone(p.phone) === norm);
+    if (match) return isAssignedToUser(match, userInfo) ? match : null;
+  }
+  const peopleRef = collection(db, 'people');
+  const q = query(peopleRef, where('phone', '==', norm), limit(1));
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  const p = processPersonDoc(snap.docs[0]);
+  return isAssignedToUser(p, userInfo) ? p : null;
+};
+
+export async function getPeopleForReminders(userInfo: { id: string; name: string; role: UserRole[] }): Promise<Person[]> {
+  const allResults = await getCachedPeople();
+  return allResults.filter(p => p.nextFollowUpAt && isAssignedToUser(p, userInfo));
+}
+
+export const getPeople = async (
+  userInfo: { id: string; name: string; role: UserRole[] },
+  options: {
+    groupId?: string;
+    personIds?: string[];
+    scope?: 'all' | 'my';
+    filters?: {
+      name?: string;
+      phone?: string;
+      location?: string;
+      stayingWith?: string;
+      chantingRounds?: string;
+      enablerInTouchWith?: string;
+      callStatus?: string;
+      eventName?: string;
+      callerName?: string;
+      callDateFrom?: string;
+      callDateTo?: string;
+      contactSources?: string[];
+    };
+    lastDocId?: string;
+    ignoreLimit?: boolean;
+  } = {}
+): Promise<{ people: Person[]; lastDocId: string | null; totalCount: number | null }> => {
+  const { groupId, personIds, filters = {}, ignoreLimit = false } = options;
+  let allResults = await getCachedPeople();
+  let basePeople: Person[] = [];
+
+  if (personIds && personIds.length > 0) {
+    basePeople = allResults.filter(p => personIds.includes(p.id));
+    if (basePeople.length < personIds.length) {
+      const missingIds = personIds.filter(id => !masterPeopleMap.has(id));
+      if (missingIds.length > 0) {
+          const freshDocs = await getPeopleByIds(missingIds);
+          basePeople = [...basePeople, ...freshDocs];
+      }
+    }
+  } else if (groupId) {
+    if (groupId.startsWith('dynamic-')) {
+      const dynamicGroups = generateDynamicGroups(allResults);
+      const idsToFetch = dynamicGroups.find((g) => g.id === groupId)?.peopleIds || [];
+      basePeople = allResults.filter((p) => idsToFetch.includes(p.id));
+    } else {
+      const groupDoc = await getDoc(doc(db, 'groups', groupId));
+      const idsInGroup = groupDoc.exists() ? groupDoc.data()?.peopleIds || [] : [];
+      basePeople = allResults.filter(p => idsInGroup.includes(p.id));
+    }
+  } else {
+    basePeople = allResults;
+  }
+
+  const applyUIFilters = (list: Person[]) => {
+    return list.filter((p) => {
+      const isDeleted = p.isDeleted === true;
+      if (isDeleted && groupId !== 'dynamic-recycle-bin') return false;
+      if (!isDeleted && groupId === 'dynamic-recycle-bin') return false;
+      if (filters.name && !p.fullName?.toLowerCase().includes(filters.name.toLowerCase())) return false;
+      if (filters.phone && !normalizePhone(p.phone).includes(normalizePhone(filters.phone))) return false;
+      if (filters.location && !p.location?.toLowerCase().includes(filters.location.toLowerCase())) return false;
+      if (filters.stayingWith && p.stayingWith !== filters.stayingWith) return false;
+      if (filters.chantingRounds) {
+        const rounds = parseInt(filters.chantingRounds);
+        if (p.chantingStatus !== rounds) return false;
+      }
+      if (filters.enablerInTouchWith) {
+        const filterName = filters.enablerInTouchWith.split('::')[0].toLowerCase();
+        if (!p.enablerInTouchWith?.toLowerCase().includes(filterName)) return false;
+      }
+      if (filters.callStatus && p.lastCallStatus !== filters.callStatus) return false;
+      if (filters.contactSources && filters.contactSources.length > 0) {
+        const pSources = p.contactSource || [];
+        if (!filters.contactSources.some(s => pSources.includes(s))) return false;
+      }
+      if (filters.eventName || filters.callerName || filters.callDateFrom || filters.callDateTo) {
+        const logs = p.callHistory || [];
+        const match = logs.some(log => {
+          const logDate = safeDate(log.calledAt);
+          let dateMatch = true;
+          if (filters.callDateFrom && logDate) dateMatch = dateMatch && logDate >= startOfDay(new Date(filters.callDateFrom));
+          if (filters.callDateTo && logDate) dateMatch = dateMatch && logDate <= endOfDay(new Date(filters.callDateTo));
+          const eventMatch = filters.eventName ? log.event?.toLowerCase().includes(filters.eventName.toLowerCase()) : true;
+          const callerMatch = filters.callerName ? log.callerName?.toLowerCase().includes(filters.callerName.toLowerCase()) : true;
+          return dateMatch && eventMatch && callerMatch;
+        });
+        if (!match) return false;
+      }
+      return true;
+    });
+  };
+
+  const filtered = options.scope === 'my' ? basePeople.filter(p => isAssignedToUser(p, userInfo)) : basePeople;
+  const uiFiltered = applyUIFilters(filtered);
+  const sorted = uiFiltered.sort((a, b) => {
+    const da = safeDate(a.createdAt)?.getTime() || 0;
+    const db = safeDate(b.createdAt)?.getTime() || 0;
+    if (da !== db) return db - da;
+    return (a.fullName || '').localeCompare(b.fullName || '');
+  });
+
+  if (ignoreLimit) return { people: sorted, lastDocId: null, totalCount: sorted.length };
+  const slice = sorted.slice(0, PAGE_SIZE);
+  const lastId = sorted.length > PAGE_SIZE ? sorted[PAGE_SIZE - 1].id : null;
+  return { people: slice, lastDocId: lastId, totalCount: sorted.length };
+};
+
+export const getUnassignedPeople = async (userInfo: AppUser) => {
+  const { people } = await getPeople(userInfo, { scope: 'all', ignoreLimit: true });
+  const unassigned = people.filter(p => !p.enablerId && !p.enablerInTouchWith && p.isDeleted !== true);
+  const enablerStats: Record<string, number> = {};
+  people.forEach(p => {
+    if (p.enablerInTouchWith && p.isDeleted !== true) {
+      const name = p.enablerInTouchWith.split('::')[0];
+      enablerStats[name] = (enablerStats[name] || 0) + 1;
+    }
+  });
+  return { people: unassigned, totalCount: unassigned.length, enablerStats };
+};
+
+export const getDynamicGroupCounts = async (userInfo: { id: string; name: string; role: UserRole[] }, viewScope: string): Promise<Record<string, number>> => {
+  const results = await getCachedPeople();
+  const filteredResults = viewScope === 'mine' ? results.filter((p) => isAssignedToUser(p, userInfo)) : results;
+  const counts: Record<string, number> = {};
+  dynamicGroupDefinitions.forEach((def) => { counts[def.id] = filteredResults.filter((p) => p.isDeleted !== true).filter(def.filter).length; });
+  counts['dynamic-recycle-bin'] = filteredResults.filter((p) => p.isDeleted === true).length;
+  return counts;
+};
+
+export const getPerson = async (id: string): Promise<Person | null> => {
+  if (!id) return null;
+  if (masterPeopleMap.has(id)) return masterPeopleMap.get(id)!;
+  const docRef = doc(db, 'people', id);
+  const docSnap = await getDoc(docRef);
+  return docSnap.exists() ? processPersonDoc(docSnap) : null;
+};
+
+export const createPerson = async (data: Partial<Person>, userInfo: { id: string; name: string; role: UserRole[] }): Promise<{ success: boolean; message?: string; person?: Person }> => {
+  const docRef = doc(collection(db, 'people'));
+  const normPhone = normalizePhone(data.phone!);
+  const finalData = sanitizeData({ ...data, phone: normPhone, createdAt: serverTimestamp(), isDeleted: false, fullName_lowercase: (data.fullName || '').toLowerCase(), progress: data.progress && data.progress.length > 0 ? data.progress : createInitialProgress() });
+  try {
+    await setDoc(docRef, finalData);
+    logAudit('Create Contact', `Created: ${data.fullName}`, userInfo);
+    return { success: true, person: { id: docRef.id, ...finalData } as Person };
+  } catch (err: any) {
+    errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'create', requestResourceData: finalData }));
+    return { success: false, message: 'Database error.' };
+  }
+};
+
+export const updatePerson = async (id: string, data: Partial<Person>, userInfo?: { id: string; name: string; role: UserRole[] }): Promise<{ success: boolean; message?: string }> => {
+  const docRef = doc(db, 'people', id);
+  const { callHistory, ...rest } = data;
+  const finalData = sanitizeData(rest);
+  if (finalData.lastCallAt === '__now__') finalData.lastCallAt = serverTimestamp();
+  if (finalData.fullName) finalData.fullName_lowercase = finalData.fullName.toLowerCase();
+  if (callHistory && Array.isArray(callHistory)) {
+    const sanitizedLogs = callHistory.map((log) => {
+      const sLog = sanitizeData(log);
+      if (sLog.calledAt === '__now__' || !sLog.calledAt) sLog.calledAt = serverTimestamp();
+      else if (typeof sLog.calledAt === 'string') sLog.calledAt = Timestamp.fromDate(new Date(sLog.calledAt));
+      return sLog;
+    });
+    finalData.callHistory = arrayUnion(...sanitizedLogs);
+  }
+  try {
+    await updateDoc(docRef, finalData);
+    if (userInfo) logAudit('Update Contact', `Updated: ${id}`, userInfo);
+    return { success: true };
+  } catch (err: any) {
+    errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'update', requestResourceData: finalData }));
+    return { success: false, message: 'Update failed.' };
+  }
+};
+
+export const upsertPerson = async (data: Partial<Person>, userInfo: { id: string; name: string; role: UserRole[] }): Promise<{ success: boolean; message?: string; person?: Person }> => {
+  const q = query(collection(db, 'people'), where('phone', '==', normalizePhone(data.phone!)), limit(1));
+  const snap = await getDocs(q);
+  if (!snap.empty) {
+    const existing = processPersonDoc(snap.docs[0]);
+    const result = await updatePerson(existing.id, data, userInfo);
+    return { ...result, person: { ...existing, ...data } as Person };
+  }
+  return createPerson(data, userInfo);
+};
+
+export const checkDuplicatePhone = async (phone: string, excludeId?: string): Promise<Person | null> => {
+  const norm = normalizePhone(phone);
+  if (norm.length < 10) return null;
+  if (masterPeopleCache) {
+    const match = masterPeopleCache.find(p => normalizePhone(p.phone) === norm && p.id !== excludeId);
+    if (match) return match;
+  }
+  const q = query(collection(db, 'people'), where('phone', '==', norm), limit(1));
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  const p = processPersonDoc(snap.docs[0]);
+  return p.id === excludeId ? null : p;
+};
+
+export const deletePerson = async (id: string, userInfo: { id: string; name: string; role: UserRole[] }) => {
+  return updatePerson(id, { isDeleted: true, deletedAt: serverTimestamp() }, userInfo);
+};
+
+export const deletePeople = async (ids: string[], userInfo: { id: string; name: string; role: UserRole[] }) => {
+  for (const id of ids) await deletePerson(id, userInfo);
+};
+
+export const importPeople = async (peopleData: any[], userInfo: { id: string; name: string; role: UserRole[] }, onProgress?: (current: number, total: number) => void) => {
+  let successCount = 0;
+  const errors: { name: string; phone: string; error: string }[] = [];
+  const total = peopleData.length;
+  for (let i = 0; i < total; i++) {
+    const p = peopleData[i];
+    try {
+      if (!p.fullName || !p.phone) throw new Error("Missing required field.");
+      const result = await upsertPerson(p, userInfo);
+      if (result.success) successCount++; else errors.push({ name: p.fullName, phone: p.phone, error: result.message || 'Validation failed' });
+    } catch (e: any) { errors.push({ name: p.fullName || 'Unknown', phone: p.phone || 'N/A', error: e.message || 'System error' }); }
+    if (onProgress) onProgress(i + 1, total);
+  }
+  return { successCount, errors };
+};
+
+export const assignEnablerToPeople = async (personIds: string[], enabler: AppUser, userInfo: { id: string; name: string; role: UserRole[] }) => {
+  for (const id of personIds) await updatePerson(id, { enablerInTouchWith: enabler.name, enablerId: enabler.id }, userInfo);
+};
+
+export const assignCoEnablerToPeople = async (personIds: string[], coEnabler: AppUser | null, userInfo: { id: string; name: string; role: UserRole[] }) => {
+  for (const id of personIds) await updatePerson(id, { coEnablerName: coEnabler?.name || null, coEnablerId: coEnabler?.id || null }, userInfo);
+};
+
+export const assignCoEnablerSession = async (personIds: string[], sessionData: Omit<CoEnablerSession, 'id'>, userInfo: AppUser): Promise<string> => {
+  const sessionRef = doc(collection(db, 'co_enabler_sessions'));
+  await setDoc(sessionRef, { ...sessionData, createdAt: serverTimestamp() });
+  logAudit('Create Co-Enabler Session', `Created external session for task: ${sessionData.task}`, { id: userInfo.id, name: userInfo.name, role: userInfo.role });
+  return sessionRef.id;
+};
+
+export const updatePeopleContactSource = async (personIds: string[], sources: string[], userInfo: { id: string; name: string; role: UserRole[] }) => {
+  for (const id of personIds) await updatePerson(id, { contactSource: sources }, userInfo);
+};
+
+export const scanForDuplicates = async (userInfo: { id: string; name: string; role: UserRole[] }) => {
+  const results = await getCachedPeople();
+  const phoneMap = new Map<string, Person[]>();
+  results.forEach(p => { const norm = normalizePhone(p.phone); if (!phoneMap.has(norm)) phoneMap.set(norm, []); phoneMap.get(norm)!.push(p); });
+  const duplicates: Record<string, Person[]> = {};
+  phoneMap.forEach((list, phone) => { if (list.length > 1) duplicates[phone] = list; });
+  return duplicates;
+};
+
+export const backfillIsDeleted = async (userInfo: { id: string; name: string; role: UserRole[] }) => {
+  const peopleRef = collection(db, 'people');
+  const snap = await getDocs(query(peopleRef, limit(MAX_FIRESTORE_LIMIT)));
+  let count = 0;
+  for (const d of snap.docs) { if (d.data().isDeleted === undefined) { await updateDoc(d.ref, { isDeleted: false }); count++; } }
+  return count;
+};
+
+export const backfillEnablerId = async (allUsers: AppUser[], userInfo: { id: string; name: string; role: UserRole[] }) => {
+  const peopleRef = collection(db, 'people');
+  const snap = await getDocs(query(peopleRef, limit(MAX_FIRESTORE_LIMIT)));
+  let count = 0;
+  const userMap = new Map<string, string>();
+  allUsers.forEach(u => userMap.set(u.name.toLowerCase().trim(), u.id));
+  for (const d of snap.docs) {
+    const data = d.data();
+    if (data.enablerInTouchWith && !data.enablerId) {
+      const name = data.enablerInTouchWith.split('::')[0].toLowerCase().trim();
+      const id = userMap.get(name);
+      if (id) { await updateDoc(d.ref, { enablerId: id }); count++; }
+    }
+  }
+  return count;
+};

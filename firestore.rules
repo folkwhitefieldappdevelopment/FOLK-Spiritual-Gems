@@ -1,0 +1,49 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default: Require authentication for most operations
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Public access for registration and check-in (Self-Registration Flow)
+    match /people/{personId} {
+      // Allow creation and specific updates for anyone to support public onboarding
+      allow read, create, update: if true;
+    }
+    
+    match /groups/{groupId} {
+      allow read: if true;
+      // Allow public update to peopleIds/memberCount when checking in via QR
+      allow update: if true;
+      
+      match /events/{eventId} {
+        allow read: if true;
+        // Allow public update to attendeeCount
+        allow update: if true;
+        
+        match /attendance/{personId} {
+          allow read, write: if true;
+        }
+      }
+      
+      match /attendance/{recordId} {
+        allow read, write: if true;
+      }
+    }
+    
+    // Allow public lookup of guides/enablers for assignment during registration
+    match /users/{userId} {
+      allow read: if true;
+    }
+    
+    match /settings/options {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    match /mail/{mailId} {
+      allow create: if true;
+    }
+  }
+}
