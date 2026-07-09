@@ -31,13 +31,13 @@ import { startOfDay, endOfDay } from 'date-fns';
 const PAGE_SIZE = 100;
 const MAX_FIRESTORE_LIMIT = 5000;
 
-export type SyncStatus = 'cold' | 'cached' | 'syncing' | 'synced' | 'timeout';
+export type SyncStatus = 'initializing' | 'cached' | 'syncing' | 'synced' | 'timeout';
 
 let masterPeopleCache: Person[] | null = null;
 let masterPeopleMap: Map<string, Person> = new Map();
 let masterUnsubscribe: (() => void) | null = null;
 let cachePromise: Promise<Person[]> | null = null;
-let currentSyncStatus: SyncStatus = 'cold';
+let currentSyncStatus: SyncStatus = 'initializing';
 
 // Callback registry for reactive UI updates
 const statusListeners = new Set<(status: SyncStatus) => void>();
@@ -50,18 +50,28 @@ const updateSyncStatus = (status: SyncStatus) => {
   statusListeners.forEach(l => l(status));
 };
 
+/**
+ * Components can subscribe to the sync status (e.g. to show a "Syncing..." spinner)
+ */
 export const subscribeToSyncStatus = (callback: (status: SyncStatus) => void) => {
   statusListeners.add(callback);
   callback(currentSyncStatus);
   return () => statusListeners.delete(callback);
 };
 
+/**
+ * Components can subscribe to people data for reactive re-rendering as snapshots arrive.
+ */
 export const subscribeToPeopleData = (callback: (people: Person[]) => void) => {
   dataListeners.add(callback);
   if (masterPeopleCache) callback(masterPeopleCache);
   return () => dataListeners.delete(callback);
 };
 
+/**
+ * Core stream initializer. 
+ * Resolves as soon as cache is available or after a 6s safety timeout.
+ */
 export const initMasterPeopleStream = (): Promise<Person[]> => {
   if (cachePromise) return cachePromise;
 
@@ -105,7 +115,7 @@ export const initMasterPeopleStream = (): Promise<Person[]> => {
         updateSyncStatus('cached');
       }
 
-      // Notify all data listeners
+      // Notify all data listeners for instant UI updates
       dataListeners.forEach(l => l(results));
 
       // Resolve the promise as soon as we have "something" (cache or net)
