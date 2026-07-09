@@ -68,7 +68,7 @@ export function ContactGalleryDialog({
   if (!people || people.length === 0) return null;
 
   const navigateToProfile = (personId: string) => {
-    router.push(`/contacts/${personId}`);
+    router.push(`/contacts/profile?id=${personId}`);
     onClose();
   };
 

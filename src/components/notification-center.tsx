@@ -82,7 +82,7 @@ export function NotificationCenter() {
   const handleAction = (n: AppNotification) => {
     handleMarkAsRead(n.id);
     if (n.personId) {
-      router.push(`/contacts/${n.personId}`);
+      router.push(`/contacts/profile?id=${n.personId}`);
     }
     setIsOpen(false);
   };
