@@ -1,2 +1,3 @@
-import { redirect } from 'next/navigation';
-export default function Page() { redirect('/live-activity/'); }
+// Redundant redirect stub removed to fix infinite loop.
+// Implementation lives in src/app/(app)/live-activity/page.tsx
+export default function RedundantPage() { return null; }

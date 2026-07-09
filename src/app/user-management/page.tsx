@@ -1,2 +1,3 @@
-import { redirect } from 'next/navigation';
-export default function Page() { redirect('/user-management/'); }
+// Redundant redirect stub removed to fix infinite loop.
+// Implementation lives in src/app/(app)/user-management/page.tsx
+export default function RedundantPage() { return null; }
