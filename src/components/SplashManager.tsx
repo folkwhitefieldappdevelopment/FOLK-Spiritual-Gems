@@ -29,7 +29,7 @@ export function SplashManager({ children }: { children: React.ReactNode }) {
             {/* Circular Portrait with subtle golden glow */}
             <div className="relative w-56 h-56 rounded-full overflow-hidden shadow-[0_0_30px_rgba(255,215,0,0.1)] border-2 border-[#FFD700]/10 animate-in fade-in zoom-in-95 duration-1000">
               <Image 
-                src="/images/prabhupada.jpg" 
+                src="/images/prabhupada.jpeg" 
                 alt="Srila Prabhupada" 
                 fill 
                 className="object-cover" 
