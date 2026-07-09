@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from "react";
@@ -32,7 +33,20 @@ import { PageHeader } from "@/components/page-header";
 import { PersonTable } from "@/components/person-table";
 import { CreateUpdatePersonDialog } from "@/components/create-update-person-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { getPeople, createPerson, updatePerson, deletePerson, importPeople, deletePeople, assignEnablerToPeople, assignCoEnablerToPeople, updatePeopleContactSource } from '@/services/people-service';
+import { 
+  getPeople, 
+  createPerson, 
+  updatePerson, 
+  deletePerson, 
+  importPeople, 
+  deletePeople, 
+  assignEnablerToPeople, 
+  assignCoEnablerToPeople, 
+  updatePeopleContactSource,
+  subscribeToSyncStatus,
+  getSyncStatus,
+  type SyncStatus
+} from '@/services/people-service';
 import { createGroup, getStaticGroups, deleteGroup, updateGroup as updateGroupSvc, addPeopleToGroup } from "@/services/groups-service";
 import { getEnablers, getContactSources, getStayingWithOptions, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
 import { useAuth } from "@/contexts/auth-context";
@@ -90,6 +104,7 @@ const ContactsPageComponent = () => {
   const [lastDocId, setLastDocId] = React.useState<string | null>(null);
   const [hasMore, setHasMore] = React.useState(false);
   const [isSelectingAll, setIsSelectingAll] = React.useState(false);
+  const [syncStatus, setSyncStatus] = React.useState<SyncStatus>(getSyncStatus());
   
   const [myGroups, setMyGroups] = React.useState<Group[]>([]);
   const [othersGroups, setOthersGroups] = React.useState<Group[]>([]);
@@ -122,11 +137,18 @@ const ContactsPageComponent = () => {
   const [isUpdateSourceDialogOpen, setIsUpdateSourceDialogOpen] = React.useState(false);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const fetchIdRef = React.useRef(0);
+  const groupFetchIdRef = React.useRef(0);
+  
   const isGroupTab = activeTab === 'my-groups' || activeTab === 'all-groups';
   const isSelectionActive = selectedIds.size > 0;
+  const isSyncStable = syncStatus === 'synced' || syncStatus === 'cached';
 
   const fetchContacts = React.useCallback(async (lastId?: string, silent = false) => {
     if (!appUser?.id) return;
+    
+    const thisFetchId = ++fetchIdRef.current;
+
     if (!lastId && !silent) { setIsLoading(true); setPeople([]); } 
     else if (lastId) { setIsLoadingMore(true); }
     
@@ -137,19 +159,34 @@ const ContactsPageComponent = () => {
         lastDocId: lastId,
         filters: filters as any
       });
+
+      if (thisFetchId !== fetchIdRef.current) return;
+
       setPeople(prev => lastId ? [...prev, ...result.people] : result.people);
       setLastDocId(result.lastDocId);
       setTotalCount(result.totalCount);
       setHasMore(result.lastDocId !== null);
-    } catch (error) { toast({ variant: 'destructive', title: "Sync Error" }); } 
-    finally { setIsLoading(false); setIsLoadingMore(false); }
+    } catch (error) { 
+      if (thisFetchId === fetchIdRef.current) toast({ variant: 'destructive', title: "Sync Error" }); 
+    } 
+    finally { 
+      if (thisFetchId === fetchIdRef.current) {
+        setIsLoading(false); 
+        setIsLoadingMore(false); 
+      }
+    }
   }, [appUser, activeTab, toast, filters]);
 
   const fetchGroups = React.useCallback(async () => {
     if (!appUser?.id) return;
+    
+    const thisFetchId = ++groupFetchIdRef.current;
     setIsLoadingGroups(true);
+
     try {
       const allStatic = await getStaticGroups(appUser);
+      if (thisFetchId !== groupFetchIdRef.current) return;
+
       const myId = appUser.id;
       const myNameLower = (appUser.name || '').toLowerCase().trim();
       
@@ -176,13 +213,24 @@ const ContactsPageComponent = () => {
         scope: 'all', 
         ignoreLimit: true 
       }).then(r => r.people);
+
+      if (thisFetchId !== groupFetchIdRef.current) return;
+
       const dynamicGroups = generateDynamicGroups(allPeopleForCount);
 
       setMyGroups([...dynamicGroups, ...mineStatic]);
       setOthersGroups(othersStatic);
-    } catch (e) { console.error(e); } 
-    finally { setIsLoadingGroups(false); }
+    } catch (e) { 
+      if (thisFetchId === groupFetchIdRef.current) console.error(e); 
+    } 
+    finally { 
+      if (thisFetchId === groupFetchIdRef.current) setIsLoadingGroups(false); 
+    }
   }, [appUser]);
+
+  React.useEffect(() => {
+    return subscribeToSyncStatus(setSyncStatus);
+  }, []);
 
   React.useEffect(() => {
     const params = Object.fromEntries(searchParams.entries());
@@ -212,12 +260,13 @@ const ContactsPageComponent = () => {
 
   React.useEffect(() => { 
     if (appUser?.id) { 
-        fetchGroups(); 
-        if (!isGroupTab) {
+        if (isGroupTab) {
+            fetchGroups(); 
+        } else {
             fetchContacts(); 
         }
     }
-  }, [fetchContacts, fetchGroups, isGroupTab, appUser?.id]);
+  }, [fetchContacts, fetchGroups, isGroupTab, appUser?.id, isSyncStable]);
 
   React.useEffect(() => {
     if (appUser) {
@@ -227,6 +276,13 @@ const ContactsPageComponent = () => {
         getCustomPersonFields().then(setCustomFields);
     }
   }, [appUser]);
+
+  const recordsDescription = React.useMemo(() => {
+    if (!isSyncStable && (totalCount === 0 || totalCount === null)) {
+      return "Synchronizing records...";
+    }
+    return totalCount !== null ? `Managing ${totalCount} records in this view.` : "Outreach management.";
+  }, [isSyncStable, totalCount]);
 
   const handleSelectAllGlobal = async () => {
     if (!appUser) return;
@@ -353,7 +409,7 @@ const ContactsPageComponent = () => {
 
   return (
     <>
-      <PageHeader title="Outreach" description={totalCount !== null ? `Managing ${totalCount} records in this view.` : "Outreach management."}>
+      <PageHeader title="Outreach" description={recordsDescription}>
         <div className="flex items-center gap-1.5 py-1">
             <Button variant="outline" size="sm" onClick={() => isGroupTab ? fetchGroups() : fetchContacts(undefined, true)} disabled={isLoading || isLoadingGroups} className="h-9 font-bold px-2.5 rounded-xl border-2 border-border bg-muted/50 text-foreground">
                 <RefreshCw className={cn("h-4 w-4 sm:mr-2", (isLoading || isLoadingGroups) && "animate-spin")} /> 

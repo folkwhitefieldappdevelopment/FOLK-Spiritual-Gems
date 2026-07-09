@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -87,6 +88,8 @@ export default function DashboardPage() {
   const manualStatuses = callStatuses.filter(status => !status.startsWith('Device:'));
   const deviceStatuses = callStatuses.filter(status => status.startsWith('Device:'));
 
+  const isSyncStable = syncStatus === 'synced' || syncStatus === 'cached';
+
   if (isLoading && (!stats || stats.totalContactsCount === undefined)) return <FullPageLoader />;
 
   return (
@@ -166,21 +169,21 @@ export default function DashboardPage() {
             <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
                 <MiniStatCard 
                     title="ASSIGNED" 
-                    value={stats?.myContactsCount} 
+                    value={(!isSyncStable && stats?.myContactsCount === 0) ? undefined : stats?.myContactsCount} 
                     icon={UserCircle} 
                     onClick={() => navigateToContacts({ scope: 'my' })}
                     barColor="bg-primary"
                 />
                 <MiniStatCard 
                     title="TOTAL" 
-                    value={stats?.totalContactsCount} 
+                    value={(!isSyncStable && stats?.totalContactsCount === 0) ? undefined : stats?.totalContactsCount} 
                     icon={Users} 
                     onClick={() => navigateToContacts({ scope: 'all' })}
                     barColor="bg-primary/40"
                 />
                 <MiniStatCard 
                     title="MY NEW" 
-                    value={stats?.myNewInRange} 
+                    value={(!isSyncStable && stats?.myNewInRange === 0) ? undefined : stats?.myNewInRange} 
                     icon={UserPlus} 
                     isTrend
                     colorClass="text-orange-500"
@@ -189,7 +192,7 @@ export default function DashboardPage() {
                 />
                 <MiniStatCard 
                     title="ALL NEW" 
-                    value={stats?.allNewInRange} 
+                    value={(!isSyncStable && stats?.allNewInRange === 0) ? undefined : stats?.allNewInRange} 
                     icon={Users} 
                     isTrend 
                     colorClass="text-orange-500"
