@@ -13,7 +13,7 @@ import { useAppToast } from '@/contexts/toast-context';
 
 /**
  * ReminderManager - Handles background follow-up monitoring and alarm UI.
- * Audio is initialized safely within useEffect to prevent "Illegal constructor" errors on the server.
+ * Audio is initialized safely within useEffect using window.Audio to prevent "Illegal constructor" errors.
  */
 export function ReminderManager() {
   const { appUser } = useAuth();
@@ -25,9 +25,9 @@ export function ReminderManager() {
 
   // Initialize browser-only Audio once on mount after hydration
   React.useEffect(() => {
-    if (typeof window !== 'undefined' && !audioRef.current) {
+    if (typeof window !== 'undefined' && !audioRef.current && typeof window.Audio !== 'undefined') {
       try {
-        const audioObj = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+        const audioObj = new window.Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
         audioObj.loop = true;
         audioRef.current = audioObj;
       } catch (e) {

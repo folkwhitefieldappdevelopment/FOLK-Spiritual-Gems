@@ -31,12 +31,13 @@ const COLUMNS = [
 
 /**
  * Normalizes an image by drawing it to a canvas and exporting as a standard JPEG.
+ * Uses window.Image to prevent Illegal constructor errors.
  */
 async function normalizeImageToJpeg(url: string): Promise<{ buffer: Uint8Array; extension: 'jpeg' } | null> {
-  if (!url) return null;
+  if (!url || typeof window === 'undefined' || typeof window.Image === 'undefined') return null;
 
   return new Promise((resolve) => {
-    const img = new Image();
+    const img = new window.Image();
     if (!url.startsWith('data:')) {
         img.crossOrigin = 'anonymous';
     }

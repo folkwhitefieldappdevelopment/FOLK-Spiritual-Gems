@@ -8,7 +8,7 @@ import { Capacitor } from '@capacitor/core';
  * Uses Capacitor Local Notifications for reliable background behavior on Android.
  */
 
-const LOGO_URL = 'data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22white%22%3E%3Cpath%20d%3D%22M12%202L4.5%209L12%2022L19.5%209L12%202Z%22%2F%3E%3Cpath%20d%3D%22M12%202L9%209L12%2012L15%209L12%202Z%22%2F%3E%3C/svg%3E';
+const LOGO_URL = 'data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22white%22%3E%3Cpath%20d%3D%22M12%202L4.5%209L12%2022L19.5%209L12%202Z%22%2F%3E%3Cpath%20d%3D%22M12%202L9%209L12%2012L15%209L12%202Z%22%2F%3E%3C%20%2Fsvg%3E';
 
 export const isNotificationSupported = () => {
   return Capacitor.isNativePlatform() || (typeof window !== 'undefined' && 'Notification' in window);
@@ -42,9 +42,6 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
 export const openAppSettings = async () => {
   if (Capacitor.isNativePlatform()) {
     const { App } = await import('@capacitor/app');
-    // On Android, there's no direct plugin method for this in the core 'App' plugin,
-    // but NativePermissionGuard handles the redirection logic if needed.
-    // For now, we rely on the system dialogs triggered by requestPermissions.
   }
 };
 
@@ -102,7 +99,7 @@ export const sendNotification = async (title: string, options?: any) => {
     return;
   }
 
-  if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted') return;
+  if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted' || typeof window.Notification !== 'function') return;
 
   const defaultOptions = {
     icon: LOGO_URL,
@@ -116,7 +113,8 @@ export const sendNotification = async (title: string, options?: any) => {
       const reg = await navigator.serviceWorker.ready;
       await reg.showNotification(title, defaultOptions);
     } else {
-      new Notification(title, defaultOptions);
+      // Use window.Notification to prevent Illegal constructor if shadowed
+      new window.Notification(title, defaultOptions);
     }
   } catch (e) {
     console.error('Notif failed', e);
