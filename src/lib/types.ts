@@ -398,6 +398,7 @@ export type Goal = {
   createdByName: string;
   createdAt: any;
   updatedAt: any;
+  lastReminderStage?: 'none' | 'upcoming' | 'overdue';
 };
 
 export type GoalRecord = Goal; // Alias for clarity if needed

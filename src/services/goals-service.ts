@@ -61,6 +61,7 @@ export async function createGoal(
   
   const finalData = {
     ...data,
+    lastReminderStage: 'none' as const,
     createdBy: user.id,
     createdByName: user.name,
     createdAt: serverTimestamp(),
