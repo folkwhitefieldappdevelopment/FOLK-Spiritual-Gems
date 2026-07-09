@@ -11,6 +11,8 @@ import {
     query,
     getDocs,
     limit,
+    getCountFromServer,
+    where
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { AppUser, DashboardData, CallingReport, Person, LeaderboardEntry } from '@/lib/types';
@@ -18,6 +20,28 @@ import { callStatuses, isAssignedToUser } from '@/lib/types';
 import { safeDate } from '@/utils/date';
 import { startOfDay, endOfDay, isWithinInterval, format } from 'date-fns';
 import { getCachedPeople } from './people-service';
+
+/**
+ * High-performance summary fetcher.
+ * Uses Firestore server-side aggregation for instant card results.
+ */
+export async function getFastSummaryStats(appUser: AppUser) {
+    const peopleRef = collection(db, 'people');
+    
+    // Server-side aggregation is extremely fast and doesn't download documents
+    const totalQuery = query(peopleRef, where('isDeleted', '==', false));
+    const myQuery = query(peopleRef, where('isDeleted', '==', false), where('enablerId', '==', appUser.id));
+
+    const [totalSnap, mySnap] = await Promise.all([
+        getCountFromServer(totalQuery),
+        getCountFromServer(myQuery)
+    ]);
+
+    return {
+        totalContactsCount: totalSnap.data().count,
+        myContactsCount: mySnap.data().count
+    };
+}
 
 export async function getDashboardStats(
   appUser: AppUser,

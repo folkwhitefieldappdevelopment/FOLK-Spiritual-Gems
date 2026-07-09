@@ -24,7 +24,9 @@ import {
     Timer,
     UserCheck,
     Contact,
-    UserPlus
+    UserPlus,
+    RefreshCw,
+    Wifi
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -58,7 +60,7 @@ export default function DashboardPage() {
   const [selectedFolkGuideId, setSelectedFolkGuideId] = useState<string>('all');
   const [folkGuides, setFGuides] = useState<AppUser[]>([]);
   
-  const { data, isLoading, isRefetching } = useDashboardStats(dateRange, selectedFolkGuideId);
+  const { data, syncStatus, isLoading, isRefetching } = useDashboardStats(dateRange, selectedFolkGuideId);
 
   useEffect(() => {
     if (appUser?.role.includes('Admin')) {
@@ -84,7 +86,8 @@ export default function DashboardPage() {
   const manualStatuses = callStatuses.filter(status => !status.startsWith('Device:'));
   const deviceStatuses = callStatuses.filter(status => status.startsWith('Device:'));
 
-  if (isLoading && !data) return <FullPageLoader />;
+  // Non-blocking loader: only show full page loader if we have literally no data at all
+  if (isLoading && (!stats || stats.totalContactsCount === undefined)) return <FullPageLoader />;
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-[#11121d]">
@@ -92,7 +95,27 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
         <PageHeader 
             title="Dashboard"
-            description={isRefetching ? "Syncing metrics..." : "Real-time analytics for your spiritual outreach batches."}
+            description={
+                <div className="flex items-center gap-2">
+                    {syncStatus === 'synced' ? (
+                        <span className="flex items-center gap-1.5 text-green-500">
+                           <Wifi className="h-3 w-3" /> Live & Synchronized
+                        </span>
+                    ) : syncStatus === 'syncing' ? (
+                        <span className="flex items-center gap-1.5 text-[#FF9800] animate-pulse">
+                           <RefreshCw className="h-3 w-3 animate-spin" /> Fetching updates...
+                        </span>
+                    ) : syncStatus === 'cached' ? (
+                        <span className="flex items-center gap-1.5 text-blue-400">
+                           <Activity className="h-3 w-3" /> Using Cached Records
+                        </span>
+                    ) : syncStatus === 'timeout' ? (
+                        <span className="flex items-center gap-1.5 text-slate-500 italic">
+                           Offline mode active
+                        </span>
+                    ) : "Initializing statistics..."}
+                </div>
+            }
         >
             <div className="flex items-center gap-2">
                 {isAdmin && (
@@ -145,21 +168,21 @@ export default function DashboardPage() {
             <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
                 <MiniStatCard 
                     title="ASSIGNED" 
-                    value={stats?.myContactsCount || 0} 
+                    value={stats?.myContactsCount} 
                     icon={UserCircle} 
                     onClick={() => navigateToContacts({ scope: 'my' })}
                     barColor="bg-[#3F51B5]"
                 />
                 <MiniStatCard 
                     title="TOTAL" 
-                    value={stats?.totalContactsCount || 0} 
+                    value={stats?.totalContactsCount} 
                     icon={Users} 
                     onClick={() => navigateToContacts({ scope: 'all' })}
                     barColor="bg-[#929DD8]"
                 />
                 <MiniStatCard 
                     title="MY NEW" 
-                    value={stats?.myNewInRange || 0} 
+                    value={stats?.myNewInRange} 
                     icon={UserPlus} 
                     isTrend
                     colorClass="text-[#FF9800]"
@@ -168,7 +191,7 @@ export default function DashboardPage() {
                 />
                 <MiniStatCard 
                     title="ALL NEW" 
-                    value={stats?.allNewInRange || 0} 
+                    value={stats?.allNewInRange} 
                     icon={Users} 
                     isTrend 
                     colorClass="text-[#FF9800]"
@@ -237,7 +260,7 @@ export default function DashboardPage() {
                             )) : (
                                 <TableRow>
                                     <TableCell colSpan={4} className="h-32 text-center opacity-30 italic font-bold text-white">
-                                        No interactions recorded for this period.
+                                        {syncStatus === 'syncing' ? 'Analyzing interaction data...' : 'No interactions recorded for this period.'}
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -350,7 +373,7 @@ function MiniStatCard({ title, value, icon: Icon, isTrend, onClick, colorClass, 
             <div className="relative z-10 space-y-1">
                 <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{title}</p>
                 <h3 className={cn("text-3xl font-black text-white tracking-tighter truncate", colorClass)}>
-                    {isTrend && '+'} {value || 0}
+                    {value === undefined ? <span className="opacity-20">...</span> : (isTrend ? `+${value}` : value)}
                 </h3>
             </div>
             <Icon className="absolute top-4 right-4 h-5 w-5 text-slate-500/20 group-hover:text-primary/40 transition-colors" />

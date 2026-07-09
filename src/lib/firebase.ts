@@ -26,15 +26,20 @@ try {
   
   if (typeof window !== 'undefined') {
     // forceOwnership: true is critical for Capacitor/WebView apps to prevent hangs on reload
-    enableIndexedDbPersistence(db, { forceOwnership: true }).catch((err) => {
-      if (err.code === 'failed-precondition') {
-        console.warn('Persistence failed: Multiple tabs open.');
-      } else if (err.code === 'unimplemented') {
-        console.warn('Persistence failed: Browser not supported.');
-      } else {
-        console.warn('Persistence error:', err.code, err.message);
-      }
-    });
+    // Added diagnostics to catch silent persistence failures
+    enableIndexedDbPersistence(db, { forceOwnership: true })
+      .then(() => {
+        console.log('[Firebase] Persistence lock acquired successfully.');
+      })
+      .catch((err) => {
+        if (err.code === 'failed-precondition') {
+          console.error('[Firebase] Persistence Failed: Multiple tabs/instances open. Data will be re-downloaded.');
+        } else if (err.code === 'unimplemented') {
+          console.warn('[Firebase] Persistence Unsupported: Browser does not support IndexedDB.');
+        } else {
+          console.warn('[Firebase] Persistence Error:', err.code, err.message);
+        }
+      });
   }
 
   auth = getAuth(app);

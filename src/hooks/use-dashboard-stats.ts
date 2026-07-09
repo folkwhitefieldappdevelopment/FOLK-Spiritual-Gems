@@ -1,62 +1,97 @@
-import { useState, useEffect, useCallback } from 'react';
-import { getDashboardStats } from '../services/dashboard-service';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { getDashboardStats, getFastSummaryStats } from '../services/dashboard-service';
 import { useAuth } from '../contexts/auth-context';
 import { useAppToast } from '../contexts/toast-context';
-import { DashboardData } from '../lib/types';
+import { DashboardData, type Person } from '../lib/types';
 import { DateRange } from 'react-day-picker';
-
-const CACHE_KEY = 'dashboard_data_cache';
-const CACHE_TIMESTAMP_KEY = 'dashboard_data_timestamp';
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+import { 
+    subscribeToPeopleData, 
+    subscribeToSyncStatus, 
+    type SyncStatus,
+    initMasterPeopleStream
+} from '../services/people-service';
 
 export function useDashboardStats(dateRange?: DateRange, folkGuideId?: string) {
   const { appUser } = useAuth();
   const { toast } = useAppToast();
   
   const [data, setData] = useState<DashboardData | null>(null);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('initializing');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefetching, setIsRefetching] = useState(false);
   const [error, setError] = useState<any | null>(null);
 
-  const fetchData = useCallback(async (isSilent = false) => {
-    if (!appUser) return;
-
-    if (!isSilent) {
-      setIsRefetching(true);
-    }
-
-    try {
-      const timezoneOffset = new Date().getTimezoneOffset();
-      const stats = await getDashboardStats(appUser, { 
-        from: dateRange?.from, 
-        to: dateRange?.to, 
-        timezoneOffset,
-        targetFolkGuideId: folkGuideId === 'all' ? undefined : folkGuideId
-      });
-      
-      setData(stats);
-      localStorage.setItem(CACHE_KEY, JSON.stringify(stats));
-      localStorage.setItem(CACHE_TIMESTAMP_KEY, Date.now().toString());
-      setError(null);
-    } catch (e) {
-      console.error("Failed to fetch dashboard data:", e);
-      setError(e);
-      toast({
-        variant: "destructive",
-        title: "Error Fetching Data",
-        description: "Could not load latest dashboard analytics.",
-      });
-    } finally {
-      setIsLoading(false);
-      if (!isSilent) {
-        setIsRefetching(false);
-      }
-    }
-  }, [appUser, dateRange, folkGuideId, toast]);
+  // Use refs to prevent stale closure data in the reactive sync
+  const dateRangeRef = useRef(dateRange);
+  const folkGuideIdRef = useRef(folkGuideId);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    dateRangeRef.current = dateRange;
+    folkGuideIdRef.current = folkGuideId;
+  }, [dateRange, folkGuideId]);
 
-  return { data, isLoading, isRefetching, error, refetch: fetchData };
+  const recomputeStats = useCallback(async (people: Person[]) => {
+    if (!appUser) return;
+    
+    try {
+      const stats = await getDashboardStats(appUser, { 
+        from: dateRangeRef.current?.from, 
+        to: dateRangeRef.current?.to, 
+        timezoneOffset: new Date().getTimezoneOffset(),
+        targetFolkGuideId: folkGuideIdRef.current === 'all' ? undefined : folkGuideIdRef.current
+      });
+      setData(stats);
+      setIsLoading(false);
+    } catch (e) {
+      console.error("Recompute failed", e);
+    }
+  }, [appUser]);
+
+  useEffect(() => {
+    if (!appUser) return;
+
+    // 1. Initial fast path - get big numbers without downloading everything
+    getFastSummaryStats(appUser).then(fastStats => {
+        if (!data) {
+            setData(prev => ({
+                ...(prev || {}),
+                stats: {
+                    ...(prev?.stats || {}),
+                    ...fastStats
+                }
+            } as any));
+        }
+    });
+
+    // 2. Subscribe to sync status to show progress indicator
+    const unsubStatus = subscribeToSyncStatus(setSyncStatus);
+
+    // 3. Subscribe to people data. This triggers every time Firestore delivers more items
+    const unsubData = subscribeToPeopleData(recomputeStats);
+
+    // Ensure the stream is running
+    initMasterPeopleStream();
+
+    return () => {
+      unsubStatus();
+      unsubData();
+    };
+  }, [appUser, recomputeStats]);
+
+  const refetch = useCallback(async () => {
+      if (!appUser) return;
+      setIsRefetching(true);
+      await recomputeStats([]); // Forces a clear if needed
+      initMasterPeopleStream();
+      setIsRefetching(false);
+  }, [appUser, recomputeStats]);
+
+  return { 
+    data, 
+    syncStatus,
+    isLoading, 
+    isRefetching, 
+    error, 
+    refetch 
+  };
 }

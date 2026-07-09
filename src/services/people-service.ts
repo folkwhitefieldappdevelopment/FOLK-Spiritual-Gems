@@ -1,4 +1,3 @@
-
 'use client';
 
 import { db } from '@/lib/firebase';
@@ -32,20 +31,57 @@ import { startOfDay, endOfDay } from 'date-fns';
 const PAGE_SIZE = 100;
 const MAX_FIRESTORE_LIMIT = 5000;
 
+export type SyncStatus = 'cold' | 'cached' | 'syncing' | 'synced' | 'timeout';
+
 let masterPeopleCache: Person[] | null = null;
 let masterPeopleMap: Map<string, Person> = new Map();
 let masterUnsubscribe: (() => void) | null = null;
 let cachePromise: Promise<Person[]> | null = null;
+let currentSyncStatus: SyncStatus = 'cold';
+
+// Callback registry for reactive UI updates
+const statusListeners = new Set<(status: SyncStatus) => void>();
+const dataListeners = new Set<(people: Person[]) => void>();
+
+export const getSyncStatus = () => currentSyncStatus;
+
+const updateSyncStatus = (status: SyncStatus) => {
+  currentSyncStatus = status;
+  statusListeners.forEach(l => l(status));
+};
+
+export const subscribeToSyncStatus = (callback: (status: SyncStatus) => void) => {
+  statusListeners.add(callback);
+  callback(currentSyncStatus);
+  return () => statusListeners.delete(callback);
+};
+
+export const subscribeToPeopleData = (callback: (people: Person[]) => void) => {
+  dataListeners.add(callback);
+  if (masterPeopleCache) callback(masterPeopleCache);
+  return () => dataListeners.delete(callback);
+};
 
 export const initMasterPeopleStream = (): Promise<Person[]> => {
   if (cachePromise) return cachePromise;
 
   cachePromise = new Promise((resolve) => {
     const peopleRef = collection(db, 'people');
-    // For large databases, we use a greedy background sync after initial UI load
     const q = query(peopleRef, limit(MAX_FIRESTORE_LIMIT));
+    
+    let resolved = false;
 
-    masterUnsubscribe = onSnapshot(q, { includeMetadataChanges: false }, (snap) => {
+    // Timeout safety: Resolve after 6 seconds even if the network is dead
+    const safetyTimeout = setTimeout(() => {
+      if (!resolved) {
+        console.warn("[Sync] Initial snapshot timeout. Showing cached/empty data.");
+        updateSyncStatus('timeout');
+        resolved = true;
+        resolve(masterPeopleCache || []);
+      }
+    }, 6000);
+
+    masterUnsubscribe = onSnapshot(q, { includeMetadataChanges: true }, (snap) => {
       const results: Person[] = [];
       const newMap = new Map<string, Person>();
 
@@ -57,10 +93,34 @@ export const initMasterPeopleStream = (): Promise<Person[]> => {
 
       masterPeopleCache = results;
       masterPeopleMap = newMap;
-      resolve(results);
+      
+      const isFromCache = snap.metadata.fromCache;
+      const isSyncing = snap.metadata.hasPendingWrites || !snap.metadata.fromCache;
+      
+      if (!isFromCache) {
+        updateSyncStatus('synced');
+      } else if (isSyncing) {
+        updateSyncStatus('syncing');
+      } else {
+        updateSyncStatus('cached');
+      }
+
+      // Notify all data listeners
+      dataListeners.forEach(l => l(results));
+
+      // Resolve the promise as soon as we have "something" (cache or net)
+      if (!resolved) {
+        clearTimeout(safetyTimeout);
+        resolved = true;
+        resolve(results);
+      }
     }, (err) => {
       console.error("[MasterStream] Listener failed:", err);
-      resolve([]);
+      if (!resolved) {
+        clearTimeout(safetyTimeout);
+        resolved = true;
+        resolve([]);
+      }
     });
   });
 
