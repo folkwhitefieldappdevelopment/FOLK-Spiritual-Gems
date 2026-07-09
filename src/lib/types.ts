@@ -365,3 +365,26 @@ export type AppNotification = {
   senderName?: string;
   personId?: string;
 };
+
+// Goals Tracking types
+export type GoalStatus = 'not-started' | 'in-progress' | 'achieved' | 'overdue';
+export type GoalCategory = 'Trip Goal' | 'Events';
+
+export type Goal = {
+  id: string;
+  title: string;
+  category: GoalCategory;
+  enablerId: string;
+  enablerName: string;
+  folkGuideId: string;
+  targetCount: number;
+  targetUnit?: string;
+  deadlineDate: any; // Firestore Timestamp
+  deadlineLabel?: string;
+  achievedCount: number;
+  remark?: string;
+  createdBy: string;
+  createdByName: string;
+  createdAt: any;
+  updatedAt: any;
+};

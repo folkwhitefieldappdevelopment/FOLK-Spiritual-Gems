@@ -1,5 +1,5 @@
-
-import type { ProgressCategory } from './types';
+import type { ProgressCategory, Goal, GoalStatus } from './types';
+import { safeDate } from '@/utils/date';
 
 export const checklistData = [
   {
@@ -86,4 +86,18 @@ export const createInitialProgress = (): ProgressCategory[] => {
       answers: { l1: '', l2: '', l3: '', l1_remark: '', l2_remark: '', l3_remark: '' }
     }))
   }));
+};
+
+/**
+ * Computes the real-time status of a goal based on progress and deadline.
+ */
+export const computeGoalStatus = (goal: Goal): GoalStatus => {
+  if (goal.achievedCount >= goal.targetCount) return 'achieved';
+  
+  const deadline = safeDate(goal.deadlineDate);
+  if (deadline && deadline < new Date()) return 'overdue';
+  
+  if (goal.achievedCount > 0) return 'in-progress';
+  
+  return 'not-started';
 };
