@@ -1,7 +1,6 @@
-
 'use client';
 
-import { db } from '@/lib/firebase';
+import { db, persistenceReady } from '@/lib/firebase';
 import {
   collection,
   getDocs,
@@ -83,6 +82,7 @@ export const getGroup = async (id: string, userInfo: UserInfo): Promise<Group | 
 };
 
 export const createGroup = async (groupData: Partial<Group>, userInfo: UserInfo): Promise<Group> => {
+  await persistenceReady;
   const docRef = doc(collection(db, 'groups'));
   groupsCache.clear(); // Invalidate cache on change
 
@@ -105,6 +105,7 @@ export const createGroup = async (groupData: Partial<Group>, userInfo: UserInfo)
 };
 
 export const updateGroup = async (id: string, groupData: Partial<Group>, userInfo: UserInfo): Promise<void> => {
+  await persistenceReady;
   groupsCache.clear();
   const docRef = doc(db, 'groups', id);
   await updateDoc(docRef, groupData);
@@ -112,12 +113,14 @@ export const updateGroup = async (id: string, groupData: Partial<Group>, userInf
 };
 
 export const deleteGroup = async (id: string, userInfo: UserInfo): Promise<void> => {
+  await persistenceReady;
   groupsCache.clear();
   await deleteDoc(doc(db, 'groups', id));
   logAudit('Delete Group', `Deleted: ${id}`, userInfo);
 };
 
 export const addPeopleToGroup = async (groupId: string, peopleIds: string[], userInfo: UserInfo): Promise<void> => {
+  await persistenceReady;
   groupsCache.clear();
   const groupRef = doc(db, 'groups', groupId);
   await runTransaction(db, async (transaction) => {

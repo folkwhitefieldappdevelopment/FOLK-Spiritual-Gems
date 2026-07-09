@@ -20,13 +20,18 @@ let auth: Auth | undefined;
 let storage: FirebaseStorage | undefined;
 let configError: Error | null = null;
 
+// Persistence lock promise to prevent race conditions on early app writes
+let resolvePersistence: () => void;
+export const persistenceReady = new Promise<void>((resolve) => {
+  resolvePersistence = resolve;
+});
+
 try {
   app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
   db = getFirestore(app);
   
   if (typeof window !== 'undefined') {
     // forceOwnership: true is critical for Capacitor/WebView apps to prevent hangs on reload
-    // Added diagnostics to catch silent persistence failures
     enableIndexedDbPersistence(db, { forceOwnership: true })
       .then(() => {
         console.log('[Firebase] Persistence lock acquired successfully.');
@@ -39,7 +44,13 @@ try {
         } else {
           console.warn('[Firebase] Persistence Error:', err.code, err.message);
         }
+      })
+      .finally(() => {
+        // Resolve either way so app doesn't hang if persistence fails
+        resolvePersistence();
       });
+  } else {
+    resolvePersistence();
   }
 
   auth = getAuth(app);
@@ -47,6 +58,7 @@ try {
 } catch (error) {
   console.error("Firebase Init Error:", error);
   configError = error instanceof Error ? error : new Error('Firebase failed to initialize');
+  resolvePersistence();
 }
 
 export { db, auth, storage, configError };

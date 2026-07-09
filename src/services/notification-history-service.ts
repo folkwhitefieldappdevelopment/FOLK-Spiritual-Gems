@@ -1,6 +1,6 @@
 'use client';
 
-import { db } from '@/lib/firebase';
+import { db, persistenceReady } from '@/lib/firebase';
 import { collection, addDoc, getDocs, query, where, orderBy, limit, doc, updateDoc, writeBatch } from 'firebase/firestore';
 import type { AppNotification, UserRole, AppUser } from '@/lib/types';
 import { logAudit } from './audit-service';
@@ -8,6 +8,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 export const addNotificationToHistory = async (userId: string, notification: Omit<AppNotification, 'id' | 'timestamp' | 'isRead'>) => {
+  await persistenceReady;
   const historyRef = collection(db, 'users', userId, 'notifications');
   const data: any = {
     ...notification,
@@ -33,6 +34,7 @@ export const getNotificationHistory = async (userId: string): Promise<AppNotific
 };
 
 export const markNotificationAsRead = async (userId: string, notificationId: string) => {
+  await persistenceReady;
   const notificationRef = doc(db, 'users', userId, 'notifications', notificationId);
   const data = { isRead: true };
   
@@ -47,6 +49,7 @@ export const markNotificationAsRead = async (userId: string, notificationId: str
 };
 
 export const clearAllNotifications = async (userId: string) => {
+  await persistenceReady;
   const historyRef = collection(db, 'users', userId, 'notifications');
   const snap = await getDocs(historyRef);
   const batch = writeBatch(db);
@@ -65,6 +68,7 @@ export const broadcastNotification = async (
   adminInfo: { id: string, name: string, role: UserRole[] },
   data: { title: string; message: string; targetRoles: UserRole[] }
 ) => {
+  await persistenceReady;
   const usersRef = collection(db, 'users');
   const snap = await getDocs(query(usersRef));
   

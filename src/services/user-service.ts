@@ -1,6 +1,6 @@
 'use client';
 
-import { db } from '@/lib/firebase';
+import { db, persistenceReady } from '@/lib/firebase';
 import {
   collection,
   addDoc,
@@ -39,6 +39,7 @@ export const getUserById = async (id: string): Promise<AppUser | null> => {
 };
 
 export const createUser = async (userData: Omit<AppUser, 'id' | 'createdAt'>, uid?: string): Promise<AppUser> => {
+  await persistenceReady;
   const usersCollection = collection(db, 'users');
   
   const q = query(usersCollection, where("email", "==", userData.email));
@@ -76,6 +77,7 @@ export const createUser = async (userData: Omit<AppUser, 'id' | 'createdAt'>, ui
 
 export const updateUser = async (id: string, userData: { [key: string]: any }): Promise<void> => {
   if (id === 'anonymous-user') return;
+  await persistenceReady;
   
   const userDocRef = doc(db, 'users', id);
   const dataToUpdate = { ...userData };

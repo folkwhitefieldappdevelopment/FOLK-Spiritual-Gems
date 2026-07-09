@@ -1,6 +1,6 @@
 'use client';
 
-import { db } from '@/lib/firebase';
+import { db, persistenceReady } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import type { Group } from '@/lib/types';
 import type { IntelligenceInsights } from '@/services/intelligence-service';
@@ -15,6 +15,7 @@ export async function queuePulseReport(
   insights: IntelligenceInsights
 ) {
   if (!to || !to.includes('@')) throw new Error("A valid email address is required.");
+  await persistenceReady;
 
   const mailRef = collection(db, 'mail');
   

@@ -1,6 +1,6 @@
 'use client';
 
-import { db } from '@/lib/firebase';
+import { db, persistenceReady } from '@/lib/firebase';
 import { 
   collection, 
   setDoc, 
@@ -56,6 +56,7 @@ export async function trackSessionStart(
   },
   user: AppUser
 ): Promise<string> {
+  await persistenceReady;
   const callerId = sessionData.callerId || user.id;
   const callerName = sessionData.callerName || user.name;
   const userRoles = user.role || [];
@@ -115,6 +116,7 @@ export async function updateSessionHistory(
   shouldRemove: boolean = false
 ) {
   if (!sessionId) return;
+  await persistenceReady;
   const docRef = doc(db, 'calling_sessions', sessionId);
   
   if (shouldRemove) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { db } from '@/lib/firebase';
+import { db, persistenceReady } from '@/lib/firebase';
 import {
   collection,
   getDocs,
@@ -57,6 +57,7 @@ export async function createGoal(
   data: Omit<Goal, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'createdByName'>,
   user: AppUser
 ): Promise<string> {
+  await persistenceReady;
   const goalRef = doc(collection(db, 'goals'));
   
   const finalData = {
@@ -91,6 +92,7 @@ export async function updateGoalProgress(
   progress: { achievedCount: number; remark?: string },
   user: AppUser
 ): Promise<void> {
+  await persistenceReady;
   const goalRef = doc(db, 'goals', goalId);
   
   const updates = {
@@ -120,6 +122,7 @@ export async function updateGoal(
   data: Partial<Goal>,
   user: AppUser
 ): Promise<void> {
+  await persistenceReady;
   const goalRef = doc(db, 'goals', goalId);
   
   const updates = {
@@ -145,6 +148,7 @@ export async function updateGoal(
  * Deletes a goal. restricted to Admin/Folk Guide.
  */
 export async function deleteGoal(goalId: string, user: AppUser): Promise<void> {
+  await persistenceReady;
   const goalRef = doc(db, 'goals', goalId);
   
   try {

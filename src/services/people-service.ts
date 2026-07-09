@@ -1,6 +1,6 @@
 'use client';
 
-import { db } from '@/lib/firebase';
+import { db, persistenceReady } from '@/lib/firebase';
 import {
   collection,
   getDocs,
@@ -356,6 +356,7 @@ export const getPerson = async (id: string): Promise<Person | null> => {
 };
 
 export const createPerson = async (data: Partial<Person>, userInfo: { id: string; name: string; role: UserRole[] }): Promise<{ success: boolean; message?: string; person?: Person }> => {
+  await persistenceReady;
   const docRef = doc(collection(db, 'people'));
   const normPhone = normalizePhone(data.phone!);
   const finalData = sanitizeData({ ...data, phone: normPhone, createdAt: serverTimestamp(), isDeleted: false, fullName_lowercase: (data.fullName || '').toLowerCase(), progress: data.progress && data.progress.length > 0 ? data.progress : createInitialProgress() });
@@ -370,6 +371,7 @@ export const createPerson = async (data: Partial<Person>, userInfo: { id: string
 };
 
 export const updatePerson = async (id: string, data: Partial<Person>, userInfo?: { id: string; name: string; role: UserRole[] }): Promise<{ success: boolean; message?: string }> => {
+  await persistenceReady;
   const docRef = doc(db, 'people', id);
   const { callHistory, ...rest } = data;
   const finalData = sanitizeData(rest);
@@ -452,6 +454,7 @@ export const assignCoEnablerToPeople = async (personIds: string[], coEnabler: Ap
 };
 
 export const assignCoEnablerSession = async (personIds: string[], sessionData: Omit<CoEnablerSession, 'id'>, userInfo: AppUser): Promise<string> => {
+  await persistenceReady;
   const sessionRef = doc(collection(db, 'co_enabler_sessions'));
   await setDoc(sessionRef, { ...sessionData, createdAt: serverTimestamp() });
   logAudit('Create Co-Enabler Session', `Created external session for task: ${sessionData.task}`, { id: userInfo.id, name: userInfo.name, role: userInfo.role });
@@ -472,6 +475,7 @@ export const scanForDuplicates = async (userInfo: { id: string; name: string; ro
 };
 
 export const backfillIsDeleted = async (userInfo: { id: string; name: string; role: UserRole[] }) => {
+  await persistenceReady;
   const peopleRef = collection(db, 'people');
   const snap = await getDocs(query(peopleRef, limit(MAX_FIRESTORE_LIMIT)));
   let count = 0;
@@ -480,6 +484,7 @@ export const backfillIsDeleted = async (userInfo: { id: string; name: string; ro
 };
 
 export const backfillEnablerId = async (allUsers: AppUser[], userInfo: { id: string; name: string; role: UserRole[] }) => {
+  await persistenceReady;
   const peopleRef = collection(db, 'people');
   const snap = await getDocs(query(peopleRef, limit(MAX_FIRESTORE_LIMIT)));
   let count = 0;

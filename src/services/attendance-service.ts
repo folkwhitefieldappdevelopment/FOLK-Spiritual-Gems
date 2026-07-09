@@ -1,6 +1,6 @@
 'use client';
 
-import { db } from '@/lib/firebase';
+import { db, persistenceReady } from '@/lib/firebase';
 import { 
   collection, 
   doc, 
@@ -26,6 +26,7 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
  * Also maintains an atomic attendeeCount on the event for N+1 performance optimization.
  */
 export async function markAttendance(personId: string, groupId: string, groupName: string, eventId?: string, eventName?: string) {
+  await persistenceReady;
   const personRef = doc(db, 'people', personId);
   const groupRef = doc(db, 'groups', groupId);
   
@@ -149,6 +150,7 @@ export async function markAttendance(personId: string, groupId: string, groupNam
 }
 
 export async function removeAttendance(personId: string, groupId: string, eventId: string) {
+    await persistenceReady;
     const personRef = doc(db, 'people', personId);
     const attRef = doc(db, 'groups', groupId, 'events', eventId, 'attendance', personId);
     const eventRef = doc(db, 'groups', groupId, 'events', eventId);
@@ -186,6 +188,7 @@ export async function getGroupEvents(groupId: string): Promise<GroupEvent[]> {
 }
 
 export async function createGroupEvent(groupId: string, eventData: Omit<GroupEvent, 'id' | 'createdAt'>) {
+    await persistenceReady;
     const eventRef = doc(collection(db, 'groups', groupId, 'events'));
     const data = {
         ...eventData,
