@@ -26,7 +26,9 @@ import {
     Contact,
     UserPlus,
     RefreshCw,
-    Wifi
+    Wifi,
+    ClipboardCheck,
+    ArrowRight
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -86,7 +88,6 @@ export default function DashboardPage() {
   const manualStatuses = callStatuses.filter(status => !status.startsWith('Device:'));
   const deviceStatuses = callStatuses.filter(status => status.startsWith('Device:'));
 
-  // Non-blocking loader: only show full page loader if we have literally no data at all
   if (isLoading && (!stats || stats.totalContactsCount === undefined)) return <FullPageLoader />;
 
   return (
@@ -200,7 +201,26 @@ export default function DashboardPage() {
                 />
             </div>
 
-            {/* Performance Leaderboard */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card 
+                    onClick={() => router.push('/pending-logs')}
+                    className="md:col-span-1 bg-primary/10 border-2 border-primary/20 hover:bg-primary/20 transition-all cursor-pointer group rounded-[1.5rem] p-6 shadow-xl"
+                >
+                    <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                            <p className="text-[10px] font-black text-primary uppercase tracking-widest">Interaction Pulse</p>
+                            <h3 className="text-xl font-black text-white uppercase tracking-tight">Pending Logs</h3>
+                        </div>
+                        <div className="h-12 w-12 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform">
+                            <ClipboardCheck className="h-6 w-6" />
+                        </div>
+                    </div>
+                    <div className="mt-4 flex items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest group-hover:text-white transition-colors">
+                        Clear Documentation Queue <ArrowRight className="ml-2 h-3 w-3" />
+                    </div>
+                </Card>
+            </div>
+
             <Card className="bg-[#1e1e2e] border-none rounded-[2rem] shadow-2xl overflow-hidden">
                 <CardHeader className="p-8 pb-4 flex flex-row items-center justify-between bg-[#1b1d32] border-b border-white/5">
                     <div className="space-y-1">

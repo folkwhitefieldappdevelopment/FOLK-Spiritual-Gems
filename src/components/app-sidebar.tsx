@@ -12,6 +12,7 @@ import {
   History,
   UsersRound,
   Activity,
+  Clock,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
@@ -30,6 +31,7 @@ type NavItem = {
 const allNavItems: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: Gem },
   { href: '/contacts', label: 'Contacts', icon: Users },
+  { href: '/pending-logs', label: 'Pending', icon: Clock },
   { href: '/live-activity', label: 'Activity', icon: Activity },
   { href: '/assignments', label: 'Assign', icon: UsersRound, roles: ['Admin', 'Folk Guide'] },
   {
