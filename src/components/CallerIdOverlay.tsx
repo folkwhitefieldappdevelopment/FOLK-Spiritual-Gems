@@ -5,6 +5,7 @@ import { Capacitor } from '@capacitor/core';
 import { CallLog } from '@/lib/call-log';
 import { getPersonByPhone } from '@/services/people-service';
 import { useAuth } from '@/contexts/auth-context';
+import { useAppToast } from '@/contexts/toast-context';
 import type { Person } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -31,6 +32,7 @@ import { updateUser } from '@/services/user-service';
 
 export function CallerIdOverlay() {
   const { appUser, setAppUser } = useAuth();
+  const { toast } = useAppToast();
   const router = useRouter();
   const [activeCall, setActiveCall] = React.useState<{ phoneNumber: string; type: string } | null>(null);
   const [contact, setContact] = React.useState<Person | null>(null);
@@ -64,7 +66,8 @@ export function CallerIdOverlay() {
             setContact(match);
 
             if (isAndroid && match) {
-                await CallLog.showNativeOverlay({
+                // A2. Surface failure to user if permission is missing
+                const result = await CallLog.showNativeOverlay({
                     name: match.fullName,
                     phone: data.phoneNumber,
                     photoUrl: match.photoUrl || '',
@@ -72,6 +75,23 @@ export function CallerIdOverlay() {
                     remark: match.lastCallRemark || '',
                     type: data.type
                 });
+
+                if (result && (result as any).shown === false) {
+                    toast({
+                        title: "Caller ID overlay blocked",
+                        description: "Enable 'Display over other apps' in Settings to identify contacts during calls.",
+                        action: (
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-8 rounded-lg font-bold"
+                                onClick={() => CallLog.requestOverlayPermission()}
+                            >
+                                Enable
+                            </Button>
+                        )
+                    });
+                }
             }
           } catch (e) { console.error('[CallerID] Lookup failed', e); } finally { setIsLoading(false); }
         });
@@ -82,7 +102,7 @@ export function CallerIdOverlay() {
                 else if (data.action === 'viewProfile') router.push(`/contacts/profile?id=${contact?.id}`);
             });
         }
-      } catch (e) { console.warn('[CallerID] Native plugin not initialized.'); }
+      } catch (e) { console.warn('[CallerID] Native plugin initialization issue.'); }
     };
 
     setupListeners();
@@ -90,7 +110,7 @@ export function CallerIdOverlay() {
       if (nativeListener) nativeListener.remove();
       if (actionListener) actionListener.remove();
     };
-  }, [appUser, isAndroid, contact, router]);
+  }, [appUser, isAndroid, contact, router, toast]);
 
   const handleQuickStartSession = async () => {
     if (!appUser || !contact || isStartingSession) return;

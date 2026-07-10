@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { getPeopleForReminders, updatePerson } from '@/services/people-service';
 import { cancelAlarm } from '@/lib/notification-service';
+import { addNotificationToHistory } from '@/services/notification-history-service';
 import type { Person } from '@/lib/types';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -94,6 +95,17 @@ export function ReminderManager() {
             isAlarmActiveRef.current = true;
             setActiveAlarm(person);
             if (audioRef.current) audioRef.current.play().catch(() => {});
+            
+            // B1. Record history entry so it appears in the Notification Center dropdown
+            if (person.id !== 'test') {
+                addNotificationToHistory(appUser.id, {
+                    title: `Follow-up Due: ${person.fullName}`,
+                    message: person.lastCallRemark || `Time to follow up with ${person.fullName}.`,
+                    type: 'alarm',
+                    personId: person.id,
+                });
+            }
+
             processedReminders.current.add(reminderId);
             break; 
           }

@@ -7,15 +7,49 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { Camera } from '@capacitor/camera';
 import { Contacts } from '@capacitor-community/contacts';
 import { useAppToast } from '@/contexts/toast-context';
+import { Button } from './ui/button';
 
 /**
  * Sequential Android Permission Requester.
  * Ensures high-privilege permissions are requested one-by-one to avoid system collisions.
- * Sequence: Runtime Prompts -> Overlay Settings -> Battery Exemption.
  */
 export function NativePermissionRequester() {
   const { toast } = useAppToast();
   const hasRequested = React.useRef(false);
+
+  // A3. Re-verify critical overlay permission on app resume
+  React.useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    const checkOverlayStatus = async () => {
+        const perms = await CallLog.checkPermissions();
+        if (perms.overlay !== 'granted') {
+            toast({
+                title: "Caller ID Disabled",
+                description: "Permission to 'Draw over other apps' is required for ID tracking.",
+                action: (
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 font-black uppercase text-[10px] rounded-lg"
+                        onClick={() => CallLog.requestOverlayPermission()}
+                    >
+                        Enable
+                    </Button>
+                )
+            });
+        }
+    };
+
+    const onVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+            checkOverlayStatus();
+        }
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, [toast]);
 
   React.useEffect(() => {
     if (!Capacitor.isNativePlatform() || hasRequested.current) return;
@@ -29,20 +63,13 @@ export function NativePermissionRequester() {
       try {
         console.log('[NativePermissions] Starting sequential initialization...');
 
-        // 1. Runtime Permissions (System Dialogs)
-        // Request Call Log & Phone first
+        // 1. Runtime System Dialogs
         await CallLog.requestPermissions();
-        
-        // Request Camera
         await Camera.requestPermissions();
-        
-        // Request Contacts
         await Contacts.requestPermissions();
-
-        // Explicitly request notifications
         await LocalNotifications.requestPermissions();
 
-        // 2. Overlay Permission (Redirection to Settings)
+        // 2. Overlay Setting (Redirection)
         await new Promise(r => setTimeout(r, 2000));
         toast({ 
           title: "Setup Step 2/3", 
@@ -50,7 +77,7 @@ export function NativePermissionRequester() {
         });
         await CallLog.requestOverlayPermission();
           
-        // 3. Battery Exemption (Redirection to Settings)
+        // 3. Battery Exemption (Redirection)
         await new Promise(r => setTimeout(r, 8000));
         toast({ 
           title: "Final Step 3/3", 
@@ -65,7 +92,6 @@ export function NativePermissionRequester() {
       }
     };
 
-    // Delay start to ensure splash screen and UI are ready
     const timer = setTimeout(requestAllSequentially, 4000);
     return () => clearTimeout(timer);
   }, [toast]);
