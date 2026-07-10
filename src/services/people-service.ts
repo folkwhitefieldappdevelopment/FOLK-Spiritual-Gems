@@ -18,7 +18,7 @@ import {
   documentId,
   onSnapshot,
 } from 'firebase/firestore';
-import type { Person, AppUser, UserRole, FolkStage, CoEnablerSession } from '@/lib/types';
+import type { Person, AppUser, UserRole, FolkStage, CoEnablerSession, FilterState } from '@/lib/types';
 import { isAssignedToUser, ELIMINATED_STATUSES } from '@/lib/types';
 import { logAudit } from '@/services/audit-service';
 import { generateDynamicGroups, dynamicGroupDefinitions } from '@/lib/dynamic-groups';
@@ -226,25 +226,7 @@ export const getPeople = async (
     groupId?: string;
     personIds?: string[];
     scope?: 'all' | 'my';
-    filters?: {
-      name?: string;
-      phone?: string;
-      location?: string;
-      stayingWith?: string;
-      chantingRounds?: string;
-      enablerInTouchWith?: string;
-      callStatus?: string;
-      eventName?: string;
-      callerName?: string;
-      callDateFrom?: string;
-      callDateTo?: string;
-      contactSources?: string[];
-      // Deep-link filters
-      stage?: string;
-      enablerId?: string;
-      enablerName?: string;
-      chantingRoundsMin?: string;
-    };
+    filters?: Partial<FilterState>;
     lastDocId?: string;
     ignoreLimit?: boolean;
   } = {}
@@ -259,7 +241,8 @@ export const getPeople = async (
       const missingIds = personIds.filter(id => !masterPeopleMap.has(id));
       if (missingIds.length > 0) {
           const freshDocs = await getPeopleByIds(missingIds);
-          basePeople = [...basePeople, ...freshDocs];
+          freshDocs.forEach(d => masterPeopleMap.set(d.id, d));
+          basePeople = allResults.filter(p => personIds.includes(p.id));
       }
     }
   } else if (groupId) {
@@ -289,30 +272,36 @@ export const getPeople = async (
       }
 
       // New deep-link filters
-      if (filters.stage && p.currentFolkStage !== filters.stage) return false;
-      if (filters.enablerId) {
-          const matchesId = p.enablerId === filters.enablerId;
-          const matchesNameFallback = !p.enablerId && filters.enablerName && p.enablerInTouchWith?.split('::')[0].trim() === filters.enablerName.trim();
-          if (!matchesId && !matchesNameFallback) return false;
+      if (filters.stage && filters.stage !== '__ALL__' && p.currentFolkStage !== filters.stage) return false;
+      
+      if (filters.enablerId && filters.enablerId !== '__ALL__') {
+          if (filters.enablerId === '__UNASSIGNED__') {
+              if (p.enablerId || p.enablerInTouchWith) return false;
+          } else {
+              const parts = filters.enablerId.split('::');
+              const id = parts.length > 1 ? parts[1] : parts[0];
+              const nameFallback = parts.length > 1 ? parts[0] : filters.enablerName;
+
+              const matchesId = p.enablerId === id;
+              const matchesNameFallback = !p.enablerId && nameFallback && p.enablerInTouchWith?.split('::')[0].trim() === nameFallback.trim();
+              if (!matchesId && !matchesNameFallback) return false;
+          }
       }
+      
       if (filters.chantingRoundsMin) {
           const min = parseInt(filters.chantingRoundsMin);
           if ((p.chantingStatus || 0) < min) return false;
+      } else if (filters.chantingRounds && filters.chantingRounds !== '__ALL__') {
+        const rounds = parseInt(filters.chantingRounds);
+        if (p.chantingStatus !== rounds) return false;
       }
 
       if (filters.name && !p.fullName?.toLowerCase().includes(filters.name.toLowerCase())) return false;
       if (filters.phone && !normalizePhone(p.phone).includes(normalizePhone(filters.phone))) return false;
       if (filters.location && !p.location?.toLowerCase().includes(filters.location.toLowerCase())) return false;
       if (filters.stayingWith && p.stayingWith !== filters.stayingWith) return false;
-      if (filters.chantingRounds) {
-        const rounds = parseInt(filters.chantingRounds);
-        if (p.chantingStatus !== rounds) return false;
-      }
-      if (filters.enablerInTouchWith) {
-        const filterName = filters.enablerInTouchWith.split('::')[0].toLowerCase();
-        if (!p.enablerInTouchWith?.toLowerCase().includes(filterName)) return false;
-      }
-      if (filters.callStatus && p.lastCallStatus !== filters.callStatus) return false;
+      if (filters.callStatus && filters.callStatus !== '__ALL__' && p.lastCallStatus !== filters.callStatus) return false;
+      
       if (filters.contactSources && filters.contactSources.length > 0) {
         const pSources = p.contactSource || [];
         if (!filters.contactSources.some(s => pSources.includes(s))) return false;

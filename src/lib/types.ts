@@ -119,6 +119,24 @@ export type CallLog = {
   phoneNumber?: string;
 };
 
+export type FilterState = {
+  name: string;
+  phone: string;
+  location: string;
+  eventName: string;
+  callerName: string;
+  callDateFrom: string;
+  callDateTo: string;
+  stayingWith: string;
+  chantingRounds: string;
+  enablerId: string;
+  enablerName: string;
+  callStatus: string;
+  contactSources: string[];
+  stage: string;
+  chantingRoundsMin: string;
+};
+
 export type Person = {
   id: string;
   fullName: string;

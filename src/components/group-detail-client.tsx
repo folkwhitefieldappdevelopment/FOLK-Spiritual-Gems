@@ -16,8 +16,10 @@ import {
   Zap,
   Search,
   Undo2,
+  RotateCcw,
+  SlidersHorizontal,
 } from 'lucide-react';
-import type { Person, Group, GroupEvent } from '@/lib/types';
+import type { Person, Group, GroupEvent, FilterState } from '@/lib/types';
 import { useAppToast } from '@/contexts/toast-context';
 import { getGroup, deleteGroup as deleteGroupSvc, updateGroup as updateGroupSvc } from '@/services/groups-service';
 import { 
@@ -28,10 +30,12 @@ import {
   restorePerson,
 } from '@/services/people-service';
 import { getGroupEvents, markAttendance } from '@/services/attendance-service';
+import { getEnablers, getContactSources, getStayingWithOptions, type EnablerOption } from '@/services/settings-service';
 import { useAuth } from '@/contexts/auth-context';
 import { updateUser } from '@/services/user-service';
 import { trackSessionStart } from '@/services/session-history-service';
 import { dynamicGroupDefinitions } from '@/lib/dynamic-groups';
+import { matchesFilters } from '@/lib/people-filters';
 import { Button } from '@/components/ui/button';
 import { PersonTable } from '@/components/person-table';
 import { ConfirmSessionDialog } from '@/components/confirm-session-dialog';
@@ -42,6 +46,7 @@ import { CreateUpdateGroupDialog } from '@/components/create-update-group-dialog
 import { AddMembersToGroupDialog } from '@/components/add-members-to-group-dialog';
 import { CreateEventDialog } from '@/components/create-event-dialog';
 import { IntelligentReportView } from '@/components/intelligent-report-view';
+import { ContactFilterPanel } from '@/components/contact-filter-panel';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,6 +70,13 @@ import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { Input } from './ui/input';
 
+const EMPTY_FILTERS: FilterState = {
+    name: '', phone: '', location: '', eventName: '', callerName: '', 
+    callDateFrom: '', callDateTo: '', stayingWith: '', chantingRounds: '', 
+    enablerId: '', enablerName: '', callStatus: '', contactSources: [],
+    stage: '', chantingRoundsMin: ''
+};
+
 export default function GroupDetailClient({ groupId }: { groupId: string }) {
   const router = useRouter();
   const { toast } = useAppToast();
@@ -76,6 +88,13 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
   const [members, setMembers] = React.useState<Person[]>([]);
   const [totalCount, setTotalCount] = React.useState<number | null>(0);
   const [events, setEvents] = React.useState<GroupEvent[]>([]);
+  
+  const [filters, setFilters] = React.useState<FilterState>(EMPTY_FILTERS);
+  const [isFilterOpen, setIsFilterOpen] = React.useState(false);
+  const [enablerOptions, setEnablerOptions] = React.useState<EnablerOption[]>([]);
+  const [sourceOptions, setSourceOptions] = React.useState<string[]>([]);
+  const [stayingWithOptions, setStayingWithOptions] = React.useState<string[]>([]);
+
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [markingEvent, setMarkingEvent] = React.useState<GroupEvent | null>(null);
   const [attendanceMembers, setAttendanceMembers] = React.useState<Person[]>([]);
@@ -90,6 +109,10 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
   const [isGalleryOpen, setIsGalleryOpen] = React.useState(false);
   const [qrEvent, setQrEvent] = React.useState<{ id: string, name: string } | null>(null);
   const [attendanceSearchQuery, setAttendanceSearchQuery] = React.useState('');
+
+  const filteredMembers = React.useMemo(() => {
+      return members.filter(p => matchesFilters(p, filters));
+  }, [members, filters]);
 
   const fetchData = React.useCallback(async () => {
     if (!groupId || !appUser) return;
@@ -125,6 +148,16 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
           const membersResult = await getPeople(appUser, { groupId: g.id, ignoreLimit: true });
           setMembers(membersResult.people); setTotalCount(membersResult.totalCount);
       }
+      
+      const [enablers, sources, stayings] = await Promise.all([
+          getEnablers(appUser),
+          getContactSources(),
+          getStayingWithOptions()
+      ]);
+      setEnablerOptions(enablers);
+      setSourceOptions(sources);
+      setStayingWithOptions(stayings);
+
     } finally { setIsLoading(false); }
   }, [groupId, appUser, router]);
 
@@ -156,7 +189,7 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
     if (!appUser) return;
     try {
         await restorePerson(personId, { id: appUser.id, name: appUser.name, role: appUser.role });
-        toast({ title: "Contact Restored", description: "The contact is now back in their regular preaching stage." });
+        toast({ title: "Contact Restored" });
         fetchData();
     } catch (e) {
         toast({ variant: 'destructive', title: "Restore Failed" });
@@ -218,20 +251,44 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
                 </TabsList>
 
                 <TabsContent value="members" className="mt-6 space-y-6">
-                    <PersonTable 
-                        people={members} 
-                        onEdit={p => { setEditingPerson(p); setIsPersonDialogOpen(true); }} 
-                        onDelete={id => deletePerson(id, appUser!).then(() => fetchData())} 
-                        onStartCall={p => { setSelectedIds(new Set([p.id])); setIsConfirmSessionDialogOpen(true); }} 
-                        onRestore={isRestoreGroup ? handleRestorePerson : undefined}
-                        selectedIds={selectedIds} 
-                        setSelectedIds={setSelectedIds} 
-                        isSelectionActive={selectedIds.size > 0} 
-                        showEnablerColumn={true} 
-                        navigationContext={{ groupId, scope: 'all' }} 
-                        totalCount={totalCount} 
-                        isLoading={false} 
-                    />
+                    <div className="flex flex-col gap-4">
+                        <div className="flex justify-between items-center px-2">
+                             <h3 className="text-lg font-black uppercase tracking-tight text-foreground">Member List</h3>
+                             <Button 
+                                variant="outline" 
+                                onClick={() => setIsFilterOpen(!isFilterOpen)} 
+                                className={cn("rounded-xl h-10 font-black uppercase text-[10px] tracking-widest", isFilterOpen && "bg-primary text-white border-primary")}
+                             >
+                                <SlidersHorizontal className="h-3.5 w-3.5 mr-2" />
+                                {isFilterOpen ? 'Hide Filters' : 'Filter List'}
+                             </Button>
+                        </div>
+                        {isFilterOpen && (
+                            <ContactFilterPanel 
+                                filters={filters} 
+                                onChange={setFilters} 
+                                onApply={() => {}} // LocalMemo handles this
+                                onReset={() => setFilters(EMPTY_FILTERS)}
+                                enablerOptions={enablerOptions}
+                                sourceOptions={sourceOptions}
+                                stayingWithOptions={stayingWithOptions}
+                            />
+                        )}
+                        <PersonTable 
+                            people={filteredMembers} 
+                            onEdit={p => { setEditingPerson(p); setIsPersonDialogOpen(true); }} 
+                            onDelete={id => deletePerson(id, appUser!).then(() => fetchData())} 
+                            onStartCall={p => { setSelectedIds(new Set([p.id])); setIsConfirmSessionDialogOpen(true); }} 
+                            onRestore={isRestoreGroup ? handleRestorePerson : undefined}
+                            selectedIds={selectedIds} 
+                            setSelectedIds={setSelectedIds} 
+                            isSelectionActive={selectedIds.size > 0} 
+                            showEnablerColumn={true} 
+                            navigationContext={{ groupId, scope: 'all' }} 
+                            totalCount={filteredMembers.length} 
+                            isLoading={false} 
+                        />
+                    </div>
                 </TabsContent>
 
                 {!group.isDynamic && (
