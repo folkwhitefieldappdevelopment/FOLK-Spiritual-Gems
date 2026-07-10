@@ -8,7 +8,7 @@ import { folkStages } from '@/lib/types';
 /**
  * Definitions for all fields supported in Import/Export
  */
-const COLUMNS = [
+export const COLUMNS = [
   { header: 'Full Name', key: 'fullName', width: 25 },
   { header: 'Phone', key: 'phone', width: 15 },
   { header: 'Age', key: 'age', width: 10 },
@@ -161,9 +161,59 @@ export async function downloadImportTemplate() {
 }
 
 /**
+ * Parses an imported Excel file using ExcelJS.
+ */
+export async function parseImportFile(file: File): Promise<Record<string, any>[]> {
+  const workbook = new ExcelJS.Workbook();
+  const arrayBuffer = await file.arrayBuffer();
+  
+  if (file.name.endsWith('.csv')) {
+    await workbook.csv.read(new Buffer(arrayBuffer));
+  } else {
+    await workbook.xlsx.load(arrayBuffer);
+  }
+
+  const worksheet = workbook.worksheets[0];
+  if (!worksheet) return [];
+
+  const headers: string[] = [];
+  worksheet.getRow(1).eachCell((cell) => {
+    headers.push(String(cell.value).trim());
+  });
+
+  // Map headers to field keys using COLUMNS definition
+  const headerMap: Record<string, string> = {};
+  COLUMNS.forEach(col => {
+    const matchedHeader = headers.find(h => h.toLowerCase() === col.header.toLowerCase());
+    if (matchedHeader) headerMap[matchedHeader] = col.key;
+  });
+
+  const data: Record<string, any>[] = [];
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return; // Skip headers
+    const obj: Record<string, any> = {};
+    headers.forEach((header, index) => {
+      const key = headerMap[header];
+      if (key) {
+        const cell = row.getCell(index + 1);
+        obj[key] = cell.value;
+      }
+    });
+    data.push(obj);
+  });
+
+  return data;
+}
+
+/**
  * Exports a list of contacts to an Excel file with full details and embedded photos.
  */
-export async function exportContactsToExcel(people: Person[], fileName: string, allGroups: Group[] = []) {
+export async function exportContactsToExcel(
+  people: Person[], 
+  fileName: string, 
+  allGroups: Group[] = [],
+  onProgress?: (current: number, total: number) => void
+) {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Contacts');
   
@@ -186,9 +236,12 @@ export async function exportContactsToExcel(people: Person[], fileName: string, 
   sheet.getRow(1).font = { bold: true };
   sheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
 
-  for (let i = 0; i < people.length; i++) {
+  const total = people.length;
+  for (let i = 0; i < total; i++) {
     const p = people[i];
     const rowIndex = i + 2;
+
+    if (onProgress) onProgress(i + 1, total);
 
     const memberOf = allGroups
         .filter(g => g.peopleIds?.includes(p.id))

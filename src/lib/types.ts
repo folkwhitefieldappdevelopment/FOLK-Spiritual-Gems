@@ -211,6 +211,17 @@ export type AppUser = {
   whatsAppTemplate?: string;
 };
 
+export type BackgroundJob = {
+  id: string;
+  type: 'import' | 'export';
+  fileName: string;
+  current: number;
+  total: number;
+  status: 'running' | 'success' | 'error';
+  errors: { name: string; phone: string; error: string }[];
+  startedAt: number;
+};
+
 /**
  * Robust strict check for assignment.
  * Ensures enablers only see their own contacts.

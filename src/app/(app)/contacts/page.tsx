@@ -47,7 +47,7 @@ import { useRouter } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConfirmSessionDialog } from '@/components/confirm-session-dialog';
 import { trackSessionStart } from "@/services/session-history-service";
-import { exportContactsToExcel, downloadImportTemplate } from "@/services/import-export-service";
+import { exportContactsToExcel, downloadImportTemplate, parseImportFile } from "@/services/import-export-service";
 import { AddContactMethodDialog } from "@/components/add-contact-method-dialog";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
@@ -69,7 +69,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { updateUser } from '@/services/user-service';
 import { ContactFilterPanel } from "@/components/contact-filter-panel";
-import * as XLSX from 'xlsx';
+import { useBackgroundTasks } from "@/contexts/background-task-context";
 import { cn } from "@/lib/utils";
 
 const EMPTY_FILTERS: FilterState = {
@@ -84,6 +84,7 @@ const ContactsPageComponent = () => {
   const { appUser, setAppUser } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { startJob, updateJob } = useBackgroundTasks();
 
   const isPrivileged = React.useMemo(() => {
     return appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
@@ -223,32 +224,45 @@ const ContactsPageComponent = () => {
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !appUser) return;
-    const reader = new FileReader();
-    reader.onload = async (evt) => {
-        try {
-            const bstr = evt.target?.result;
-            const wb = XLSX.read(bstr, { type: 'binary' });
-            const ws = wb.Sheets[wb.SheetNames[0]];
-            if (!ws) return;
-            const data: any[] = XLSX.utils.sheet_to_json(ws);
-            const mappedData = data.map(row => ({
-                fullName: row['Full Name'] || row['fullName'],
-                phone: String(row['Phone'] || row['phone'] || ''),
-                age: Number(row['Age'] || row['age'] || 18),
-                currentFolkStage: row['Current Folk Stage'] || row['currentFolkStage'],
-                location: row['Location'] || row['location'],
-                stayingWith: row['Staying With'] || row['stayingWith'],
-                occupation: row['Occupation'] || row['occupation'],
-                organisation: row['Organisation'] || row['organisation'],
-                contactSource: row['Contact Source'] ? String(row['Contact Source']).split(',').map((s:string) => s.trim()) : [],
-            }));
-            await importPeople(mappedData, appUser);
-            toast({ title: "Import Successful" });
-            fetchContacts(undefined, true);
-        } catch (error) { toast({ variant: 'destructive', title: "Import Failed" }); }
-    };
-    reader.readAsBinaryString(file);
+    
+    const jobId = startJob({ type: 'import', fileName: file.name, total: 0 });
+
+    try {
+      const mappedData = await parseImportFile(file);
+      updateJob(jobId, { total: mappedData.length });
+
+      const result = await importPeople(mappedData, appUser, (current) => {
+        updateJob(jobId, { current });
+      });
+
+      updateJob(jobId, { 
+        status: 'success', 
+        errors: result.errors 
+      });
+      
+      fetchContacts(undefined, true);
+    } catch (error) { 
+      updateJob(jobId, { status: 'error' });
+      toast({ variant: 'destructive', title: "Import Failed" }); 
+    }
+
     if (e.target) e.target.value = '';
+  };
+
+  const handleExportExcel = async () => {
+    if (!appUser) return;
+    
+    const jobId = startJob({ type: 'export', fileName: `SG_Export_${format(new Date(), 'yyyyMMdd')}.xlsx`, total: people.length });
+
+    try {
+      await exportContactsToExcel(people, "SG_Export", groups, (current) => {
+        updateJob(jobId, { current });
+      });
+      updateJob(jobId, { status: 'success' });
+    } catch (e) {
+      updateJob(jobId, { status: 'error' });
+      toast({ variant: 'destructive', title: "Export Failed" });
+    }
   };
 
   const handleBulkDelete = async () => {
@@ -307,14 +321,14 @@ const ContactsPageComponent = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-popover border-border">
                     <DropdownMenuItem onSelect={() => fileInputRef.current?.click()} className="font-bold"><Upload className="mr-2 h-4 w-4" /> Import Excel</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => exportContactsToExcel(people, "SG_Export", groups)} className="font-bold"><Download className="mr-2 h-4 w-4" /> Export Full List</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={handleExportExcel} className="font-bold"><Download className="mr-2 h-4 w-4" /> Export Full List</DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-border" />
                     <DropdownMenuItem onSelect={downloadImportTemplate} className="font-bold"><Layers className="mr-2 h-4 w-4" /> Download Template</DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
             <Button size="icon" onClick={() => setIsAddMethodDialogOpen(true)} className="h-9 w-9 bg-primary hover:bg-primary/90 rounded-full shadow-lg ml-2"><Plus className="h-5 w-5 text-primary-foreground" /></Button>
         </div>
-        <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={handleImportExcel} />
+        <input type="file" hide="true" ref={fileInputRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={handleImportExcel} />
       </PageHeader>
       
       <main className="flex-1 p-4 sm:px-6 space-y-6 pb-20">
@@ -354,7 +368,7 @@ const ContactsPageComponent = () => {
                             <Button variant="ghost" size="sm" onClick={() => setIsUpdateSourceDialogOpen(true)} className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-primary-foreground hover:bg-primary-foreground/10 rounded-xl">Source</Button>
                             <AlertDialog>
                                 <AlertDialogTrigger asChild><Button variant="destructive" size="icon" className="h-10 w-10 bg-red-600 hover:bg-red-700 rounded-xl shrink-0"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
-                                <AlertDialogContent className="bg-popover border-none rounded-[2rem]"><AlertDialogHeader><AlertDialogTitle className="font-black uppercase tracking-tight">Bulk Delete</AlertDialogTitle><AlertDialogDescription className="text-muted-foreground font-bold">Delete {selectedIds.size} selected contacts? Action cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="bg-muted rounded-xl">Cancel</AlertDialogCancel><AlertDialogAction onClick={handleBulkDelete} className="bg-red-600 rounded-xl font-black uppercase tracking-widest">Delete All</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+                                <AlertDialogContent className="bg-popover border-none rounded-[2rem] shadow-2xl"><AlertDialogHeader><AlertDialogTitle className="font-black uppercase tracking-tight">Bulk Delete</AlertDialogTitle><AlertDialogDescription className="text-muted-foreground font-bold">Delete {selectedIds.size} selected contacts? Action cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="bg-muted rounded-xl">Cancel</AlertDialogCancel><AlertDialogAction onClick={handleBulkDelete} className="bg-red-600 rounded-xl font-black uppercase tracking-widest">Delete All</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
                             </AlertDialog>
                             <Button variant="ghost" size="icon" onClick={() => setSelectedIds(new Set())} className="h-10 w-10 rounded-xl text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10"><X className="h-5 w-5" /></Button>
                         </div>
