@@ -249,31 +249,57 @@ export default function DashboardPage() {
                             </TableHeader>
                             <TableBody>
                                 {enablerBreakdown.length > 0 ? enablerBreakdown.map((entry) => (
-                                    <TableRow key={entry.enablerId} className="border-b border-border hover:bg-muted/50">
-                                        <TableCell className="pl-8 py-5 font-black text-foreground uppercase text-xs">
+                                    <TableRow key={entry.enablerId} className="border-b border-border hover:bg-muted/50 transition-colors">
+                                        <TableCell 
+                                            className="pl-8 py-5 font-black text-foreground uppercase text-xs cursor-pointer hover:text-primary transition-colors"
+                                            onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName })}
+                                        >
                                             {entry.enablerName}
                                         </TableCell>
                                         <TableCell className="text-center">
-                                            <Badge variant="outline" className="font-black border-green-500/20 text-green-500 bg-green-500/5 h-7 px-3">
-                                                {entry.frp}
-                                            </Badge>
+                                            <div 
+                                                className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all active:scale-95"
+                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'FRP' })}
+                                            >
+                                                <Badge variant="outline" className="font-black border-green-500/20 text-green-500 bg-green-500/5 h-7 px-3">
+                                                    {entry.frp}
+                                                </Badge>
+                                            </div>
                                         </TableCell>
                                         <TableCell className="text-center">
-                                            <Badge variant="outline" className="font-black border-yellow-500/20 text-yellow-600 bg-yellow-500/5 h-7 px-3">
-                                                {entry.sgS}
-                                            </Badge>
+                                            <div 
+                                                className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all active:scale-95"
+                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-S' })}
+                                            >
+                                                <Badge variant="outline" className="font-black border-yellow-500/20 text-yellow-600 bg-yellow-500/5 h-7 px-3">
+                                                    {entry.sgS}
+                                                </Badge>
+                                            </div>
                                         </TableCell>
                                         <TableCell className="text-center">
-                                            <Badge variant="outline" className="font-black border-yellow-500/20 text-yellow-600 bg-yellow-500/5 h-7 px-3">
-                                                {entry.sgW}
-                                            </Badge>
+                                            <div 
+                                                className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all active:scale-95"
+                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-W' })}
+                                            >
+                                                <Badge variant="outline" className="font-black border-yellow-500/20 text-yellow-600 bg-yellow-500/5 h-7 px-3">
+                                                    {entry.sgW}
+                                                </Badge>
+                                            </div>
                                         </TableCell>
                                         <TableCell className="text-center">
-                                            <Badge variant="outline" className="font-black border-primary/20 text-primary bg-primary/5 h-7 px-3">
-                                                {entry.sixteenRounder}
-                                            </Badge>
+                                            <div 
+                                                className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all active:scale-95"
+                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '16' })}
+                                            >
+                                                <Badge variant="outline" className="font-black border-primary/20 text-primary bg-primary/5 h-7 px-3">
+                                                    {entry.sixteenRounder}
+                                                </Badge>
+                                            </div>
                                         </TableCell>
-                                        <TableCell className="text-right pr-8 font-black text-sm text-muted-foreground">
+                                        <TableCell 
+                                            className="text-right pr-8 font-black text-sm text-muted-foreground cursor-pointer hover:text-primary transition-colors"
+                                            onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName })}
+                                        >
                                             {entry.totalContacts}
                                         </TableCell>
                                     </TableRow>
@@ -290,15 +316,38 @@ export default function DashboardPage() {
                     <div className="md:hidden p-6 space-y-4">
                         {enablerBreakdown.map((entry) => (
                             <Card key={entry.enablerId} className="bg-muted/10 border-border p-5 rounded-[1.5rem] shadow-sm">
-                                <div className="flex justify-between items-center mb-4">
-                                    <span className="font-black text-xs uppercase text-foreground">{entry.enablerName}</span>
-                                    <Badge variant="secondary" className="text-[9px] font-black uppercase bg-muted/50 text-muted-foreground">{entry.totalContacts} Contacts</Badge>
+                                <div 
+                                    className="flex justify-between items-center mb-4 cursor-pointer group"
+                                    onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName })}
+                                >
+                                    <span className="font-black text-xs uppercase text-foreground group-hover:text-primary transition-colors">{entry.enablerName}</span>
+                                    <Badge variant="secondary" className="text-[9px] font-black uppercase bg-muted/50 text-muted-foreground group-hover:bg-primary group-hover:text-white transition-all">{entry.totalContacts} Contacts</Badge>
                                 </div>
                                 <div className="grid grid-cols-4 gap-2">
-                                    <MobileBreakdownItem label="FRP" count={entry.frp} color="text-green-500" />
-                                    <MobileBreakdownItem label="SG-S" count={entry.sgS} color="text-yellow-600" />
-                                    <MobileBreakdownItem label="SG-W" count={entry.sgW} color="text-yellow-600" />
-                                    <MobileBreakdownItem label="16+ R" count={entry.sixteenRounder} color="text-primary" />
+                                    <MobileBreakdownItem 
+                                        label="FRP" 
+                                        count={entry.frp} 
+                                        color="text-green-500" 
+                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'FRP' })}
+                                    />
+                                    <MobileBreakdownItem 
+                                        label="SG-S" 
+                                        count={entry.sgS} 
+                                        color="text-yellow-600" 
+                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-S' })}
+                                    />
+                                    <MobileBreakdownItem 
+                                        label="SG-W" 
+                                        count={entry.sgW} 
+                                        color="text-yellow-600" 
+                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-W' })}
+                                    />
+                                    <MobileBreakdownItem 
+                                        label="16+ R" 
+                                        count={entry.sixteenRounder} 
+                                        color="text-primary" 
+                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '16' })}
+                                    />
                                 </div>
                             </Card>
                         ))}
@@ -330,20 +379,28 @@ export default function DashboardPage() {
                         </TableHeader>
                         <TableBody>
                             {leaderboard.length > 0 ? leaderboard.map((entry) => (
-                                <TableRow key={entry.callerId} className="border-b border-border hover:bg-muted/50">
-                                    <TableCell className="pl-8 py-5">
+                                <TableRow key={entry.callerId} className="border-b border-border hover:bg-muted/50 transition-colors">
+                                    <TableCell 
+                                        className="pl-8 py-5 cursor-pointer group"
+                                        onClick={() => navigateToContacts({ scope: 'all', callerName: entry.callerName })}
+                                    >
                                         <div className="flex items-center gap-4">
-                                            <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-lg">
+                                            <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-lg group-hover:scale-110 transition-transform">
                                                 <AvatarImage src={entry.photoUrl} />
                                                 <AvatarFallback className="bg-muted text-foreground font-black">{entry.callerName.charAt(0)}</AvatarFallback>
                                             </Avatar>
-                                            <span className="text-sm font-black text-foreground uppercase truncate">{entry.callerName}</span>
+                                            <span className="text-sm font-black text-foreground uppercase truncate group-hover:text-primary transition-colors">{entry.callerName}</span>
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-center">
-                                        <Badge className="bg-orange-500/10 text-orange-500 border-none font-black text-lg h-9 px-4">
-                                            {entry.totalCalls}
-                                        </Badge>
+                                        <div 
+                                            className="inline-block cursor-pointer active:scale-95 transition-transform"
+                                            onClick={() => navigateToContacts({ scope: 'all', callerName: entry.callerName })}
+                                        >
+                                            <Badge className="bg-orange-500/10 text-orange-500 border-none font-black text-lg h-9 px-4 hover:bg-orange-500/20">
+                                                {entry.totalCalls}
+                                            </Badge>
+                                        </div>
                                     </TableCell>
                                     <TableCell className="text-center font-mono text-sm text-foreground">
                                         {formatDuration(entry.totalDuration)}
@@ -351,9 +408,18 @@ export default function DashboardPage() {
                                     <TableCell className="text-right pr-8">
                                         <div className="flex flex-col items-end gap-1.5">
                                             {Object.entries(entry.dailyStats).map(([dateKey, stat]) => (
-                                                <div key={dateKey} className="flex items-center gap-3">
-                                                    <span className="text-[9px] font-black uppercase text-muted-foreground">{format(new Date(dateKey), 'MMM dd')}</span>
-                                                    <Badge variant="outline" className="text-[9px] font-black border-border text-primary bg-muted/50">
+                                                <div 
+                                                    key={dateKey} 
+                                                    className="flex items-center gap-3 cursor-pointer group/date hover:bg-muted p-1 px-2 rounded-lg transition-colors"
+                                                    onClick={() => navigateToContacts({ 
+                                                        scope: 'all', 
+                                                        callerName: entry.callerName, 
+                                                        callDateFrom: dateKey, 
+                                                        callDateTo: dateKey 
+                                                    })}
+                                                >
+                                                    <span className="text-[9px] font-black uppercase text-muted-foreground group-hover/date:text-foreground">{format(new Date(dateKey), 'MMM dd')}</span>
+                                                    <Badge variant="outline" className="text-[9px] font-black border-border text-primary bg-muted/50 group-hover/date:bg-primary group-hover/date:text-white transition-all">
                                                         {stat.count} calls
                                                     </Badge>
                                                     <span className="text-[9px] font-mono text-muted-foreground">{formatDuration(stat.duration)}</span>
@@ -560,9 +626,15 @@ function SummaryMetricCard({ title, value, percentage, icon: Icon, color = "bg-p
     );
 }
 
-function MobileBreakdownItem({ label, count, color }: { label: string, count: number, color: string }) {
+function MobileBreakdownItem({ label, count, color, onClick }: { label: string, count: number, color: string, onClick?: () => void }) {
     return (
-        <div className="flex flex-col items-center gap-1.5">
+        <div 
+            className={cn(
+                "flex flex-col items-center gap-1.5 p-2 transition-all rounded-xl",
+                onClick && "cursor-pointer hover:bg-muted active:scale-95"
+            )}
+            onClick={onClick}
+        >
             <span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest text-center leading-none h-4 flex items-center">{label}</span>
             <span className={cn("text-xl font-black leading-none", color)}>{count}</span>
         </div>

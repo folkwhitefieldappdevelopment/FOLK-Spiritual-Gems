@@ -119,7 +119,8 @@ const ContactsPageComponent = () => {
   const [filters, setFilters] = React.useState({
     name: '', phone: '', location: '', eventName: '', callerName: '', 
     callDateFrom: '', callDateTo: '', stayingWith: '', chantingRounds: '', 
-    enablerInTouchWith: '', callStatus: '', contactSources: [] as string[]
+    enablerInTouchWith: '', callStatus: '', contactSources: [] as string[],
+    stage: '', enablerId: '', enablerName: '', chantingRoundsMin: ''
   });
 
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
@@ -250,6 +251,11 @@ const ContactsPageComponent = () => {
         if (params.enablerInTouchWith) next.enablerInTouchWith = params.enablerInTouchWith;
         if (params.callStatus) next.callStatus = params.callStatus;
         if (params.contactSources) next.contactSources = params.contactSources.split(',');
+        // Deep-link filters
+        if (params.stage) next.stage = params.stage;
+        if (params.enablerId) next.enablerId = params.enablerId;
+        if (params.enablerName) next.enablerName = params.enablerName;
+        if (params.chantingRoundsMin) next.chantingRoundsMin = params.chantingRoundsMin;
         return next;
     });
 
@@ -394,7 +400,8 @@ const ContactsPageComponent = () => {
     setFilters({
         name: '', phone: '', location: '', eventName: '', callerName: '', 
         callDateFrom: '', callDateTo: '', stayingWith: '', chantingRounds: '', 
-        enablerInTouchWith: '', callStatus: '', contactSources: []
+        enablerInTouchWith: '', callStatus: '', contactSources: [],
+        stage: '', enablerId: '', enablerName: '', chantingRoundsMin: ''
     });
   };
 

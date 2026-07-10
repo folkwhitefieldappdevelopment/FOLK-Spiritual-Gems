@@ -239,6 +239,11 @@ export const getPeople = async (
       callDateFrom?: string;
       callDateTo?: string;
       contactSources?: string[];
+      // Deep-link filters
+      stage?: string;
+      enablerId?: string;
+      enablerName?: string;
+      chantingRoundsMin?: string;
     };
     lastDocId?: string;
     ignoreLimit?: boolean;
@@ -281,6 +286,18 @@ export const getPeople = async (
       if (!isExplicitRequest && !isDesignatedGroup) {
         if (p.isDeleted === true) return false;
         if (ELIMINATED_STATUSES.includes(p.lastCallStatus || '')) return false;
+      }
+
+      // New deep-link filters
+      if (filters.stage && p.currentFolkStage !== filters.stage) return false;
+      if (filters.enablerId) {
+          const matchesId = p.enablerId === filters.enablerId;
+          const matchesNameFallback = !p.enablerId && filters.enablerName && p.enablerInTouchWith?.split('::')[0].trim() === filters.enablerName.trim();
+          if (!matchesId && !matchesNameFallback) return false;
+      }
+      if (filters.chantingRoundsMin) {
+          const min = parseInt(filters.chantingRoundsMin);
+          if ((p.chantingStatus || 0) < min) return false;
       }
 
       if (filters.name && !p.fullName?.toLowerCase().includes(filters.name.toLowerCase())) return false;
