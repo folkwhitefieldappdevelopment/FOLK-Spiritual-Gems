@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { PlusCircle, Edit, Trash2, Loader2, Save, BellRing, Database, CheckCircle2, RefreshCw, Fingerprint } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, Save, BellRing, Database, CheckCircle2, RefreshCw, Fingerprint, ShieldAlert, AlertTriangle } from 'lucide-react';
 import { useAppToast } from '@/contexts/toast-context';
 import { useAuth } from '@/contexts/auth-context';
 import { updateUser, getUsers } from '@/services/user-service';
@@ -55,6 +55,8 @@ export default function SettingsPage() {
   const { toast } = useAppToast();
   const { appUser, setAppUser } = useAuth();
   const [isLoading, setIsLoading] = React.useState(true);
+  const [isBackfilling, setIsBackfilling] = React.useState(false);
+  const [isBackfillingIds, setIsBackfillingIds] = React.useState(false);
   const isAdmin = appUser?.role.includes('Admin');
 
   const [sources, setSources] = React.useState<string[]>([]);
@@ -101,6 +103,39 @@ export default function SettingsPage() {
       }
   };
 
+  const handleBackfillDeleted = async () => {
+    if (!appUser) return;
+    setIsBackfilling(true);
+    try {
+      const count = await backfillIsDeleted({ id: appUser.id, name: appUser.name, role: appUser.role });
+      toast({ 
+        title: 'Backfill Complete', 
+        description: `Successfully patched ${count} legacy contact(s) with missing isDeleted fields.` 
+      });
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'Backfill Failed', description: 'Could not complete the data migration.' });
+    } finally {
+      setIsBackfilling(false);
+    }
+  };
+
+  const handleBackfillEnablerIds = async () => {
+    if (!appUser) return;
+    setIsBackfillingIds(true);
+    try {
+      const allUsers = await getUsers(appUser);
+      const count = await backfillEnablerId(allUsers, { id: appUser.id, name: appUser.name, role: appUser.role });
+      toast({ 
+        title: 'ID Linkage Complete', 
+        description: `Successfully mapped Enabler IDs for ${count} contact(s).` 
+      });
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'Migration Failed' });
+    } finally {
+      setIsBackfillingIds(false);
+    }
+  };
+
   return (
     <>
       <PageHeader title="Settings" description="Manage templates and application-wide options." />
@@ -112,6 +147,58 @@ export default function SettingsPage() {
             {isAdmin && <BroadcastNotificationCard />}
             <Card><CardHeader><CardTitle>Theme</CardTitle></CardHeader><CardContent><ThemeSwitcher /></CardContent></Card>
             
+            {isAdmin && (
+              <Card className="border-orange-500/20 bg-orange-500/5">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
+                    <Database className="h-5 w-5" />
+                    Data Maintenance
+                  </CardTitle>
+                  <CardDescription>Advanced tools to repair legacy data and improve Dashboard accuracy.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-xl border border-orange-500/10 bg-background space-y-3">
+                       <div className="flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 text-orange-500" />
+                          <h4 className="text-sm font-black uppercase tracking-tight">isDeleted Patch</h4>
+                       </div>
+                       <p className="text-xs text-muted-foreground leading-relaxed">
+                          Legacy contacts created before soft-delete may be missing the <code className="bg-muted px-1 rounded">isDeleted</code> flag, causing them to be excluded from Dashboard counts.
+                       </p>
+                       <Button 
+                          onClick={handleBackfillDeleted} 
+                          disabled={isBackfilling}
+                          className="w-full bg-orange-500 hover:bg-orange-600 text-black font-black uppercase text-[10px] tracking-widest"
+                       >
+                          {isBackfilling ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <RefreshCw className="mr-2 h-3 w-3" />}
+                          Run Schema Fix
+                       </Button>
+                    </div>
+
+                    <div className="p-4 rounded-xl border border-primary/10 bg-background space-y-3">
+                       <div className="flex items-center gap-2">
+                          <Fingerprint className="h-4 w-4 text-primary" />
+                          <h4 className="text-sm font-black uppercase tracking-tight">Enabler ID Linkage</h4>
+                       </div>
+                       <p className="text-xs text-muted-foreground leading-relaxed">
+                          Older records only contain Enabler names. This tool maps them to system IDs for accurate permission filtering.
+                       </p>
+                       <Button 
+                          onClick={handleBackfillEnablerIds} 
+                          disabled={isBackfillingIds}
+                          variant="outline"
+                          className="w-full border-primary/20 text-primary hover:bg-primary/5 font-black uppercase text-[10px] tracking-widest"
+                       >
+                          {isBackfillingIds ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Database className="mr-2 h-3 w-3" />}
+                          Re-map IDs
+                       </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {isAdmin && (
               <Card>
                 <CardHeader>

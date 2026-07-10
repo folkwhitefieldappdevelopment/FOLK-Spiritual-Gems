@@ -26,13 +26,17 @@ import { computeEnablerStageBreakdown } from '@/lib/dynamic-groups';
 /**
  * High-performance summary fetcher.
  * Uses Firestore server-side aggregation for instant card results.
+ * 
+ * NOTE: Using '!= true' instead of '== false' to capture legacy documents 
+ * where the 'isDeleted' field might be missing entirely.
  */
 export async function getFastSummaryStats(appUser: AppUser) {
     const peopleRef = collection(db, 'people');
     
-    // Server-side aggregation is extremely fast and doesn't download documents
-    const totalQuery = query(peopleRef, where('isDeleted', '==', false));
-    const myQuery = query(peopleRef, where('isDeleted', '==', false), where('enablerId', '==', appUser.id));
+    // Server-side aggregation is extremely fast and doesn't download documents.
+    // robust filtering ensures contacts missing the field are treated as non-deleted.
+    const totalQuery = query(peopleRef, where('isDeleted', '!=', true));
+    const myQuery = query(peopleRef, where('isDeleted', '!=', true), where('enablerId', '==', appUser.id));
 
     const [totalSnap, mySnap] = await Promise.all([
         getCountFromServer(totalQuery),

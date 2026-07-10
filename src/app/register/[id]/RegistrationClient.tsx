@@ -112,7 +112,7 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
         ]);
         setFolkGuides(guides);
         setStayingWithOptions(staying);
-        setOccupationOptions(occupations);
+        setOccupationStatuses(occupations);
         setIsLoading(false);
     };
     fetchInitial();
@@ -184,7 +184,8 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
         currentFolkStage: 'Fresh Lead', 
         progress: createInitialProgress(), 
         verifiedByFg: 'No', 
-        contactSource: ['Public Registration'] 
+        contactSource: ['Public Registration'],
+        isDeleted: false
       };
       
       const result = await upsertPerson(personData, { id: 'public', name: 'Public Lead', role: [] });
