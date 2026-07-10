@@ -18,6 +18,7 @@ import {
   Edit,
   PhoneCall
 } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 import type { Person, Group } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
@@ -181,11 +182,16 @@ export default function PersonDetailClient({ personId }: { personId: string }) {
         toast({ variant: 'destructive', title: 'Error', description: 'No phone number available.' });
         return;
     }
-    try {
-        await CallLog.makeCall({ phoneNumber: person.phone });
-    } catch (error) {
-        toast({ variant: 'destructive', title: 'Call Failed', description: 'Could not initiate the call.' });
-        console.error("Failed to make call:", error);
+    
+    if (Capacitor.isNativePlatform()) {
+      try {
+          await CallLog.makeCall({ phoneNumber: person.phone });
+      } catch (error) {
+          toast({ variant: 'destructive', title: 'Call Failed', description: 'Could not initiate the call.' });
+          console.error("Failed to make call:", error);
+      }
+    } else {
+      window.location.href = `tel:${person.phone}`;
     }
   };
 

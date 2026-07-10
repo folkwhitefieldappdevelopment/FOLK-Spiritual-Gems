@@ -41,7 +41,7 @@ export function CallerIdOverlay() {
   const isAndroid = Capacitor.getPlatform() === 'android';
 
   React.useEffect(() => {
-    if (!appUser) return;
+    if (!appUser || !Capacitor.isNativePlatform()) return;
 
     let nativeListener: any = null;
     let actionListener: any = null;
@@ -107,7 +107,7 @@ export function CallerIdOverlay() {
     } catch (e) { console.error("[CallerID] Session start failed", e); } finally { setIsStartingSession(false); }
   };
 
-  if (isAndroid) return null;
+  if (isAndroid || !Capacitor.isNativePlatform()) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
