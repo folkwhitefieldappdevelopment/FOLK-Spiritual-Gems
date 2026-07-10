@@ -72,6 +72,12 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
     });
   }, [appUser]);
 
+  // Filter items specifically for the mobile "More" menu to avoid duplicates with bottom nav
+  const sheetNavItems = React.useMemo(() => {
+    const bottomNavPaths = ['/dashboard', '/contacts', '/calling-assistant', '/groups'];
+    return navItems.filter(item => !bottomNavPaths.includes(item.href));
+  }, [navItems]);
+
   const isActive = (href: string) => {
     if (href === '/contacts' && (pathname === '/' || pathname === '/contacts'))
       return true;
@@ -97,8 +103,8 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
               <span className="sr-only">Toggle Menu</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="sm:max-w-xs flex flex-col p-0">
-            <SheetHeader className="p-6 border-b text-center">
+          <SheetContent side="left" className="sm:max-w-xs flex flex-col p-0 bg-background">
+            <SheetHeader className="p-6 border-b text-center shrink-0">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary shadow-md border-2 border-primary/20 overflow-hidden">
                   <Image 
                     src={logo.url} 
@@ -116,29 +122,42 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
                 Main Navigation
               </SheetDescription>
             </SheetHeader>
-            <nav className="flex-1 overflow-y-auto py-4">
-              <div className="grid gap-1 px-2">
-                  {navItems.map((item) => (
+
+            {/* Account Row - Now at the TOP for visibility */}
+            <div className="px-4 py-2 border-b bg-muted/20 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <UserNav isSheet={true} />
+                </div>
+                <div className="shrink-0">
+                  <NotificationCenter />
+                </div>
+              </div>
+            </div>
+
+            <nav className="flex-1 overflow-y-auto py-6">
+              <div className="grid gap-1 px-3">
+                  {sheetNavItems.map((item) => (
                   <Link
                       key={item.href}
                       href={item.href}
                       className={cn(
-                      'flex items-center gap-4 rounded-lg px-4 py-3 text-base font-medium transition-all hover:bg-muted',
-                      isActive(item.href) ? 'bg-accent text-accent-foreground font-bold' : 'text-muted-foreground'
+                        'flex items-center gap-4 rounded-xl px-5 py-4 text-base font-bold transition-all hover:bg-muted group',
+                        isActive(item.href) 
+                          ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' 
+                          : 'text-muted-foreground'
                       )}
                       onClick={handleLinkClick}
                   >
-                      <item.icon className={cn("h-5 w-5", isActive(item.href) && "text-primary")} />
+                      <item.icon className={cn("h-5 w-5", isActive(item.href) ? "text-primary-foreground" : "text-primary/60 group-hover:text-primary")} />
                       {item.label}
                   </Link>
                   ))}
               </div>
             </nav>
-            <div className="mt-auto p-4 border-t bg-muted/30">
-                  <div className="flex items-center justify-between">
-                      <UserNav />
-                      <NotificationCenter />
-                  </div>
+
+            <div className="p-8 border-t bg-muted/10 text-center opacity-30 shrink-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.4em]">CRM v2.0 Stable</p>
             </div>
           </SheetContent>
         </Sheet>
