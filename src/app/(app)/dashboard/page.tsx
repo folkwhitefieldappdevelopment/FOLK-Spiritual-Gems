@@ -74,13 +74,15 @@ export default function DashboardPage() {
   const leaderboard = data?.leaderboard || [];
   const enablerBreakdown = stats?.enablerBreakdown || [];
 
-  const navigateToContacts = (params: Record<string, string>) => {
+  const navigateToContacts = (params: Record<string, string>, includeDateRange: boolean = false) => {
     const searchParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
         if (value) searchParams.append(key, value);
     });
-    if (dateRange?.from) searchParams.append('callDateFrom', dateRange.from.toISOString());
-    if (dateRange?.to) searchParams.append('callDateTo', dateRange.to.toISOString());
+    if (includeDateRange) {
+      if (dateRange?.from) searchParams.append('callDateFrom', dateRange.from.toISOString());
+      if (dateRange?.to) searchParams.append('callDateTo', dateRange.to.toISOString());
+    }
     router.push(`/contacts?${searchParams.toString()}`);
   };
 
@@ -171,14 +173,14 @@ export default function DashboardPage() {
                     title="ASSIGNED" 
                     value={(!isSyncStable && stats?.myContactsCount === 0) ? undefined : stats?.myContactsCount} 
                     icon={UserCircle} 
-                    onClick={() => navigateToContacts({ scope: 'my' })}
+                    onClick={() => navigateToContacts({ scope: 'my' }, false)}
                     barColor="bg-primary"
                 />
                 <MiniStatCard 
                     title="TOTAL" 
                     value={(!isSyncStable && stats?.totalContactsCount === 0) ? undefined : stats?.totalContactsCount} 
                     icon={Users} 
-                    onClick={() => navigateToContacts({ scope: 'all' })}
+                    onClick={() => navigateToContacts({ scope: 'all' }, false)}
                     barColor="bg-primary/40"
                 />
                 <MiniStatCard 
@@ -187,7 +189,7 @@ export default function DashboardPage() {
                     icon={UserPlus} 
                     isTrend
                     colorClass="text-orange-500"
-                    onClick={() => navigateToContacts({ scope: 'my' })}
+                    onClick={() => navigateToContacts({ scope: 'my' }, true)}
                     barColor="bg-orange-500"
                 />
                 <MiniStatCard 
@@ -196,7 +198,7 @@ export default function DashboardPage() {
                     icon={Users} 
                     isTrend 
                     colorClass="text-orange-500"
-                    onClick={() => navigateToContacts({ scope: 'all' })}
+                    onClick={() => navigateToContacts({ scope: 'all' }, true)}
                     barColor="bg-orange-500"
                 />
             </div>
@@ -252,14 +254,14 @@ export default function DashboardPage() {
                                     <TableRow key={entry.enablerId} className="border-b border-border hover:bg-muted/50 transition-colors">
                                         <TableCell 
                                             className="pl-8 py-5 font-black text-foreground uppercase text-xs cursor-pointer hover:text-primary transition-colors"
-                                            onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName })}
+                                            onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName }, false)}
                                         >
                                             {entry.enablerName}
                                         </TableCell>
                                         <TableCell className="text-center">
                                             <div 
                                                 className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all active:scale-95"
-                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'FRP' })}
+                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'FRP' }, false)}
                                             >
                                                 <Badge variant="outline" className="font-black border-green-500/20 text-green-500 bg-green-500/5 h-7 px-3">
                                                     {entry.frp}
@@ -269,7 +271,7 @@ export default function DashboardPage() {
                                         <TableCell className="text-center">
                                             <div 
                                                 className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all active:scale-95"
-                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-S' })}
+                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-S' }, false)}
                                             >
                                                 <Badge variant="outline" className="font-black border-yellow-500/20 text-yellow-600 bg-yellow-500/5 h-7 px-3">
                                                     {entry.sgS}
@@ -279,7 +281,7 @@ export default function DashboardPage() {
                                         <TableCell className="text-center">
                                             <div 
                                                 className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all active:scale-95"
-                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-W' })}
+                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-W' }, false)}
                                             >
                                                 <Badge variant="outline" className="font-black border-yellow-500/20 text-yellow-600 bg-yellow-500/5 h-7 px-3">
                                                     {entry.sgW}
@@ -289,7 +291,7 @@ export default function DashboardPage() {
                                         <TableCell className="text-center">
                                             <div 
                                                 className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all active:scale-95"
-                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '16' })}
+                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '16' }, false)}
                                             >
                                                 <Badge variant="outline" className="font-black border-primary/20 text-primary bg-primary/5 h-7 px-3">
                                                     {entry.sixteenRounder}
@@ -298,7 +300,7 @@ export default function DashboardPage() {
                                         </TableCell>
                                         <TableCell 
                                             className="text-right pr-8 font-black text-sm text-muted-foreground cursor-pointer hover:text-primary transition-colors"
-                                            onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName })}
+                                            onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName }, false)}
                                         >
                                             {entry.totalContacts}
                                         </TableCell>
@@ -318,7 +320,7 @@ export default function DashboardPage() {
                             <Card key={entry.enablerId} className="bg-muted/10 border-border p-5 rounded-[1.5rem] shadow-sm">
                                 <div 
                                     className="flex justify-between items-center mb-4 cursor-pointer group"
-                                    onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName })}
+                                    onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName }, false)}
                                 >
                                     <span className="font-black text-xs uppercase text-foreground group-hover:text-primary transition-colors">{entry.enablerName}</span>
                                     <Badge variant="secondary" className="text-[9px] font-black uppercase bg-muted/50 text-muted-foreground group-hover:bg-primary group-hover:text-white transition-all">{entry.totalContacts} Contacts</Badge>
@@ -328,25 +330,25 @@ export default function DashboardPage() {
                                         label="FRP" 
                                         count={entry.frp} 
                                         color="text-green-500" 
-                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'FRP' })}
+                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'FRP' }, false)}
                                     />
                                     <MobileBreakdownItem 
                                         label="SG-S" 
                                         count={entry.sgS} 
                                         color="text-yellow-600" 
-                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-S' })}
+                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-S' }, false)}
                                     />
                                     <MobileBreakdownItem 
                                         label="SG-W" 
                                         count={entry.sgW} 
                                         color="text-yellow-600" 
-                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-W' })}
+                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-W' }, false)}
                                     />
                                     <MobileBreakdownItem 
                                         label="16+ R" 
                                         count={entry.sixteenRounder} 
                                         color="text-primary" 
-                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '16' })}
+                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '16' }, false)}
                                     />
                                 </div>
                             </Card>
@@ -382,7 +384,7 @@ export default function DashboardPage() {
                                 <TableRow key={entry.callerId} className="border-b border-border hover:bg-muted/50 transition-colors">
                                     <TableCell 
                                         className="pl-8 py-5 cursor-pointer group"
-                                        onClick={() => navigateToContacts({ scope: 'all', callerName: entry.callerName })}
+                                        onClick={() => navigateToContacts({ scope: 'all', callerName: entry.callerName }, false)}
                                     >
                                         <div className="flex items-center gap-4">
                                             <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-lg group-hover:scale-110 transition-transform">
@@ -395,7 +397,7 @@ export default function DashboardPage() {
                                     <TableCell className="text-center">
                                         <div 
                                             className="inline-block cursor-pointer active:scale-95 transition-transform"
-                                            onClick={() => navigateToContacts({ scope: 'all', callerName: entry.callerName })}
+                                            onClick={() => navigateToContacts({ scope: 'all', callerName: entry.callerName }, false)}
                                         >
                                             <Badge className="bg-orange-500/10 text-orange-500 border-none font-black text-lg h-9 px-4 hover:bg-orange-500/20">
                                                 {entry.totalCalls}
@@ -416,7 +418,7 @@ export default function DashboardPage() {
                                                         callerName: entry.callerName, 
                                                         callDateFrom: dateKey, 
                                                         callDateTo: dateKey 
-                                                    })}
+                                                    }, false)}
                                                 >
                                                     <span className="text-[9px] font-black uppercase text-muted-foreground group-hover/date:text-foreground">{format(new Date(dateKey), 'MMM dd')}</span>
                                                     <Badge variant="outline" className="text-[9px] font-black border-border text-primary bg-muted/50 group-hover/date:bg-primary group-hover/date:text-white transition-all">
@@ -460,8 +462,8 @@ export default function DashboardPage() {
                                             callStatus: status, 
                                             eventName: item.event,
                                             callerName: item.callerName
-                                        })}
-                                        onHeaderClick={() => navigateToContacts({ scope: 'all', callStatus: status })}
+                                        }, true)}
+                                        onHeaderClick={() => navigateToContacts({ scope: 'all', callStatus: status }, true)}
                                     />
                                 ))}
                             </div>
@@ -488,8 +490,8 @@ export default function DashboardPage() {
                                             callStatus: status, 
                                             eventName: item.event,
                                             callerName: item.callerName
-                                        })}
-                                        onHeaderClick={() => navigateToContacts({ scope: 'all', callStatus: status })}
+                                        }, true)}
+                                        onHeaderClick={() => navigateToContacts({ scope: 'all', callStatus: status }, true)}
                                     />
                                 ))}
                             </div>
@@ -503,7 +505,7 @@ export default function DashboardPage() {
                         value={reportAll?.totalCalls || 0} 
                         icon={PhoneIncoming}
                         className="bg-card"
-                        onClick={() => navigateToContacts({ scope: 'all' })}
+                        onClick={() => navigateToContacts({ scope: 'all' }, true)}
                     />
                     <SummaryMetricCard 
                         title="ANSWERED (A1/Z/A4)" 
@@ -512,7 +514,7 @@ export default function DashboardPage() {
                         icon={CheckCircle2}
                         color="bg-green-500"
                         showProgress
-                        onClick={() => navigateToContacts({ scope: 'all', callStatus: 'A1 - Coming' })}
+                        onClick={() => navigateToContacts({ scope: 'all', callStatus: 'A1 - Coming' }, true)}
                     />
                     <SummaryMetricCard 
                         title="UNANSWERED (B/D/E)" 
@@ -521,7 +523,7 @@ export default function DashboardPage() {
                         icon={PhoneOff}
                         color="bg-orange-600"
                         showProgress
-                        onClick={() => navigateToContacts({ scope: 'all', callStatus: 'B - Not Answering' })}
+                        onClick={() => navigateToContacts({ scope: 'all', callStatus: 'B - Not Answering' }, true)}
                     />
                 </div>
             </div>
