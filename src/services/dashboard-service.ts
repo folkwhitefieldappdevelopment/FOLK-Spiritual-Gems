@@ -47,7 +47,13 @@ export async function getFastSummaryStats(appUser: AppUser) {
 
 export async function getDashboardStats(
   appUser: AppUser,
-  options: { from?: Date; to?: Date; timezoneOffset: number, targetFolkGuideId?: string },
+  options: { 
+    from?: Date; 
+    to?: Date; 
+    timezoneOffset: number, 
+    targetFolkGuideId?: string,
+    trustedTotalCounts?: { totalContactsCount: number; myContactsCount: number }
+  },
 ): Promise<DashboardData> {
   const { from, to } = options;
   const start = startOfDay(from || new Date());
@@ -176,8 +182,8 @@ export async function getDashboardStats(
 
   return {
     stats: { 
-        myContactsCount, 
-        totalContactsCount: allPeople.length, 
+        myContactsCount: options.trustedTotalCounts?.myContactsCount ?? myContactsCount, 
+        totalContactsCount: options.trustedTotalCounts?.totalContactsCount ?? activePeople.length, 
         myNewInRange, 
         allNewInRange, 
         byEnabler, 

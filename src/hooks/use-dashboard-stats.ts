@@ -24,6 +24,8 @@ export function useDashboardStats(dateRange?: DateRange, folkGuideId?: string) {
   // Use refs to prevent stale closure data in the reactive sync
   const dateRangeRef = useRef(dateRange);
   const folkGuideIdRef = useRef(folkGuideId);
+  // Store accurate server counts to prevent regression from local cache snapshots
+  const fastStatsRef = useRef<{ totalContactsCount: number; myContactsCount: number } | null>(null);
 
   useEffect(() => {
     dateRangeRef.current = dateRange;
@@ -38,7 +40,8 @@ export function useDashboardStats(dateRange?: DateRange, folkGuideId?: string) {
         from: dateRangeRef.current?.from, 
         to: dateRangeRef.current?.to, 
         timezoneOffset: new Date().getTimezoneOffset(),
-        targetFolkGuideId: folkGuideIdRef.current === 'all' ? undefined : folkGuideIdRef.current
+        targetFolkGuideId: folkGuideIdRef.current === 'all' ? undefined : folkGuideIdRef.current,
+        trustedTotalCounts: fastStatsRef.current ?? undefined
       });
       setData(stats);
       setIsLoading(false);
@@ -50,21 +53,39 @@ export function useDashboardStats(dateRange?: DateRange, folkGuideId?: string) {
   useEffect(() => {
     if (!appUser) return;
 
-    // 1. Initial fast path - get big numbers without downloading everything
-    getFastSummaryStats(appUser).then(fastStats => {
-        if (!data) {
-            setData(prev => ({
-                ...(prev || {}),
-                stats: {
-                    ...(prev?.stats || {}),
-                    ...fastStats
-                }
-            } as any));
+    const refreshFastStats = async () => {
+        try {
+            const fastStats = await getFastSummaryStats(appUser);
+            fastStatsRef.current = fastStats;
+            
+            // Merge into current data if it exists to show immediately
+            setData(prev => {
+                if (!prev) return null;
+                return {
+                    ...prev,
+                    stats: {
+                        ...prev.stats,
+                        totalContactsCount: fastStats.totalContactsCount,
+                        myContactsCount: fastStats.myContactsCount
+                    }
+                };
+            });
+        } catch (e) {
+            console.warn("[Dashboard] Fast summary refresh failed", e);
         }
-    });
+    };
+
+    // 1. Initial fast path
+    refreshFastStats();
 
     // 2. Subscribe to sync status to show progress indicator
-    const unsubStatus = subscribeToSyncStatus(setSyncStatus);
+    const unsubStatus = subscribeToSyncStatus((status) => {
+        setSyncStatus(status);
+        // Refresh accurate server counts when hitting live sync to ensure ref is fresh
+        if (status === 'synced') {
+            refreshFastStats();
+        }
+    });
 
     // 3. Subscribe to people data. This triggers every time Firestore delivers more items
     const unsubData = subscribeToPeopleData(recomputeStats);
@@ -72,9 +93,13 @@ export function useDashboardStats(dateRange?: DateRange, folkGuideId?: string) {
     // Ensure the stream is running
     initMasterPeopleStream();
 
+    // Background heartbeat for counts
+    const interval = setInterval(refreshFastStats, 30000);
+
     return () => {
       unsubStatus();
       unsubData();
+      clearInterval(interval);
     };
   }, [appUser, recomputeStats]);
 
