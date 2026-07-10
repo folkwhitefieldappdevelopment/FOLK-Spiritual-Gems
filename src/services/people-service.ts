@@ -19,7 +19,7 @@ import {
   onSnapshot,
 } from 'firebase/firestore';
 import type { Person, AppUser, UserRole, FolkStage, CoEnablerSession } from '@/lib/types';
-import { isAssignedToUser } from '@/lib/types';
+import { isAssignedToUser, ELIMINATED_STATUSES } from '@/lib/types';
 import { logAudit } from '@/services/audit-service';
 import { generateDynamicGroups, dynamicGroupDefinitions } from '@/lib/dynamic-groups';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -273,9 +273,16 @@ export const getPeople = async (
 
   const applyUIFilters = (list: Person[]) => {
     return list.filter((p) => {
-      const isDeleted = p.isDeleted === true;
-      if (isDeleted && groupId !== 'dynamic-recycle-bin') return false;
-      if (!isDeleted && groupId === 'dynamic-recycle-bin') return false;
+      // Global exclusion for deleted or eliminated contacts, 
+      // unless specifically requested by ID or within their designated dynamic groups
+      const isExplicitRequest = personIds && personIds.length > 0;
+      const isDesignatedGroup = groupId === 'dynamic-recycle-bin' || groupId === 'dynamic-shifted-not-interested';
+      
+      if (!isExplicitRequest && !isDesignatedGroup) {
+        if (p.isDeleted === true) return false;
+        if (ELIMINATED_STATUSES.includes(p.lastCallStatus || '')) return false;
+      }
+
       if (filters.name && !p.fullName?.toLowerCase().includes(filters.name.toLowerCase())) return false;
       if (filters.phone && !normalizePhone(p.phone).includes(normalizePhone(filters.phone))) return false;
       if (filters.location && !p.location?.toLowerCase().includes(filters.location.toLowerCase())) return false;
@@ -423,6 +430,17 @@ export const checkDuplicatePhone = async (phone: string, excludeId?: string): Pr
 
 export const deletePerson = async (id: string, userInfo: { id: string; name: string; role: UserRole[] }) => {
   return updatePerson(id, { isDeleted: true, deletedAt: serverTimestamp() }, userInfo);
+};
+
+export const restorePerson = async (personId: string, userInfo: { id: string; name: string; role: UserRole[] }) => {
+  await persistenceReady;
+  const docRef = doc(db, 'people', personId);
+  await updateDoc(docRef, {
+    isDeleted: false,
+    deletedAt: null,
+    lastCallStatus: null, // Clearing this re-includes them in their prior stage dynamic group
+  });
+  logAudit('Restore Contact', `Restored contact ${personId}`, userInfo);
 };
 
 export const deletePeople = async (ids: string[], userInfo: { id: string; name: string; role: UserRole[] }) => {

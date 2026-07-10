@@ -16,7 +16,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { AppUser, DashboardData, CallingReport, Person, LeaderboardEntry } from '@/lib/types';
-import { callStatuses, isAssignedToUser } from '@/lib/types';
+import { callStatuses, isAssignedToUser, ELIMINATED_STATUSES } from '@/lib/types';
 import { safeDate } from '@/utils/date';
 import { startOfDay, endOfDay, isWithinInterval, format } from 'date-fns';
 import { getCachedPeople } from './people-service';
@@ -25,27 +25,23 @@ import { computeEnablerStageBreakdown } from '@/lib/dynamic-groups';
 
 /**
  * High-performance summary fetcher.
- * Uses Firestore server-side aggregation for instant card results.
- * 
- * NOTE: Using '!= true' instead of '== false' to capture legacy documents 
- * where the 'isDeleted' field might be missing entirely.
+ * Uses Firestore server-side aggregation for instant card results where possible,
+ * or falls back to client-side filtering of the people cache for composite rules.
  */
 export async function getFastSummaryStats(appUser: AppUser) {
-    const peopleRef = collection(db, 'people');
+    // Because we need to exclude BOTH isDeleted AND ELIMINATED_STATUSES, 
+    // and Firestore limits composite '!=' and 'not-in' in a single query,
+    // we use the local people cache which is already being streamed.
+    const allPeople = await getCachedPeople();
     
-    // Server-side aggregation is extremely fast and doesn't download documents.
-    // robust filtering ensures contacts missing the field are treated as non-deleted.
-    const totalQuery = query(peopleRef, where('isDeleted', '!=', true));
-    const myQuery = query(peopleRef, where('isDeleted', '!=', true), where('enablerId', '==', appUser.id));
-
-    const [totalSnap, mySnap] = await Promise.all([
-        getCountFromServer(totalQuery),
-        getCountFromServer(myQuery)
-    ]);
+    const activePeople = allPeople.filter(p => 
+        p.isDeleted !== true && 
+        !ELIMINATED_STATUSES.includes(p.lastCallStatus || '')
+    );
 
     return {
-        totalContactsCount: totalSnap.data().count,
-        myContactsCount: mySnap.data().count
+        totalContactsCount: activePeople.length,
+        myContactsCount: activePeople.filter(p => isAssignedToUser(p, appUser)).length
     };
 }
 
@@ -66,7 +62,12 @@ export async function getDashboardStats(
   // Use the cached people stream to reduce redundant Firestore reads
   const allPeople = await getCachedPeople();
 
-  const activePeople = allPeople.filter(p => p.isDeleted !== true);
+  // Apply global exclusion rules for "Active" contacts
+  const activePeople = allPeople.filter(p => 
+    p.isDeleted !== true && 
+    !ELIMINATED_STATUSES.includes(p.lastCallStatus || '')
+  );
+
   let myContactsCount = 0;
   let allNewInRange = 0;
   let myNewInRange = 0;

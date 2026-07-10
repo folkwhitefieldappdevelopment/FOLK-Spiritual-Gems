@@ -15,6 +15,7 @@ import {
   CalendarCheck,
   Zap,
   Search,
+  Undo2,
 } from 'lucide-react';
 import type { Person, Group, GroupEvent } from '@/lib/types';
 import { useAppToast } from '@/contexts/toast-context';
@@ -23,11 +24,14 @@ import {
   getPeople, 
   updatePerson, 
   deletePerson, 
+  getCachedPeople,
+  restorePerson,
 } from '@/services/people-service';
 import { getGroupEvents, markAttendance } from '@/services/attendance-service';
 import { useAuth } from '@/contexts/auth-context';
 import { updateUser } from '@/services/user-service';
 import { trackSessionStart } from '@/services/session-history-service';
+import { dynamicGroupDefinitions } from '@/lib/dynamic-groups';
 import { Button } from '@/components/ui/button';
 import { PersonTable } from '@/components/person-table';
 import { ConfirmSessionDialog } from '@/components/confirm-session-dialog';
@@ -91,11 +95,36 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
     if (!groupId || !appUser) return;
     setIsLoading(true);
     try {
-      const [g, eventsData] = await Promise.all([ getGroup(groupId, appUser), getGroupEvents(groupId) ]);
-      if (!g) { router.push('/groups'); return; }
-      setGroup(g); setEvents(eventsData);
-      const membersResult = await getPeople(appUser, { personIds: g.peopleIds, ignoreLimit: true });
-      setMembers(membersResult.people); setTotalCount(membersResult.totalCount);
+      if (groupId.startsWith('dynamic-')) {
+          const def = dynamicGroupDefinitions.find(d => d.id === groupId);
+          if (!def) { router.push('/groups'); return; }
+          const allPeople = await getCachedPeople();
+          const matchingPeople = allPeople.filter(def.filter);
+          const syntheticGroup: Group = {
+            id: def.id,
+            name: def.name,
+            description: def.description,
+            isDynamic: true,
+            peopleIds: matchingPeople.map(p => p.id),
+            memberCount: matchingPeople.length,
+            photoUrl: '',
+            createdBy: 'system',
+            createdByName: 'System',
+            creatorRole: ['Admin'],
+            sharedWithUserIds: [],
+            visibility: []
+          };
+          setGroup(syntheticGroup);
+          setMembers(matchingPeople);
+          setTotalCount(matchingPeople.length);
+          setEvents([]);
+      } else {
+          const [g, eventsData] = await Promise.all([ getGroup(groupId, appUser), getGroupEvents(groupId) ]);
+          if (!g) { router.push('/groups'); return; }
+          setGroup(g); setEvents(eventsData);
+          const membersResult = await getPeople(appUser, { groupId: g.id, ignoreLimit: true });
+          setMembers(membersResult.people); setTotalCount(membersResult.totalCount);
+      }
     } finally { setIsLoading(false); }
   }, [groupId, appUser, router]);
 
@@ -123,8 +152,21 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
     router.push('/session');
   };
 
+  const handleRestorePerson = async (personId: string) => {
+    if (!appUser) return;
+    try {
+        await restorePerson(personId, { id: appUser.id, name: appUser.name, role: appUser.role });
+        toast({ title: "Contact Restored", description: "The contact is now back in their regular preaching stage." });
+        fetchData();
+    } catch (e) {
+        toast({ variant: 'destructive', title: "Restore Failed" });
+    }
+  };
+
   if (isLoading && !group) return <div className="flex h-screen items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!group) return null;
+
+  const isRestoreGroup = groupId === 'dynamic-recycle-bin' || groupId === 'dynamic-shifted-not-interested';
 
   return (
     <>
@@ -135,14 +177,25 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
             </div>
             <div className="flex flex-wrap items-center gap-2">
                 <Button variant="outline" size="sm" onClick={() => router.back()} className="h-10 px-4 font-bold border-border text-muted-foreground bg-muted/50 rounded-xl"><ArrowLeft className="h-4 w-4 mr-2" /> Back</Button>
-                <Button size="sm" onClick={() => setIsAddMembersDialogOpen(true)} className="h-10 px-4 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 font-bold rounded-xl border-2"><Users className="h-4 w-4 mr-2" /> Members</Button>
-                <Button size="sm" onClick={() => setIsEventCreateOpen(true)} className="h-10 px-4 bg-orange-500/10 text-orange-500 border-orange-500/20 hover:bg-orange-500/20 font-black rounded-xl border-2"><CalendarDays className="h-4 w-4 mr-2" /> Create Milestone</Button>
+                
+                {!group.isDynamic && (
+                  <>
+                    <Button size="sm" onClick={() => setIsAddMembersDialogOpen(true)} className="h-10 px-4 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 font-bold rounded-xl border-2"><Users className="h-4 w-4 mr-2" /> Members</Button>
+                    <Button size="sm" onClick={() => setIsEventCreateOpen(true)} className="h-10 px-4 bg-orange-500/10 text-orange-500 border-orange-500/20 hover:bg-orange-500/20 font-black rounded-xl border-2"><CalendarDays className="h-4 w-4 mr-2" /> Create Milestone</Button>
+                  </>
+                )}
+
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-10 px-4 font-bold border-border text-foreground bg-muted/50 rounded-xl"><Wrench className="h-4 w-4 mr-2" /> Tools</Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56 bg-popover border-border text-foreground">
-                        <DropdownMenuItem onSelect={() => setIsGroupEditDialogOpen(true)} className="font-bold"><Edit className="mr-2 h-4 w-4" /> Edit Group</DropdownMenuItem>
+                        {!group.isDynamic && <DropdownMenuItem onSelect={() => setIsGroupEditDialogOpen(true)} className="font-bold"><Edit className="mr-2 h-4 w-4" /> Edit Group</DropdownMenuItem>}
                         <DropdownMenuItem onSelect={() => { setQrEvent(null); setIsQRDialogOpen(true); }} className="font-bold"><QrCode className="mr-2 h-4 w-4" /> Group QR</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive font-black" onSelect={() => deleteGroupSvc(group.id, appUser!).then(() => router.push('/groups'))}><Trash2 className="mr-2 h-4 w-4" /> Delete Group</DropdownMenuItem>
+                        {!group.isDynamic && (
+                          <>
+                            <DropdownMenuSeparator className="bg-border" />
+                            <DropdownMenuItem className="text-destructive font-black" onSelect={() => deleteGroupSvc(group.id, appUser!).then(() => router.push('/groups'))}><Trash2 className="mr-2 h-4 w-4" /> Delete Group</DropdownMenuItem>
+                          </>
+                        )}
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
@@ -154,28 +207,45 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
                     <TabsTrigger value="members" className="px-8 py-3 font-black uppercase tracking-widest text-[11px] rounded-2xl data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
                         <Users className="h-4 w-4 mr-2" /> Members ({totalCount || members.length})
                     </TabsTrigger>
-                    <TabsTrigger value="attendance" className="px-8 py-3 font-black uppercase tracking-widest text-[11px] rounded-2xl data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
-                        <CalendarCheck className="h-4 w-4 mr-2" /> History
-                    </TabsTrigger>
+                    {!group.isDynamic && (
+                      <TabsTrigger value="attendance" className="px-8 py-3 font-black uppercase tracking-widest text-[11px] rounded-2xl data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+                          <CalendarCheck className="h-4 w-4 mr-2" /> History
+                      </TabsTrigger>
+                    )}
                     <TabsTrigger value="pulse" className="px-8 py-3 font-black uppercase tracking-widest text-[11px] rounded-2xl data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
                         <Zap className="h-4 w-4 mr-2" /> Report
                     </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="members" className="mt-6 space-y-6">
-                    <PersonTable people={members} onEdit={p => { setEditingPerson(p); setIsPersonDialogOpen(true); }} onDelete={id => deletePerson(id, appUser!).then(() => fetchData())} onStartCall={p => { setSelectedIds(new Set([p.id])); setIsConfirmSessionDialogOpen(true); }} selectedIds={selectedIds} setSelectedIds={setSelectedIds} isSelectionActive={selectedIds.size > 0} showEnablerColumn={true} navigationContext={{ groupId, scope: 'all' }} totalCount={totalCount} isLoading={false} />
+                    <PersonTable 
+                        people={members} 
+                        onEdit={p => { setEditingPerson(p); setIsPersonDialogOpen(true); }} 
+                        onDelete={id => deletePerson(id, appUser!).then(() => fetchData())} 
+                        onStartCall={p => { setSelectedIds(new Set([p.id])); setIsConfirmSessionDialogOpen(true); }} 
+                        onRestore={isRestoreGroup ? handleRestorePerson : undefined}
+                        selectedIds={selectedIds} 
+                        setSelectedIds={setSelectedIds} 
+                        isSelectionActive={selectedIds.size > 0} 
+                        showEnablerColumn={true} 
+                        navigationContext={{ groupId, scope: 'all' }} 
+                        totalCount={totalCount} 
+                        isLoading={false} 
+                    />
                 </TabsContent>
 
-                <TabsContent value="attendance" className="mt-6 space-y-6">
-                    <div className="bg-card/30 border border-border rounded-[2.5rem] overflow-hidden">
-                        {events.length > 0 ? (
-                            <Table><TableHeader><TableRow className="border-border"><TableHead className="text-muted-foreground">Name</TableHead><TableHead className="text-muted-foreground">Mark</TableHead><TableHead className="text-right text-muted-foreground">Action</TableHead></TableRow></TableHeader>
-                            <TableBody>{events.map(event => (
-                                <TableRow key={event.id} className="border-border"><TableCell className="font-bold text-foreground uppercase">{event.name}</TableCell><TableCell><Button size="sm" variant="outline" onClick={() => handleMarkAttendance(event)}>Mark Present</Button></TableCell><TableCell className="text-right"><Button variant="ghost" size="icon" onClick={async () => { await deleteDoc(doc(db, 'groups', groupId, 'events', event.id)); fetchData(); }} className="text-muted-foreground hover:text-foreground"><Trash2 className="h-4 w-4" /></Button></TableCell></TableRow>
-                            ))}</TableBody></Table>
-                        ) : <div className="py-24 text-center text-muted-foreground opacity-30">No history logged yet.</div>}
-                    </div>
-                </TabsContent>
+                {!group.isDynamic && (
+                  <TabsContent value="attendance" className="mt-6 space-y-6">
+                      <div className="bg-card/30 border border-border rounded-[2.5rem] overflow-hidden">
+                          {events.length > 0 ? (
+                              <Table><TableHeader><TableRow className="border-border"><TableHead className="text-muted-foreground">Name</TableHead><TableHead className="text-muted-foreground">Mark</TableHead><TableHead className="text-right text-muted-foreground">Action</TableHead></TableRow></TableHeader>
+                              <TableBody>{events.map(event => (
+                                  <TableRow key={event.id} className="border-border"><TableCell className="font-bold text-foreground uppercase">{event.name}</TableCell><TableCell><Button size="sm" variant="outline" onClick={() => handleMarkAttendance(event)}>Mark Present</Button></TableCell><TableCell className="text-right"><Button variant="ghost" size="icon" onClick={async () => { await deleteDoc(doc(db, 'groups', groupId, 'events', event.id)); fetchData(); }} className="text-muted-foreground hover:text-foreground"><Trash2 className="h-4 w-4" /></Button></TableCell></TableRow>
+                              ))}</TableBody></Table>
+                          ) : <div className="py-24 text-center text-muted-foreground opacity-30">No history logged yet.</div>}
+                      </div>
+                  </TabsContent>
+                )}
 
                 <TabsContent value="pulse" className="mt-6"><IntelligentReportView group={group} people={members} /></TabsContent>
             </Tabs>

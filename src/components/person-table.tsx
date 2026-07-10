@@ -46,6 +46,7 @@ type PersonTableProps = {
   onEdit: (person: Person) => void;
   onDelete: (personId: string) => void;
   onStartCall: (person: Person) => void;
+  onRestore?: (personId: string) => void;
   selectedIds?: Set<string>;
   setSelectedIds?: React.Dispatch<React.SetStateAction<Set<string>>>;
   isSelectionActive?: boolean;
@@ -116,6 +117,7 @@ export function PersonTable({
   onEdit,
   onDelete,
   onStartCall,
+  onRestore,
   selectedIds,
   setSelectedIds,
   isSelectionActive = false,
@@ -227,7 +229,7 @@ export function PersonTable({
         <div className="flex items-center gap-3">
             {totalCount !== null && (
                 <Badge variant="secondary" className="px-4 py-2 font-black bg-primary/5 text-primary border-primary/20 text-[10px] uppercase tracking-widest rounded-xl">
-                    {totalCount} Total Contacts
+                    {totalCount} {onRestore ? 'Inactive Records' : 'Total Contacts'}
                 </Badge>
             )}
         </div>
@@ -359,6 +361,7 @@ export function PersonTable({
                       onEdit={onEdit}
                       onDelete={onDelete}
                       onStartCall={onStartCall}
+                      onRestore={onRestore}
                       isSelected={!!selectedIds && selectedIds.has(person.id)}
                       onSelect={(checked) => handleSelectOne(person.id, checked)}
                       allGroups={allGroups}

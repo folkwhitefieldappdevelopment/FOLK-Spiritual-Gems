@@ -10,6 +10,7 @@ import {
   BadgeCheck,
   Clock,
   History,
+  RotateCcw,
 } from 'lucide-react';
 import type { Person, Group } from '@/lib/types';
 import { TableCell, TableRow } from '@/components/ui/table';
@@ -34,6 +35,7 @@ type PersonTableRowProps = {
   onEdit: (person: Person) => void;
   onDelete: (personId: string) => void;
   onStartCall: (person: Person) => void;
+  onRestore?: (personId: string) => void;
   isSelected: boolean;
   onSelect?: (checked: boolean) => void;
   allGroups?: Group[];
@@ -48,6 +50,7 @@ const PersonTableRowComponent = ({
   onEdit,
   onDelete,
   onStartCall,
+  onRestore,
   isSelected,
   onSelect,
   visibleColumns,
@@ -86,10 +89,11 @@ const PersonTableRowComponent = ({
   const handleEdit = React.useCallback(() => onEdit(person), [onEdit, person]);
   const handleDelete = React.useCallback(() => onDelete(person.id), [onDelete, person.id]);
   const handleCall = React.useCallback(() => onStartCall(person), [onStartCall, person]);
+  const handleRestore = React.useCallback(() => onRestore?.(person.id), [onRestore, person.id]);
 
   return (
     <React.Fragment>
-      <TableRow className={cn("group/row transition-all border-b border-border h-20", isOpen && "bg-muted/30", person.isDeleted && "opacity-50")}>
+      <TableRow className={cn("group/row transition-all border-b border-border h-20", isOpen && "bg-muted/30", person.isDeleted && "bg-red-500/5")}>
         <TableCell className="px-6">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => setIsOpen(!isOpen)}>
@@ -144,14 +148,25 @@ const PersonTableRowComponent = ({
         )}
 
         <TableCell className="text-right pr-8">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-popover border-border text-foreground w-48">
-              <DropdownMenuItem onClick={handleCall} className="font-bold">Log Interaction</DropdownMenuItem>
-              <DropdownMenuItem onClick={handleEdit}>Edit Profile</DropdownMenuItem>
-              <DropdownMenuItem className="text-destructive font-bold" onClick={handleDelete}>Delete</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {onRestore ? (
+            <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleRestore}
+                className="h-9 px-4 font-black uppercase text-[10px] tracking-widest rounded-xl bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-600 hover:text-white transition-all"
+            >
+                <RotateCcw className="h-3.5 w-3.5 mr-2" /> Restore
+            </Button>
+          ) : (
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-popover border-border text-foreground w-48">
+                <DropdownMenuItem onClick={handleCall} className="font-bold">Log Interaction</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleEdit}>Edit Profile</DropdownMenuItem>
+                <DropdownMenuItem className="text-destructive font-bold" onClick={handleDelete}>Delete</DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </TableCell>
       </TableRow>
 
