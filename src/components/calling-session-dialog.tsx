@@ -376,7 +376,7 @@ const CallingSessionDialogComponent = ({
     const targetPerson = currentActivePerson;
     if (!targetPerson || !appUser) return '#';
     const template = appUser.whatsAppTemplate || DEFAULT_WHATSAPP_TEMPLATE;
-    return `https://wa.me/91${targetPerson.phone.replace(/\s+/g, '')}?text=${encodeURIComponent(template.replace('{name}', targetPerson.fullName))}`;
+    return `https://wa.me/91${String(targetPerson.phone).replace(/\s+/g, '')}?text=${encodeURIComponent(template.replace('{name}', targetPerson.fullName))}`;
   };
 
   const handleSearchCallback = async () => {

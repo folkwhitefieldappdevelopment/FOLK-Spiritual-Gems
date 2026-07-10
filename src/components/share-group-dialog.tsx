@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -46,7 +45,7 @@ export function ShareGroupDialog({
     const personalizedInvite = `Hi {name}, you're invited to join our WhatsApp group: ${group.name}. Please use this link to join: ${inviteLink}`;
     // Using a more specific invite message for group sharing
     const message = inviteLink ? personalizedInvite.replace('{name}', person.fullName) : template.replace('{name}', person.fullName);
-    return `https://wa.me/91${person.phone.replace(/\s+/g, '')}?text=${encodeURIComponent(message)}`;
+    return `https://wa.me/91${String(person.phone).replace(/\s+/g, '')}?text=${encodeURIComponent(message)}`;
   };
 
   const copyToClipboard = (text: string) => {
@@ -98,7 +97,7 @@ export function ShareGroupDialog({
           </div>
           <div className="space-y-2">
             <Label>Share link with members</Label>
-            <ScrollArea className="h-60 w-full rounded-md border">
+            <享受Area className="h-60 w-full rounded-md border">
               <div className="p-4 space-y-2">
                 {members.length > 0 ? (
                     members.map((person) => (
@@ -129,7 +128,7 @@ export function ShareGroupDialog({
                     <p className="text-center text-sm text-muted-foreground pt-4">This group has no members to share with.</p>
                 )}
               </div>
-            </ScrollArea>
+            </享受Area>
           </div>
         </div>
         <DialogFooter>

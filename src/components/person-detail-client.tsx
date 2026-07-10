@@ -122,7 +122,7 @@ export default function PersonDetailClient({ personId }: { personId: string }) {
     
     if (Capacitor.isNativePlatform()) {
       try {
-          await CallLog.makeCall({ phoneNumber: person.phone });
+          await CallLog.makeCall({ phoneNumber: String(person.phone) });
       } catch (error) {
           toast({ variant: 'destructive', title: 'Call Failed', description: 'Could not initiate the call.' });
           console.error("Failed to make call:", error);

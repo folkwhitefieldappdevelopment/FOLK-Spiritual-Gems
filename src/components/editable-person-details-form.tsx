@@ -518,7 +518,7 @@ export const EditablePersonDetailsForm = React.forwardRef<EditablePersonDetailsF
   const whatsAppLink = () => {
     if (!person || !appUser) return '#';
     const template = appUser.whatsAppTemplate || DEFAULT_WHATSAPP_TEMPLATE;
-    return `https://wa.me/91${person.phone.replace(/\s+/g, '')}?text=${encodeURIComponent(template.replace('{name}', person.fullName))}`;
+    return `https://wa.me/91${String(person.phone).replace(/\s+/g, '')}?text=${encodeURIComponent(template.replace('{name}', person.fullName))}`;
   };
 
   return (
