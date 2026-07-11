@@ -7,7 +7,8 @@ import {
   Phone, 
   AlertCircle,
   CheckCircle2,
-  CalendarCheck2
+  CalendarCheck2,
+  ArrowRight
 } from 'lucide-react';
 import { doc, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -40,7 +41,7 @@ export default function EventCheckInClient({ groupId, eventId }: { groupId: stri
   const [isLoading, setIsLoading] = React.useState(true);
   const [phone, setPhone] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [status, setStatus] = React.useState<'idle' | 'success' | 'not-found' | 'assignment'>('idle');
+  const [status, setStatus] = React.useState<'idle' | 'success' | 'assignment'>('idle');
   const [statusMsg, setStatusMsg] = React.useState('');
   const [foundPerson, setFoundPerson] = React.useState<Person | null>(null);
 
@@ -89,6 +90,12 @@ export default function EventCheckInClient({ groupId, eventId }: { groupId: stri
     } finally { setIsSubmitting(false); }
   };
 
+  const goToRegister = () => {
+      const guideId = selectedGuideId || group?.createdBy;
+      const enablerPart = selectedEnablerId ? `&enablerId=${selectedEnablerId}` : '';
+      router.push(`/register/?id=${guideId}&groupId=${groupId}&eventId=${eventId}${enablerPart}&phone=${phone}`);
+  };
+
   const logo = placeholderData.app_logo;
   if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
 
@@ -126,6 +133,48 @@ export default function EventCheckInClient({ groupId, eventId }: { groupId: stri
              <div className="space-y-3"><h2 className="text-3xl font-black text-foreground uppercase tracking-tighter">{statusMsg.includes('already') ? 'LOGGED PREVIOUSLY' : 'ALL DONE! ✨'}</h2><div className="space-y-1"><p className="text-muted-foreground font-bold">{statusMsg.includes('already') ? "Already submitted." : "Thank you for joining."}</p><p className="text-primary font-black text-xl uppercase tracking-tight">{foundPerson?.fullName}</p></div></div>
              <Badge className="bg-muted text-muted-foreground border-none font-black text-[10px] uppercase tracking-[0.2em] py-2 px-6">{format(new Date(), 'PPPP')}</Badge>
           </Card>
+        )}
+
+        {status === 'assignment' && (
+           <Card className="shadow-2xl rounded-[3rem] border-none bg-popover overflow-hidden p-10 text-center space-y-8 animate-in zoom-in-95 duration-500">
+              <div className="mx-auto bg-amber-500/10 p-6 rounded-[2rem] w-fit border border-amber-500/20">
+                 <AlertCircle className="h-12 w-12 text-amber-500" />
+              </div>
+              <div className="space-y-2">
+                 <h2 className="text-2xl font-black text-foreground">Contact Not Found</h2>
+                 <p className="text-sm text-muted-foreground font-bold leading-relaxed">
+                    We couldn't find a record for <span className="text-orange-500">{phone}</span>. Please select your coordinator below to register.
+                 </p>
+              </div>
+              
+              <div className="space-y-4 text-left">
+                  <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Folk Guide</Label>
+                      <Select value={selectedGuideId} onValueChange={setSelectedGuideId}>
+                          <SelectTrigger className="h-14 rounded-xl border-border bg-muted text-foreground font-bold"><SelectValue placeholder="Select Guide..." /></SelectTrigger>
+                          <SelectContent className="bg-popover border-border text-foreground">
+                              {folkGuides.map(g => <SelectItem key={g.id} value={g.id} className="font-bold">{g.name}</SelectItem>)}
+                          </SelectContent>
+                      </Select>
+                  </div>
+                  <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Enabler</Label>
+                      <Select value={selectedEnablerId} onValueChange={setSelectedEnablerId} disabled={!selectedGuideId || isEnablersLoading}>
+                          <SelectTrigger className="h-14 rounded-xl border-border bg-muted text-foreground font-bold">
+                              {isEnablersLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                              <SelectValue placeholder="Select Enabler..." />
+                          </SelectTrigger>
+                          <SelectContent className="bg-popover border-border text-foreground">
+                              {enablers.map(e => <SelectItem key={e.id} value={e.id} className="font-bold">{e.name}</SelectItem>)}
+                          </SelectContent>
+                      </Select>
+                  </div>
+              </div>
+
+              <Button onClick={goToRegister} className="w-full h-16 text-lg font-black rounded-2xl shadow-xl bg-orange-500 text-black transition-all hover:scale-[1.01]" disabled={!selectedEnablerId}>
+                 Start Registration <ArrowRight className="ml-2 h-6 w-6" />
+              </Button>
+           </Card>
         )}
       </div>
     </div>

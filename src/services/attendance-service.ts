@@ -209,3 +209,9 @@ export async function createGroupEvent(groupId: string, eventData: Omit<GroupEve
         throw e;
     }
 }
+
+export async function getEventAttendees(groupId: string, eventId: string): Promise<string[]> {
+    const attRef = collection(db, 'groups', groupId, 'events', eventId, 'attendance');
+    const snap = await getDocs(attRef);
+    return snap.docs.map(d => d.id);
+}

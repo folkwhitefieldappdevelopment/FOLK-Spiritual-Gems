@@ -20,6 +20,7 @@ import {
   SlidersHorizontal,
   PhoneCall,
   X,
+  ExternalLink,
 } from 'lucide-react';
 import type { Person, Group, GroupEvent, FilterState } from '@/lib/types';
 import { useAppToast } from '@/contexts/toast-context';
@@ -31,7 +32,7 @@ import {
   getCachedPeople,
   restorePerson,
 } from '@/services/people-service';
-import { getGroupEvents, markAttendance, createGroupEvent } from '@/services/attendance-service';
+import { getGroupEvents, markAttendance, createGroupEvent, getEventAttendees } from '@/services/attendance-service';
 import { getEnablers, getContactSources, getStayingWithOptions, type EnablerOption } from '@/services/settings-service';
 import { useAuth } from '@/contexts/auth-context';
 import { updateUser } from '@/services/user-service';
@@ -61,6 +62,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -70,7 +72,6 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
@@ -112,6 +113,11 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
   const [markingEvent, setMarkingEvent] = React.useState<GroupEvent | null>(null);
   const [attendanceMembers, setAttendanceMembers] = React.useState<Person[]>([]);
   const [isViewingAttendanceLoading, setIsViewingAttendanceLoading] = React.useState(false);
+  
+  const [viewAttendeesEvent, setViewAttendeesEvent] = React.useState<GroupEvent | null>(null);
+  const [attendees, setAttendees] = React.useState<Person[]>([]);
+  const [isAttendeesLoading, setIsAttendeesLoading] = React.useState(false);
+
   const [isPersonDialogOpen, setIsPersonDialogOpen] = React.useState(false);
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(undefined);
   const [isConfirmSessionDialogOpen, setIsConfirmSessionDialogOpen] = React.useState(false);
@@ -186,6 +192,18 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
         const { people: allGroupMembers } = await getPeople(appUser!, { groupId, ignoreLimit: true });
         setAttendanceMembers(allGroupMembers.map(p => ({ ...p, isMarked: attendeeIds.has(p.id) })) as any);
     } finally { setIsViewingAttendanceLoading(false); }
+  };
+
+  const handleViewAttendees = async (event: GroupEvent) => {
+      setViewAttendeesEvent(event);
+      setIsAttendeesLoading(true);
+      try {
+          const ids = await getEventAttendees(groupId, event.id);
+          const { people } = await getPeople(appUser!, { personIds: ids, ignoreLimit: true });
+          setAttendees(people);
+      } finally {
+          setIsAttendeesLoading(false);
+      }
   };
 
   const handleStartSession = async (eventName: string) => {
@@ -293,7 +311,7 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
                             <ContactFilterPanel 
                                 filters={filters} 
                                 onChange={setFilters} 
-                                onApply={() => {}} // LocalMemo handles this
+                                onApply={() => {}} 
                                 onReset={() => setFilters(EMPTY_FILTERS)}
                                 enablerOptions={enablerOptions}
                                 sourceOptions={sourceOptions}
@@ -370,13 +388,72 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
 
                 {!group.isDynamic && (
                   <TabsContent value="attendance" className="mt-6 space-y-6">
-                      <div className="bg-card/30 border border-border rounded-[2.5rem] overflow-hidden">
+                      <div className="bg-card/30 border border-border rounded-[2.5rem] overflow-hidden shadow-xl">
                           {events.length > 0 ? (
-                              <Table><TableHeader><TableRow className="border-border"><TableHead className="text-muted-foreground">Name</TableHead><TableHead className="text-muted-foreground">Mark</TableHead><TableHead className="text-right text-muted-foreground">Action</TableHead></TableRow></TableHeader>
-                              <TableBody>{events.map(event => (
-                                  <TableRow key={event.id} className="border-border"><TableCell className="font-bold text-foreground uppercase">{event.name}</TableCell><TableCell><Button size="sm" variant="outline" onClick={() => handleMarkAttendance(event)}>Mark Present</Button></TableCell><TableCell className="text-right"><Button variant="ghost" size="icon" onClick={async () => { await deleteDoc(doc(db, 'groups', groupId, 'events', event.id)); fetchData(); }} className="text-muted-foreground hover:text-foreground"><Trash2 className="h-4 w-4" /></Button></TableCell></TableRow>
-                              ))}</TableBody></Table>
-                          ) : <div className="py-24 text-center text-muted-foreground opacity-30">No history logged yet.</div>}
+                              <Table>
+                                <TableHeader className="bg-muted/50">
+                                  <TableRow className="border-border h-14">
+                                    <TableHead className="font-black text-[10px] uppercase text-muted-foreground pl-8">Event Milestone</TableHead>
+                                    <TableHead className="font-black text-[10px] uppercase text-muted-foreground">Date</TableHead>
+                                    <TableHead className="font-black text-[10px] uppercase text-muted-foreground text-center">Attended</TableHead>
+                                    <TableHead className="font-black text-[10px] uppercase text-muted-foreground text-right pr-8">Actions</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {events.map(event => (
+                                    <TableRow 
+                                      key={event.id} 
+                                      className="border-border h-16 hover:bg-muted/30 transition-colors cursor-pointer group/row"
+                                      onClick={() => handleViewAttendees(event)}
+                                    >
+                                      <TableCell className="pl-8 font-black text-foreground uppercase tracking-tight">{event.name}</TableCell>
+                                      <TableCell className="text-xs font-bold text-muted-foreground">{format(new Date(event.date), 'dd MMM yyyy')}</TableCell>
+                                      <TableCell className="text-center">
+                                          <Badge className="bg-primary/10 text-primary border-none font-black h-8 px-4 rounded-xl">
+                                              {event.attendeeCount || 0}
+                                          </Badge>
+                                      </TableCell>
+                                      <TableCell className="text-right pr-8">
+                                        <div className="flex items-center justify-end gap-2" onClick={e => e.stopPropagation()}>
+                                            <Button size="sm" variant="outline" className="h-9 px-3 rounded-xl font-bold border-border bg-muted/50 text-foreground" onClick={() => { setQrEvent({ id: event.id, name: event.name }); setIsQRDialogOpen(true); }}>
+                                                <QrCode className="h-4 w-4 mr-2" /> QR
+                                            </Button>
+                                            <Button size="sm" variant="outline" className="h-9 px-3 rounded-xl font-bold border-border bg-muted/50 text-foreground" onClick={() => handleMarkAttendance(event)}>
+                                                <CalendarCheck className="h-4 w-4 mr-2" /> Mark
+                                            </Button>
+                                            <AlertDialog>
+                                              <AlertDialogTrigger asChild>
+                                                  <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-destructive rounded-xl transition-all">
+                                                      <Trash2 className="h-4 w-4" />
+                                                  </Button>
+                                              </AlertDialogTrigger>
+                                              <AlertDialogContent className="bg-popover border-border rounded-[2rem]">
+                                                  <AlertDialogHeader>
+                                                      <AlertDialogTitle className="font-black uppercase tracking-tight">Delete Milestone?</AlertDialogTitle>
+                                                      <AlertDialogDescription className="text-muted-foreground font-bold">This will remove the event record. Attendance history for participants will be preserved in their individual profiles.</AlertDialogDescription>
+                                                  </AlertDialogHeader>
+                                                  <AlertDialogFooter>
+                                                      <AlertDialogCancel className="bg-muted border-border rounded-xl">Cancel</AlertDialogCancel>
+                                                      <AlertDialogAction onClick={async () => { await deleteDoc(doc(db, 'groups', groupId, 'events', event.id)); fetchData(); }} className="bg-destructive rounded-xl font-black uppercase">Delete</AlertDialogAction>
+                                                  </AlertDialogFooter>
+                                              </AlertDialogContent>
+                                            </AlertDialog>
+                                        </div>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                          ) : (
+                            <div className="py-24 text-center space-y-6">
+                              <CalendarDays className="h-16 w-16 mx-auto mb-2 text-muted-foreground opacity-20" />
+                              <div className="space-y-1">
+                                <p className="text-muted-foreground font-black uppercase tracking-widest text-xs">No history logged yet</p>
+                                <p className="text-[10px] text-muted-foreground/60 font-bold uppercase">Start by creating a milestone</p>
+                              </div>
+                              <Button size="sm" onClick={() => setIsEventCreateOpen(true)} className="rounded-xl font-black uppercase tracking-widest text-[10px] h-10 px-8">Initialize First Event</Button>
+                            </div>
+                          )}
                       </div>
                   </TabsContent>
                 )}
@@ -384,6 +461,44 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
                 <TabsContent value="pulse" className="mt-6"><IntelligentReportView group={group} people={members} /></TabsContent>
             </Tabs>
         </main>
+
+        {/* View Attendees Dialog */}
+        <Dialog open={!!viewAttendeesEvent} onOpenChange={(o) => !o && setViewAttendeesEvent(null)}>
+            <DialogContent className="sm:max-w-5xl bg-popover border-none rounded-[2.5rem] p-0 overflow-hidden shadow-2xl flex flex-col h-[90vh]">
+                <DialogHeader className="p-8 pb-4 bg-card border-b border-border shrink-0">
+                    <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-primary">Milestone Roster</p>
+                            <DialogTitle className="text-2xl font-black text-foreground uppercase tracking-tight leading-none">{viewAttendeesEvent?.name}</DialogTitle>
+                        </div>
+                        <Badge className="bg-primary/10 text-primary border-none font-black h-7 px-4 rounded-full">
+                            {attendees.length} Present
+                        </Badge>
+                    </div>
+                </DialogHeader>
+                <div className="flex-1 min-h-0 p-8 pt-4 overflow-y-auto">
+                    {isAttendeesLoading ? (
+                        <div className="flex flex-col items-center justify-center py-32 space-y-4 opacity-50">
+                            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em]">Synchronizing attendee list...</p>
+                        </div>
+                    ) : (
+                        <PersonTable 
+                            people={attendees} 
+                            onEdit={p => { setEditingPerson(p); setIsPersonDialogOpen(true); }} 
+                            onDelete={() => {}} // Disabled in this view
+                            onStartCall={p => { setSelectedIds(new Set([p.id])); setIsConfirmSessionDialogOpen(true); }} 
+                            selectedIds={selectedIds} 
+                            setSelectedIds={setSelectedIds} 
+                            isSelectionActive={selectedIds.size > 0} 
+                            showEnablerColumn={true} 
+                            totalCount={attendees.length} 
+                            isLoading={false} 
+                        />
+                    )}
+                </div>
+            </DialogContent>
+        </Dialog>
 
         <CreateUpdateGroupDialog isOpen={isGroupEditDialogOpen} setIsOpen={setIsGroupEditDialogOpen} group={group} onSave={(d) => updateGroupSvc(group.id, d, appUser!).then(() => fetchData())} />
         <AddMembersToGroupDialog isOpen={isAddMembersDialogOpen} setIsOpen={setIsAddMembersDialogOpen} groupId={groupId} groupName={group.name} existingMemberIds={group.peopleIds} onSuccess={() => fetchData()} />
