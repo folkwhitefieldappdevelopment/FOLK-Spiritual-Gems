@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Forced styles re-injection trigger - CRM Build Sync */
+/* Forced styles re-injection trigger - CRM Build Sync - REFRESH_001 */
 
 @layer base {
   :root {

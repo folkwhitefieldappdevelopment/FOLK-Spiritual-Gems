@@ -432,7 +432,7 @@ export const EditablePersonDetailsForm = React.forwardRef<EditablePersonDetailsF
                     <FormField control={form.control} name="verifiedByFg" render={({ field }) => (<FormItem><FormLabel>Verified by FG?</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!isPrivileged}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></FormItem>)} />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField control={form.control} name="folkId" render={({ field }) => (<FormItem><FormLabel>Folk ID</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="folkId" render={({ field }) => (<FormItem><FormLabel>Folk ID</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                     <FormField control={form.control} name="chantingStatus" render={({ field }) => (<FormItem><FormLabel>Chanting Rounds</FormLabel><Select onValueChange={v => field.onChange(Number(v))} value={String(field.value)}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>{chantingRoundOptions.map(r => <SelectItem key={r} value={String(r)}>{r}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
                 </div>
                 <FormField control={form.control} name="stayingWith" render={({ field }) => (<FormItem><FormLabel>Staying With</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>{stayingWithOptions.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
@@ -546,7 +546,7 @@ export const EditablePersonDetailsForm = React.forwardRef<EditablePersonDetailsF
             <div className="mt-2"><FolkStageDisplay stage={person.currentFolkStage} /></div>
         </div>
 
-      {groups.length > 0 && (
+      {groups.length > 0 ? (
           <div className="space-y-2 bg-primary/5 p-4 rounded-xl border border-primary/10">
               <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-primary">
                   <UsersRound className="h-4 w-4" />
@@ -560,6 +560,10 @@ export const EditablePersonDetailsForm = React.forwardRef<EditablePersonDetailsF
                   ))}
               </div>
           </div>
+      ) : (
+        <div className="p-4 rounded-xl border border-border bg-muted/20 text-center">
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Not in any outreach lists yet</p>
+        </div>
       )}
 
       <div className="grid grid-cols-[auto_1fr] items-start gap-x-6 gap-y-4 text-sm bg-muted/30 p-4 rounded-xl border">
