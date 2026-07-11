@@ -36,10 +36,13 @@ export function GoalsMatrix({ goals, enablers, onUpdateProgress, isPrivileged }:
       titles: Array.from(new Set(goals.filter(g => g.category === cat).map(g => g.title))).sort()
   }));
 
-  if (enablerNames.length === 0 && goals.length === 0) {
+  if (goals.length === 0) {
       return (
-          <div className="py-24 text-center bg-muted/20 border-2 border-dashed rounded-[3rem]">
-              <p className="text-muted-foreground font-bold uppercase tracking-widest text-xs">No goals or enablers found in this view.</p>
+          <div className="py-24 text-center bg-muted/20 border-2 border-dashed rounded-[3rem] space-y-2">
+              <p className="text-muted-foreground font-bold uppercase tracking-widest text-xs">No Goals Assigned</p>
+              {enablerNames.length > 0 && (
+                <p className="text-muted-foreground/60 text-[11px] font-semibold">Assign a goal to get started with this roster.</p>
+              )}
           </div>
       );
   }
