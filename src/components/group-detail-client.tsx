@@ -208,7 +208,7 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
 
   const handleStartSession = async (eventName: string) => {
     if (!appUser || !group) return;
-    const pIds = selectedIds.size > 0 ? Array.from(selectedIds) : group.peopleIds;
+    const pIds = selectedIds.size > 0 ? Array.from(selectedIds) : (group.peopleIds || []);
     const hId = await trackSessionStart({ name: eventName, peopleIds: pIds }, appUser);
     const pSession = { event: eventName, peopleIds: pIds, currentIndex: 0, assignedById: appUser.id, assignedByName: appUser.name, historyId: hId };
     await updateUser(appUser.id, { pausedCallingSession: pSession });
@@ -476,7 +476,7 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
                         </Badge>
                     </div>
                 </DialogHeader>
-                <div className="flex-1 min-h-0 p-8 pt-4 overflow-y-auto">
+                <div className="flex-1 min-0 p-8 pt-4 overflow-y-auto">
                     {isAttendeesLoading ? (
                         <div className="flex flex-col items-center justify-center py-32 space-y-4 opacity-50">
                             <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -501,10 +501,10 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
         </Dialog>
 
         <CreateUpdateGroupDialog isOpen={isGroupEditDialogOpen} setIsOpen={setIsGroupEditDialogOpen} group={group} onSave={(d) => updateGroupSvc(group.id, d, appUser!).then(() => fetchData())} />
-        <AddMembersToGroupDialog isOpen={isAddMembersDialogOpen} setIsOpen={setIsAddMembersDialogOpen} groupId={groupId} groupName={group.name} existingMemberIds={group.peopleIds} onSuccess={() => fetchData()} />
+        <AddMembersToGroupDialog isOpen={isAddMembersDialogOpen} setIsOpen={setIsAddMembersDialogOpen} groupId={groupId} groupName={group.name} existingMemberIds={group.peopleIds || []} onSuccess={() => fetchData()} />
         <CreateEventDialog isOpen={isEventCreateOpen} setIsOpen={setIsEventCreateOpen} onSave={async d => { await createGroupEvent(groupId, d); fetchData(); }} />
         <FreshLeadQRDialog isOpen={isQRDialogOpen} setIsOpen={setIsQRDialogOpen} groupId={groupId} eventId={qrEvent?.id} eventName={qrEvent?.name || group.name} />
-        <ConfirmSessionDialog isOpen={isConfirmSessionDialogOpen} setIsOpen={setIsConfirmSessionDialogOpen} onStartSession={handleStartSession} totalCount={selectedIds.size || group.peopleIds.length} singlePersonName={selectedIds.size === 1 ? members.find(m => m.id === Array.from(selectedIds)[0])?.fullName : group.name} />
+        <ConfirmSessionDialog isOpen={isConfirmSessionDialogOpen} setIsOpen={setIsConfirmSessionDialogOpen} onStartSession={handleStartSession} totalCount={selectedIds.size || group.peopleIds?.length || 0} singlePersonName={selectedIds.size === 1 ? members.find(m => m.id === Array.from(selectedIds)[0])?.fullName : group.name} />
         <ContactGalleryDialog isOpen={isGalleryOpen} onClose={() => setIsGalleryOpen(false)} people={members} />
         {editingPerson && <CreateUpdatePersonDialog isOpen={!!editingPerson} setIsOpen={() => setEditingPerson(undefined)} onSave={async (d) => { await updatePerson(editingPerson.id, d, appUser!); fetchData(); return {success:true}; }} person={editingPerson} allPeople={members} />}
 

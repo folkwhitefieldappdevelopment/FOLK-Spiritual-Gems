@@ -154,7 +154,7 @@ const CallingSessionDialogComponent = ({
 
   const personGroups = React.useMemo(() => {
     if (!person || !groups) return [];
-    return groups.filter(g => g.peopleIds.includes(person.id));
+    return groups.filter(g => (g.peopleIds || []).includes(person.id));
   }, [person, groups]);
   
   const sortedHistory = React.useMemo(() => {

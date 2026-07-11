@@ -92,7 +92,7 @@ export default function PersonDetailClient({ personId }: { personId: string }) {
       const [personData, staticGroups] = await Promise.all([getPerson(personId), getStaticGroups(appUser)]);
       if (!personData) { router.push('/contacts'); return; }
       setPerson(personData);
-      setPersonGroups(staticGroups.filter(g => g.peopleIds.includes(personData.id)));
+      setPersonGroups(staticGroups.filter(g => g.peopleIds?.includes(personData.id)));
       setIsLoading(false);
 
       getSessionsForContact(personId, appUser.id).then(setContactSessions);

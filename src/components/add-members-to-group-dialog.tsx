@@ -111,7 +111,7 @@ export function AddMembersToGroupDialog({
       });
       
       // Filter out those already in the group
-      const nonMembers = people.filter(p => !existingMemberIds.includes(p.id));
+      const nonMembers = people.filter(p => !(existingMemberIds || []).includes(p.id));
       setSearchResults(nonMembers);
     } catch (e) {
       console.warn("Search sync error", e);

@@ -95,6 +95,7 @@ export const createGroup = async (groupData: Partial<Group>, userInfo: UserInfo)
     ...groupData,
     createdBy: userInfo.id,
     createdByName: userInfo.name,
+    peopleIds: groupData.peopleIds || [],
     memberCount: groupData.peopleIds?.length || 0,
     photoUrl: finalPhotoUrl,
   };
