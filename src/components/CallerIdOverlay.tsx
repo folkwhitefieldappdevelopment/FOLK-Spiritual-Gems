@@ -141,7 +141,6 @@ export function CallerIdOverlay() {
                         {activeCall?.type === 'INCOMING' ? <div className="bg-blue-500/20 p-2 rounded-lg"><PhoneIncoming className="h-4 w-4 text-blue-400" /></div> : <div className="bg-green-500/20 p-2 rounded-lg"><PhoneOutgoing className="h-4 w-4 text-green-400" /></div>}
                         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{activeCall?.type === 'INCOMING' ? 'Incoming Preaching' : 'Outgoing Preaching'}</span>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => setIsOpen(false)}><X className="h-5 w-5" /></Button>
                 </div>
                 {isLoading ? <div className="flex flex-col items-center py-10 space-y-4"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Identifying...</p></div> : contact ? (
                     <div className="space-y-8">

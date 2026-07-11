@@ -21,7 +21,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Save, X, Edit2, ShieldCheck, UserCheck, Briefcase, MapPin, Tag } from 'lucide-react';
+import { Loader2, Save, X, Edit2, ShieldCheck, UserCheck, Briefcase, MapPin, Tag, UsersRound } from 'lucide-react';
 import type { Person, FolkStage, AppUser, UserRole } from '@/lib/types';
 import { 
   getEnablers, 
@@ -176,9 +176,6 @@ export function BulkEditPersonDialog({
                     Applying changes to <span className="text-primary">{selectedIds.length}</span> selected records.
                 </DialogDescription>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="h-10 w-10 rounded-full">
-                <X className="h-5 w-5" />
-            </Button>
           </div>
         </DialogHeader>
 
@@ -289,7 +286,7 @@ export function BulkEditPersonDialog({
                   <AccordionTrigger className="px-6 py-4 bg-muted/30 hover:bg-muted/50 rounded-2xl transition-all border border-border data-[state=open]:rounded-b-none data-[state=open]:border-b-0">
                     <div className="flex items-center gap-4">
                       <div className="p-2 bg-primary/10 rounded-xl"><ShieldCheck className="h-4 w-4 text-primary" /></div>
-                      <div className="text-left"><p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Trust & Metadata</p><p className="text-sm font-black text-foreground uppercase">Verification & Verification</p></div>
+                      <div className="text-left"><p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Trust & Metadata</p><p className="text-sm font-black text-foreground uppercase">Verification & Status</p></div>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="p-6 bg-muted/20 border border-t-0 border-border rounded-b-2xl space-y-6">

@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -32,13 +31,6 @@ export function AddContactMethodDialog({
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-lg p-0 overflow-hidden bg-[#1E1E2E] border-none shadow-2xl rounded-3xl">
         <div className="p-8 space-y-8 relative">
-          <button 
-            onClick={() => setIsOpen(false)}
-            className="absolute top-6 right-6 text-white/40 hover:text-white transition-colors"
-          >
-            <X className="h-6 w-6" />
-          </button>
-
           <div className="space-y-2">
             <DialogTitle className="text-2xl font-black text-white tracking-tight">Add New Content</DialogTitle>
             <DialogDescription className="text-white/50 text-sm">

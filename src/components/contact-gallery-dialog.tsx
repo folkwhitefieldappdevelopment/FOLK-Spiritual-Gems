@@ -85,14 +85,6 @@ export function ContactGalleryDialog({
               {current + 1} OF {people.length} CONTACTS
             </p>
           </div>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-10 w-10 rounded-full hover:bg-black/5 text-[#1a237e] -mt-1" 
-            onClick={onClose}
-          >
-            <X className="h-6 w-6" />
-          </Button>
         </div>
 
         {/* Carousel Container */}
