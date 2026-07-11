@@ -92,6 +92,7 @@ const CallingAssistantPageComponent = () => {
       const { people: peopleData, totalCount, lastDocId: nextId } = await getPeople(appUser, {
         groupId: selectedGroupId === 'all' ? undefined : selectedGroupId,
         lastDocId: lastId,
+        scope: 'my'
       });
       
       setPeople(prev => lastId ? [...prev, ...peopleData] : peopleData);
@@ -124,7 +125,8 @@ const CallingAssistantPageComponent = () => {
     try {
       const { people: allMatching } = await getPeople(appUser, { 
         groupId: selectedGroupId === 'all' ? undefined : selectedGroupId,
-        ignoreLimit: true 
+        ignoreLimit: true,
+        scope: 'my'
       });
       setSelectedIds(new Set(allMatching.map(p => p.id)));
       toast({ title: 'All Contacts Selected', description: `${allMatching.length} contacts selected.` });
@@ -146,12 +148,13 @@ const CallingAssistantPageComponent = () => {
         if (personToCall) {
             peopleForSession = [personToCall];
         } else if (selectedIds.size > 0) {
-            const { people: selectedPeople } = await getPeople(appUser, { personIds: Array.from(selectedIds), ignoreLimit: true });
+            const { people: selectedPeople } = await getPeople(appUser, { personIds: Array.from(selectedIds), ignoreLimit: true, scope: 'my' });
             peopleForSession = selectedPeople;
         } else {
             const { people: allAssigned } = await getPeople(appUser, { 
                 groupId: selectedGroupId === 'all' ? undefined : selectedGroupId,
-                ignoreLimit: true 
+                ignoreLimit: true,
+                scope: 'my'
             });
             peopleForSession = allAssigned;
             if (selectedGroupId !== 'all') {

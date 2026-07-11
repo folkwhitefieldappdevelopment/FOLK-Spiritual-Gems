@@ -15,11 +15,12 @@ const nextConfig = {
     workerThreads: false,
     cpus: 1
   },
+  // Forces Next.js to regenerate chunks and ignore potentially corrupted cached modules
   generateBuildId: async () => {
-    // Forces Next.js to regenerate chunks and ignore potentially corrupted cached modules
     return `build-${Date.now()}`;
   },
   webpack: (config, { isServer }) => {
+    // Disable webpack caching to resolve module/chunk loading inconsistencies in the dev environment
     config.cache = false;
     if (!isServer) {
         config.devtool = false;

@@ -27,6 +27,7 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 import { createInitialProgress } from '@/lib/data';
 import { safeDate } from '@/utils/date';
 import { startOfDay, endOfDay } from 'date-fns';
+import { getFolkGuides, getUsers, getAssignableUsersForAssignments } from '@/services/user-service';
 
 const PAGE_SIZE = 100;
 const MAX_FIRESTORE_LIMIT = 5000;
@@ -263,7 +264,7 @@ export const getPeople = async (
     return list.filter((p) => {
       // Global exclusion for deleted or eliminated contacts, 
       // unless specifically requested by ID or within their designated dynamic groups
-      const isExplicitRequest = personIds && personIds.length > 0;
+      const isExplicitRequest = personIds !== undefined;
       const isDesignatedGroup = groupId === 'dynamic-recycle-bin' || groupId === 'dynamic-shifted-not-interested';
       
       if (!isExplicitRequest && !isDesignatedGroup) {
@@ -323,7 +324,23 @@ export const getPeople = async (
     });
   };
 
-  const filtered = options.scope === 'my' ? basePeople.filter(p => isAssignedToUser(p, userInfo)) : basePeople;
+  let filtered = basePeople;
+  if (options.scope === 'my') {
+    if (userInfo.role.includes('Folk Guide')) {
+      const teamMembers = await getAssignableUsersForAssignments(userInfo as any);
+      const teamIds = new Set(teamMembers.map(u => u.id));
+      const teamNames = new Set(teamMembers.map(u => (u.name || '').trim()));
+      filtered = basePeople.filter(p =>
+        isAssignedToUser(p, userInfo) ||
+        (p.enablerId && teamIds.has(p.enablerId)) ||
+        (p.coEnablerId && teamIds.has(p.coEnablerId)) ||
+        (!p.enablerId && p.enablerInTouchWith && teamNames.has(p.enablerInTouchWith.split('::')[0].trim()))
+      );
+    } else {
+      filtered = basePeople.filter(p => isAssignedToUser(p, userInfo));
+    }
+  }
+
   const uiFiltered = applyUIFilters(filtered);
   const sorted = uiFiltered.sort((a, b) => {
     const da = safeDate(a.createdAt)?.getTime() || 0;
@@ -335,7 +352,7 @@ export const getPeople = async (
   if (ignoreLimit) return { people: sorted, lastDocId: null, totalCount: sorted.length };
   const slice = sorted.slice(0, PAGE_SIZE);
   const lastId = sorted.length > PAGE_SIZE ? sorted[PAGE_SIZE - 1].id : null;
-  return { people: slice, lastId: lastId, totalCount: sorted.length };
+  return { people: slice, lastDocId: lastId, totalCount: sorted.length };
 };
 
 export const getUnassignedPeople = async (userInfo: AppUser) => {

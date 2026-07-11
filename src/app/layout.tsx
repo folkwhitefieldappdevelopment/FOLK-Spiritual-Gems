@@ -5,6 +5,10 @@ import { Providers } from "./providers";
 
 const inter = Inter({ subsets: ["latin"] });
 
+/**
+ * Root Layout - CRM Build Synchronization Point
+ */
+
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
