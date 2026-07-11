@@ -4,10 +4,13 @@ import { db, persistenceReady } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import type { Group } from '@/lib/types';
 import type { IntelligenceInsights } from '@/services/intelligence-service';
+import { formatDistanceToNow, format } from 'date-fns';
+import { safeDate } from '@/utils/date';
+import { formatDuration } from '@/utils/format';
 
 /**
  * Queues a pulse report email in the 'mail' collection for Firebase Extension processing.
- * Includes the "Intro" (strictly 1 round) tier in the leadership digest.
+ * Refactored to a clean tabular format.
  */
 export async function queuePulseReport(
   to: string, 
@@ -18,104 +21,137 @@ export async function queuePulseReport(
   await persistenceReady;
 
   const mailRef = collection(db, 'mail');
-  
-  // 1. Chanting Progress - Including Intro (1 Round) details now
-  const chantingProgressHtml = Object.entries(insights.chantingBrackets).map(([key, bracket]) => {
-    if (bracket.count === 0) return '';
-    return `
-      <div style="margin-bottom: 25px;">
-        <div style="font-size: 11px; font-weight: 900; color: #FF9800; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 10px;">
-          ${bracket.label} (${bracket.count} souls)
-        </div>
-        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-          ${bracket.people.map(p => `
-            <div style="padding: 10px 15px; background: #f8f9fa; border: 1px solid #eee; border-radius: 10px; font-size: 11px; color: #333; margin-right: 6px; margin-bottom: 6px; display: inline-block;">
-              <b style="color: #1a237e;">${p.fullName}</b> <span style="color: #999; font-size: 9px; margin-left: 5px;">via ${p.enablerInTouchWith || 'Unassigned'}</span>
-            </div>
-          `).join('')}
-        </div>
-      </div>
+  const { summary, chantingBrackets, enablerLeaderboard, dangerZone } = insights;
+  const dangerIds = new Set(dangerZone.map(p => p.id));
+
+  // Styles for the email
+  const tableStyle = 'width: 100%; border-collapse: collapse; margin-bottom: 30px; font-family: sans-serif; font-size: 13px; color: #333;';
+  const thStyle = 'border: 1px solid #e0e0e0; background-color: #f5f5f5; padding: 10px; text-align: left; font-weight: bold; text-transform: uppercase; font-size: 11px; color: #666;';
+  const tdStyle = 'border: 1px solid #e0e0e0; padding: 10px; text-align: left; vertical-align: middle;';
+  const rowEvenStyle = 'background-color: #fafafa;';
+  const rowOddStyle = 'background-color: #ffffff;';
+
+  // 1. Summary Table
+  const summaryTableHtml = `
+    <table style="${tableStyle}">
+      <thead>
+        <tr>
+          <th style="${thStyle}">Total Members</th>
+          <th style="${thStyle}">Active (7 Days)</th>
+          <th style="${thStyle}">Danger Zone</th>
+          <th style="${thStyle}">Health Score</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="${tdStyle}">${summary.totalMembers} souls</td>
+          <td style="${tdStyle}">${summary.activeCount}</td>
+          <td style="${tdStyle}">${summary.dangerCount}</td>
+          <td style="${tdStyle}"><span style="font-size: 18px; font-weight: 900; color: #3f51b5;">${summary.healthScore}%</span></td>
+        </tr>
+      </tbody>
+    </table>
+  `;
+
+  // 2. Members Table
+  const bracketOrder = ['intro', 'prelims', 'enhanced', 'graduate', 'advanced'];
+  let membersRowsHtml = '';
+  let rowCount = 0;
+
+  bracketOrder.forEach(bracketKey => {
+    const bracket = chantingBrackets[bracketKey];
+    if (!bracket) return;
+
+    bracket.people.forEach(p => {
+      const isDanger = dangerIds.has(p.id);
+      const statusHtml = isDanger 
+        ? '<span style="color: #d32f2f; font-weight: bold; text-transform: uppercase; font-size: 10px;">Danger</span>' 
+        : '<span style="color: #4caf50; font-weight: bold; text-transform: uppercase; font-size: 10px;">Active</span>';
+      
+      const lastCall = safeDate(p.lastCallAt);
+      const lastCallStr = lastCall ? formatDistanceToNow(lastCall, { addSuffix: true }) : 'Never';
+      
+      membersRowsHtml += `
+        <tr style="${rowCount % 2 === 0 ? rowEvenStyle : rowOddStyle}">
+          <td style="${tdStyle}"><b>${p.fullName}</b></td>
+          <td style="${tdStyle}">${p.phone}</td>
+          <td style="${tdStyle}">${bracket.label.split(' (')[0]}</td>
+          <td style="${tdStyle}">${p.chantingStatus || 0}</td>
+          <td style="${tdStyle}">${p.enablerInTouchWith || 'Unassigned'}</td>
+          <td style="${tdStyle}">${lastCallStr}</td>
+          <td style="${tdStyle}">${p.attendanceHistory?.length || 0}</td>
+          <td style="${tdStyle}">${statusHtml}</td>
+        </tr>
+      `;
+      rowCount++;
+    });
+  });
+
+  const membersTableHtml = `
+    <table style="${tableStyle}">
+      <thead>
+        <tr>
+          <th style="${thStyle}">Name</th>
+          <th style="${thStyle}">Phone</th>
+          <th style="${thStyle}">Bracket</th>
+          <th style="${thStyle}">Rounds</th>
+          <th style="${thStyle}">Enabler</th>
+          <th style="${thStyle}">Last Contact</th>
+          <th style="${thStyle}">Events</th>
+          <th style="${thStyle}">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${membersRowsHtml || `<tr><td colspan="8" style="${tdStyle} text-align: center; color: #999; font-style: italic;">No practitioners found with rounds > 0.</td></tr>`}
+      </tbody>
+    </table>
+  `;
+
+  // 3. Enabler Performance Table
+  let enablerRowsHtml = '';
+  enablerLeaderboard.forEach((e, idx) => {
+    enablerRowsHtml += `
+      <tr style="${idx % 2 === 0 ? rowEvenStyle : rowOddStyle}">
+        <td style="${tdStyle}"><b>${e.name}</b></td>
+        <td style="${tdStyle}">${e.totalCalls}</td>
+        <td style="${tdStyle}">${e.a1Count}</td>
+        <td style="${tdStyle}">${formatDuration(e.totalDuration)}</td>
+      </tr>
     `;
-  }).join('');
+  });
 
-  const activeSoulsHtml = insights.starPerformers.map((p, idx) => `
-    <div style="display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #f5f5f5;">
-      <span style="font-size: 14px; font-weight: 900; color: #3f51b5; width: 35px;">#${idx + 1}</span>
-      <div style="flex: 1;">
-        <div style="font-size: 14px; font-weight: 700; color: #1a237e; text-transform: uppercase;">${p.fullName}</div>
-        <div style="font-size: 10px; color: #7986cb; text-transform: uppercase; font-weight: 800; margin-top: 2px;">
-            Verified milestones: ${p.attendanceHistory?.length || 0} Events Attended
-        </div>
-      </div>
-    </div>
-  `).join('');
-
-  const enablerPerformanceHtml = insights.enablerLeaderboard.map((e, idx) => `
-    <tr style="border-bottom: 1px solid #f0f0f0;">
-      <td style="padding: 15px; font-size: 13px; color: #333;"><b>${e.name}</b></td>
-      <td style="padding: 15px; text-align: center; font-size: 12px; color: #666;">${e.totalCalls} Calls Logged</td>
-      <td style="padding: 15px; text-align: right; font-size: 14px; font-weight: 900; color: #2e7d32;">${e.a1Count} A1 Confirmed</td>
-    </tr>
-  `).join('');
-
-  const dangerZoneHtml = insights.dangerZone.slice(0, 10).map(p => `
-    <div style="margin-bottom: 12px; padding: 15px; border-left: 5px solid #f44336; background: #fff5f5; border-radius: 12px;">
-      <div style="font-size: 13px; font-weight: 900; color: #b71c1c; text-transform: uppercase;">${p.fullName}</div>
-      <div style="font-size: 10px; color: #e57373; font-weight: 800; text-transform: uppercase; margin-top: 4px;">
-        Stagnant reachout • Rounds: ${p.chantingStatus || 0} • Enabler: ${p.enablerInTouchWith || 'None'}
-      </div>
-    </div>
-  `).join('');
+  const enablerTableHtml = `
+    <table style="${tableStyle}">
+      <thead>
+        <tr>
+          <th style="${thStyle}">Coordinator Name</th>
+          <th style="${thStyle}">Calls Logged</th>
+          <th style="${thStyle}">A1 Confirmed</th>
+          <th style="${thStyle}">Total Duration</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${enablerRowsHtml || `<tr><td colspan="4" style="${tdStyle} text-align: center; color: #999; font-style: italic;">No performance data recorded for this period.</td></tr>`}
+      </tbody>
+    </table>
+  `;
 
   const html = `
-    <div style="font-family: -apple-system, system-ui, sans-serif; color: #333; max-width: 650px; margin: auto; padding: 40px; border-radius: 30px; border: 1px solid #eee; background: #fff; box-shadow: 0 20px 50px rgba(0,0,0,0.05);">
-      <div style="text-align: center; margin-bottom: 50px;">
-        <div style="font-size: 10px; font-weight: 900; color: #3f51b5; text-transform: uppercase; letter-spacing: 4px; margin-bottom: 10px;">FOLK SPIRITUAL GEMS</div>
-        <h1 style="color: #1a237e; font-size: 28px; margin: 0; text-transform: uppercase; letter-spacing: -1.5px; font-weight: 900;">Intelligence Pulse</h1>
-        <p style="color: #777; font-weight: 700; font-size: 12px; text-transform: uppercase; margin-top: 10px;">Batch: ${group.name}</p>
-      </div>
+    <div style="font-family: Arial, sans-serif; max-width: 850px; margin: auto; padding: 20px; line-height: 1.5;">
+      <h2 style="color: #1a237e; border-bottom: 2px solid #3f51b5; padding-bottom: 10px; margin-bottom: 5px;">Intelligence Pulse: ${group.name}</h2>
+      <p style="color: #666; font-size: 12px; margin-bottom: 30px;">Report Generated: ${format(new Date(), 'PPPP')}</p>
+      
+      <h3 style="font-size: 12px; margin-bottom: 10px; color: #333; text-transform: uppercase; letter-spacing: 1px; font-weight: 900;">Summary Statistics</h3>
+      ${summaryTableHtml}
 
-      <div style="background: linear-gradient(135deg, #3f51b5, #1a237e); color: white; padding: 40px; border-radius: 25px; margin-bottom: 50px; text-align: center; box-shadow: 0 15px 35px rgba(63,81,181,0.25);">
-        <div style="font-size: 11px; text-transform: uppercase; font-weight: 900; opacity: 0.7; letter-spacing: 3px;">Cumulative Health</div>
-        <div style="font-size: 64px; font-weight: 900; margin: 8px 0; line-height: 1;">${insights.summary.healthScore}%</div>
-        <div style="font-size: 12px; font-weight: 800; margin-top: 15px;">${insights.summary.activeCount} High-Activity Souls / ${insights.summary.totalMembers} Members</div>
-      </div>
+      <h3 style="font-size: 12px; margin-bottom: 10px; color: #333; text-transform: uppercase; letter-spacing: 1px; font-weight: 900;">Member Status & Progress</h3>
+      ${membersTableHtml}
 
-      <div style="margin-bottom: 50px;">
-        <h2 style="font-size: 14px; font-weight: 900; text-transform: uppercase; color: #1a237e; border-bottom: 4px solid #e8eaf6; padding-bottom: 12px; margin-bottom: 25px; letter-spacing: 1px;">
-          📈 Chanting Progress (Intro to Advanced)
-        </h2>
-        ${chantingProgressHtml || '<p style="padding: 25px; font-style: italic; color: #999; font-size: 11px;">No chanting progress data yet.</p>'}
-      </div>
+      <h3 style="font-size: 12px; margin-bottom: 10px; color: #333; text-transform: uppercase; letter-spacing: 1px; font-weight: 900;">Team Performance (Last 7 Days)</h3>
+      ${enablerTableHtml}
 
-      <div style="margin-bottom: 50px;">
-        <h2 style="font-size: 14px; font-weight: 900; text-transform: uppercase; color: #1a237e; border-bottom: 4px solid #e8eaf6; padding-bottom: 12px; margin-bottom: 25px; letter-spacing: 1px;">
-          ⭐ Top 6 Active Souls (Attendance)
-        </h2>
-        <div style="background: #fdfdfd; border: 1px solid #f2f2f2; border-radius: 20px; overflow: hidden;">
-          ${activeSoulsHtml || '<p style="padding: 25px; font-style: italic; color: #999; font-size: 11px;">Waiting for event milestones.</p>'}
-        </div>
-      </div>
-
-      <div style="margin-bottom: 50px;">
-        <h2 style="font-size: 14px; font-weight: 900; text-transform: uppercase; color: #1a237e; border-bottom: 4px solid #e8eaf6; padding-bottom: 12px; margin-bottom: 25px; letter-spacing: 1px;">
-          👥 Full Team Reach Dashboard
-        </h2>
-        <table width="100%" style="border-collapse: collapse;">
-          ${enablerPerformanceHtml || '<tr><td style="padding: 25px; font-style: italic; color: #999; font-size: 11px;">No coordinator data available.</td></tr>'}
-        </table>
-      </div>
-
-      <div style="margin-bottom: 40px;">
-        <h2 style="font-size: 14px; font-weight: 900; text-transform: uppercase; color: #f44336; border-bottom: 4px solid #ffebee; padding-bottom: 12px; margin-bottom: 25px; letter-spacing: 1px;">
-          ⚠️ Reachout Required (Danger Zone)
-        </h2>
-        ${dangerZoneHtml || '<p style="padding: 25px; font-style: italic; color: #4caf50; font-size: 12px; font-weight: bold;">Healthy! No contacts require urgent follow-up.</p>'}
-      </div>
-
-      <div style="text-align: center; margin-top: 70px; padding-top: 40px; border-top: 1px solid #f0f0f0;">
-        <p style="font-size: 10px; color: #bbb; text-transform: uppercase; letter-spacing: 3px; font-weight: 900;">Automated Statistical Pulse • CRM 2.0</p>
-        <p style="color: #3f51b5; font-weight: 900; font-size: 14px; margin-top: 15px;">HARE KRISHNA!</p>
+      <div style="margin-top: 50px; padding-top: 20px; border-top: 1px solid #e0e0e0; text-align: center; color: #999; font-size: 10px; text-transform: uppercase; letter-spacing: 2px;">
+        FOLK Spiritual Gems CRM • Confidential Team Report
       </div>
     </div>
   `;
