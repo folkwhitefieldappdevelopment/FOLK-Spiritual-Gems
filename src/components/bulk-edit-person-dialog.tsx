@@ -338,7 +338,7 @@ export function BulkEditPersonDialog({
                 </AccordionItem>
 
                 {/* 7. Folk Guide (Privileged) */}
-                {isAdmin && (
+                {isPrivileged && (
                   <AccordionItem value="guide" className="border-none">
                     <AccordionTrigger className="px-6 py-4 bg-muted/30 hover:bg-muted/50 rounded-2xl transition-all border border-border data-[state=open]:rounded-b-none data-[state=open]:border-b-0">
                       <div className="flex items-center gap-4">
