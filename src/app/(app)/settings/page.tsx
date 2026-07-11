@@ -1,7 +1,23 @@
 'use client';
 
 import * as React from 'react';
-import { PlusCircle, Edit, Trash2, Loader2, Save, BellRing, Database, CheckCircle2, RefreshCw, Fingerprint, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { 
+  PlusCircle, 
+  Edit, 
+  Trash2, 
+  Loader2, 
+  Save, 
+  BellRing, 
+  Database, 
+  CheckCircle2, 
+  RefreshCw, 
+  Fingerprint, 
+  ShieldAlert, 
+  AlertTriangle,
+  Bell,
+  Smartphone,
+  Info
+} from 'lucide-react';
 import { useAppToast } from '@/contexts/toast-context';
 import { useAuth } from '@/contexts/auth-context';
 import { updateUser, getUsers } from '@/services/user-service';
@@ -43,6 +59,11 @@ import {
   deleteCurrentFolkStage,
 } from '@/services/settings-service';
 import { backfillIsDeleted, backfillEnablerId } from '@/services/people-service';
+import { 
+  getNotificationPermission, 
+  requestNotificationPermission, 
+  sendNotification 
+} from '@/lib/notification-service';
 import type { CustomField, ActivityFieldLabels, FolkStage } from '@/lib/types';
 import { EditableOptionsList } from '@/components/editable-options-list';
 import { CustomFieldsManager } from '@/components/custom-fields-manager';
@@ -50,6 +71,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ThemeSwitcher } from '@/components/theme-switcher';
 import { BroadcastNotificationCard } from '@/components/broadcast-notification-card';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Capacitor } from '@capacitor/core';
 
 export default function SettingsPage() {
   const { toast } = useAppToast();
@@ -69,6 +93,8 @@ export default function SettingsPage() {
   const [customFields, setCustomFields] = React.useState<CustomField[]>([]);
   const [activityLabels, setActivityLabels] = React.useState<ActivityFieldLabels>({ sg: 'SG-S', ma: 'SG-W', frp: 'FRP'});
   const [isUpdatingLabels, setIsUpdatingLabels] = React.useState(false);
+
+  const [notifStatus, setNotifStatus] = React.useState<string>('default');
   
   const fetchData = React.useCallback(async () => {
     setIsLoading(true);
@@ -86,6 +112,7 @@ export default function SettingsPage() {
       setFrpOptions(frpData);
       setActivityLabels(labelsData);
       setFolkStages(folkStagesData as FolkStage[]);
+      setNotifStatus(getNotificationPermission());
     } finally {
       setIsLoading(false);
     }
@@ -136,6 +163,25 @@ export default function SettingsPage() {
     }
   };
 
+  const handleEnableNotifications = async () => {
+    localStorage.removeItem('notification_prompt_dismissed');
+    const granted = await requestNotificationPermission();
+    setNotifStatus(getNotificationPermission());
+    if (granted) {
+      toast({ title: "Notifications Enabled", description: "Reminders will now trigger on this device." });
+    } else {
+      toast({ variant: 'destructive', title: "Permission Denied", description: "Enable notifications in your browser/system settings manually." });
+    }
+  };
+
+  const handleTestAlarm = () => {
+    window.dispatchEvent(new Event('trigger-test-alarm'));
+    if (Capacitor.isNativePlatform()) {
+      sendNotification('SG CRM Test', { body: 'Verification: System notification delivered successfully.' });
+    }
+    toast({ title: "Test Triggered", description: "Verification signal sent to Reminder Hub." });
+  };
+
   return (
     <>
       <PageHeader title="Settings" description="Manage templates and application-wide options." />
@@ -145,6 +191,56 @@ export default function SettingsPage() {
         ) : (
           <div className="mx-auto max-w-4xl space-y-8">
             {isAdmin && <BroadcastNotificationCard />}
+
+            <Card className="bg-popover border-none rounded-[2rem] shadow-xl overflow-hidden">
+              <CardHeader className="bg-card border-b border-border p-8 pb-4">
+                <CardTitle className="flex items-center gap-3 text-xl font-black uppercase tracking-tight">
+                  <Bell className="h-6 w-6 text-primary" />
+                  Notifications & Alarms
+                </CardTitle>
+                <CardDescription className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Verify and configure interaction reminders</CardDescription>
+              </CardHeader>
+              <CardContent className="p-8 space-y-6">
+                <div className="flex items-center justify-between p-5 rounded-2xl border-2 border-dashed bg-muted/20 border-border">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Permission Status</p>
+                    <p className="text-sm font-bold text-foreground">Current browser/app authority</p>
+                  </div>
+                  <Badge variant={notifStatus === 'granted' ? 'default' : 'secondary'} className="h-7 px-4 rounded-xl font-black text-[10px] uppercase tracking-widest">
+                    {notifStatus}
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleEnableNotifications}
+                    className="h-14 rounded-2xl border-2 border-primary/20 text-primary hover:bg-primary/5 font-black uppercase text-[10px] tracking-widest"
+                  >
+                    <BellRing className="mr-3 h-4 w-4" />
+                    Request Access
+                  </Button>
+                  <Button 
+                    onClick={handleTestAlarm}
+                    className="h-14 rounded-2xl bg-primary text-primary-foreground shadow-xl shadow-primary/20 font-black uppercase text-[10px] tracking-widest"
+                  >
+                    <Smartphone className="mr-3 h-4 w-4" />
+                    Send Test Alarm
+                  </Button>
+                </div>
+
+                <Alert className="bg-muted/50 border-border rounded-2xl p-6">
+                  <Info className="h-5 w-5 text-primary" />
+                  <AlertTitle className="text-xs font-black uppercase tracking-widest ml-1 mb-2">Technical Note</AlertTitle>
+                  <AlertDescription className="text-[11px] text-muted-foreground font-bold leading-relaxed">
+                    Caller ID Overlay only works in the installed app, not in this browser preview. 
+                    On Android, also enable <b>'Display over other apps'</b> in your phone's system settings 
+                    for the overlay to appear during incoming calls.
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+
             <Card><CardHeader><CardTitle>Theme</CardTitle></CardHeader><CardContent><ThemeSwitcher /></CardContent></Card>
             
             {isAdmin && (
