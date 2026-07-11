@@ -108,7 +108,13 @@ export const updateGroup = async (id: string, groupData: Partial<Group>, userInf
   await persistenceReady;
   groupsCache.clear();
   const docRef = doc(db, 'groups', id);
-  await updateDoc(docRef, groupData);
+  
+  const finalData = { ...groupData };
+  if (groupData.peopleIds) {
+    finalData.memberCount = groupData.peopleIds.length;
+  }
+  
+  await updateDoc(docRef, finalData);
   logAudit('Update Group', `Updated: ${id}`, userInfo);
 };
 
@@ -130,4 +136,20 @@ export const addPeopleToGroup = async (groupId: string, peopleIds: string[], use
     const newPeopleIds = Array.from(new Set([...peopleIds, ...currentPeopleIds]));
     transaction.update(groupRef, { peopleIds: newPeopleIds, memberCount: newPeopleIds.length });
   });
+  logAudit('Add Group Members', `Added ${peopleIds.length} members to ${groupId}`, userInfo);
+};
+
+export const removePeopleFromGroup = async (groupId: string, peopleIds: string[], userInfo: UserInfo): Promise<void> => {
+  await persistenceReady;
+  groupsCache.clear();
+  const groupRef = doc(db, 'groups', groupId);
+  await runTransaction(db, async (transaction) => {
+    const groupDoc = await transaction.get(groupRef);
+    if (!groupDoc.exists()) throw new Error("Group not found.");
+    const currentPeopleIds: string[] = groupDoc.data().peopleIds || [];
+    const removeSet = new Set(peopleIds);
+    const newPeopleIds = currentPeopleIds.filter(id => !removeSet.has(id));
+    transaction.update(groupRef, { peopleIds: newPeopleIds, memberCount: newPeopleIds.length });
+  });
+  logAudit('Remove Group Members', `Removed ${peopleIds.length} from ${groupId}`, userInfo);
 };

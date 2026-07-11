@@ -18,10 +18,12 @@ import {
   Undo2,
   RotateCcw,
   SlidersHorizontal,
+  PhoneCall,
+  X,
 } from 'lucide-react';
 import type { Person, Group, GroupEvent, FilterState } from '@/lib/types';
 import { useAppToast } from '@/contexts/toast-context';
-import { getGroup, deleteGroup as deleteGroupSvc, updateGroup as updateGroupSvc } from '@/services/groups-service';
+import { getGroup, deleteGroup as deleteGroupSvc, updateGroup as updateGroupSvc, removePeopleFromGroup } from '@/services/groups-service';
 import { 
   getPeople, 
   updatePerson, 
@@ -29,7 +31,7 @@ import {
   getCachedPeople,
   restorePerson,
 } from '@/services/people-service';
-import { getGroupEvents, markAttendance } from '@/services/attendance-service';
+import { getGroupEvents, markAttendance, createGroupEvent } from '@/services/attendance-service';
 import { getEnablers, getContactSources, getStayingWithOptions, type EnablerOption } from '@/services/settings-service';
 import { useAuth } from '@/contexts/auth-context';
 import { updateUser } from '@/services/user-service';
@@ -60,6 +62,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -196,10 +209,23 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
     }
   };
 
+  const handleBulkRemove = async () => {
+    if (!appUser || !groupId || selectedIds.size === 0) return;
+    try {
+      await removePeopleFromGroup(groupId, Array.from(selectedIds), { id: appUser.id, name: appUser.name, role: appUser.role });
+      toast({ title: "Members Removed", description: `Successfully removed ${selectedIds.size} contacts from this group.` });
+      setSelectedIds(new Set());
+      fetchData();
+    } catch (e) {
+      toast({ variant: 'destructive', title: "Removal Failed" });
+    }
+  };
+
   if (isLoading && !group) return <div className="flex h-screen items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!group) return null;
 
   const isRestoreGroup = groupId === 'dynamic-recycle-bin' || groupId === 'dynamic-shifted-not-interested';
+  const isSelectionActive = selectedIds.size > 0;
 
   return (
     <>
@@ -274,6 +300,57 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
                                 stayingWithOptions={stayingWithOptions}
                             />
                         )}
+
+                        {isSelectionActive && (
+                          <div className="flex flex-col sm:flex-row items-center gap-4 p-2 bg-primary rounded-2xl sticky top-20 z-50 shadow-2xl animate-in fade-in slide-in-from-top-4 duration-300">
+                            <div className="flex items-center gap-3 px-4">
+                              <div className="bg-primary-foreground/20 px-4 py-1.5 rounded-full text-xs font-black text-primary-foreground shadow-inner uppercase tracking-wider">
+                                {selectedIds.size} selected
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 ml-auto pr-2">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => setIsConfirmSessionDialogOpen(true)} 
+                                className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-primary-foreground hover:bg-primary-foreground/10 rounded-xl"
+                              >
+                                <PhoneCall className="mr-2 h-4 w-4" /> Start Session
+                              </Button>
+
+                              {!group.isDynamic && (
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-primary-foreground hover:bg-red-600 rounded-xl"
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" /> Remove from Group
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent className="bg-popover border-none text-foreground rounded-[2rem]">
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle className="font-black uppercase tracking-tight">Remove Members?</AlertDialogTitle>
+                                      <AlertDialogDescription className="text-muted-foreground font-bold">
+                                        This will remove {selectedIds.size} contacts from this group. They will not be deleted from the database.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel className="bg-muted border-border text-foreground rounded-xl">Cancel</AlertDialogCancel>
+                                      <AlertDialogAction onClick={handleBulkRemove} className="bg-red-600 rounded-xl font-black uppercase tracking-widest">Remove Now</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              )}
+
+                              <Button variant="ghost" size="icon" onClick={() => setSelectedIds(new Set())} className="h-10 w-10 rounded-xl text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10">
+                                <X className="h-5 w-5" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
                         <PersonTable 
                             people={filteredMembers} 
                             onEdit={p => { setEditingPerson(p); setIsPersonDialogOpen(true); }} 
@@ -282,7 +359,7 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
                             onRestore={isRestoreGroup ? handleRestorePerson : undefined}
                             selectedIds={selectedIds} 
                             setSelectedIds={setSelectedIds} 
-                            isSelectionActive={selectedIds.size > 0} 
+                            isSelectionActive={isSelectionActive} 
                             showEnablerColumn={true} 
                             navigationContext={{ groupId, scope: 'all' }} 
                             totalCount={filteredMembers.length} 

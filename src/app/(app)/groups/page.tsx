@@ -3,7 +3,7 @@ import * as React from "react";
 import { PlusCircle, Users as UsersIcon, User, UserCog, PhoneCall, Search, Filter, RefreshCw, UsersRound, Plus, Loader2 } from "lucide-react";
 import type { Group, AppUser, Person, UserRole } from "@/lib/types";
 import { useAppToast } from "@/contexts/toast-context";
-import { getAllGroups, deleteGroup, getStaticGroups } from "@/services/groups-service";
+import { getAllGroups, deleteGroup, getStaticGroups, createGroup, updateGroup } from "@/services/groups-service";
 import { getDynamicGroupCounts } from "@/services/people-service";
 import { getEnablers, type EnablerOption } from "@/services/settings-service";
 import { useAuth } from "@/contexts/auth-context";
@@ -202,7 +202,15 @@ export default function GroupsPage() {
           )}
         </main>
 
-      <CreateUpdateGroupDialog isOpen={isDialogOpen} setIsOpen={setIsDialogOpen} onSave={() => fetchData(true)} group={editingGroup} />
+      <CreateUpdateGroupDialog 
+        isOpen={isDialogOpen} 
+        setIsOpen={setIsDialogOpen} 
+        onSave={async (d) => { 
+          editingGroup ? await updateGroup(editingGroup.id, d, appUser!) : await createGroup(d, appUser!); 
+          await fetchData(true); 
+        }} 
+        group={editingGroup} 
+      />
       <ConfirmSessionDialog isOpen={isConfirmSessionDialogOpen} setIsOpen={setIsConfirmSessionDialogOpen} onStartSession={(ev) => trackSessionStart({ name: ev, peopleIds: groupToCall?.peopleIds || [] }, appUser!).then(() => router.push('/session'))} singlePersonName={groupToCall?.name} totalCount={groupToCall?.memberCount} pausedSession={appUser?.pausedCallingSession} onResumeSession={() => router.push('/session')} />
     </>
   );
