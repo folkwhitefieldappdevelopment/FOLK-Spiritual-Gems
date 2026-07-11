@@ -1,3 +1,4 @@
+
 'use client';
 
 /**
@@ -12,7 +13,8 @@ import {
     getDocs,
     limit,
     getCountFromServer,
-    where
+    where,
+    or
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { AppUser, DashboardData, CallingReport, Person, LeaderboardEntry } from '@/lib/types';
@@ -25,23 +27,55 @@ import { computeEnablerStageBreakdown } from '@/lib/dynamic-groups';
 
 /**
  * High-performance summary fetcher.
- * Uses Firestore server-side aggregation for instant card results where possible,
- * or falls back to client-side filtering of the people cache for composite rules.
+ * Uses Firestore server-side aggregation for instant card results.
+ * This avoids triggering a full collection sync just to get basic counts.
  */
 export async function getFastSummaryStats(appUser: AppUser) {
-    // Because we need to exclude BOTH isDeleted AND ELIMINATED_STATUSES, 
-    // and Firestore limits composite '!=' and 'not-in' in a single query,
-    // we use the local people cache which is already being streamed.
-    const allPeople = await getCachedPeople();
+    const peopleRef = collection(db!, 'people');
     
-    const activePeople = allPeople.filter(p => 
-        p.isDeleted !== true && 
-        !ELIMINATED_STATUSES.includes(p.lastCallStatus || '')
+    // We calculate active counts by subtracting eliminated contacts from the non-deleted pool.
+    // This is more resilient than a 'not-in' filter which fails if the field is missing.
+    
+    // 1. Total Active Logic
+    const notDeletedQuery = query(peopleRef, where('isDeleted', '==', false));
+    const eliminatedQuery = query(
+        peopleRef, 
+        where('isDeleted', '==', false), 
+        where('lastCallStatus', 'in', ELIMINATED_STATUSES)
+    );
+    
+    // 2. My Active Logic
+    const myCriteria = or(
+        where('enablerId', '==', appUser.id),
+        where('coEnablerId', '==', appUser.id)
+    );
+    
+    const myNotDeletedQuery = query(peopleRef, where('isDeleted', '==', false), myCriteria);
+    const myEliminatedQuery = query(
+        peopleRef, 
+        where('isDeleted', '==', false), 
+        myCriteria,
+        where('lastCallStatus', 'in', ELIMINATED_STATUSES)
     );
 
+    const [
+        totalNotDeletedSnap, 
+        totalEliminatedSnap,
+        myNotDeletedSnap,
+        myEliminatedSnap
+    ] = await Promise.all([
+        getCountFromServer(notDeletedQuery),
+        getCountFromServer(eliminatedQuery),
+        getCountFromServer(myNotDeletedQuery),
+        getCountFromServer(myEliminatedQuery)
+    ]);
+
+    const totalActive = totalNotDeletedSnap.data().count - totalEliminatedSnap.data().count;
+    const myActive = myNotDeletedSnap.data().count - myEliminatedSnap.data().count;
+
     return {
-        totalContactsCount: activePeople.length,
-        myContactsCount: activePeople.filter(p => isAssignedToUser(p, appUser)).length
+        totalContactsCount: Math.max(0, totalActive),
+        myContactsCount: Math.max(0, myActive)
     };
 }
 

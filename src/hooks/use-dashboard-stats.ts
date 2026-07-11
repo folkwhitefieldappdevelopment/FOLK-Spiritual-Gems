@@ -1,8 +1,9 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getDashboardStats, getFastSummaryStats } from '../services/dashboard-service';
 import { useAuth } from '../contexts/auth-context';
 import { useAppToast } from '../contexts/toast-context';
-import { DashboardData, type Person } from '../lib/types';
+import { DashboardData, type Person, type CallingReport } from '../lib/types';
 import { DateRange } from 'react-day-picker';
 import { 
     subscribeToPeopleData, 
@@ -55,27 +56,54 @@ export function useDashboardStats(dateRange?: DateRange, folkGuideId?: string) {
 
     const refreshFastStats = async () => {
         try {
-            const fastStats = await getFastSummaryStats(appUser);
-            fastStatsRef.current = fastStats;
+            const counts = await getFastSummaryStats(appUser);
+            fastStatsRef.current = counts;
             
-            // Merge into current data if it exists to show immediately
             setData(prev => {
-                if (!prev) return null;
+                if (prev) {
+                    return {
+                        ...prev,
+                        stats: {
+                            ...prev.stats,
+                            totalContactsCount: counts.totalContactsCount,
+                            myContactsCount: counts.myContactsCount
+                        }
+                    };
+                }
+                
+                // Initial skeleton data so dashboard isn't blank
+                const emptyReport: CallingReport = {
+                    totalCalls: 0, picked: 0, notPicked: 0, eliminated: 0, totalDuration: 0,
+                    percentages: { picked: 0, notPicked: 0, eliminated: 0 },
+                    daily: {}, byEnabler: {}, subCategories: {}, detailedBreakdown: {}
+                };
+
                 return {
-                    ...prev,
                     stats: {
-                        ...prev.stats,
-                        totalContactsCount: fastStats.totalContactsCount,
-                        myContactsCount: fastStats.myContactsCount
-                    }
+                        myContactsCount: counts.myContactsCount,
+                        totalContactsCount: counts.totalContactsCount,
+                        myNewInRange: 0,
+                        allNewInRange: 0,
+                        byEnabler: {},
+                        byYear: {},
+                        byChantingCategory: {},
+                        enablerBreakdown: []
+                    },
+                    callingReportAll: emptyReport,
+                    callingReportMy: emptyReport,
+                    leaderboard: [],
+                    isPrivileged: appUser.role.includes('Admin') || appUser.role.includes('Folk Guide'),
                 };
             });
+
+            // Once we have counts, we can show the dashboard cards immediately
+            setIsLoading(false);
         } catch (e) {
             console.warn("[Dashboard] Fast summary refresh failed", e);
         }
     };
 
-    // 1. Initial fast path
+    // 1. Initial fast path - fetches counts via server-side aggregation
     refreshFastStats();
 
     // 2. Subscribe to sync status to show progress indicator
