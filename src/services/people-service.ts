@@ -335,7 +335,7 @@ export const getPeople = async (
   if (ignoreLimit) return { people: sorted, lastDocId: null, totalCount: sorted.length };
   const slice = sorted.slice(0, PAGE_SIZE);
   const lastId = sorted.length > PAGE_SIZE ? sorted[PAGE_SIZE - 1].id : null;
-  return { people: slice, lastDocId: lastId, totalCount: sorted.length };
+  return { people: slice, lastId: lastId, totalCount: sorted.length };
 };
 
 export const getUnassignedPeople = async (userInfo: AppUser) => {
@@ -357,6 +357,26 @@ export const getDynamicGroupCounts = async (userInfo: { id: string; name: string
   const counts: Record<string, number> = {};
   dynamicGroupDefinitions.forEach((def) => { counts[def.id] = filteredResults.filter((p) => p.isDeleted !== true).filter(def.filter).length; });
   counts['dynamic-recycle-bin'] = filteredResults.filter((p) => p.isDeleted === true).length;
+  return counts;
+};
+
+/**
+ * Computes live member counts for static groups by filtering the people cache.
+ * Excludes soft-deleted and eliminated contacts to ensure UI consistency.
+ */
+export const getLiveGroupMemberCounts = async (
+  groups: { id: string; peopleIds: string[] }[]
+): Promise<Record<string, number>> => {
+  const allResults = await getCachedPeople();
+  const counts: Record<string, number> = {};
+  for (const g of groups) {
+    const idSet = new Set(g.peopleIds || []);
+    counts[g.id] = allResults.filter(p =>
+      idSet.has(p.id) &&
+      p.isDeleted !== true &&
+      !ELIMINATED_STATUSES.includes(p.lastCallStatus || '')
+    ).length;
+  }
   return counts;
 };
 

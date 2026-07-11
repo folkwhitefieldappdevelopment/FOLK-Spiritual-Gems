@@ -4,7 +4,7 @@ import { PlusCircle, Users as UsersIcon, User, UserCog, PhoneCall, Search, Filte
 import type { Group, AppUser, Person, UserRole } from "@/lib/types";
 import { useAppToast } from "@/contexts/toast-context";
 import { getAllGroups, deleteGroup, getStaticGroups, createGroup, updateGroup } from "@/services/groups-service";
-import { getDynamicGroupCounts } from "@/services/people-service";
+import { getDynamicGroupCounts, getLiveGroupMemberCounts } from "@/services/people-service";
 import { getEnablers, type EnablerOption } from "@/services/settings-service";
 import { useAuth } from "@/contexts/auth-context";
 
@@ -29,6 +29,7 @@ export default function GroupsPage() {
   
   const [allStaticGroups, setAllStaticGroups] = React.useState<Group[]>([]);
   const [dynamicCounts, setDynamicCounts] = React.useState<Record<string, number>>({});
+  const [liveStaticCounts, setLiveStaticCounts] = React.useState<Record<string, number>>({});
   
   const [isLoading, setIsLoading] = React.useState(true);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
@@ -45,19 +46,24 @@ export default function GroupsPage() {
   const [groupToCall, setGroupToCall] = React.useState<Group | null>(null);
   const [isConfirmSessionDialogOpen, setIsConfirmSessionDialogOpen] = React.useState(false);
 
-  const fetchCounts = React.useCallback(async () => {
+  const fetchCounts = React.useCallback(async (groupsToCount?: Group[]) => {
       if (!appUser?.id) return;
       setIsLoadingCounts(true);
       try {
-        const counts = await getDynamicGroupCounts(
-            { id: appUser.id, name: appUser.name, role: appUser.role }, 
-            viewFilter
-        );
+        const targetStaticGroups = groupsToCount || allStaticGroups;
+        const [counts, liveCounts] = await Promise.all([
+            getDynamicGroupCounts(
+                { id: appUser.id, name: appUser.name, role: appUser.role }, 
+                viewFilter
+            ),
+            targetStaticGroups.length > 0 ? getLiveGroupMemberCounts(targetStaticGroups) : Promise.resolve({})
+        ]);
         setDynamicCounts(counts);
+        setLiveStaticCounts(liveCounts);
       } finally {
         setIsLoadingCounts(false);
       }
-  }, [appUser, viewFilter]);
+  }, [appUser, viewFilter, allStaticGroups]);
 
   const fetchData = React.useCallback(async (refresh = false) => {
     if (!appUser?.id) return;
@@ -74,7 +80,7 @@ export default function GroupsPage() {
       setAllStaticGroups(groupsData);
       setEnablerOptions(enablersData);
 
-      await fetchCounts();
+      await fetchCounts(groupsData);
 
     } catch (error) {
       console.error("Groups load failed", error);
@@ -87,6 +93,11 @@ export default function GroupsPage() {
   React.useEffect(() => { 
     if (appUser?.id) fetchData(); 
   }, [fetchData, appUser?.id]);
+
+  // Handle re-triggering counts when viewFilter changes without a full refetch
+  React.useEffect(() => {
+    fetchCounts();
+  }, [viewFilter, fetchCounts]);
 
   const filteredGroups = React.useMemo(() => {
     if (!appUser) return [];
@@ -137,8 +148,12 @@ export default function GroupsPage() {
         result = result.filter(g => g.name.toLowerCase().includes(lower));
     }
 
-    return result;
-  }, [allStaticGroups, dynamicCounts, appUser, viewFilter, searchTerm]);
+    // Apply live memberCount override for static groups
+    return result.map(g => ({
+        ...g,
+        memberCount: g.isDynamic ? g.memberCount : (liveStaticCounts[g.id] ?? g.memberCount)
+    }));
+  }, [allStaticGroups, dynamicCounts, liveStaticCounts, appUser, viewFilter, searchTerm]);
 
   return (
     <>
