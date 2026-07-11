@@ -636,7 +636,7 @@ export default function SessionPage() {
             </div>
           </div>
         ) : currentActivePerson ? (
-          <div className="h-full flex flex-col lg:grid lg:grid-cols-12 relative">
+          <div className="lg:h-full flex flex-col lg:grid lg:grid-cols-12 relative">
             {isFinishing && (
                 <div className="fixed inset-0 z-[200] bg-background/90 backdrop-blur-md flex flex-col items-center justify-center space-y-6">
                     <Loader2 className="h-16 w-16 animate-spin text-primary opacity-50" />
@@ -646,7 +646,7 @@ export default function SessionPage() {
                     </div>
                 </div>
             )}
-            <div className="lg:col-span-4 border-r border-border bg-popover/30 flex flex-col min-h-0">
+            <div className="lg:col-span-4 border-r border-border bg-popover/30 flex flex-col lg:min-h-0">
               <ScrollArea className="flex-1">
                 <div className="p-4 sm:p-8 space-y-8 sm:space-y-10 pb-32 sm:pb-8">
                   <div className="flex flex-col items-center text-center">
@@ -821,7 +821,7 @@ export default function SessionPage() {
               </ScrollArea>
             </div>
 
-            <div className="lg:col-span-8 flex flex-col min-h-0 flex-1 bg-background">
+            <div className="lg:col-span-8 flex flex-col lg:min-h-0 lg:flex-1 bg-background">
               <div className="flex-shrink-0 flex items-center justify-between px-4 sm:px-10 py-3 sm:py-6 border-b border-border bg-popover/50 backdrop-blur-xl">
                 <div className="flex items-center gap-3 sm:gap-6 min-w-0">
                   <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-[0.3em] text-muted-foreground truncate">Journey Overview</h3>
@@ -846,10 +846,10 @@ export default function SessionPage() {
                 </div>
               </div>
 
-              <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
+              <div className="lg:flex-1 flex flex-col lg:min-h-0 lg:overflow-hidden relative">
                 <ScrollArea className="flex-1">
                   <div className="flex flex-col xl:grid xl:grid-cols-2 min-h-0">
-                    <div className="border-b xl:border-b-0 xl:border-r border-border p-4 sm:p-10 bg-muted/30 overflow-hidden">
+                    <div className="border-b xl:border-b-0 xl:border-r border-border p-4 sm:p-10 pb-40 xl:pb-10 bg-muted/30 overflow-hidden">
                       <EditablePersonDetailsForm 
                         ref={detailsFormRef}
                         person={currentActivePerson}
@@ -858,7 +858,7 @@ export default function SessionPage() {
                         onCancel={() => setIsEditingDetails(false)}
                         allPeople={[]}
                         groups={currentPersonGroups}
-                        isInDialog
+                        isInDialog={false}
                       />
                     </div>
 
