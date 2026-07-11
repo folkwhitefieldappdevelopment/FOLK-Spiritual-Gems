@@ -235,7 +235,7 @@ export const getPeople = async (
   let allResults = await getCachedPeople();
   let basePeople: Person[] = [];
 
-  if (personIds && personIds.length > 0) {
+  if (personIds !== undefined) {
     basePeople = allResults.filter(p => personIds.includes(p.id));
     if (basePeople.length < personIds.length) {
       const missingIds = personIds.filter(id => !masterPeopleMap.has(id));
