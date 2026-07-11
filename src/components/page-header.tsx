@@ -61,7 +61,7 @@ type PageHeaderProps = {
 export function PageHeader({ title, description, children }: PageHeaderProps) {
   const pathname = usePathname();
   const { appUser } = useAuth();
-  const { isOnline } = useConnectivity();
+  const { isOnline, isSlow } = useConnectivity();
   const [isMobileSheetOpen, setIsMobileSheetOpen] = React.useState(false);
 
   const navItems = React.useMemo(() => {
@@ -165,11 +165,15 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
         <div className="flex-1 flex flex-col min-w-0 pr-2">
           <div className="flex items-center gap-2">
               <h1 className="font-black text-base sm:text-xl md:text-2xl truncate text-foreground leading-tight tracking-tight uppercase">{title}</h1>
-              {!isOnline && (
+              {!isOnline ? (
                   <div className="bg-destructive/10 text-destructive p-1 rounded-md">
                       <WifiOff className="h-3 w-3 sm:h-4 sm:w-4" />
                   </div>
-              )}
+              ) : isSlow ? (
+                  <div className="bg-orange-500/10 text-orange-600 p-1 rounded-md animate-pulse">
+                      <Activity className="h-3 w-3 sm:h-4 sm:w-4" />
+                  </div>
+              ) : null}
           </div>
           {description && (
               <div className="text-[9px] sm:text-xs text-muted-foreground truncate font-medium max-w-full opacity-60">

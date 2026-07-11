@@ -1,6 +1,6 @@
 'use client';
 
-import { db, persistenceReady } from '@/lib/firebase';
+import { db, persistenceReady, withCacheFallback } from '@/lib/firebase';
 import { 
   collection, 
   doc, 
@@ -20,6 +20,11 @@ import { createInitialProgress } from '@/lib/data';
 import { format } from 'date-fns';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
+import { connectionManager } from '@/contexts/connectivity-context';
+
+// Simple in-memory caches for slow connections
+const eventsCache = new Map<string, GroupEvent[]>();
+const attendeesCache = new Map<string, string[]>();
 
 /**
  * Marks attendance and automatically updates the person's progress table if linked.
@@ -27,11 +32,11 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
  */
 export async function markAttendance(personId: string, groupId: string, groupName: string, eventId?: string, eventName?: string) {
   await persistenceReady;
-  const personRef = doc(db, 'people', personId);
-  const groupRef = doc(db, 'groups', groupId);
+  const personRef = doc(db!, 'people', personId);
+  const groupRef = doc(db!, 'groups', groupId);
   
   try {
-    return await runTransaction(db, async (transaction) => {
+    return await runTransaction(db!, async (transaction) => {
       // 1. ALL READS
       const personSnap = await transaction.get(personRef);
       const groupSnap = await transaction.get(groupRef);
@@ -48,7 +53,7 @@ export async function markAttendance(personId: string, groupId: string, groupNam
       let eventRef = null;
 
       if (eventId) {
-          eventRef = doc(db, 'groups', groupId, 'events', eventId);
+          eventRef = doc(db!, 'groups', groupId, 'events', eventId);
           const eventSnap = await transaction.get(eventRef);
           if (eventSnap.exists()) {
               const eventData = eventSnap.data() as GroupEvent;
@@ -62,7 +67,7 @@ export async function markAttendance(personId: string, groupId: string, groupNam
         ? `groups/${groupId}/events/${eventId}/attendance/${personId}` 
         : `groups/${groupId}/attendance/${attendanceDate}_${personId}`;
         
-      const attRecordRef = doc(db, recordPath);
+      const attRecordRef = doc(db!, recordPath);
       const recordSnap = await transaction.get(attRecordRef);
       
       if (recordSnap.exists()) {
@@ -151,12 +156,12 @@ export async function markAttendance(personId: string, groupId: string, groupNam
 
 export async function removeAttendance(personId: string, groupId: string, eventId: string) {
     await persistenceReady;
-    const personRef = doc(db, 'people', personId);
-    const attRef = doc(db, 'groups', groupId, 'events', eventId, 'attendance', personId);
-    const eventRef = doc(db, 'groups', groupId, 'events', eventId);
+    const personRef = doc(db!, 'people', personId);
+    const attRef = doc(db!, 'groups', groupId, 'events', eventId, 'attendance', personId);
+    const eventRef = doc(db!, 'groups', groupId, 'events', eventId);
     
     try {
-        await runTransaction(db, async (transaction) => {
+        await runTransaction(db!, async (transaction) => {
             const personSnap = await transaction.get(personRef);
             if (personSnap.exists()) {
                 const personData = personSnap.data() as Person;
@@ -181,15 +186,28 @@ export async function removeAttendance(personId: string, groupId: string, eventI
 }
 
 export async function getGroupEvents(groupId: string): Promise<GroupEvent[]> {
-    const eventsRef = collection(db, 'groups', groupId, 'events');
+    const eventsRef = collection(db!, 'groups', groupId, 'events');
     const q = query(eventsRef, orderBy('date', 'desc'));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() } as GroupEvent));
+    
+    const networkPromise = (async () => {
+      connectionManager.reportRequestStart();
+      try {
+        const snap = await getDocs(q);
+        const evs = snap.docs.map(d => ({ id: d.id, ...d.data() } as GroupEvent));
+        eventsCache.set(groupId, evs);
+        return evs;
+      } finally {
+        connectionManager.reportRequestEnd();
+      }
+    })();
+
+    const staleCache = eventsCache.get(groupId);
+    return await withCacheFallback(networkPromise, staleCache ?? [], 6000);
 }
 
 export async function createGroupEvent(groupId: string, eventData: Omit<GroupEvent, 'id' | 'createdAt'>) {
     await persistenceReady;
-    const eventRef = doc(collection(db, 'groups', groupId, 'events'));
+    const eventRef = doc(collection(db!, 'groups', groupId, 'events'));
     const data = {
         ...eventData,
         attendeeCount: 0,
@@ -211,7 +229,21 @@ export async function createGroupEvent(groupId: string, eventData: Omit<GroupEve
 }
 
 export async function getEventAttendees(groupId: string, eventId: string): Promise<string[]> {
-    const attRef = collection(db, 'groups', groupId, 'events', eventId, 'attendance');
-    const snap = await getDocs(attRef);
-    return snap.docs.map(d => d.id);
+    const attRef = collection(db!, 'groups', groupId, 'events', eventId, 'attendance');
+    const cacheKey = `${groupId}_${eventId}`;
+    
+    const networkPromise = (async () => {
+      connectionManager.reportRequestStart();
+      try {
+        const snap = await getDocs(attRef);
+        const ids = snap.docs.map(d => d.id);
+        attendeesCache.set(cacheKey, ids);
+        return ids;
+      } finally {
+        connectionManager.reportRequestEnd();
+      }
+    })();
+
+    const staleCache = attendeesCache.get(cacheKey);
+    return await withCacheFallback(networkPromise, staleCache ?? [], 6000);
 }

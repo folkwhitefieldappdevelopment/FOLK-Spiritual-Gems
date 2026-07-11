@@ -2,17 +2,20 @@
 
 import * as React from 'react';
 import { useConnectivity } from '@/contexts/connectivity-context';
-import { WifiOff, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { WifiOff, RefreshCw, CheckCircle2, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function SyncStatusIndicator() {
-  const { isOnline, isSyncing } = useConnectivity();
+  const { isOnline, isSyncing, isSlow } = useConnectivity();
   const [showStatus, setShowStatus] = React.useState(false);
   const [statusMessage, setStatusMessage] = React.useState('');
 
   React.useEffect(() => {
     if (!isOnline) {
       setStatusMessage('Working Offline');
+      setShowStatus(true);
+    } else if (isSlow) {
+      setStatusMessage('Slow connection — showing saved data');
       setShowStatus(true);
     } else if (isSyncing) {
       setStatusMessage('Syncing with Server...');
@@ -23,17 +26,19 @@ export function SyncStatusIndicator() {
       const timer = setTimeout(() => setShowStatus(false), 3000);
       return () => clearTimeout(timer);
     }
-  }, [isOnline, isSyncing]);
+  }, [isOnline, isSyncing, isSlow]);
 
-  if (!showStatus && isOnline) return null;
+  if (!showStatus && isOnline && !isSlow) return null;
 
   return (
     <div className={cn(
       "fixed top-4 left-1/2 -translate-x-1/2 z-[1000] px-4 py-1.5 rounded-full shadow-2xl flex items-center gap-2 transition-all duration-500 animate-in slide-in-from-top-4",
-      !isOnline ? "bg-destructive text-white" : isSyncing ? "bg-primary text-white" : "bg-green-600 text-white"
+      !isOnline ? "bg-destructive text-white" : isSlow ? "bg-orange-500 text-white" : isSyncing ? "bg-primary text-white" : "bg-green-600 text-white"
     )}>
       {!isOnline ? (
         <WifiOff className="h-3.5 w-3.5" />
+      ) : isSlow ? (
+        <Activity className="h-3.5 w-3.5 animate-pulse" />
       ) : isSyncing ? (
         <RefreshCw className="h-3.5 w-3.5 animate-spin" />
       ) : (

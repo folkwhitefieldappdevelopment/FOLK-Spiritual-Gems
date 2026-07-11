@@ -1,6 +1,6 @@
 'use client';
 
-import { db, persistenceReady } from '@/lib/firebase';
+import { db, persistenceReady, withCacheFallback } from '@/lib/firebase';
 import {
   collection,
   getDocs,
@@ -18,6 +18,7 @@ import { logAudit } from '@/services/audit-service';
 import { isAfter } from 'date-fns';
 import { uploadGroupPhoto } from './storage-service';
 import { safeDate } from '@/utils/date';
+import { connectionManager } from '@/contexts/connectivity-context';
 
 type UserInfo = { id: string; name: string; role: UserRole[] };
 
@@ -35,18 +36,34 @@ export const getStaticGroups = async (userInfo: UserInfo): Promise<Group[]> => {
   
   const cacheKey = `groups_${userInfo.id}`;
   const cached = groupsCache.get(cacheKey);
+  
+  // If we have a very fresh cache, use it immediately
   if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
       return cached.data;
   }
 
-  const groupsCollection = collection(db, 'groups');
-  const snap = await getDocs(query(groupsCollection));
+  const groupsCollection = collection(db!, 'groups');
   
-  const allGroups = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Group));
-  const validGroups = filterAndCleanupExpired(allGroups);
+  // Define the network fetch
+  const networkPromise = (async () => {
+    connectionManager.reportRequestStart();
+    try {
+      const snap = await getDocs(query(groupsCollection));
+      const allGroups = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Group));
+      const validGroups = filterAndCleanupExpired(allGroups);
+      
+      // Update cache
+      groupsCache.set(cacheKey, { data: validGroups, timestamp: Date.now() });
+      return validGroups;
+    } finally {
+      connectionManager.reportRequestEnd();
+    }
+  })();
+
+  const staleCache = cached?.data;
   
-  groupsCache.set(cacheKey, { data: validGroups, timestamp: Date.now() });
-  return validGroups;
+  // Race network against cache/timeout
+  return await withCacheFallback(networkPromise, staleCache ?? [], 6000);
 };
 
 function filterAndCleanupExpired(groups: Group[]): Group[] {
@@ -65,7 +82,7 @@ function filterAndCleanupExpired(groups: Group[]): Group[] {
 
   if (expiredIds.length > 0) {
     expiredIds.forEach(id => {
-      deleteDoc(doc(db, 'groups', id)).catch(() => {});
+      deleteDoc(doc(db!, 'groups', id)).catch(() => {});
     });
   }
 
@@ -73,7 +90,7 @@ function filterAndCleanupExpired(groups: Group[]): Group[] {
 }
 
 export const getGroup = async (id: string, userInfo: UserInfo): Promise<Group | null> => {
-  const docSnap = await getDoc(doc(db, 'groups', id));
+  const docSnap = await getDoc(doc(db!, 'groups', id));
   if (docSnap.exists()) {
     const group = { id: docSnap.id, ...docSnap.data() } as Group;
     return group;
@@ -83,7 +100,7 @@ export const getGroup = async (id: string, userInfo: UserInfo): Promise<Group | 
 
 export const createGroup = async (groupData: Partial<Group>, userInfo: UserInfo): Promise<Group> => {
   await persistenceReady;
-  const docRef = doc(collection(db, 'groups'));
+  const docRef = doc(collection(db!, 'groups'));
   groupsCache.clear(); // Invalidate cache on change
 
   let finalPhotoUrl = groupData.photoUrl || '';
@@ -108,7 +125,7 @@ export const createGroup = async (groupData: Partial<Group>, userInfo: UserInfo)
 export const updateGroup = async (id: string, groupData: Partial<Group>, userInfo: UserInfo): Promise<void> => {
   await persistenceReady;
   groupsCache.clear();
-  const docRef = doc(db, 'groups', id);
+  const docRef = doc(db!, 'groups', id);
   
   const finalData = { ...groupData };
   if (groupData.peopleIds) {
@@ -122,15 +139,15 @@ export const updateGroup = async (id: string, groupData: Partial<Group>, userInf
 export const deleteGroup = async (id: string, userInfo: UserInfo): Promise<void> => {
   await persistenceReady;
   groupsCache.clear();
-  await deleteDoc(doc(db, 'groups', id));
+  await deleteDoc(doc(db!, 'groups', id));
   logAudit('Delete Group', `Deleted: ${id}`, userInfo);
 };
 
 export const addPeopleToGroup = async (groupId: string, peopleIds: string[], userInfo: UserInfo): Promise<void> => {
   await persistenceReady;
   groupsCache.clear();
-  const groupRef = doc(db, 'groups', groupId);
-  await runTransaction(db, async (transaction) => {
+  const groupRef = doc(db!, 'groups', groupId);
+  await runTransaction(db!, async (transaction) => {
     const groupDoc = await transaction.get(groupRef);
     if (!groupDoc.exists()) throw new Error("Group not found.");
     const currentPeopleIds: string[] = groupDoc.data().peopleIds || [];
@@ -143,8 +160,8 @@ export const addPeopleToGroup = async (groupId: string, peopleIds: string[], use
 export const removePeopleFromGroup = async (groupId: string, peopleIds: string[], userInfo: UserInfo): Promise<void> => {
   await persistenceReady;
   groupsCache.clear();
-  const groupRef = doc(db, 'groups', groupId);
-  await runTransaction(db, async (transaction) => {
+  const groupRef = doc(db!, 'groups', groupId);
+  await runTransaction(db!, async (transaction) => {
     const groupDoc = await transaction.get(groupRef);
     if (!groupDoc.exists()) throw new Error("Group not found.");
     const currentPeopleIds: string[] = groupDoc.data().peopleIds || [];

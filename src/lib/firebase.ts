@@ -61,4 +61,19 @@ try {
   resolvePersistence();
 }
 
+/**
+ * Utility to race a network request against a timeout, returning a fallback value if the network is too slow.
+ * Useful for slow-connection scenarios where stale-but-available local data is better than a hang.
+ */
+export async function withCacheFallback<T>(
+  networkPromise: Promise<T>,
+  fallbackValue: T,
+  timeoutMs = 6000
+): Promise<T> {
+  return Promise.race([
+    networkPromise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallbackValue), timeoutMs)),
+  ]);
+}
+
 export { db, auth, storage, configError };
