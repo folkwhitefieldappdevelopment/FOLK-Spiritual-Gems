@@ -152,9 +152,18 @@ export function AssignCoEnablerDialog({
   };
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(generatedLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      navigator.clipboard.writeText(generatedLink)
+        .then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        })
+        .catch(() => {
+          toast({ variant: 'destructive', title: "Copy Failed", description: "Clipboard access restricted." });
+        });
+    } catch (e) {
+      toast({ variant: 'destructive', title: "Copy Failed" });
+    }
   };
 
   return (

@@ -39,7 +39,23 @@ export function FreshLeadQRDialog({ isOpen, setIsOpen, groupId, eventId, eventNa
     return `${base}/register/?id=${appUser.id}${groupId ? `&groupId=${groupId}` : ''}`;
   }, [appUser, customBaseUrl, groupId, eventId, qrType]);
 
-  const handleCopy = () => { if (!targetUrl) return; navigator.clipboard.writeText(targetUrl); setCopied(true); toast({ title: "Link Copied" }); setTimeout(() => setCopied(false), 2000); };
+  const handleCopy = () => { 
+    if (!targetUrl) return; 
+    try {
+      navigator.clipboard.writeText(targetUrl)
+        .then(() => {
+          setCopied(true); 
+          toast({ title: "Link Copied" }); 
+          setTimeout(() => setCopied(false), 2000);
+        })
+        .catch(() => {
+          toast({ variant: 'destructive', title: "Copy Failed", description: "Please copy the link manually from the input field." });
+        });
+    } catch (e) {
+      toast({ variant: 'destructive', title: "Copy Failed", description: "Clipboard access is restricted." });
+    }
+  };
+
   const logo = placeholderData.app_logo;
 
   return (

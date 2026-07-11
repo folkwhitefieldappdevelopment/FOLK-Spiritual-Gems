@@ -49,9 +49,17 @@ export function ShareGroupDialog({
   };
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text).then(() => {
-      toast({ title: "Copied to clipboard!" });
-    });
+    try {
+      navigator.clipboard.writeText(text)
+        .then(() => {
+          toast({ title: "Copied to clipboard!" });
+        })
+        .catch(() => {
+          toast({ variant: 'destructive', title: "Copy Failed" });
+        });
+    } catch (e) {
+      toast({ variant: 'destructive', title: "Copy Failed" });
+    }
   };
   
   const allNumbersString = React.useMemo(() => {
@@ -97,7 +105,7 @@ export function ShareGroupDialog({
           </div>
           <div className="space-y-2">
             <Label>Share link with members</Label>
-            <享受Area className="h-60 w-full rounded-md border">
+            <ScrollArea className="h-60 w-full rounded-md border">
               <div className="p-4 space-y-2">
                 {members.length > 0 ? (
                     members.map((person) => (
@@ -128,7 +136,7 @@ export function ShareGroupDialog({
                     <p className="text-center text-sm text-muted-foreground pt-4">This group has no members to share with.</p>
                 )}
               </div>
-            </享受Area>
+            </ScrollArea>
           </div>
         </div>
         <DialogFooter>
