@@ -11,7 +11,11 @@ import {
   Clock,
   History,
   RotateCcw,
+  PhoneCall,
 } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
+import { CallLog } from '@/lib/call-log';
+import { useToast } from '@/hooks/use-toast';
 import type { Person, Group } from '@/lib/types';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -57,6 +61,7 @@ const PersonTableRowComponent = ({
   navigationContext,
 }: PersonTableRowProps) => {
   const [isOpen, setIsOpen] = React.useState(false);
+  const { toast } = useToast();
 
   const fullName = person.fullName || '';
   const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -90,6 +95,27 @@ const PersonTableRowComponent = ({
   const handleDelete = React.useCallback(() => onDelete(person.id), [onDelete, person.id]);
   const handleCall = React.useCallback(() => onStartCall(person), [onStartCall, person]);
   const handleRestore = React.useCallback(() => onRestore?.(person.id), [onRestore, person.id]);
+
+  const handleDirectCall = React.useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (Capacitor.isNativePlatform()) {
+        try {
+            const permissions = await CallLog.checkPermissions();
+            if (permissions.callLog !== 'granted') {
+                const result = await CallLog.requestPermissions();
+                if (result.callLog !== 'granted') {
+                    toast({ variant: 'destructive', title: 'Permission Denied' });
+                    return;
+                }
+            }
+            await CallLog.makeCall({ phoneNumber: String(person.phone) });
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Call Failed' });
+        }
+    } else {
+        window.location.href = `tel:${person.phone}`;
+    }
+  }, [person.phone, toast]);
 
   return (
     <React.Fragment>
@@ -148,25 +174,32 @@ const PersonTableRowComponent = ({
         )}
 
         <TableCell className="text-right pr-8">
-          {onRestore ? (
-            <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleRestore}
-                className="h-9 px-4 font-black uppercase text-[10px] tracking-widest rounded-xl bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-600 hover:text-white transition-all"
-            >
-                <RotateCcw className="h-3.5 w-3.5 mr-2" /> Restore
-            </Button>
-          ) : (
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-popover border-border text-foreground w-48">
-                <DropdownMenuItem onClick={handleCall} className="font-bold">Log Interaction</DropdownMenuItem>
-                <DropdownMenuItem onClick={handleEdit}>Edit Profile</DropdownMenuItem>
-                <DropdownMenuItem className="text-destructive font-bold" onClick={handleDelete}>Delete</DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+          <div className="flex items-center justify-end gap-1">
+            {onRestore ? (
+              <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleRestore}
+                  className="h-9 px-4 font-black uppercase text-[10px] tracking-widest rounded-xl bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-600 hover:text-white transition-all"
+              >
+                  <RotateCcw className="h-3.5 w-3.5 mr-2" /> Restore
+              </Button>
+            ) : (
+              <>
+                <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10 rounded-xl" onClick={handleDirectCall}>
+                  <PhoneCall className="h-4 w-4" />
+                </Button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-popover border-border text-foreground w-48">
+                    <DropdownMenuItem onClick={handleCall} className="font-bold">Log Interaction</DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleEdit}>Edit Profile</DropdownMenuItem>
+                    <DropdownMenuItem className="text-destructive font-bold" onClick={handleDelete}>Delete</DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            )}
+          </div>
         </TableCell>
       </TableRow>
 

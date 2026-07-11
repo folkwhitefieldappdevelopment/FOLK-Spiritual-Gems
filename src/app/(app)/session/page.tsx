@@ -487,7 +487,7 @@ export default function SessionPage() {
              return;
           }
         }
-        await CallLog.makeCall({ phoneNumber: currentActivePerson.phone });
+        await CallLog.makeCall({ phoneNumber: String(currentActivePerson.phone) });
     } else {
         window.location.href = `tel:${currentActivePerson.phone}`;
     }
@@ -595,7 +595,7 @@ export default function SessionPage() {
         </div>
       </header>
 
-      <main className="flex-1 min-0 bg-background overflow-y-auto">
+      <main className="flex-1 min-0 bg-background overflow-y-auto pb-24 lg:pb-0">
         {isCallbackSearchOpen && !selectedCallbackPerson ? (
           <div className="h-full flex flex-col items-center justify-center p-4 sm:p-8">
             <div className="max-w-md w-full space-y-8 text-center">
@@ -956,7 +956,7 @@ export default function SessionPage() {
       </main>
 
       {!isCallbackSearchOpen && (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 p-3 sm:p-5 border-t border-border bg-popover/95 backdrop-blur-xl z-[100] shadow-2xl">
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 p-3 sm:p-5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] border-t border-border bg-popover/95 backdrop-blur-xl z-[100] shadow-2xl">
           <div className="max-w-md mx-auto flex items-center justify-between gap-3">
             {!selectedCallbackPerson ? (
               <>
