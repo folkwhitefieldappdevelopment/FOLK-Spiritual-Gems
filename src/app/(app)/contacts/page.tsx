@@ -216,6 +216,27 @@ const ContactsPageComponent = () => {
     }
   };
 
+  const handleSelectRangeGlobal = async (from: number, to: number) => {
+    if (!appUser) return;
+    setIsSelectingAll(true);
+    try {
+      const fetchScope = activeTab === 'all-contacts' ? 'all' : 'my';
+      const { people: allMatching } = await getPeople(appUser, {
+        scope: fetchScope,
+        filters: filters,
+        ignoreLimit: true
+      });
+      const start = Math.max(0, from - 1);
+      const end = Math.min(allMatching.length, to);
+      if (start >= end) return;
+      const idsToSelect = allMatching.slice(start, end).map(p => p.id);
+      setSelectedIds(prev => new Set([...Array.from(prev), ...idsToSelect]));
+      toast({ title: 'Range Selected', description: `${idsToSelect.length} contacts marked (rows ${from}–${to}).` });
+    } finally {
+      setIsSelectingAll(false);
+    }
+  };
+
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !appUser) return;
@@ -395,13 +416,43 @@ const ContactsPageComponent = () => {
             </div>
 
             <TabsContent value="my-contacts" className="mt-0 focus-visible:outline-none">
-                <PersonTable people={people} onEdit={setEditingPerson} onDelete={id => deletePerson(id, appUser!).then(() => fetchContacts(undefined, true))} onStartCall={p => { setPersonToCall(p); setIsConfirmSessionDialogOpen(true); }} selectedIds={selectedIds} setSelectedIds={setSelectedIds} showEnablerColumn={true} totalCount={totalCount} isLoading={isLoading} navigationContext={{ scope: 'my' }} onSelectAllGlobal={handleSelectAllGlobal} isSelectingAll={isSelectingAll} isSelectionActive={isSelectionActive} />
+                <PersonTable 
+                  people={people} 
+                  onEdit={setEditingPerson} 
+                  onDelete={id => deletePerson(id, appUser!).then(() => fetchContacts(undefined, true))} 
+                  onStartCall={p => { setPersonToCall(p); setIsConfirmSessionDialogOpen(true); }} 
+                  selectedIds={selectedIds} 
+                  setSelectedIds={setSelectedIds} 
+                  showEnablerColumn={true} 
+                  totalCount={totalCount} 
+                  isLoading={isLoading} 
+                  navigationContext={{ scope: 'my' }} 
+                  onSelectAllGlobal={handleSelectAllGlobal} 
+                  onSelectRangeGlobal={handleSelectRangeGlobal}
+                  isSelectingAll={isSelectingAll} 
+                  isSelectionActive={isSelectionActive} 
+                />
                 {hasMore && !isLoading && <div className="flex justify-center pb-12 pt-6"><Button onClick={() => fetchContacts(lastDocId || undefined)} disabled={isLoadingMore} variant="outline" className="font-bold px-8 h-12 rounded-xl border-border text-foreground bg-muted/50 uppercase tracking-widest text-[10px]">Load More Records</Button></div>}
             </TabsContent>
             
             {isPrivileged && (
                 <TabsContent value="all-contacts" className="mt-0 focus-visible:outline-none">
-                    <PersonTable people={people} onEdit={setEditingPerson} onDelete={id => deletePerson(id, appUser!).then(() => fetchContacts(undefined, true))} onStartCall={p => { setPersonToCall(p); setIsConfirmSessionDialogOpen(true); }} selectedIds={selectedIds} setSelectedIds={setSelectedIds} showEnablerColumn={true} totalCount={totalCount} isLoading={isLoading} navigationContext={{ scope: 'all' }} onSelectAllGlobal={handleSelectAllGlobal} isSelectingAll={isSelectingAll} isSelectionActive={isSelectionActive} />
+                    <PersonTable 
+                      people={people} 
+                      onEdit={setEditingPerson} 
+                      onDelete={id => deletePerson(id, appUser!).then(() => fetchContacts(undefined, true))} 
+                      onStartCall={p => { setPersonToCall(p); setIsConfirmSessionDialogOpen(true); }} 
+                      selectedIds={selectedIds} 
+                      setSelectedIds={setSelectedIds} 
+                      showEnablerColumn={true} 
+                      totalCount={totalCount} 
+                      isLoading={isLoading} 
+                      navigationContext={{ scope: 'all' }} 
+                      onSelectAllGlobal={handleSelectAllGlobal} 
+                      onSelectRangeGlobal={handleSelectRangeGlobal}
+                      isSelectingAll={isSelectingAll} 
+                      isSelectionActive={isSelectionActive} 
+                    />
                     {hasMore && !isLoading && <div className="flex justify-center pb-12 pt-6"><Button onClick={() => fetchContacts(lastDocId || undefined)} disabled={isLoadingMore} variant="outline" className="font-bold px-8 h-12 rounded-xl border-border text-foreground bg-muted/50 uppercase tracking-widest text-[10px]">Load More Records</Button></div>}
                 </TabsContent>
             )}

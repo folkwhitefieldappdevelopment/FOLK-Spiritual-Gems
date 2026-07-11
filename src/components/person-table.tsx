@@ -56,6 +56,7 @@ type PersonTableProps = {
   navigationContext?: { groupId?: string; scope?: string };
   totalCount?: number | null;
   onSelectAllGlobal?: () => void;
+  onSelectRangeGlobal?: (from: number, to: number) => Promise<void>;
   isSelectingAll?: boolean;
   isLoading?: boolean;
 };
@@ -126,6 +127,7 @@ export function PersonTable({
   navigationContext,
   totalCount,
   onSelectAllGlobal,
+  onSelectRangeGlobal,
   isSelectingAll = false,
   isLoading = false,
 }: PersonTableProps) {
@@ -172,17 +174,23 @@ export function PersonTable({
     }
   }, [people, setSelectedIds]);
 
-  const handleSelectRange = React.useCallback((fromStr: string, toStr: string) => {
+  const handleSelectRange = React.useCallback(async (fromStr: string, toStr: string) => {
     if (!setSelectedIds) return;
     const from = parseInt(fromStr);
     const to = parseInt(toStr);
-    if (isNaN(from) || isNaN(to)) return;
+    if (isNaN(from) || isNaN(to) || from < 1 || to < from) return;
+
+    if (onSelectRangeGlobal) {
+      await onSelectRangeGlobal(from, to);
+      return;
+    }
+    
     const start = Math.max(0, from - 1);
     const end = Math.min(people.length, to);
     if (start >= end) return;
     const idsToSelect = people.slice(start, end).map(p => p.id);
     setSelectedIds(prev => new Set([...Array.from(prev), ...idsToSelect]));
-  }, [people, setSelectedIds]);
+  }, [people, setSelectedIds, onSelectRangeGlobal]);
 
   const handleSelectOne = React.useCallback((id: string, checked: boolean) => {
     if (!setSelectedIds) return;
@@ -331,7 +339,14 @@ export function PersonTable({
                                     <Label className="text-[9px] uppercase opacity-50 ml-1">To</Label>
                                     <Input type="number" value={rangeTo} onChange={e => setRangeTo(e.target.value)} className="h-10 bg-muted border-none text-foreground font-black rounded-lg" />
                                   </div>
-                                  <Button size="sm" className="h-10 font-black px-6 rounded-lg" onClick={() => handleSelectRange(rangeFrom, rangeTo)}>Select</Button>
+                                  <Button 
+                                    size="sm" 
+                                    className="h-10 font-black px-6 rounded-lg" 
+                                    onClick={() => handleSelectRange(rangeFrom, rangeTo)}
+                                    disabled={isSelectingAll}
+                                  >
+                                    {isSelectingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : "Select"}
+                                  </Button>
                                 </div>
                               </div>
                             </div>
