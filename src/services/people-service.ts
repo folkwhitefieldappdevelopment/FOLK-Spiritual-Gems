@@ -489,6 +489,14 @@ export const updatePeopleContactSource = async (personIds: string[], sources: st
   for (const id of personIds) await updatePerson(id, { contactSource: sources }, userInfo);
 };
 
+export const bulkUpdatePeopleFields = async (
+  personIds: string[],
+  fields: Partial<Person>,
+  userInfo: { id: string; name: string; role: UserRole[] }
+) => {
+  for (const id of personIds) await updatePerson(id, fields, userInfo);
+};
+
 export const scanForDuplicates = async (userInfo: { id: string; name: string; role: UserRole[] }) => {
   const results = await getCachedPeople();
   const phoneMap = new Map<string, Person[]>();

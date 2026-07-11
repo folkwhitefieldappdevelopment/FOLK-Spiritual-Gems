@@ -16,7 +16,8 @@ import {
   Search, 
   PhoneCall, 
   Trash2,
-  LayoutGrid
+  LayoutGrid,
+  Edit2
 } from "lucide-react";
 import type { Person, Group, CustomField, FilterState } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -32,9 +33,6 @@ import {
   deletePerson, 
   importPeople, 
   deletePeople, 
-  assignEnablerToPeople, 
-  assignCoEnablerToPeople, 
-  updatePeopleContactSource,
   subscribeToSyncStatus,
   getSyncStatus,
   type SyncStatus
@@ -52,9 +50,7 @@ import { AddContactMethodDialog } from "@/components/add-contact-method-dialog";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { ContactGalleryDialog } from "@/components/contact-gallery-dialog";
-import { AssignEnablerDialog } from '@/components/assign-enabler-dialog';
-import { AssignCoEnablerDialog } from '@/components/assign-helper-dialog';
-import { UpdateContactSourceDialog } from '@/components/update-contact-source-dialog';
+import { BulkEditPersonDialog } from '@/components/bulk-edit-person-dialog';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   AlertDialog,
@@ -71,6 +67,7 @@ import { updateUser } from '@/services/user-service';
 import { ContactFilterPanel } from "@/components/contact-filter-panel";
 import { useBackgroundTasks } from "@/contexts/background-task-context";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 const EMPTY_FILTERS: FilterState = {
     name: '', phone: '', location: '', eventName: '', callerName: '', 
@@ -118,9 +115,7 @@ const ContactsPageComponent = () => {
   const [personToCall, setPersonToCall] = React.useState<Person | null>(null);
   const [isConfirmSessionDialogOpen, setIsConfirmSessionDialogOpen] = React.useState(false);
   
-  const [isAssignEnablerDialogOpen, setIsAssignEnablerDialogOpen] = React.useState(false);
-  const [isAssignCoEnablerDialogOpen, setIsAssignCoEnablerDialogOpen] = React.useState(false);
-  const [isUpdateSourceDialogOpen, setIsUpdateSourceDialogOpen] = React.useState(false);
+  const [isBulkEditOpen, setIsBulkEditOpen] = React.useState(false);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const fetchIdRef = React.useRef(0);
@@ -354,6 +349,11 @@ const ContactsPageComponent = () => {
                         <div className="flex items-center gap-3 px-4"><div className="bg-primary-foreground/20 px-4 py-1.5 rounded-full text-xs font-black text-primary-foreground shadow-inner uppercase tracking-wider">{selectedIds.size} selected</div></div>
                         <div className="flex flex-wrap items-center gap-2 ml-auto pr-2">
                             <Button variant="ghost" size="sm" onClick={() => setIsConfirmSessionDialogOpen(true)} className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-primary-foreground hover:bg-primary-foreground/10 rounded-xl"><PhoneCall className="mr-2 h-4 w-4" /> Start Session</Button>
+                            
+                            <Button variant="ghost" size="sm" onClick={() => setIsBulkEditOpen(true)} className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-primary-foreground hover:bg-primary-foreground/10 rounded-xl">
+                                <Edit2 className="mr-2 h-4 w-4" /> Edit Fields
+                            </Button>
+
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild><Button variant="ghost" size="sm" className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-primary-foreground hover:bg-primary-foreground/10 rounded-xl">Group</Button></DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-64 max-h-80 overflow-y-auto bg-popover text-foreground p-2 rounded-2xl shadow-2xl">
@@ -363,9 +363,7 @@ const ContactsPageComponent = () => {
                                     <ScrollArea className="max-h-60">{groups.map(g => (<DropdownMenuItem key={g.id} onSelect={() => handleBulkAddToGroup(g.id)} className="font-bold text-xs py-3 px-4 rounded-xl">{g.name}</DropdownMenuItem>))}</ScrollArea>
                                 </DropdownMenuContent>
                             </DropdownMenu>
-                            <Button variant="ghost" size="sm" onClick={() => setIsAssignEnablerDialogOpen(true)} className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-primary-foreground hover:bg-primary-foreground/10 rounded-xl">Enabler</Button>
-                            <Button variant="ghost" size="sm" onClick={() => setIsAssignCoEnablerDialogOpen(true)} className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-primary-foreground hover:bg-primary-foreground/10 rounded-xl">Co-Enabler</Button>
-                            <Button variant="ghost" size="sm" onClick={() => setIsUpdateSourceDialogOpen(true)} className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-primary-foreground hover:bg-primary-foreground/10 rounded-xl">Source</Button>
+
                             <AlertDialog>
                                 <AlertDialogTrigger asChild><Button variant="destructive" size="icon" className="h-10 w-10 bg-red-600 hover:bg-red-700 rounded-xl shrink-0"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
                                 <AlertDialogContent className="bg-popover border-none rounded-[2rem] shadow-2xl"><AlertDialogHeader><AlertDialogTitle className="font-black uppercase tracking-tight">Bulk Delete</AlertDialogTitle><AlertDialogDescription className="text-muted-foreground font-bold">Delete {selectedIds.size} selected contacts? Action cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="bg-muted rounded-xl">Cancel</AlertDialogCancel><AlertDialogAction onClick={handleBulkDelete} className="bg-red-600 rounded-xl font-black uppercase tracking-widest">Delete All</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
@@ -415,9 +413,13 @@ const ContactsPageComponent = () => {
       <CreateUpdateGroupDialog isOpen={isGroupDialogOpen} setIsOpen={setIsGroupDialogOpen} group={editingGroup} onSave={async (d) => { editingGroup ? await updateGroupSvc(editingGroup.id, d, appUser!) : await createGroup(d, appUser!); getStaticGroups(appUser!).then(setGroups); }} />
       <ConfirmSessionDialog isOpen={isConfirmSessionDialogOpen} setIsOpen={setIsConfirmSessionDialogOpen} onStartSession={handleStartSession} onResumeSession={() => router.push('/session')} singlePersonName={personToCall?.fullName || editingGroup?.name} pausedSession={appUser?.pausedCallingSession} totalCount={personToCall ? 1 : (isSelectionActive ? selectedIds.size : (editingGroup?.peopleIds?.length || 0))} />
       <ContactGalleryDialog isOpen={isGalleryOpen} onClose={() => setIsGalleryOpen(false)} people={people} />
-      <AssignEnablerDialog isOpen={isAssignEnablerDialogOpen} setIsOpen={setIsAssignEnablerDialogOpen} onSave={async (u) => { await assignEnablerToPeople(Array.from(selectedIds), u, appUser!); fetchContacts(undefined, true); setSelectedIds(new Set()); }} peopleCount={selectedIds.size} />
-      <AssignCoEnablerDialog isOpen={isAssignCoEnablerDialogOpen} setIsOpen={setIsAssignCoEnablerDialogOpen} onSave={async (u) => { await assignCoEnablerToPeople(Array.from(selectedIds), u, appUser!); fetchContacts(undefined, true); setSelectedIds(new Set()); }} peopleCount={selectedIds.size} selectedPersonIds={Array.from(selectedIds)} />
-      <UpdateContactSourceDialog isOpen={isUpdateSourceDialogOpen} setIsOpen={setIsUpdateSourceDialogOpen} onSave={async (s) => { await updatePeopleContactSource(Array.from(selectedIds), s, appUser!); fetchContacts(undefined, true); setSelectedIds(new Set()); }} peopleCount={selectedIds.size} />
+      
+      <BulkEditPersonDialog 
+        isOpen={isBulkEditOpen} 
+        setIsOpen={setIsBulkEditOpen} 
+        selectedIds={Array.from(selectedIds)} 
+        onSuccess={() => { fetchContacts(undefined, true); setSelectedIds(new Set()); }} 
+      />
     </>
   );
 };

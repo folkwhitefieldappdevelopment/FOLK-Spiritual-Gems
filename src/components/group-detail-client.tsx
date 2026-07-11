@@ -21,6 +21,7 @@ import {
   PhoneCall,
   X,
   ExternalLink,
+  Edit2,
 } from 'lucide-react';
 import type { Person, Group, GroupEvent, FilterState } from '@/lib/types';
 import { useAppToast } from '@/contexts/toast-context';
@@ -50,6 +51,7 @@ import { AddMembersToGroupDialog } from '@/components/add-members-to-group-dialo
 import { CreateEventDialog } from '@/components/create-event-dialog';
 import { IntelligentReportView } from '@/components/intelligent-report-view';
 import { ContactFilterPanel } from '@/components/contact-filter-panel';
+import { BulkEditPersonDialog } from '@/components/bulk-edit-person-dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -84,6 +86,7 @@ import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { Input } from './ui/input';
+import { format } from 'date-fns';
 
 const EMPTY_FILTERS: FilterState = {
     name: '', phone: '', location: '', eventName: '', callerName: '', 
@@ -127,6 +130,7 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
   const [isGroupEditDialogOpen, setIsGroupEditDialogOpen] = React.useState(false);
   const [isEventCreateOpen, setIsEventCreateOpen] = React.useState(false);
   const [isGalleryOpen, setIsGalleryOpen] = React.useState(false);
+  const [isBulkEditOpen, setIsBulkEditOpen] = React.useState(false);
   const [qrEvent, setQrEvent] = React.useState<{ id: string, name: string } | null>(null);
   const [attendanceSearchQuery, setAttendanceSearchQuery] = React.useState('');
 
@@ -337,6 +341,15 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
                                 <PhoneCall className="mr-2 h-4 w-4" /> Start Session
                               </Button>
 
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => setIsBulkEditOpen(true)} 
+                                className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-primary-foreground hover:bg-primary-foreground/10 rounded-xl"
+                              >
+                                <Edit2 className="mr-2 h-4 w-4" /> Edit Fields
+                              </Button>
+
                               {!group.isDynamic && (
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
@@ -463,7 +476,6 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
             </Tabs>
         </main>
 
-        {/* View Attendees Dialog */}
         <Dialog open={!!viewAttendeesEvent} onOpenChange={(o) => !o && setViewAttendeesEvent(null)}>
             <DialogContent className="sm:max-w-5xl bg-popover border-none rounded-[2.5rem] p-0 overflow-hidden shadow-2xl flex flex-col h-[90vh]">
                 <DialogHeader className="p-8 pb-4 bg-card border-b border-border shrink-0">
@@ -507,6 +519,14 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
         <FreshLeadQRDialog isOpen={isQRDialogOpen} setIsOpen={setIsQRDialogOpen} groupId={groupId} eventId={qrEvent?.id} eventName={qrEvent?.name || group.name} />
         <ConfirmSessionDialog isOpen={isConfirmSessionDialogOpen} setIsOpen={setIsConfirmSessionDialogOpen} onStartSession={handleStartSession} totalCount={selectedIds.size || group.peopleIds?.length || 0} singlePersonName={selectedIds.size === 1 ? members.find(m => m.id === Array.from(selectedIds)[0])?.fullName : group.name} />
         <ContactGalleryDialog isOpen={isGalleryOpen} onClose={() => setIsGalleryOpen(false)} people={members} />
+        
+        <BulkEditPersonDialog 
+          isOpen={isBulkEditOpen} 
+          setIsOpen={setIsBulkEditOpen} 
+          selectedIds={Array.from(selectedIds)} 
+          onSuccess={() => { fetchData(); setSelectedIds(new Set()); }} 
+        />
+
         {editingPerson && <CreateUpdatePersonDialog isOpen={!!editingPerson} setIsOpen={() => setEditingPerson(undefined)} onSave={async (d) => { await updatePerson(editingPerson.id, d, appUser!); fetchData(); return {success:true}; }} person={editingPerson} allPeople={members} />}
 
         <Dialog open={!!markingEvent} onOpenChange={(o) => !o && setMarkingEvent(null)}>
