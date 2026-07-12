@@ -1,6 +1,5 @@
 'use client';
 
-import ExcelJS from 'exceljs';
 import { format } from 'date-fns';
 import type { Person, AppUser, FolkStage, Group } from '@/lib/types';
 import { folkStages } from '@/lib/types';
@@ -87,6 +86,7 @@ async function normalizeImageToJpeg(url: string): Promise<{ buffer: Uint8Array; 
  * Scoped based on the downloading user's role.
  */
 export async function downloadImportTemplate(appUser: AppUser) {
+  const ExcelJS = (await import('exceljs')).default;
   const workbook = new ExcelJS.Workbook();
   const isAdmin = appUser.role.includes('Admin');
   const isGuide = appUser.role.includes('Folk Guide') && !isAdmin;
@@ -188,6 +188,7 @@ export async function downloadImportTemplate(appUser: AppUser) {
  * Parses an imported Excel file using ExcelJS.
  */
 export async function parseImportFile(file: File): Promise<Record<string, any>[]> {
+  const ExcelJS = (await import('exceljs')).default;
   const workbook = new ExcelJS.Workbook();
   const arrayBuffer = await file.arrayBuffer();
   
@@ -238,6 +239,7 @@ export async function exportContactsToExcel(
   allGroups: Group[] = [],
   onProgress?: (current: number, total: number) => void
 ) {
+  const ExcelJS = (await import('exceljs')).default;
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Contacts');
   

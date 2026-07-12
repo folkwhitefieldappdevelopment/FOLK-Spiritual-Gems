@@ -128,7 +128,10 @@ export function AppSidebar() {
                     : "text-muted-foreground hover:bg-muted"
                 )}
               >
-                <Link href={item.href}>
+                <Link 
+                  href={item.href} 
+                  prefetch={['/contacts', '/groups'].includes(item.href) ? false : undefined}
+                >
                   <item.icon className={cn("h-5 w-5", isActive(item.href) && "text-primary")} />
                   <span>{item.label}</span>
                 </Link>

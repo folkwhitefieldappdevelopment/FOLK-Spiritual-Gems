@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import * as XLSX from 'xlsx';
 import { useDebounce } from 'use-debounce';
 import { 
   Search, 
@@ -169,6 +168,7 @@ export function AddMembersToGroupDialog({
     if (!file || !appUser) return;
     
     setIsProcessing(true);
+    const XLSX = await import('xlsx');
     const reader = new FileReader();
     reader.onload = async (evt) => {
         try {
