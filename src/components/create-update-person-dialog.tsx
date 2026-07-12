@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import type { Person, CustomField, AppUser, FolkStage } from "@/lib/types";
-import { Camera, Upload, SwitchCamera, Loader2, X } from "lucide-react";
+import { Camera, Upload, SwitchCamera, Loader2, X, ShieldCheck, UserCheck } from "lucide-react";
 import { 
   getEnablers, 
   getContactSources, 
@@ -94,6 +94,7 @@ export function CreateUpdatePersonDialog({
   const { appUser } = useAuth();
   const isAdmin = appUser?.role.includes('Admin') ?? false;
   const isPrivileged = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
+  const isOnlyEnabler = appUser?.role.includes('Folk Enabler') && !appUser?.role.includes('Folk Guide') && !appUser?.role.includes('Admin');
   
   const form = useForm<PersonFormValues>({
     resolver: zodResolver(personFormSchema),
@@ -117,22 +118,62 @@ export function CreateUpdatePersonDialog({
   const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
   const [currentFolkStages, setCurrentFolkStages] = React.useState<FolkStage[]>([]);
 
-  const watchedPhone = form.watch('phone');
-  const [duplicatePerson, setDuplicatePerson] = React.useState<Person | null>(null);
-
   React.useEffect(() => {
     if (!isOpen) return;
     const loadOptions = async () => {
         if (!appUser) return;
         try {
             const [enablers, sources, occupations, stayings, fields, guides, stages] = await Promise.all([
-                getEnablers(appUser, 'assignment'), getContactSources(appUser), getOccupationStatuses(appUser), getStayingWithOptions(appUser), getCustomPersonFields(appUser), isAdmin ? getFolkGuides() : Promise.resolve([]), getCurrentFolkStages()
+                getEnablers(appUser, 'assignment'), 
+                getContactSources(appUser), 
+                getOccupationStatuses(appUser), 
+                getStayingWithOptions(appUser), 
+                getCustomPersonFields(appUser), 
+                isPrivileged ? getFolkGuides() : Promise.resolve([]), 
+                getCurrentFolkStages()
             ]);
-            setEnablerOptions(enablers); setContactSourceOptions(sources); setOccupationOptions(occupations); setStayingWithOptions(stayings); setCustomFields(fields); setFolkGuides(guides || []); setCurrentFolkStages(stages as FolkStage[]);
+            setEnablerOptions(enablers); 
+            setContactSourceOptions(sources); 
+            setOccupationOptions(occupations); 
+            setStayingWithOptions(stayings); 
+            setCustomFields(fields); 
+            setFolkGuides(guides || []); 
+            setCurrentFolkStages(stages as FolkStage[]);
+
+            if (person) {
+                const enablerVal = enablers.find(o => o.label === person.enablerInTouchWith)?.value || person.enablerInTouchWith || "";
+                form.reset({
+                    fullName: person.fullName || '',
+                    phone: person.phone || '',
+                    age: person.age || 18,
+                    currentFolkStage: person.currentFolkStage || 'Fresh Lead',
+                    location: person.location || '',
+                    stayingWith: person.stayingWith || '',
+                    occupation: person.occupation || '',
+                    organisation: person.organisation || '',
+                    rentDetails: person.rentDetails || 0,
+                    nativePlace: person.nativePlace || '',
+                    sgRating: Math.round(person.sgRating || 0),
+                    contactSource: Array.isArray(person.contactSource) ? person.contactSource : person.contactSource ? [person.contactSource] : [],
+                    chantingStatus: person.chantingStatus || 0,
+                    fromOtherCamp: person.fromOtherCamp || false,
+                    enablerInTouchWith: enablerVal,
+                    folkGuideId: person.folkGuideId || '',
+                    folkId: person.folkId || 'NA',
+                    relationshipStatus: person.relationshipStatus || 'Single',
+                    verifiedByFg: person.verifiedByFg || 'No',
+                });
+                setPhotoPreview(person.photoUrl || null);
+                setCustomData(person.customData || {});
+            } else {
+                form.reset({ fullName: "", phone: "", age: 18, currentFolkStage: "Fresh Lead", stayingWith: "", occupation: "", organisation: "", chantingStatus: 0, fromOtherCamp: false, relationshipStatus: 'Single', verifiedByFg: 'No', enablerInTouchWith: isOnlyEnabler ? `${appUser.name}::${appUser.id}` : '' });
+                setPhotoPreview(null);
+                setCustomData({});
+            }
         } catch (error) { console.error(error); }
     };
     loadOptions(); setShowCamera(false); setIsSubmitting(false);
-  }, [isOpen, appUser, isAdmin]);
+  }, [isOpen, appUser, isAdmin, isPrivileged, isOnlyEnabler, person, form]);
 
   const handleCapture = async () => {
     if (videoRef.current) {
@@ -145,13 +186,60 @@ export function CreateUpdatePersonDialog({
   };
 
   const onSubmit = async (data: PersonFormValues) => {
+    if (!appUser) return;
     setIsSubmitting(true);
     try {
-      const selectedEnablerName = data.enablerInTouchWith ? data.enablerInTouchWith.split('::')[0] : '';
-      const selectedEnablerId = data.enablerInTouchWith ? data.enablerInTouchWith.split('::')[1] : '';
-      const saveData: Partial<Person> = { ...data, currentFolkStage: (data.currentFolkStage || "Fresh Lead") as FolkStage, enablerInTouchWith: selectedEnablerName, enablerId: selectedEnablerId, photoUrl: photoPreview || person?.photoUrl || `https://placehold.co/100x100.png`, customData };
+      let finalEnablerName = '';
+      let finalEnablerId = '';
+      let finalFolkGuideId = '';
+      let finalFolkGuide = '';
+
+      if (isOnlyEnabler) {
+          finalEnablerName = appUser.name;
+          finalEnablerId = appUser.id;
+          finalFolkGuideId = appUser.reportsTo?.guideId || '';
+          finalFolkGuide = appUser.reportsTo ? `${appUser.reportsTo.guideName} (${appUser.reportsTo.guideFgCode})` : '';
+      } else if (isAdmin) {
+          if (data.enablerInTouchWith) {
+              const [name, id] = data.enablerInTouchWith.split('::');
+              finalEnablerName = name;
+              finalEnablerId = id;
+          }
+          if (data.folkGuideId) {
+              const guide = folkGuides.find(g => g.id === data.folkGuideId);
+              finalFolkGuideId = data.folkGuideId;
+              finalFolkGuide = guide ? `${guide.name} (${guide.fgCode || 'N/A'})` : '';
+          }
+      } else if (isPrivileged) {
+          // Folk Guide
+          if (data.enablerInTouchWith) {
+              const [name, id] = data.enablerInTouchWith.split('::');
+              finalEnablerName = name;
+              finalEnablerId = id;
+          } else {
+              finalEnablerName = appUser.name;
+              finalEnablerId = appUser.id;
+          }
+          finalFolkGuideId = appUser.id;
+          finalFolkGuide = `${appUser.name} (${appUser.fgCode || 'N/A'})`;
+      }
+
+      const saveData: Partial<Person> = { 
+        ...data, 
+        currentFolkStage: (data.currentFolkStage || "Fresh Lead") as FolkStage, 
+        enablerInTouchWith: finalEnablerName, 
+        enablerId: finalEnablerId, 
+        folkGuideId: finalFolkGuideId,
+        folkGuide: finalFolkGuide,
+        photoUrl: photoPreview || person?.photoUrl || `https://placehold.co/100x100.png`, 
+        customData 
+      };
+      
       const result = await onSave(saveData);
-      if (result.success) { toast({ title: person ? 'Saved' : 'Created' }); setIsOpen(false); }
+      if (result.success) { 
+          toast({ title: person ? 'Saved' : 'Created' }); 
+          setIsOpen(false); 
+      }
     } finally { setIsSubmitting(false); }
   };
 
@@ -171,10 +259,37 @@ export function CreateUpdatePersonDialog({
           <Form {...form}><form onSubmit={form.handleSubmit(onSubmit)}><ScrollArea className="h-[65vh]"><div className="p-8 space-y-8">
             <div className="flex flex-col items-center gap-6"><Avatar className="h-28 w-28 border-4 border-primary/20 shadow-2xl rounded-3xl"><AvatarImage src={photoPreview || person?.photoUrl} className="object-cover" /><AvatarFallback className="bg-muted text-primary text-2xl font-black">{form.watch("fullName")?.charAt(0) || '?'}</AvatarFallback></Avatar><div className="flex gap-3"><Button type="button" variant="outline" size="sm" className="rounded-xl bg-muted/50 border-border font-bold h-10 px-4 text-foreground hover:bg-muted" onClick={() => fileInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Gallery</Button><Button type="button" variant="outline" size="sm" className="rounded-xl bg-muted/50 border-border font-bold h-10 px-4 text-foreground hover:bg-muted" onClick={() => setShowCamera(true)}><Camera className="mr-2 h-4 w-4" /> Camera</Button></div></div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-              <FormField control={form.control} name="fullName" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Full Name</FormLabel><FormControl><Input placeholder="Name" className="h-14 rounded-xl border-border bg-muted text-foreground font-bold" {...field} /></FormControl></FormItem>)} />
-              <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Phone</FormLabel><FormControl><Input placeholder="10-digit" className="h-14 rounded-xl border-border bg-muted text-foreground font-bold" {...field} /></FormControl></FormItem>)} />
-              <FormField control={form.control} name="currentFolkStage" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Folk Stage</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-14 rounded-xl border-border bg-muted text-foreground font-bold"><SelectValue/></SelectTrigger></FormControl><SelectContent className="bg-popover border-border text-foreground">{currentFolkStages.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></FormItem>)} />
-              <FormField control={form.control} name="enablerInTouchWith" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Enabler</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-14 rounded-xl border-border bg-muted text-foreground font-bold"><SelectValue/></SelectTrigger></FormControl><SelectContent className="bg-popover border-border text-foreground">{enablerOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></FormItem>)} />
+              <FormField control={form.control} name="fullName" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Full Name</FormLabel><FormControl><Input placeholder="Name" className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5" {...field} /></FormControl></FormItem>)} />
+              <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Phone</FormLabel><FormControl><Input placeholder="10-digit" className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5" {...field} /></FormControl></FormItem>)} />
+              <FormField control={form.control} name="currentFolkStage" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Folk Stage</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5"><SelectValue/></SelectTrigger></FormControl><SelectContent className="bg-popover border-border text-foreground">{currentFolkStages.map(s => <SelectItem key={s} value={s} className="font-bold">{s}</SelectItem>)}</SelectContent></Select></FormItem>)} />
+              
+              {!isOnlyEnabler && (
+                <FormField control={form.control} name="enablerInTouchWith" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1 flex items-center gap-1.5"><UserCheck className="h-3 w-3" /> Enabler</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl><SelectTrigger className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5"><SelectValue placeholder="Assign Enabler..." /></SelectTrigger></FormControl>
+                      <SelectContent className="bg-popover border-border text-foreground">
+                        {enablerOptions.map(o => <SelectItem key={o.value} value={o.value} className="font-bold">{o.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )} />
+              )}
+
+              {isAdmin && (
+                <FormField control={form.control} name="folkGuideId" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1 flex items-center gap-1.5"><ShieldCheck className="h-3 w-3" /> Folk Guide</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl><SelectTrigger className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5"><SelectValue placeholder="Assign Guide..." /></SelectTrigger></FormControl>
+                      <SelectContent className="bg-popover border-border text-foreground">
+                        {folkGuides.map(g => <SelectItem key={g.id} value={g.id} className="font-bold">{g.name} ({g.fgCode || 'N/A'})</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )} />
+              )}
             </div>
           </div></ScrollArea><DialogFooter className="p-8 border-t border-border bg-card gap-4"><Button type="button" variant="ghost" className="rounded-xl font-bold text-muted-foreground hover:text-foreground" onClick={() => setIsOpen(false)}>Cancel</Button><Button type="submit" className="rounded-xl font-black uppercase tracking-widest bg-primary text-primary-foreground hover:bg-primary/90 px-10 h-14 shadow-xl shadow-primary/20">{person ? 'Save' : 'Create'}</Button></DialogFooter></form></Form>
         )}

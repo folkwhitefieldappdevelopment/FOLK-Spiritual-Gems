@@ -85,15 +85,10 @@ export default function CheckInClient({ groupId }: { groupId: string }) {
   };
 
   const goToRegister = () => {
-    if (!groupOwner) {
-        router.push(`/register/?groupId=${groupId}&phone=${phone}`);
-        return;
-    }
-    const guideId = groupOwner.role.includes('Folk Guide') 
-        ? groupOwner.id 
-        : (groupOwner.reportsTo?.guideId || groupOwner.id);
-    // Use search params for static build compatibility
-    router.push(`/register/?id=${guideId}&enablerId=${groupOwner.id}&groupId=${groupId}&phone=${phone}`);
+    const ownerId = groupOwner?.id || group?.createdBy || 'anonymous-user';
+    // Standardize routing: pass owner ID as the 'id' parameter.
+    // RegistrationClient will resolve their role and show the appropriate UI.
+    router.push(`/register/?id=${ownerId}&groupId=${groupId}&phone=${phone}`);
   };
 
   const logo = placeholderData.app_logo;

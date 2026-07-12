@@ -8,7 +8,7 @@ import { folkStages } from '@/lib/types';
 /**
  * Definitions for all fields supported in Import/Export
  */
-export const COLUMNS = [
+export const BASE_COLUMNS = [
   { header: 'Full Name', key: 'fullName', width: 25 },
   { header: 'Phone', key: 'phone', width: 15 },
   { header: 'Age', key: 'age', width: 10 },
@@ -25,13 +25,10 @@ export const COLUMNS = [
   { header: 'Verified by FG', key: 'verifiedByFg', width: 15 },
   { header: 'Folk ID', key: 'folkId', width: 15 },
   { header: 'Monthly Rent', key: 'rentDetails', width: 15 },
-  { header: 'Primary Enabler', key: 'enablerInTouchWith', width: 25 },
-  { header: 'General Remarks', key: 'generalRemarks', width: 40 },
 ];
 
 /**
  * Normalizes an image by drawing it to a canvas and exporting as a standard JPEG.
- * Uses window.Image to prevent Illegal constructor errors.
  */
 async function normalizeImageToJpeg(url: string): Promise<{ buffer: Uint8Array; extension: 'jpeg' } | null> {
   if (!url || typeof window === 'undefined' || typeof window.Image === 'undefined') return null;
@@ -87,13 +84,26 @@ async function normalizeImageToJpeg(url: string): Promise<{ buffer: Uint8Array; 
 
 /**
  * Generates and downloads an Excel template with sample data and instructions.
+ * Scoped based on the downloading user's role.
  */
-export async function downloadImportTemplate() {
+export async function downloadImportTemplate(appUser: AppUser) {
   const workbook = new ExcelJS.Workbook();
-  
+  const isAdmin = appUser.role.includes('Admin');
+  const isGuide = appUser.role.includes('Folk Guide') && !isAdmin;
+  const isEnabler = appUser.role.includes('Folk Enabler') && !isGuide && !isAdmin;
+
+  const dynamicColumns = [...BASE_COLUMNS];
+  if (isAdmin || isGuide) {
+    dynamicColumns.push({ header: 'Primary Enabler', key: 'enablerInTouchWith', width: 25 });
+  }
+  if (isAdmin) {
+    dynamicColumns.push({ header: 'Assigned Folk Guide', key: 'folkGuide', width: 30 });
+  }
+  dynamicColumns.push({ header: 'General Remarks', key: 'generalRemarks', width: 40 });
+
   // 1. Data Sheet
   const sheet = workbook.addWorksheet('Contacts');
-  sheet.columns = COLUMNS;
+  sheet.columns = dynamicColumns;
   sheet.getRow(1).font = { bold: true };
   sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8EAF6' } };
   
@@ -115,7 +125,8 @@ export async function downloadImportTemplate() {
     verifiedByFg: 'No',
     folkId: 'NA',
     rentDetails: 5000,
-    enablerInTouchWith: '',
+    enablerInTouchWith: isEnabler ? '' : appUser.name,
+    folkGuide: isAdmin ? '' : undefined,
     generalRemarks: 'Interested in Sunday programs.'
   });
 
@@ -129,7 +140,7 @@ export async function downloadImportTemplate() {
   instructions.getRow(1).font = { bold: true };
   instructions.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF9800' } };
 
-  instructions.addRows([
+  const instructionRows = [
     { field: 'Full Name', required: 'YES', format: 'Letters and spaces only.' },
     { field: 'Phone', required: 'YES', format: '10-digit mobile number (e.g. 9876543210).' },
     { field: 'Age', required: 'YES', format: 'Number between 16 and 40.' },
@@ -146,9 +157,22 @@ export async function downloadImportTemplate() {
     { field: 'Verified by FG', required: 'NO', format: 'Yes, No' },
     { field: 'Folk ID', required: 'NO', format: 'Internal ID (e.g. NA).' },
     { field: 'Monthly Rent', required: 'NO', format: 'Numeric value (e.g. 5000).' },
-    { field: 'Primary Enabler', required: 'NO', format: 'Exact name of the registered user.' },
-    { field: 'General Remarks', required: 'NO', format: 'Any additional notes or summary.' },
-  ]);
+  ];
+
+  if (isAdmin || isGuide) {
+    instructionRows.push({ 
+        field: 'Primary Enabler', 
+        required: 'NO', 
+        format: isGuide ? 'Name of an enabler reporting to you.' : 'Name of any registered enabler.' 
+    });
+  }
+  if (isAdmin) {
+    instructionRows.push({ field: 'Assigned Folk Guide', required: 'NO', format: 'Full name of the Folk Guide.' });
+  }
+
+  instructionRows.push({ field: 'General Remarks', required: 'NO', format: 'Any additional notes or summary.' });
+
+  instructions.addRows(instructionRows);
 
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -181,9 +205,9 @@ export async function parseImportFile(file: File): Promise<Record<string, any>[]
     headers.push(String(cell.value).trim());
   });
 
-  // Map headers to field keys using COLUMNS definition
+  // Map headers to field keys
   const headerMap: Record<string, string> = {};
-  COLUMNS.forEach(col => {
+  [...BASE_COLUMNS, { header: 'Primary Enabler', key: 'enablerInTouchWith' }, { header: 'Assigned Folk Guide', key: 'folkGuide' }, { header: 'General Remarks', key: 'generalRemarks' }].forEach(col => {
     const matchedHeader = headers.find(h => h.toLowerCase() === col.header.toLowerCase());
     if (matchedHeader) headerMap[matchedHeader] = col.key;
   });
@@ -219,8 +243,10 @@ export async function exportContactsToExcel(
   
   const exportCols = [
     { header: 'Photo', key: 'photo_placeholder', width: 15 },
-    ...COLUMNS,
+    ...BASE_COLUMNS,
+    { header: 'Primary Enabler', key: 'enablerInTouchWith', width: 25 },
     { header: 'Assigned Folk Guide', key: 'folkGuide', width: 30 },
+    { header: 'General Remarks', key: 'generalRemarks', width: 40 },
     { header: 'Member of Groups', key: 'groups', width: 40 },
     { header: 'Last Call Status', key: 'lastCallStatus', width: 20 },
     { header: 'Last Call At', key: 'lastCallAt', width: 25 },
@@ -244,7 +270,7 @@ export async function exportContactsToExcel(
     if (onProgress) onProgress(i + 1, total);
 
     const memberOf = allGroups
-        .filter(g => g.peopleIds?.includes(p.id))
+        .filter(g => (g.peopleIds || []).includes(p.id))
         .map(g => g.name)
         .join(', ');
 

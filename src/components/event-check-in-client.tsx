@@ -13,7 +13,7 @@ import {
 import { doc, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { markAttendance } from '@/services/attendance-service';
-import { getFolkGuides, getAssignableUsersForAssignments } from '@/services/user-service';
+import { getFolkGuides, getAssignableUsersForAssignments, getUserById } from '@/services/user-service';
 import type { Group, Person, GroupEvent, AppUser } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,6 +38,7 @@ export default function EventCheckInClient({ groupId, eventId }: { groupId: stri
 
   const [group, setGroup] = React.useState<Group | null>(null);
   const [event, setEvent] = React.useState<GroupEvent | null>(null);
+  const [groupOwner, setGroupOwner] = React.useState<AppUser | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [phone, setPhone] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -55,9 +56,19 @@ export default function EventCheckInClient({ groupId, eventId }: { groupId: stri
     const fetchData = async () => {
       try {
         const [groupDoc, eventDoc, guides] = await Promise.all([
-          getDoc(doc(db, 'groups', groupId)), getDoc(doc(db, 'groups', groupId, 'events', eventId)), getFolkGuides()
+          getDoc(doc(db, 'groups', groupId)), 
+          getDoc(doc(db, 'groups', groupId, 'events', eventId)), 
+          getFolkGuides()
         ]);
-        if (groupDoc.exists()) setGroup({ id: groupDoc.id, ...groupDoc.data() } as Group);
+        if (groupDoc.exists()) {
+            const gData = { id: groupDoc.id, ...groupDoc.data() } as Group;
+            setGroup(gData);
+            if (gData.createdBy) {
+                const owner = await getUserById(gData.createdBy);
+                setGroupOwner(owner);
+                if (owner) setSelectedGuideId(owner.role.includes('Folk Guide') ? owner.id : (owner.reportsTo?.guideId || ''));
+            }
+        }
         if (eventDoc.exists()) setEvent({ id: eventDoc.id, ...eventDoc.data() } as GroupEvent);
         setFolkGuides(guides);
       } finally { setIsLoading(false); }
@@ -91,9 +102,10 @@ export default function EventCheckInClient({ groupId, eventId }: { groupId: stri
   };
 
   const goToRegister = () => {
-      const guideId = selectedGuideId || group?.createdBy;
-      const enablerPart = selectedEnablerId ? `&enablerId=${selectedEnablerId}` : '';
-      router.push(`/register/?id=${guideId}&groupId=${groupId}&eventId=${eventId}${enablerPart}&phone=${phone}`);
+      const ownerId = groupOwner?.id || group?.createdBy || 'anonymous-user';
+      // Pass the generator's ID as the referrer. 
+      // RegistrationClient will resolve the generator's role and skip coordinator selection if appropriate.
+      router.push(`/register/?id=${ownerId}&groupId=${groupId}&eventId=${eventId}&phone=${phone}`);
   };
 
   const logo = placeholderData.app_logo;

@@ -28,6 +28,7 @@ import { createInitialProgress } from '@/lib/data';
 import { safeDate } from '@/utils/date';
 import { startOfDay, endOfDay } from 'date-fns';
 import { getFolkGuides, getUsers, getAssignableUsersForAssignments } from '@/services/user-service';
+import { getEnablers } from './settings-service';
 
 const PAGE_SIZE = 100;
 const MAX_FIRESTORE_LIMIT = 5000;
@@ -329,12 +330,12 @@ export const getPeople = async (
     if (userInfo.role.includes('Folk Guide')) {
       const teamMembers = await getAssignableUsersForAssignments(userInfo as any);
       const teamIds = new Set(teamMembers.map(u => u.id));
-      const teamNames = new Set(teamMembers.map(u => (u.name || '').trim()));
+      const teamNames = new Set(teamMembers.map(u => (u.name || '').trim().toLowerCase()));
       filtered = basePeople.filter(p =>
         isAssignedToUser(p, userInfo) ||
         (p.enablerId && teamIds.has(p.enablerId)) ||
         (p.coEnablerId && teamIds.has(p.coEnablerId)) ||
-        (!p.enablerId && p.enablerInTouchWith && teamNames.has(p.enablerInTouchWith.split('::')[0].trim()))
+        (!p.enablerId && p.enablerInTouchWith && teamNames.has(p.enablerInTouchWith.split('::')[0].trim().toLowerCase()))
       );
     } else {
       filtered = basePeople.filter(p => isAssignedToUser(p, userInfo));
@@ -490,17 +491,57 @@ export const deletePeople = async (ids: string[], userInfo: { id: string; name: 
   for (const id of ids) await deletePerson(id, userInfo);
 };
 
-export const importPeople = async (peopleData: any[], userInfo: { id: string; name: string; role: UserRole[] }, onProgress?: (current: number, total: number) => void) => {
+export const importPeople = async (
+  peopleData: any[], 
+  userInfo: AppUser, 
+  onProgress?: (current: number, total: number) => void
+) => {
   let successCount = 0;
   const errors: { name: string; phone: string; error: string }[] = [];
   const total = peopleData.length;
+
+  const isAdmin = userInfo.role.includes('Admin');
+  const isGuide = userInfo.role.includes('Folk Guide') && !isAdmin;
+  const isEnabler = userInfo.role.includes('Folk Enabler') && !isGuide && !isAdmin;
+
+  let teamOptions: EnablerOption[] = [];
+  if (isGuide) {
+      teamOptions = await getEnablers(userInfo, 'assignment');
+  }
+
   for (let i = 0; i < total; i++) {
     const p = peopleData[i];
     try {
       if (!p.fullName || !p.phone) throw new Error("Missing required field.");
-      const result = await upsertPerson(p, userInfo);
-      if (result.success) successCount++; else errors.push({ name: p.fullName, phone: p.phone, error: result.message || 'Validation failed' });
-    } catch (e: any) { errors.push({ name: p.fullName || 'Unknown', phone: p.phone || 'N/A', error: e.message || 'System error' }); }
+
+      // Role-based assignment enforcement
+      if (isEnabler) {
+          p.enablerInTouchWith = userInfo.name;
+          p.enablerId = userInfo.id;
+          p.folkGuideId = userInfo.reportsTo?.guideId || '';
+          p.folkGuide = userInfo.reportsTo ? `${userInfo.reportsTo.guideName} (${userInfo.reportsTo.guideFgCode})` : '';
+      } else if (isGuide) {
+          p.folkGuideId = userInfo.id;
+          p.folkGuide = `${userInfo.name} (${userInfo.fgCode || 'N/A'})`;
+          
+          const rowEnabler = (p.enablerInTouchWith || '').split('::')[0].trim().toLowerCase();
+          const match = teamOptions.find(t => t.label.toLowerCase() === rowEnabler);
+          if (match) {
+              p.enablerInTouchWith = match.label;
+              p.enablerId = match.value.split('::')[1];
+          } else {
+              // Default to the guide themselves if no valid team enabler is provided
+              p.enablerInTouchWith = userInfo.name;
+              p.enablerId = userInfo.id;
+          }
+      }
+
+      const result = await upsertPerson(p, { id: userInfo.id, name: userInfo.name, role: userInfo.role });
+      if (result.success) successCount++; 
+      else errors.push({ name: p.fullName, phone: p.phone, error: result.message || 'Validation failed' });
+    } catch (e: any) { 
+      errors.push({ name: p.fullName || 'Unknown', phone: p.phone || 'N/A', error: e.message || 'System error' }); 
+    }
     if (onProgress) onProgress(i + 1, total);
   }
   return { successCount, errors };

@@ -29,7 +29,7 @@ import { db } from '@/lib/firebase';
 import { upsertPerson } from '@/services/people-service';
 import { markAttendance } from '@/services/attendance-service';
 import { getStayingWithOptions, getOccupationStatuses } from '@/services/settings-service';
-import { getFolkGuides, getAssignableUsersForAssignments } from '@/services/user-service';
+import { getFolkGuides, getAssignableUsersForAssignments, getUserById } from '@/services/user-service';
 import type { AppUser, Person } from '@/lib/types';
 import { createInitialProgress } from '@/lib/data';
 import Image from 'next/image';
@@ -63,17 +63,17 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
   const { toast } = useToast();
   const router = useRouter();
   
-  const initialEnablerId = searchParams.get('enablerId');
   const groupId = searchParams.get('groupId');
   const eventId = searchParams.get('eventId');
   const initialPhone = searchParams.get('phone') || '';
 
+  const [generator, setGenerator] = React.useState<AppUser | null>(null);
   const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
   const [enablers, setEnablers] = React.useState<AppUser[]>([]);
   const [selectedGuideId, setSelectedGuideId] = React.useState(initialGuideId);
-  const [selectedEnablerId, setSelectedEnablerId] = React.useState(initialEnablerId || '');
+  const [selectedEnablerId, setSelectedEnablerId] = React.useState('');
   
-  const [step, setStep] = React.useState<'assignment' | 'form'>(initialEnablerId ? 'form' : 'assignment');
+  const [step, setStep] = React.useState<'assignment' | 'form'>('assignment');
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSubmitted, setIsSubmitted] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -104,18 +104,37 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
 
   React.useEffect(() => {
     const fetchInitial = async () => {
-        const [guides, staying, occupations] = await Promise.all([
+        const [gen, guides, staying, occupations] = await Promise.all([
+          getUserById(initialGuideId),
           getFolkGuides(), 
           getStayingWithOptions(), 
           getOccupationStatuses()
         ]);
+        
+        setGenerator(gen);
         setFolkGuides(guides);
         setStayingWithOptions(staying);
         setOccupationOptions(occupations);
+        
+        // Branch logic based on generator's role
+        if (gen) {
+            const isAdmin = gen.role.includes('Admin');
+            const isGuide = gen.role.includes('Folk Guide') && !isAdmin;
+            const isEnabler = gen.role.includes('Folk Enabler') && !isGuide && !isAdmin;
+
+            if (isEnabler) {
+                setStep('form');
+                setSelectedEnablerId(gen.id);
+                setSelectedGuideId(gen.reportsTo?.guideId || '');
+            } else if (isGuide) {
+                setSelectedGuideId(gen.id);
+            }
+        }
+
         setIsLoading(false);
     };
     fetchInitial();
-  }, []);
+  }, [initialGuideId]);
 
   React.useEffect(() => {
     if (selectedGuideId) {
@@ -167,19 +186,43 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
         toast({ variant: 'destructive', title: "Photo Required", description: "Please take a quick selfie to identify your profile." });
         return;
     }
-    const enabler = enablers.find(e => e.id === selectedEnablerId);
-    const guide = folkGuides.find(g => g.id === selectedGuideId);
-    if (!enabler || !guide) { setStep('assignment'); return; }
+    
+    // Resolve enabler and guide info
+    let finalEnablerName = '';
+    let finalEnablerId = '';
+    let finalFolkGuideId = '';
+    let finalFolkGuide = '';
+
+    if (generator) {
+        const isAdmin = generator.role.includes('Admin');
+        const isGuide = generator.role.includes('Folk Guide') && !isAdmin;
+        const isEnabler = generator.role.includes('Folk Enabler') && !isGuide && !isAdmin;
+
+        if (isEnabler) {
+            finalEnablerName = generator.name;
+            finalEnablerId = generator.id;
+            finalFolkGuideId = generator.reportsTo?.guideId || '';
+            finalFolkGuide = generator.reportsTo ? `${generator.reportsTo.guideName} (${generator.reportsTo.guideFgCode})` : '';
+        } else {
+            const enabler = enablers.find(e => e.id === selectedEnablerId);
+            const guide = folkGuides.find(g => g.id === selectedGuideId) || (isGuide ? generator : null);
+            
+            finalEnablerName = enabler?.name || guide?.name || 'System';
+            finalEnablerId = enabler?.id || guide?.id || '';
+            finalFolkGuideId = guide?.id || '';
+            finalFolkGuide = guide ? `${guide.name} (${guide.fgCode || 'N/A'})` : '';
+        }
+    }
 
     setIsSubmitting(true);
     try {
       const personData: Partial<Person> = { 
         ...data, 
         photoUrl: photoPreview, 
-        enablerInTouchWith: enabler.name, 
-        enablerId: enabler.id, 
-        folkGuideId: guide.id, 
-        folkGuide: `${guide.name} (${guide.fgCode})`, 
+        enablerInTouchWith: finalEnablerName, 
+        enablerId: finalEnablerId, 
+        folkGuideId: finalFolkGuideId, 
+        folkGuide: finalFolkGuide, 
         currentFolkStage: 'Fresh Lead', 
         progress: createInitialProgress(), 
         verifiedByFg: 'No', 
@@ -212,6 +255,9 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
 
+  const isAdminLink = generator?.role.includes('Admin');
+  const isGuideLink = generator?.role.includes('Folk Guide') && !isAdminLink;
+
   return (
     <div className="min-h-screen bg-background p-4 flex flex-col items-center justify-start overflow-y-auto scrollbar-hide">
       <div className="w-full max-w-lg pt-12 pb-20 space-y-8">
@@ -239,19 +285,21 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
                     </div>
 
                     <div className="space-y-6">
-                        <div className="space-y-3">
-                            <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Select Folk Guide</Label>
-                            <Select value={selectedGuideId} onValueChange={setSelectedGuideId}>
-                                <SelectTrigger className="h-16 rounded-2xl border-border bg-muted text-foreground font-bold px-6 text-lg focus:ring-orange-500">
-                                    <SelectValue placeholder="Choose a Guide..." />
-                                </SelectTrigger>
-                                <SelectContent className="bg-popover border-border text-foreground">
-                                    {folkGuides.map(g => (
-                                        <SelectItem key={g.id} value={g.id} className="font-bold py-3">{g.name} ({g.fgCode})</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        {isAdminLink && (
+                            <div className="space-y-3">
+                                <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Select Folk Guide</Label>
+                                <Select value={selectedGuideId} onValueChange={setSelectedGuideId}>
+                                    <SelectTrigger className="h-16 rounded-2xl border-border bg-muted text-foreground font-bold px-6 text-lg focus:ring-orange-500">
+                                        <SelectValue placeholder="Choose a Guide..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-popover border-border text-foreground">
+                                        {folkGuides.map(g => (
+                                            <SelectItem key={g.id} value={g.id} className="font-bold py-3">{g.name} ({g.fgCode})</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
 
                         <div className="space-y-3">
                             <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Select Enabler</Label>
@@ -285,9 +333,11 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
                             <div className="bg-orange-500/10 text-orange-500 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">
                                 New Member Form
                             </div>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => setStep('assignment')}>
-                                <X className="h-5 w-5" />
-                            </Button>
+                            {step === 'form' && !generator?.role.includes('Folk Enabler') && (
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => setStep('assignment')}>
+                                    <X className="h-5 w-5" />
+                                </Button>
+                            )}
                         </div>
                         <div className="space-y-1">
                             <CardTitle className="text-2xl font-black text-foreground">Tell us a little about you</CardTitle>
