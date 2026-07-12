@@ -11,9 +11,23 @@ export default function EventCheckInClient({ groupId, eventId }: { groupId: stri
   const router = useRouter();
 
   React.useEffect(() => {
-    if (groupId && eventId) {
-      // Forward to the refactored event check-in route
-      router.replace(`/check-in/event/?groupId=${groupId}&eventId=${eventId}`);
+    if (typeof window !== 'undefined') {
+        const path = window.location.pathname;
+        const checkInParts = path.split('/check-in/')[1]?.split('/').filter(Boolean);
+
+        if (checkInParts && checkInParts.length >= 2) {
+            const id = checkInParts[0];
+            const evId = checkInParts[1];
+            if (id !== 'view' && evId !== 'entry' && evId !== 'session') {
+                router.replace(`/check-in/event/?groupId=${id}&eventId=${evId}`);
+                return;
+            }
+        }
+
+        // Fallback to props if path parsing skipped
+        if (groupId && eventId && groupId !== 'view' && eventId !== 'entry' && eventId !== 'session') {
+            router.replace(`/check-in/event/?groupId=${groupId}&eventId=${eventId}`);
+        }
     }
   }, [groupId, eventId, router]);
 
