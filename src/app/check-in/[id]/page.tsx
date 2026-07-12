@@ -1,8 +1,10 @@
 import * as React from 'react';
+import CheckInClient from './CheckInClient';
 
 /**
- * Stub to satisfy Next.js Static Export.
- * The application has been refactored to use search parameters: /check-in/?groupId=...
+ * Legacy dynamic route handler.
+ * Permanently redirects visitors from /check-in/{id} to the new /check-in/?groupId={id} flow.
+ * This ensures that old QR codes remain functional.
  */
 export async function generateStaticParams() {
   // Pre-render a few static path placeholders to unblock the export process.
@@ -12,6 +14,7 @@ export async function generateStaticParams() {
   ];
 }
 
-export default function CheckInStub() {
-    return null;
+export default async function CheckInLegacyPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
+    return <CheckInClient groupId={id} />;
 }
