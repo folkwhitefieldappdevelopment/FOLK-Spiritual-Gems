@@ -58,6 +58,8 @@ const registrationSchema = z.object({
 
 type RegistrationValues = z.infer<typeof registrationSchema>;
 
+const ageOptions = Array.from({ length: 25 }, (_, i) => i + 16);
+
 export default function RegistrationClient({ initialGuideId }: { initialGuideId: string }) {
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -271,7 +273,6 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
   if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
 
   const isAdminLink = generator?.role.includes('Admin');
-  const isGuideLink = generator?.role.includes('Folk Guide') && !isAdminLink;
 
   return (
     <div className="min-h-screen bg-background p-4 flex flex-col items-center justify-start overflow-y-auto scrollbar-hide">
@@ -433,11 +434,11 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
                                         <FormItem className="space-y-2">
                                             <FormLabel className="text-[11px] font-bold text-muted-foreground flex items-center gap-2">
                                                 <Cake className="h-3.5 w-3.5 text-amber-400" /> Age
-                                            </Label>
+                                            </FormLabel>
                                             <Select onValueChange={v => field.onChange(Number(v))} value={String(field.value)}>
                                                 <FormControl><SelectTrigger className="h-14 rounded-xl border-none bg-muted text-foreground font-bold px-6"><SelectValue/></SelectTrigger></FormControl>
                                                 <SelectContent className="bg-popover border-border text-foreground">
-                                                    {Array.from({length: 25}, (_, i) => i + 16).map(age => <SelectItem key={age} value={String(age)} className="font-bold">{age}</SelectItem>)}
+                                                    {ageOptions.map(age => <SelectItem key={age} value={String(age)} className="font-bold">{age}</SelectItem>)}
                                                 </SelectContent>
                                             </Select>
                                         </FormItem>
@@ -446,7 +447,7 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
                                         <FormItem className="space-y-2">
                                             <FormLabel className="text-[11px] font-bold text-muted-foreground flex items-center gap-2">
                                                 <MapPin className="h-3.5 w-3.5 text-red-400" /> Where in Bangalore?
-                                            </Label>
+                                            </FormLabel>
                                             <FormControl><Input placeholder="Whitefield, Marathalli..." className="h-14 rounded-xl border-none bg-muted text-foreground font-bold px-6 focus-visible:ring-orange-500" {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -468,7 +469,7 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
                                         <FormItem className="space-y-2">
                                             <FormLabel className="text-[11px] font-bold text-muted-foreground flex items-center gap-2">
                                                 <Heart className="h-3.5 w-3.5 text-pink-400" /> Relationship Status
-                                            </Label>
+                                            </FormLabel>
                                             <Select onValueChange={field.onChange} value={field.value}>
                                                 <FormControl><SelectTrigger className="h-14 rounded-xl border-none bg-muted text-foreground font-bold px-6"><SelectValue/></SelectTrigger></FormControl>
                                                 <SelectContent className="bg-popover border-border text-foreground">
@@ -497,7 +498,7 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
                                     <FormItem className="space-y-2">
                                         <FormLabel className="text-[11px] font-bold text-muted-foreground flex items-center gap-2">
                                             <Home className="h-3.5 w-3.5 text-green-400" /> Staying With
-                                        </Label>
+                                        </FormLabel>
                                         <Select onValueChange={field.onChange} value={field.value}>
                                             <FormControl><SelectTrigger className="h-14 rounded-xl border-none bg-muted text-foreground font-bold px-6"><SelectValue placeholder="How's home life?" /></SelectTrigger></FormControl>
                                             <SelectContent className="bg-popover border-border text-foreground">
