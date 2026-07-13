@@ -7,8 +7,14 @@
       "**/node_modules/**"
     ],
     "rewrites": [
-      { "source": "/check-in/!(event)/**", "destination": "/check-in/view/index.html" },
-      { "source": "**", "destination": "/index.html" }
+      {
+        "source": "/check-in/!(event)/**",
+        "destination": "/check-in/view/index.html"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
     ]
   }
 }
