@@ -47,11 +47,11 @@ import { cn } from '@/lib/utils';
 const registrationSchema = z.object({
   fullName: z.string().min(2, 'Full name is required.'),
   phone: z.string().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit mobile number.'),
-  age: z.coerce.number().min(16, 'Min 16').max(40, 'Max 40'),
-  location: z.string().min(2, 'Location is required.'),
+  age: z.coerce.number().min(16).max(40).optional(),
+  location: z.string().optional(),
   stayingWith: z.string().min(1, 'Selection required.'),
   occupation: z.string().min(1, 'Selection required.'),
-  organisation: z.string().min(2, 'Organisation name is required.'),
+  organisation: z.string().optional(),
   nativePlace: z.string().optional(),
   relationshipStatus: z.enum(['Single', 'Married']).default('Single'),
 });
@@ -120,13 +120,11 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
         setStayingWithOptions(staying);
         setOccupationOptions(occupations);
         
-        // 1. If explicit carry-over parameters are provided (e.g. from event check-in), use them and skip to form
         if (guideIdParam && enablerIdParam) {
             setSelectedGuideId(guideIdParam);
             setSelectedEnablerId(enablerIdParam);
             setStep('form');
         } 
-        // 2. Otherwise, branch logic based on generator's role for smart defaults
         else if (gen) {
             const isAdmin = gen.role.includes('Admin');
             const isGuide = gen.role.includes('Folk Guide') && !isAdmin;
@@ -192,12 +190,6 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
   };
 
   const onSubmit = async (data: RegistrationValues) => {
-    if (!photoPreview) {
-        toast({ variant: 'destructive', title: "Photo Required", description: "Please take a quick selfie to identify your profile." });
-        return;
-    }
-    
-    // Resolve enabler and guide info
     let finalEnablerName = '';
     let finalEnablerId = '';
     let finalFolkGuideId = '';
@@ -235,7 +227,7 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
     try {
       const personData: Partial<Person> = { 
         ...data, 
-        photoUrl: photoPreview, 
+        photoUrl: photoPreview || '', 
         enablerInTouchWith: finalEnablerName, 
         enablerId: finalEnablerId, 
         folkGuideId: finalFolkGuideId, 
@@ -367,7 +359,7 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
                         {/* Photo Section */}
                         <div className="space-y-3">
                             <Label className="text-[11px] font-bold text-muted-foreground flex items-center gap-2">
-                                <ImageIcon className="h-3.5 w-3.5" /> Your photo <span className="text-orange-500">★ required</span>
+                                <ImageIcon className="h-3.5 w-3.5" /> Your photo
                             </Label>
                             
                             {showCamera ? (
@@ -402,7 +394,7 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
                                             <Camera className="h-4 w-4 mr-2 text-primary" /> Camera
                                         </Button>
                                     </div>
-                                    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+                                    <input type="file" hide="true" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
                                 </div>
                             )}
                         </div>
@@ -412,7 +404,7 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
                                 <FormField control={form.control} name="fullName" render={({ field }) => (
                                     <FormItem className="space-y-2">
                                         <FormLabel className="text-[11px] font-bold text-muted-foreground flex items-center gap-2">
-                                            <Pencil className="h-3.5 w-3.5 text-orange-500" /> Full Name <span className="text-orange-500">★</span>
+                                            <Pencil className="h-3.5 w-3.5 text-orange-500" /> Full Name *
                                         </FormLabel>
                                         <FormControl><Input placeholder="Your name" className="h-14 rounded-xl border-none bg-muted text-foreground font-bold px-6 focus-visible:ring-orange-500" {...field} /></FormControl>
                                         <FormMessage />
@@ -422,7 +414,7 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
                                 <FormField control={form.control} name="phone" render={({ field }) => (
                                     <FormItem className="space-y-2">
                                         <FormLabel className="text-[11px] font-bold text-muted-foreground flex items-center gap-2">
-                                            <Smartphone className="h-3.5 w-3.5 text-primary" /> Mobile Number <span className="text-orange-500">★</span>
+                                            <Smartphone className="h-3.5 w-3.5 text-primary" /> Mobile Number *
                                         </FormLabel>
                                         <FormControl><Input placeholder="10-digit number" className="h-14 rounded-xl border-none bg-muted text-foreground font-bold px-6 focus-visible:ring-orange-500" {...field} /></FormControl>
                                         <FormMessage />
@@ -482,7 +474,7 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
                                     <FormField control={form.control} name="occupation" render={({ field }) => (
                                         <FormItem className="space-y-2">
                                             <FormLabel className="text-[11px] font-bold text-muted-foreground flex items-center gap-2">
-                                                <Briefcase className="h-3.5 w-3.5 text-orange-400" /> Occupation
+                                                <Briefcase className="h-3.5 w-3.5 text-orange-400" /> Occupation *
                                             </FormLabel>
                                             <Select onValueChange={field.onChange} value={field.value}>
                                                 <FormControl><SelectTrigger className="h-14 rounded-xl border-none bg-muted text-foreground font-bold px-6"><SelectValue placeholder="Select" /></SelectTrigger></FormControl>
@@ -497,7 +489,7 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
                                 <FormField control={form.control} name="stayingWith" render={({ field }) => (
                                     <FormItem className="space-y-2">
                                         <FormLabel className="text-[11px] font-bold text-muted-foreground flex items-center gap-2">
-                                            <Home className="h-3.5 w-3.5 text-green-400" /> Staying With
+                                            <Home className="h-3.5 w-3.5 text-green-400" /> Staying With *
                                         </FormLabel>
                                         <Select onValueChange={field.onChange} value={field.value}>
                                             <FormControl><SelectTrigger className="h-14 rounded-xl border-none bg-muted text-foreground font-bold px-6"><SelectValue placeholder="How's home life?" /></SelectTrigger></FormControl>

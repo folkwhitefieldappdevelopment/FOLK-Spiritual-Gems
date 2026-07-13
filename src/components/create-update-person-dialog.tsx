@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import type { Person, CustomField, AppUser, FolkStage } from "@/lib/types";
-import { Camera, Upload, SwitchCamera, Loader2, X, ShieldCheck, UserCheck } from "lucide-react";
+import { Camera, Upload, SwitchCamera, Loader2, X, ShieldCheck, UserCheck, ChevronDown } from "lucide-react";
 import { 
   getEnablers, 
   getContactSources, 
@@ -51,19 +51,19 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 const personFormSchema = z.object({
     fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
     phone: z.string().regex(/^[6-9]\d{9}$/, { message: "Please enter a valid 10-digit Indian mobile number." }),
-    age: z.coerce.number().min(16, "Must be at least 16").max(40, "Must be at most 40"),
+    age: z.coerce.number().min(16).max(40).optional(),
     currentFolkStage: z.string().optional(),
     location: z.string().optional(),
-    stayingWith: z.string().min(1, { message: "Required"}),
-    occupation: z.string().min(1, { message: "Required"}),
+    stayingWith: z.string().optional(),
+    occupation: z.string().optional(),
     organisation: z.string().optional(),
-    rentDetails: z.coerce.number().optional(),
+    rentDetails: z.coerce.number().nullable().optional(),
     nativePlace: z.string().optional(),
     sgRating: z.coerce.number().min(0).max(5).optional(),
     contactSource: z.array(z.string()).default([]),
@@ -72,11 +72,14 @@ const personFormSchema = z.object({
     enablerInTouchWith: z.string().optional(),
     folkGuideId: z.string().optional(),
     folkId: z.string().optional(),
-    relationshipStatus: z.enum(['Single', 'Married']).default('Single'),
-    verifiedByFg: z.enum(['Yes', 'No']).default('No'),
+    relationshipStatus: z.enum(['Single', 'Married']).default('Single').optional(),
+    verifiedByFg: z.enum(['Yes', 'No']).default('No').optional(),
 });
 
 type PersonFormValues = z.infer<typeof personFormSchema>;
+
+const ageOptions = Array.from({ length: 25 }, (_, i) => i + 16);
+const chantingRoundOptions = Array.from({ length: 17 }, (_, i) => i);
 
 export function CreateUpdatePersonDialog({
   isOpen,
@@ -185,6 +188,15 @@ export function CreateUpdatePersonDialog({
     }
   };
 
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => setPhotoPreview(e.target?.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
   const onSubmit = async (data: PersonFormValues) => {
     if (!appUser) return;
     setIsSubmitting(true);
@@ -211,7 +223,6 @@ export function CreateUpdatePersonDialog({
               finalFolkGuide = guide ? `${guide.name} (${guide.fgCode || 'N/A'})` : '';
           }
       } else if (isPrivileged) {
-          // Folk Guide
           if (data.enablerInTouchWith) {
               const [name, id] = data.enablerInTouchWith.split('::');
               finalEnablerName = name;
@@ -243,6 +254,25 @@ export function CreateUpdatePersonDialog({
     } finally { setIsSubmitting(false); }
   };
 
+  const renderCustomField = (field: CustomField) => {
+    const { id, type, options = [] } = field;
+    const value = customData[id];
+    switch (type) {
+        case 'text': return <Input value={value ?? ''} onChange={e => setCustomData(prev => ({...prev, [id]: e.target.value}))} className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5" />;
+        case 'textarea': return <Textarea value={value ?? ''} onChange={e => setCustomData(prev => ({...prev, [id]: e.target.value}))} className="rounded-xl border-border bg-muted text-foreground font-bold p-5 min-h-[100px]" />;
+        case 'number': return <Input type="number" value={value ?? ''} onChange={e => setCustomData(prev => ({...prev, [id]: e.target.valueAsNumber}))} className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5" />;
+        case 'date': return <Input type="date" value={value ?? ''} onChange={e => setCustomData(prev => ({...prev, [id]: e.target.value}))} className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5" />;
+        case 'boolean': return <Checkbox checked={!!value} onCheckedChange={checked => setCustomData(prev => ({...prev, [id]: checked}))} />;
+        case 'dropdown': return (
+            <Select value={value ?? ''} onValueChange={v => setCustomData(prev => ({...prev, [id]: v}))}>
+                <FormControl><SelectTrigger className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5"><SelectValue placeholder="Select..." /></SelectTrigger></FormControl>
+                <SelectContent className="bg-popover border-border text-foreground">{options.map(opt => <SelectItem key={opt} value={opt} className="font-bold">{opt}</SelectItem>)}</SelectContent>
+            </Select>
+        );
+        default: return null;
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-2xl bg-popover border-none rounded-[2.5rem] p-0 overflow-hidden shadow-2xl">
@@ -257,19 +287,65 @@ export function CreateUpdatePersonDialog({
           </div>
         ) : (
           <Form {...form}><form onSubmit={form.handleSubmit(onSubmit)}><ScrollArea className="h-[65vh]"><div className="p-8 space-y-8">
-            <div className="flex flex-col items-center gap-6"><Avatar className="h-28 w-28 border-4 border-primary/20 shadow-2xl rounded-3xl"><AvatarImage src={photoPreview || person?.photoUrl} className="object-cover" /><AvatarFallback className="bg-muted text-primary text-2xl font-black">{form.watch("fullName")?.charAt(0) || '?'}</AvatarFallback></Avatar><div className="flex gap-3"><Button type="button" variant="outline" size="sm" className="rounded-xl bg-muted/50 border-border font-bold h-10 px-4 text-foreground hover:bg-muted" onClick={() => fileInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Gallery</Button><Button type="button" variant="outline" size="sm" className="rounded-xl bg-muted/50 border-border font-bold h-10 px-4 text-foreground hover:bg-muted" onClick={() => setShowCamera(true)}><Camera className="mr-2 h-4 w-4" /> Camera</Button></div></div>
+            <div className="flex flex-col items-center gap-6"><Avatar className="h-28 w-28 border-4 border-primary/20 shadow-2xl rounded-3xl"><AvatarImage src={photoPreview || person?.photoUrl} className="object-cover" /><AvatarFallback className="bg-muted text-primary text-2xl font-black">{form.watch("fullName")?.charAt(0) || '?'}</AvatarFallback></Avatar><div className="flex gap-3"><Button type="button" variant="outline" size="sm" className="rounded-xl bg-muted/50 border-border font-bold h-10 px-4 text-foreground hover:bg-muted" onClick={() => fileInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Gallery</Button><Button type="button" variant="outline" size="sm" className="rounded-xl bg-muted/50 border-border font-bold h-10 px-4 text-foreground hover:bg-muted" onClick={() => setShowCamera(true)}><Camera className="mr-2 h-4 w-4" /> Camera</Button></div><input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" /></div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-              <FormField control={form.control} name="fullName" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Full Name</FormLabel><FormControl><Input placeholder="Name" className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5" {...field} /></FormControl></FormItem>)} />
-              <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Phone</FormLabel><FormControl><Input placeholder="10-digit" className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5" {...field} /></FormControl></FormItem>)} />
-              <FormField control={form.control} name="currentFolkStage" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Folk Stage</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5"><SelectValue/></SelectTrigger></FormControl><SelectContent className="bg-popover border-border text-foreground">{currentFolkStages.map(s => <SelectItem key={s} value={s} className="font-bold">{s}</SelectItem>)}</SelectContent></Select></FormItem>)} />
+              <FormField control={form.control} name="fullName" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Full Name *</FormLabel><FormControl><Input placeholder="Name" className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5" {...field} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Phone *</FormLabel><FormControl><Input placeholder="10-digit" className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5" {...field} /></FormControl><FormMessage /></FormItem>)} />
               
+              <FormField control={form.control} name="age" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Age</FormLabel><Select onValueChange={v => field.onChange(Number(v))} value={String(field.value)}><FormControl><SelectTrigger className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5"><SelectValue/></SelectTrigger></FormControl><SelectContent className="bg-popover border-border text-foreground">{ageOptions.map(age => <SelectItem key={age} value={String(age)} className="font-bold">{age}</SelectItem>)}</SelectContent></Select></FormItem>)} />
+              <FormField control={form.control} name="location" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Current Location</FormLabel><FormControl><Input placeholder="Area / City" className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5" {...field} /></FormControl></FormItem>)} />
+
+              <FormField control={form.control} name="currentFolkStage" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Folk Stage</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5"><SelectValue/></SelectTrigger></FormControl><SelectContent className="bg-popover border-border text-foreground">{currentFolkStages.map(s => <SelectItem key={s} value={s} className="font-bold">{s}</SelectItem>)}</SelectContent></Select></FormItem>)} />
+              <FormField control={form.control} name="chantingStatus" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Chanting Rounds</FormLabel><Select onValueChange={v => field.onChange(Number(v))} value={String(field.value)}><FormControl><SelectTrigger className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5"><SelectValue/></SelectTrigger></FormControl><SelectContent className="bg-popover border-border text-foreground">{chantingRoundOptions.map(r => <SelectItem key={r} value={String(r)} className="font-bold">{r}</SelectItem>)}</SelectContent></Select></FormItem>)} />
+
+              <FormField control={form.control} name="stayingWith" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Staying With</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5"><SelectValue/></SelectTrigger></FormControl><SelectContent className="bg-popover border-border text-foreground">{stayingWithOptions.map(o => <SelectItem key={o} value={o} className="font-bold">{o}</SelectItem>)}</SelectContent></Select></FormItem>)} />
+              <FormField control={form.control} name="occupation" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Occupation</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5"><SelectValue/></SelectTrigger></FormControl><SelectContent className="bg-popover border-border text-foreground">{occupationOptions.map(o => <SelectItem key={o} value={o} className="font-bold">{o}</SelectItem>)}</SelectContent></Select></FormItem>)} />
+
+              <FormField control={form.control} name="organisation" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Organisation (College / Work)</FormLabel><FormControl><Input placeholder="e.g. PESU, Google" className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5" {...field} /></FormControl></FormItem>)} />
+              <FormField control={form.control} name="nativePlace" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Native Place</FormLabel><FormControl><Input placeholder="Hometown" className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5" {...field} /></FormControl></FormItem>)} />
+
+              <FormField control={form.control} name="relationshipStatus" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Relationship Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5"><SelectValue/></SelectTrigger></FormControl><SelectContent className="bg-popover border-border text-foreground"><SelectItem value="Single" className="font-bold">Single</SelectItem><SelectItem value="Married" className="font-bold">Married</SelectItem></SelectContent></Select></FormItem>)} />
+              <FormField control={form.control} name="verifiedByFg" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Verified by FG?</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!isPrivileged}><FormControl><SelectTrigger className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5"><SelectValue/></SelectTrigger></FormControl><SelectContent className="bg-popover border-border text-foreground"><SelectItem value="Yes" className="font-bold">Yes</SelectItem><SelectItem value="No" className="font-bold">No</SelectItem></SelectContent></Select></FormItem>)} />
+
+              <FormField control={form.control} name="contactSource" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Contact Sources</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5 justify-between">
+                        <span className="truncate">
+                          {(field.value || []).length > 0 ? `${field.value.length} selected` : "Select sources..."}
+                        </span>
+                        <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[240px] p-0" align="start">
+                      <div className="p-2 max-h-[300px] overflow-y-auto">
+                        {contactSourceOptions.map((o) => (
+                          <div key={o} className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md cursor-pointer" onClick={() => {
+                              const current = field.value || [];
+                              const next = current.includes(o) ? current.filter(s => s !== o) : [...current, o];
+                              field.onChange(next);
+                          }}>
+                            <Checkbox checked={(field.value || []).includes(o)} onCheckedChange={() => {}} />
+                            <span className="text-sm font-bold">{o}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="sgRating" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">SG Rating ({field.value})</FormLabel><FormControl className="pt-2"><Slider value={[field.value || 0]} onValueChange={v => field.onChange(Math.round(v[0]))} min={0} max={5} step={1} /></FormControl></FormItem>)} />
+
               {!isOnlyEnabler && (
                 <FormField control={form.control} name="enablerInTouchWith" render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1 flex items-center gap-1.5"><UserCheck className="h-3 w-3" /> Enabler</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={!isPrivileged}>
                       <FormControl><SelectTrigger className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5"><SelectValue placeholder="Assign Enabler..." /></SelectTrigger></FormControl>
                       <SelectContent className="bg-popover border-border text-foreground">
+                        <SelectItem value="__NONE__">None</SelectItem>
                         {enablerOptions.map(o => <SelectItem key={o.value} value={o.value} className="font-bold">{o.label}</SelectItem>)}
                       </SelectContent>
                     </Select>
@@ -284,6 +360,7 @@ export function CreateUpdatePersonDialog({
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl><SelectTrigger className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5"><SelectValue placeholder="Assign Guide..." /></SelectTrigger></FormControl>
                       <SelectContent className="bg-popover border-border text-foreground">
+                        <SelectItem value="__NONE__">Unassigned</SelectItem>
                         {folkGuides.map(g => <SelectItem key={g.id} value={g.id} className="font-bold">{g.name} ({g.fgCode || 'N/A'})</SelectItem>)}
                       </SelectContent>
                     </Select>
@@ -291,7 +368,14 @@ export function CreateUpdatePersonDialog({
                 )} />
               )}
             </div>
-          </div></ScrollArea><DialogFooter className="p-8 border-t border-border bg-card gap-4"><Button type="button" variant="ghost" className="rounded-xl font-bold text-muted-foreground hover:text-foreground" onClick={() => setIsOpen(false)}>Cancel</Button><Button type="submit" className="rounded-xl font-black uppercase tracking-widest bg-primary text-primary-foreground hover:bg-primary/90 px-10 h-14 shadow-xl shadow-primary/20">{person ? 'Save' : 'Create'}</Button></DialogFooter></form></Form>
+
+            <div className="space-y-4 pt-4 border-t border-border">
+                <FormField control={form.control} name="fromOtherCamp" render={({ field }) => (<FormItem className="flex items-center space-x-2 space-y-0"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel className="text-xs font-bold text-foreground">From Other Camp</FormLabel></FormItem>)} />
+                {customFields.length > 0 && (
+                    <div className="space-y-6 pt-4"><h4 className="text-[10px] font-black uppercase tracking-widest text-primary">Custom Information</h4><div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">{customFields.map(f => (<div key={f.id} className="space-y-2"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">{f.label}</Label>{renderCustomField(f)}</div>))}</div></div>
+                )}
+            </div>
+          </div></ScrollArea><DialogFooter className="p-8 border-t border-border bg-card gap-4"><Button type="button" variant="ghost" className="rounded-xl font-bold text-muted-foreground hover:text-foreground" onClick={() => setIsOpen(false)}>Cancel</Button><Button type="submit" className="rounded-xl font-black uppercase tracking-widest bg-primary text-primary-foreground hover:bg-primary/90 px-10 h-14 shadow-xl shadow-primary/20" disabled={isSubmitting}>{isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (person ? 'Save Profile' : 'Create Contact')}</Button></DialogFooter></form></Form>
         )}
       </DialogContent>
     </Dialog>
