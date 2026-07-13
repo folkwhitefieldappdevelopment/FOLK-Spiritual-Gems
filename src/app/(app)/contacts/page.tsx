@@ -51,6 +51,7 @@ import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { ContactGalleryDialog } from "@/components/contact-gallery-dialog";
 import { BulkEditPersonDialog } from '@/components/bulk-edit-person-dialog';
+import { FreshLeadQRDialog } from "@/components/fresh-lead-qr-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   AlertDialog,
@@ -109,6 +110,7 @@ const ContactsPageComponent = () => {
   const [isAddMethodDialogOpen, setIsAddMethodDialogOpen] = React.useState(false);
   const [isPersonDialogOpen, setIsPersonDialogOpen] = React.useState(false);
   const [isGroupDialogOpen, setIsGroupDialogOpen] = React.useState(false);
+  const [isQrDialogOpen, setIsQrDialogOpen] = React.useState(false);
   const [isGalleryOpen, setIsGalleryOpen] = React.useState(false);
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(undefined);
   const [editingGroup, setEditingGroup] = React.useState<Group | undefined>(undefined);
@@ -459,11 +461,12 @@ const ContactsPageComponent = () => {
         </Tabs>
       </main>
 
-      <AddContactMethodDialog isOpen={isAddMethodDialogOpen} setIsOpen={setIsAddMethodDialogOpen} onSelectManual={() => { setEditingPerson(undefined); setIsPersonDialogOpen(true); }} onSelectQR={() => router.push('/dashboard')} onSelectNewGroup={() => { setEditingGroup(undefined); setIsGroupDialogOpen(true); }} />
+      <AddContactMethodDialog isOpen={isAddMethodDialogOpen} setIsOpen={setIsAddMethodDialogOpen} onSelectManual={() => { setEditingPerson(undefined); setIsPersonDialogOpen(true); }} onSelectQR={() => setIsQrDialogOpen(true)} onSelectNewGroup={() => { setEditingGroup(undefined); setIsGroupDialogOpen(true); }} />
       <CreateUpdatePersonDialog isOpen={isPersonDialogOpen} setIsOpen={setIsPersonDialogOpen} onSave={async d => { const r = editingPerson ? await updatePerson(editingPerson.id, d, appUser!) : await createPerson(d, appUser!); if (r.success) fetchContacts(undefined, true); return r; }} person={editingPerson} allPeople={people} />
       <CreateUpdateGroupDialog isOpen={isGroupDialogOpen} setIsOpen={setIsGroupDialogOpen} group={editingGroup} onSave={async (d) => { editingGroup ? await updateGroupSvc(editingGroup.id, d, appUser!) : await createGroup(d, appUser!); getStaticGroups(appUser!).then(setGroups); }} />
       <ConfirmSessionDialog isOpen={isConfirmSessionDialogOpen} setIsOpen={setIsConfirmSessionDialogOpen} onStartSession={handleStartSession} onResumeSession={() => router.push('/session')} singlePersonName={personToCall?.fullName || editingGroup?.name} pausedSession={appUser?.pausedCallingSession} totalCount={personToCall ? 1 : (isSelectionActive ? selectedIds.size : (editingGroup?.peopleIds?.length || 0))} />
       <ContactGalleryDialog isOpen={isGalleryOpen} onClose={() => setIsGalleryOpen(false)} people={people} />
+      <FreshLeadQRDialog isOpen={isQrDialogOpen} setIsOpen={setIsQrDialogOpen} />
       
       <BulkEditPersonDialog 
         isOpen={isBulkEditOpen} 
