@@ -67,17 +67,32 @@ export const ensureSettingsDoc = async () => {
 
 export const getEnablers = async (userInfo: AppUser, context: 'filter' | 'assignment' = 'filter'): Promise<EnablerOption[]> => {
   const usersRef = collection(db, 'users');
-  let q;
+  let snapshot;
+  
   if (userInfo.role.includes('Admin')) {
-    q = query(usersRef, where('role', 'array-contains', 'Folk Enabler'));
+    // Fetch all users to handle legacy string role formats correctly
+    snapshot = await getDocs(query(usersRef));
   } else if (userInfo.role.includes('Folk Guide')) {
-    q = query(usersRef, where('reportsTo.guideId', '==', userInfo.id));
+    snapshot = await getDocs(query(usersRef, where('reportsTo.guideId', '==', userInfo.id)));
   } else {
-    q = query(usersRef, where('__name__', '==', userInfo.id));
+    snapshot = await getDocs(query(usersRef, where('__name__', '==', userInfo.id)));
   }
 
-  const snapshot = await getDocs(q);
-  const assignees: AppUser[] = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AppUser));
+  const assignees: AppUser[] = snapshot.docs.map(d => {
+      const data = d.data();
+      const role = data.role;
+      
+      if (userInfo.role.includes('Admin')) {
+          const isEnabler = Array.isArray(role) ? role.includes('Folk Enabler') : role === 'Folk Enabler';
+          if (!isEnabler) return null;
+      }
+
+      return { 
+          id: d.id, 
+          ...data, 
+          role: Array.isArray(role) ? role : (role ? [role] : [])
+      } as AppUser;
+  }).filter((u): u is AppUser => u !== null);
   
   if (userInfo.role.includes('Folk Guide')) {
       if (!assignees.find(a => a.id === userInfo.id)) assignees.push(userInfo);

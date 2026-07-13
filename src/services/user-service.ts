@@ -31,9 +31,11 @@ export const getUserById = async (id: string): Promise<AppUser | null> => {
   if (!docSnap.exists()) return null;
   
   const data = docSnap.data();
+  const role = data.role;
   return { 
     id: docSnap.id,
     ...data,
+    role: Array.isArray(role) ? role : (role ? [role] : []),
     createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString()
   } as AppUser;
 };
@@ -48,9 +50,11 @@ export const createUser = async (userData: Omit<AppUser, 'id' | 'createdAt'>, ui
   if (!existingUserSnapshot.empty) {
     const existingDoc = existingUserSnapshot.docs[0];
     const existingData = existingDoc.data();
+    const role = existingData.role;
     return { 
       id: existingDoc.id, 
       ...existingData,
+      role: Array.isArray(role) ? role : (role ? [role] : []),
       createdAt: existingData.createdAt?.toDate ? existingData.createdAt.toDate().toISOString() : new Date().toISOString()
     } as AppUser;
   }
@@ -111,9 +115,14 @@ export const getUsers = async (userInfo?: AppUser): Promise<AppUser[]> => {
         const snapshots = await Promise.all(queries.map(qGroup => getDocs(query(usersCollection, ...qGroup))));
         rawUsers = snapshots.flatMap(snap => snap.docs.map(doc => {
             const data = doc.data();
+            const role = data.role;
+            if (role && !Array.isArray(role)) {
+                console.warn(`[Migration Required] User ${doc.id} (${data.email}) has role in legacy string format: ${role}`);
+            }
             return {
                 id: doc.id,
                 ...data,
+                role: Array.isArray(role) ? role : (role ? [role] : []),
                 createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString()
             } as AppUser;
         }));
@@ -121,9 +130,14 @@ export const getUsers = async (userInfo?: AppUser): Promise<AppUser[]> => {
         const snapshot = await getDocs(query(usersCollection));
         rawUsers = snapshot.docs.map(doc => {
           const data = doc.data();
+          const role = data.role;
+          if (role && !Array.isArray(role)) {
+            console.warn(`[Migration Required] User ${doc.id} (${data.email}) has role in legacy string format: ${role}`);
+          }
           return { 
             id: doc.id, 
-            ...data,
+            ...data, 
+            role: Array.isArray(role) ? role : (role ? [role] : []),
             createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString()
           } as AppUser;
         });
@@ -147,16 +161,32 @@ export const getUsers = async (userInfo?: AppUser): Promise<AppUser[]> => {
 
 export const getFolkGuides = async (): Promise<AppUser[]> => {
     const usersCollection = collection(db, 'users');
-    const q = query(usersCollection, where('role', 'array-contains', 'Folk Guide'));
-    const snapshot = await getDocs(q);
+    
+    // Fetch all users to handle both legacy string and modern array role formats.
+    // Firestore's array-contains only works if the field is actually an array.
+    const snapshot = await getDocs(query(usersCollection));
+    
     const rawUsers = snapshot.docs.map(doc => {
         const data = doc.data();
+        const role = data.role;
+        
+        // Resilience logic: check both array and legacy string format
+        const isFolkGuide = Array.isArray(role) ? role.includes('Folk Guide') : role === 'Folk Guide';
+        
+        if (!isFolkGuide) return null;
+
+        // Diagnostic warning for data migration purposes
+        if (role && !Array.isArray(role)) {
+            console.warn(`[Migration Required] User ${doc.id} (${data.email}) has role in legacy string format: ${role}`);
+        }
+
         return { 
           id: doc.id, 
-          ...data, 
+          ...data,
+          role: Array.isArray(role) ? role : [role], // Normalize to array for type safety
           createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString() 
         } as AppUser;
-    });
+    }).filter((u): u is AppUser => u !== null);
 
     const uniqueUsersMap = new Map<string, AppUser>();
     rawUsers.forEach(u => {
@@ -176,18 +206,35 @@ export const getFolkGuides = async (): Promise<AppUser[]> => {
 
 export const getAssignableUsersForAssignments = async(userInfo: AppUser): Promise<AppUser[]> => {
     const usersCollection = collection(db, 'users');
-    const constraints: QueryConstraint[] = [];
+    
+    // Handle potential legacy role formats for Enablers when an Admin is requesting assignments
+    let snapshot;
     if (userInfo.role.includes('Admin')) {
-        constraints.push(where('role', 'array-contains', 'Folk Enabler'));
+        snapshot = await getDocs(query(usersCollection));
     } else if (userInfo.role.includes('Folk Guide')) {
-        constraints.push(where('reportsTo.guideId', '==', userInfo.id));
+        snapshot = await getDocs(query(usersCollection, where('reportsTo.guideId', '==', userInfo.id)));
     } else return [];
     
-    const snapshot = await getDocs(query(usersCollection, ...constraints));
     const rawUsers = snapshot.docs.map(doc => {
         const data = doc.data();
-        return { id: doc.id, ...data, createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString() } as AppUser;
-    });
+        const role = data.role;
+
+        if (userInfo.role.includes('Admin')) {
+            const isEnabler = Array.isArray(role) ? role.includes('Folk Enabler') : role === 'Folk Enabler';
+            if (!isEnabler) return null;
+        }
+
+        if (role && !Array.isArray(role)) {
+            console.warn(`[Migration Required] User ${doc.id} (${data.email}) has role in legacy string format: ${role}`);
+        }
+
+        return { 
+          id: doc.id, 
+          ...data, 
+          role: Array.isArray(role) ? role : [role], // Normalize to array
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString() 
+        } as AppUser;
+    }).filter((u): u is AppUser => u !== null);
 
     const uniqueUsersMap = new Map<string, AppUser>();
     rawUsers.forEach(u => {
