@@ -108,14 +108,26 @@ const PersonTableRowComponent = ({
                     return;
                 }
             }
+            // Execute native dialer
             await CallLog.makeCall({ phoneNumber: String(person.phone) });
+            
+            // Manual Trigger for Overlay: Outgoing broadcasts are restricted on Android 10+,
+            // so we push the context window manually for calls started from inside the app.
+            await CallLog.showNativeOverlay({
+                name: person.fullName,
+                phone: person.phone,
+                photoUrl: person.photoUrl || '',
+                stage: person.currentFolkStage || 'Fresh Lead',
+                remark: person.lastCallRemark || '',
+                type: 'OUTGOING'
+            });
         } catch (error) {
             toast({ variant: 'destructive', title: 'Call Failed' });
         }
     } else {
         window.location.href = `tel:${person.phone}`;
     }
-  }, [person.phone, toast]);
+  }, [person.phone, person.fullName, person.photoUrl, person.currentFolkStage, person.lastCallRemark, toast]);
 
   return (
     <React.Fragment>
