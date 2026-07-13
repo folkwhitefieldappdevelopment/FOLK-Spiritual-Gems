@@ -1,7 +1,7 @@
 'use client';
 
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
-import { getFirestore, type Firestore, enableIndexedDbPersistence } from "firebase/firestore";
+import { initializeFirestore, type Firestore, enableIndexedDbPersistence } from "firebase/firestore";
 import { getAuth, type Auth } from "firebase/auth";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
 
@@ -28,7 +28,9 @@ export const persistenceReady = new Promise<void>((resolve) => {
 
 try {
   app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-  db = getFirestore(app);
+  
+  // Use initializeFirestore with long-polling to bypass proxy streaming issues in Firebase Studio
+  db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
   
   if (typeof window !== 'undefined') {
     // forceOwnership: true is critical for Capacitor/WebView apps to prevent hangs on reload
