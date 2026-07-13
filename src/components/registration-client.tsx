@@ -66,6 +66,8 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
   const groupId = searchParams.get('groupId');
   const eventId = searchParams.get('eventId');
   const initialPhone = searchParams.get('phone') || '';
+  const guideIdParam = searchParams.get('guideId');
+  const enablerIdParam = searchParams.get('enablerId');
 
   const [generator, setGenerator] = React.useState<AppUser | null>(null);
   const [folkGuides, setFolkGuides] = React.useState<AppUser[]>([]);
@@ -73,7 +75,7 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
   const [selectedGuideId, setSelectedGuideId] = React.useState(initialGuideId);
   const [selectedEnablerId, setSelectedEnablerId] = React.useState('');
   
-  const [step, setStep] = React.useState<'assignment' | 'form'>('assignment');
+  const [step, setStep] = React.useState<'assignment' | 'form'>((guideIdParam && enablerIdParam) ? 'form' : 'assignment');
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSubmitted, setIsSubmitted] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -116,8 +118,14 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
         setStayingWithOptions(staying);
         setOccupationOptions(occupations);
         
-        // Branch logic based on generator's role
-        if (gen) {
+        // 1. If explicit carry-over parameters are provided (e.g. from event check-in), use them and skip to form
+        if (guideIdParam && enablerIdParam) {
+            setSelectedGuideId(guideIdParam);
+            setSelectedEnablerId(enablerIdParam);
+            setStep('form');
+        } 
+        // 2. Otherwise, branch logic based on generator's role for smart defaults
+        else if (gen) {
             const isAdmin = gen.role.includes('Admin');
             const isGuide = gen.role.includes('Folk Guide') && !isAdmin;
             const isEnabler = gen.role.includes('Folk Enabler') && !isGuide && !isAdmin;
@@ -134,7 +142,7 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
         setIsLoading(false);
     };
     fetchInitial();
-  }, [initialGuideId]);
+  }, [initialGuideId, guideIdParam, enablerIdParam]);
 
   React.useEffect(() => {
     if (selectedGuideId) {
@@ -193,7 +201,14 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
     let finalFolkGuideId = '';
     let finalFolkGuide = '';
 
-    if (generator) {
+    if (guideIdParam && enablerIdParam) {
+        const enabler = enablers.find(e => e.id === enablerIdParam);
+        const guide = folkGuides.find(g => g.id === guideIdParam);
+        finalEnablerName = enabler?.name || 'System';
+        finalEnablerId = enablerIdParam;
+        finalFolkGuideId = guideIdParam;
+        finalFolkGuide = guide ? `${guide.name} (${guide.fgCode || 'N/A'})` : '';
+    } else if (generator) {
         const isAdmin = generator.role.includes('Admin');
         const isGuide = generator.role.includes('Folk Guide') && !isAdmin;
         const isEnabler = generator.role.includes('Folk Enabler') && !isGuide && !isAdmin;
@@ -333,7 +348,7 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
                             <div className="bg-orange-500/10 text-orange-500 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">
                                 New Member Form
                             </div>
-                            {step === 'form' && !generator?.role.includes('Folk Enabler') && (
+                            {(step === 'form' && !generator?.role.includes('Folk Enabler') && !(guideIdParam && enablerIdParam)) && (
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => setStep('assignment')}>
                                     <X className="h-5 w-5" />
                                 </Button>
@@ -418,7 +433,7 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
                                         <FormItem className="space-y-2">
                                             <FormLabel className="text-[11px] font-bold text-muted-foreground flex items-center gap-2">
                                                 <Cake className="h-3.5 w-3.5 text-amber-400" /> Age
-                                            </FormLabel>
+                                            </Label>
                                             <Select onValueChange={v => field.onChange(Number(v))} value={String(field.value)}>
                                                 <FormControl><SelectTrigger className="h-14 rounded-xl border-none bg-muted text-foreground font-bold px-6"><SelectValue/></SelectTrigger></FormControl>
                                                 <SelectContent className="bg-popover border-border text-foreground">
@@ -431,7 +446,7 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
                                         <FormItem className="space-y-2">
                                             <FormLabel className="text-[11px] font-bold text-muted-foreground flex items-center gap-2">
                                                 <MapPin className="h-3.5 w-3.5 text-red-400" /> Where in Bangalore?
-                                            </FormLabel>
+                                            </Label>
                                             <FormControl><Input placeholder="Whitefield, Marathalli..." className="h-14 rounded-xl border-none bg-muted text-foreground font-bold px-6 focus-visible:ring-orange-500" {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -453,7 +468,7 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
                                         <FormItem className="space-y-2">
                                             <FormLabel className="text-[11px] font-bold text-muted-foreground flex items-center gap-2">
                                                 <Heart className="h-3.5 w-3.5 text-pink-400" /> Relationship Status
-                                            </FormLabel>
+                                            </Label>
                                             <Select onValueChange={field.onChange} value={field.value}>
                                                 <FormControl><SelectTrigger className="h-14 rounded-xl border-none bg-muted text-foreground font-bold px-6"><SelectValue/></SelectTrigger></FormControl>
                                                 <SelectContent className="bg-popover border-border text-foreground">
@@ -482,7 +497,7 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
                                     <FormItem className="space-y-2">
                                         <FormLabel className="text-[11px] font-bold text-muted-foreground flex items-center gap-2">
                                             <Home className="h-3.5 w-3.5 text-green-400" /> Staying With
-                                        </FormLabel>
+                                        </Label>
                                         <Select onValueChange={field.onChange} value={field.value}>
                                             <FormControl><SelectTrigger className="h-14 rounded-xl border-none bg-muted text-foreground font-bold px-6"><SelectValue placeholder="How's home life?" /></SelectTrigger></FormControl>
                                             <SelectContent className="bg-popover border-border text-foreground">

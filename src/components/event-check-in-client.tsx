@@ -103,9 +103,8 @@ export default function EventCheckInClient({ groupId, eventId }: { groupId: stri
 
   const goToRegister = () => {
       const ownerId = groupOwner?.id || group?.createdBy || 'anonymous-user';
-      // Pass the generator's ID as the referrer. 
-      // RegistrationClient will resolve the generator's role and skip coordinator selection if appropriate.
-      router.push(`/register/?id=${ownerId}&groupId=${groupId}&eventId=${eventId}&phone=${phone}`);
+      // Carry selection parameters to registration to skip redundant assignment step
+      router.push(`/register/?id=${ownerId}&groupId=${groupId}&eventId=${eventId}&phone=${phone}&guideId=${selectedGuideId}&enablerId=${selectedEnablerId}`);
   };
 
   const logo = placeholderData.app_logo;
