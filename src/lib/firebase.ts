@@ -4,6 +4,7 @@ import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { initializeFirestore, type Firestore, enableIndexedDbPersistence } from "firebase/firestore";
 import { getAuth, type Auth } from "firebase/auth";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
+import { Capacitor } from '@capacitor/core';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyAOff0MOvegV57xgv2Y1yvaa7I8ijRHhfQ",
@@ -29,8 +30,11 @@ export const persistenceReady = new Promise<void>((resolve) => {
 try {
   app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
   
-  // Use initializeFirestore with long-polling to bypass proxy streaming issues in Firebase Studio
-  db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+  // Use long-polling only in the browser preview (Firebase Studio) to bypass proxy streaming issues.
+  // Native apps should use standard high-performance WebChannel streaming.
+  db = initializeFirestore(app, { 
+    experimentalAutoDetectLongPolling: !Capacitor.isNativePlatform() 
+  });
   
   if (typeof window !== 'undefined') {
     // forceOwnership: true is critical for Capacitor/WebView apps to prevent hangs on reload
