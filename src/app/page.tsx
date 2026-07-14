@@ -13,8 +13,9 @@ export default function HomePage() {
   const router = useRouter();
 
   React.useEffect(() => {
-    // Navigate to dashboard after hydration
-    router.replace('/dashboard/');
+    // TEMP: diagnostic landing page swap — revert after testing
+    // Navigate to contacts after hydration
+    router.replace('/contacts/');
   }, [router]);
 
   return (

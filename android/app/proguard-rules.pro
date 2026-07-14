@@ -1,21 +1,21 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Capacitor core — accessed via reflection for plugin dispatch
+-keep class com.getcapacitor.** { *; }
+-keepclassmembers class * {
+    @com.getcapacitor.annotation.PermissionCallback <methods>;
+    @com.getcapacitor.PluginMethod <methods>;
+}
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Any Capacitor plugin class (built-in or custom)
+-keep public class * extends com.getcapacitor.Plugin { public *; }
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# This app's own custom native components (referenced by class name from
+# AndroidManifest.xml and Capacitor's reflection-based plugin registration)
+-keep class com.folkcrm.gems.CallLogPlugin { *; }
+-keep class com.folkcrm.gems.CallStateReceiver { *; }
+-keep class com.folkcrm.gems.CallerOverlayService { *; }
+-keep class com.folkcrm.gems.CallerOverlayManager { *; }
+-keep class com.folkcrm.gems.MainActivity { *; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Glide (uses reflection/annotation processing)
+-keep public class * extends com.bumptech.glide.module.AppGlideModule
+-keep class com.bumptech.glide.GeneratedAppGlideModuleImpl { *; }
