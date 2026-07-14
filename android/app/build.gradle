@@ -6,55 +6,47 @@ android {
     defaultConfig {
         applicationId "com.folkcrm.gems"
         minSdk rootProject.ext.minSdkVersion
-        targetSdk rootProject.ext.targetSdkVersion
+        targetSdk rootProject.ext.targetSdk
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
-             // Strings and resources settings for high-performance builds
-             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+             // Capacitor handles the web asset deployment
+             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:f..*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
-
-    signingConfigs {
-        release {
-            if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE') && file(project.MYAPP_UPLOAD_STORE_FILE).exists()) {
-                storeFile file(project.MYAPP_UPLOAD_STORE_FILE)
-                storePassword project.MYAPP_UPLOAD_STORE_PASSWORD
-                keyAlias project.MYAPP_UPLOAD_KEY_ALIAS
-                keyPassword project.MYAPP_UPLOAD_KEY_PASSWORD
-            }
-        }
-    }
-
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             if (signingConfigs.release.storeFile) {
                 signingConfig signingConfigs.release
             }
         }
     }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
 }
 
 repositories {
-    flatDir {
+    flatDir{
         dirs 'libs'
     }
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation "androidx.appcompat:appcompat:$rootProject.ext.androidxAppCompatVersion"
-    implementation "androidx.core:core-splashscreen:$rootProject.ext.androidxCoreSplashScreenVersion"
+    implementation "androidx.appcompat:androidx.appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:androidx.coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:androidx.core-ktx:$androidxCoreVersion"
     implementation project(':capacitor-android')
-    implementation 'com.github.bumptech.glide:glide:4.16.0'
-    annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidTestJunitVersion"
+    androidTestImplementation "androidx.test.espresso:core-base:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
-    testImplementation "junit:junit:$rootProject.ext.junitVersion"
-    androidTestImplementation "androidx.test.ext:junit:$rootProject.ext.androidxJunitVersion"
-    androidTestImplementation "androidx.test.espresso:espresso-core:$rootProject.ext.androidxEspressoCoreVersion"
 }
 
 apply from: 'capacitor.build.gradle'
