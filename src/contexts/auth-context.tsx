@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -6,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import type { User } from 'firebase/auth';
 import { auth, db, configError as firebaseConfigError } from '../lib/firebase';
 import { onAuthStateChanged, signOut as firebaseSignOut, signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, onSnapshot, serverTimestamp, setDoc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import type { AppUser } from '../lib/types';
 import { Loader2, ShieldAlert } from 'lucide-react';
 import { Button } from '../components/ui/button';
@@ -59,50 +58,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         
-        // Initial check to ensure record exists, if not, check bootstrap
-        const initialSnap = await getDoc(userDocRef);
-        if (!initialSnap.exists()) {
-            const bootstrap = BOOTSTRAP_ADMINS.find(a => a.email === firebaseUser.email?.toLowerCase());
-            if (bootstrap) {
-                const newUser: any = {
-                    name: bootstrap.name,
-                    email: bootstrap.email,
-                    phone: firebaseUser.phoneNumber || '',
-                    role: bootstrap.role,
-                    photoUrl: firebaseUser.photoURL || '',
-                    createdAt: serverTimestamp()
-                };
-                await setDoc(userDocRef, newUser);
-            }
-        }
-
-        userUnsubscribe = onSnapshot(userDocRef, (docSnap) => {
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                
-                // Resilient role processing (ensure array)
-                let roles = data.role || [];
-                if (typeof roles === 'string') roles = [roles];
-                if (!Array.isArray(roles)) roles = [];
-
-                const processedUser = {
-                    id: docSnap.id,
-                    ...data,
-                    role: roles,
-                    createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString()
-                } as AppUser;
-                
-                setAppUser(processedUser);
-                setIsUnauthorized(false);
-                setLoading(false);
-            } else {
-                const isBootstrap = BOOTSTRAP_ADMINS.some(a => a.email === firebaseUser.email?.toLowerCase());
-                if (!isBootstrap) {
+        userUnsubscribe = onSnapshot(userDocRef, async (docSnap) => {
+            if (!docSnap.exists()) {
+                const bootstrap = BOOTSTRAP_ADMINS.find(a => a.email === firebaseUser.email?.toLowerCase());
+                if (bootstrap) {
+                    const newUser: any = {
+                        name: bootstrap.name,
+                        email: bootstrap.email,
+                        phone: firebaseUser.phoneNumber || '',
+                        role: bootstrap.role,
+                        photoUrl: firebaseUser.photoURL || '',
+                        createdAt: serverTimestamp()
+                    };
+                    await setDoc(userDocRef, newUser);
+                } else {
                     setAppUser(null);
                     setIsUnauthorized(true);
                     setLoading(false);
                 }
+                return; // wait for resulting snapshot
             }
+
+            const data = docSnap.data();
+            
+            // Resilient role processing (ensure array)
+            let roles = data.role || [];
+            if (typeof roles === 'string') roles = [roles];
+            if (!Array.isArray(roles)) roles = [];
+
+            const processedUser = {
+                id: docSnap.id,
+                ...data,
+                role: roles,
+                createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString()
+            } as AppUser;
+            
+            setAppUser(processedUser);
+            setIsUnauthorized(false);
+            setLoading(false);
         }, (err) => {
             console.error("User sync failure", err);
             setLoading(false);
