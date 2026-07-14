@@ -205,16 +205,17 @@ export async function getPeopleByIds(ids: string[]): Promise<Person[]> {
 export const getPersonByPhone = async (phone: string, userInfo: { id: string; name: string; role: UserRole[] }): Promise<Person | null> => {
   const norm = normalizePhone(phone);
   if (norm.length < 10) return null;
+  const isAdmin = userInfo.role.includes('Admin');
   if (masterPeopleCache) {
     const match = masterPeopleCache.find(p => normalizePhone(p.phone) === norm);
-    if (match) return isAssignedToUser(match, userInfo) ? match : null;
+    if (match) return (isAdmin || isAssignedToUser(match, userInfo)) ? match : null;
   }
   const peopleRef = collection(db, 'people');
   const q = query(peopleRef, where('phone', '==', norm), limit(1));
   const snap = await getDocs(q);
   if (snap.empty) return null;
   const p = processPersonDoc(snap.docs[0]);
-  return isAssignedToUser(p, userInfo) ? p : null;
+  return (isAdmin || isAssignedToUser(p, userInfo)) ? p : null;
 };
 
 export async function getPeopleForReminders(userInfo: { id: string; name: string; role: UserRole[] }): Promise<Person[]> {
@@ -293,7 +294,7 @@ export const getPeople = async (
       if (filters.chantingRoundsMin) {
           const min = parseInt(filters.chantingRoundsMin);
           if ((p.chantingStatus || 0) < min) return false;
-      } else if (filters.chantingRounds && filters.chantingRounds !== '__ALL__') {
+      } else if (filters.chantingRounds) {
         const rounds = parseInt(filters.chantingRounds);
         if (p.chantingStatus !== rounds) return false;
       }
@@ -302,7 +303,7 @@ export const getPeople = async (
       if (filters.phone && !normalizePhone(p.phone).includes(normalizePhone(filters.phone))) return false;
       if (filters.location && !p.location?.toLowerCase().includes(filters.location.toLowerCase())) return false;
       if (filters.stayingWith && p.stayingWith !== filters.stayingWith) return false;
-      if (filters.callStatus && filters.callStatus !== '__ALL__' && p.lastCallStatus !== filters.callStatus) return false;
+      if (filters.callStatus && p.lastCallStatus !== filters.callStatus) return false;
       
       if (filters.contactSources && filters.contactSources.length > 0) {
         const pSources = p.contactSource || [];
