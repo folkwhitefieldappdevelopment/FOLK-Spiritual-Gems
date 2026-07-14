@@ -68,7 +68,8 @@ async function syncAllCallLogs(appUser: AppUser) {
 export function startBackgroundSync(appUser: AppUser) {
   if (syncInterval) clearInterval(syncInterval);
 
-  syncAllCallLogs(appUser);
+  // Staggered initial sync to prioritize dashboard loading (10s delay)
+  setTimeout(() => syncAllCallLogs(appUser), 10000);
   
   if (Capacitor.isNativePlatform()) {
     import('@capacitor/app').then(({ App }) => {

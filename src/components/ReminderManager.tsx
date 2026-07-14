@@ -117,8 +117,13 @@ export function ReminderManager() {
   React.useEffect(() => {
     if (!appUser) return;
     const interval = setInterval(checkReminders, 30000);
-    checkReminders();
-    return () => clearInterval(interval);
+    // Staggered initial check to prioritize dashboard mounting (8s delay)
+    const initialTimer = setTimeout(checkReminders, 8000);
+    
+    return () => {
+      clearInterval(interval);
+      clearTimeout(initialTimer);
+    };
   }, [appUser, checkReminders]);
 
   if (!activeAlarm) return null;

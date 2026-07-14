@@ -9,11 +9,11 @@ export function SplashManager({ children }: { children: React.ReactNode }) {
   const [fadeOut, setFadeOut] = React.useState(false);
 
   React.useEffect(() => {
-    // Total duration: 3.5s visible + 0.8s fade out = 4.3s total app lock
+    // Optimized duration: 1.2s visible + 0.4s fade out = 1.6s total app lock (down from 4.3s)
     const timer = setTimeout(() => {
       setFadeOut(true);
-      setTimeout(() => setShowSplash(false), 800);
-    }, 3500); 
+      setTimeout(() => setShowSplash(false), 400);
+    }, 1200); 
     
     return () => clearTimeout(timer);
   }, []);
