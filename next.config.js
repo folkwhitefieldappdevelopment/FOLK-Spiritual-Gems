@@ -16,9 +16,9 @@ const nextConfig = {
     cpus: 1
   },
   // Forces Next.js to regenerate chunks and ignore potentially corrupted cached modules
-  // Timestamp update: 2024-05-24T12:00:00Z
+  // Timestamp update: 2024-05-24T14:30:00Z
   generateBuildId: async () => {
-    return `build-${Date.now()}`;
+    return `stable-build-${Date.now()}`;
   },
   webpack: (config, { isServer }) => {
     // Disable webpack caching to resolve module/chunk loading inconsistencies in the dev environment
