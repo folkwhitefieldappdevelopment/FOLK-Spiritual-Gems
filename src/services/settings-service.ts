@@ -1,8 +1,8 @@
 'use client';
 
 import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc, updateDoc, collection, getDocs, query, where, limit } from 'firebase/firestore';
-import type { AppUser, CustomField, UserRole, ActivityFieldLabels, FolkStage } from '@/lib/types';
+import { doc, getDoc, setDoc, updateDoc, collection, getDocs, query, where, limit, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
+import type { AppUser, CustomField, UserRole, ActivityFieldLabels, FolkStage, ExternalCoEnabler } from '@/lib/types';
 import { folkStages } from '@/lib/types';
 import { logAudit } from '@/services/audit-service';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -20,7 +20,7 @@ export type EnablerOption = { value: string; label: string };
  * Checks if a specific dropdown value is currently used by any person in the database.
  */
 async function isOptionInUse(fieldName: string, value: string, isArray: boolean = false): Promise<boolean> {
-    const peopleRef = collection(db, 'people');
+    const peopleRef = collection(db!, 'people');
     const q = query(
         peopleRef, 
         where(fieldName, isArray ? 'array-contains' : '==', value), 
@@ -31,7 +31,7 @@ async function isOptionInUse(fieldName: string, value: string, isArray: boolean 
 }
 
 export const ensureSettingsDoc = async () => {
-    const settingsDocRef = doc(db, 'settings', 'options');
+    const settingsDocRef = doc(db!, 'settings', 'options');
     try {
         const docSnap = await getDoc(settingsDocRef);
         if (!docSnap.exists()) {
@@ -66,11 +66,10 @@ export const ensureSettingsDoc = async () => {
 }
 
 export const getEnablers = async (userInfo: AppUser, context: 'filter' | 'assignment' = 'filter'): Promise<EnablerOption[]> => {
-  const usersRef = collection(db, 'users');
+  const usersRef = collection(db!, 'users');
   let snapshot;
   
   if (userInfo.role.includes('Admin')) {
-    // Fetch all users to handle legacy string role formats correctly
     snapshot = await getDocs(query(usersRef));
   } else if (userInfo.role.includes('Folk Guide')) {
     snapshot = await getDocs(query(usersRef, where('reportsTo.guideId', '==', userInfo.id)));
@@ -124,7 +123,7 @@ export const getContactSources = async (userInfo?: any): Promise<string[]> => {
 }
 
 export const addContactSource = async (newSource: string, userInfo?: AppUser) => {
-    const settingsDocRef = doc(db, 'settings', 'options');
+    const settingsDocRef = doc(db!, 'settings', 'options');
     const settings = await ensureSettingsDoc();
     const current = settings?.contactSources || [];
     const exists = current.some((s: string) => s.toLowerCase() === newSource.trim().toLowerCase());
@@ -147,7 +146,7 @@ export const addContactSource = async (newSource: string, userInfo?: AppUser) =>
 }
 
 export const updateContactSource = async (oldName: string, newName: string, userInfo?: AppUser) => {
-    const settingsDocRef = doc(db, 'settings', 'options');
+    const settingsDocRef = doc(db!, 'settings', 'options');
     const settings = await ensureSettingsDoc();
     const updated = (settings?.contactSources || []).map((s:string) => s === oldName ? newName : s);
     
@@ -168,7 +167,7 @@ export const deleteContactSource = async (sourceToDelete: string, userInfo?: App
     if (await isOptionInUse('contactSource', sourceToDelete, true)) {
         throw new Error(`Cannot delete '${sourceToDelete}' because it is currently assigned to one or more contacts.`);
     }
-    const settingsDocRef = doc(db, 'settings', 'options');
+    const settingsDocRef = doc(db!, 'settings', 'options');
     const settings = await ensureSettingsDoc();
     const updated = (settings?.contactSources || []).filter((s:string) => s !== sourceToDelete);
     
@@ -191,7 +190,7 @@ export const getCurrentFolkStages = async (userInfo?: any): Promise<FolkStage[]>
 };
 
 export const addCurrentFolkStage = async (newStage: FolkStage, userInfo?: AppUser) => {
-    const settingsDocRef = doc(db, 'settings', 'options');
+    const settingsDocRef = doc(db!, 'settings', 'options');
     const settings = await ensureSettingsDoc();
     const current = settings?.folkStages || [];
     const exists = current.some((s: string) => s.toLowerCase() === newStage.trim().toLowerCase());
@@ -214,7 +213,7 @@ export const addCurrentFolkStage = async (newStage: FolkStage, userInfo?: AppUse
 };
 
 export const updateCurrentFolkStage = async (oldName: FolkStage, newName: FolkStage, userInfo?: AppUser) => {
-    const settingsDocRef = doc(db, 'settings', 'options');
+    const settingsDocRef = doc(db!, 'settings', 'options');
     const settings = await ensureSettingsDoc();
     const updated = (settings?.folkStages || []).map((s: FolkStage) => s === oldName ? newName : s);
     
@@ -235,7 +234,7 @@ export const deleteCurrentFolkStage = async (stageToDelete: FolkStage, userInfo?
     if (await isOptionInUse('currentFolkStage', stageToDelete)) {
         throw new Error(`Cannot delete stage '${stageToDelete}' because contacts are currently assigned to it.`);
     }
-    const settingsDocRef = doc(db, 'settings', 'options');
+    const settingsDocRef = doc(db!, 'settings', 'options');
     const settings = await ensureSettingsDoc();
     const updated = (settings?.folkStages || []).filter((s: FolkStage) => s !== stageToDelete);
     
@@ -258,7 +257,7 @@ export const getOccupationStatuses = async (userInfo?: any): Promise<string[]> =
 };
 
 export const addOccupationStatus = async (newStatus: string, userInfo?: AppUser) => {
-    const settingsDocRef = doc(db, 'settings', 'options');
+    const settingsDocRef = doc(db!, 'settings', 'options');
     const settings = await ensureSettingsDoc();
     const current = settings?.occupationStatuses || [];
     const exists = current.some((s: string) => s.toLowerCase() === newStatus.trim().toLowerCase());
@@ -281,7 +280,7 @@ export const addOccupationStatus = async (newStatus: string, userInfo?: AppUser)
 };
 
 export const updateOccupationStatus = async (oldName: string, newName: string, userInfo?: AppUser) => {
-    const settingsDocRef = doc(db, 'settings', 'options');
+    const settingsDocRef = doc(db!, 'settings', 'options');
     const settings = await ensureSettingsDoc();
     const updated = (settings?.occupationStatuses || []).map((s:string) => s === oldName ? newName : s);
     
@@ -302,7 +301,7 @@ export const deleteOccupationStatus = async (statusToDelete: string, userInfo?: 
     if (await isOptionInUse('occupation', statusToDelete)) {
         throw new Error(`Cannot delete '${statusToDelete}' because it is assigned to contacts.`);
     }
-    const settingsDocRef = doc(db, 'settings', 'options');
+    const settingsDocRef = doc(db!, 'settings', 'options');
     const settings = await ensureSettingsDoc();
     const updated = (settings?.occupationStatuses || []).filter((s:string) => s !== statusToDelete);
     
@@ -325,7 +324,7 @@ export const getStayingWithOptions = async (userInfo?: any): Promise<string[]> =
 };
 
 export const addStayingWithOption = async (newOption: string, userInfo?: AppUser) => {
-    const settingsDocRef = doc(db, 'settings', 'options');
+    const settingsDocRef = doc(db!, 'settings', 'options');
     const settings = await ensureSettingsDoc();
     const current = settings?.stayingWithOptions || [];
     const exists = current.some((s: string) => s.toLowerCase() === newOption.trim().toLowerCase());
@@ -348,7 +347,7 @@ export const addStayingWithOption = async (newOption: string, userInfo?: AppUser
 };
 
 export const updateStayingWithOption = async (oldName: string, newName: string, userInfo?: AppUser) => {
-    const settingsDocRef = doc(db, 'settings', 'options');
+    const settingsDocRef = doc(db!, 'settings', 'options');
     const settings = await ensureSettingsDoc();
     const updated = (settings?.stayingWithOptions || []).map((s:string) => s === oldName ? newName : s);
     
@@ -369,7 +368,7 @@ export const deleteStayingWithOption = async (optionToDelete: string, userInfo?:
     if (await isOptionInUse('stayingWith', optionToDelete)) {
         throw new Error(`Cannot delete '${optionToDelete}' because it is assigned to contacts.`);
     }
-    const settingsDocRef = doc(db, 'settings', 'options');
+    const settingsDocRef = doc(db!, 'settings', 'options');
     const settings = await ensureSettingsDoc();
     const updated = (settings?.stayingWithOptions || []).filter((s:string) => s !== optionToDelete);
     
@@ -388,7 +387,7 @@ export const deleteStayingWithOption = async (optionToDelete: string, userInfo?:
 
 export async function getSgOptions() { const s = await ensureSettingsDoc(); return (s?.sgOptions || defaultActivityOptions).sort(); }
 export async function addSgOption(n: string, u?: AppUser) { 
-    const r = doc(db, 'settings', 'options'); 
+    const r = doc(db!, 'settings', 'options'); 
     const s = await ensureSettingsDoc(); 
     const current = s?.sgOptions || [];
     const exists = current.some((x: string) => x.toLowerCase() === n.trim().toLowerCase());
@@ -408,7 +407,7 @@ export async function addSgOption(n: string, u?: AppUser) {
     return uo; 
 }
 export async function updateSgOption(o: string, n: string, u?: AppUser) { 
-    const r = doc(db, 'settings', 'options'); 
+    const r = doc(db!, 'settings', 'options'); 
     const s = await ensureSettingsDoc(); 
     const uo = (s?.sgOptions || []).map((x:string)=>x===o?n:x); 
     
@@ -428,7 +427,7 @@ export async function deleteSgOption(i: string, u?: AppUser) {
     if (await isOptionInUse('lastSg', i)) {
         throw new Error(`Item '${i}' is currently used in call logs.`);
     }
-    const r = doc(db, 'settings', 'options'); const s = await ensureSettingsDoc(); const uo = (s?.sgOptions || []).filter((x:string)=>x!==i); 
+    const r = doc(db!, 'settings', 'options'); const s = await ensureSettingsDoc(); const uo = (s?.sgOptions || []).filter((x:string)=>x!==i); 
     
     updateDoc(r, { sgOptions: uo }).catch(async (serverError) => {
       const permissionError = new FirestorePermissionError({
@@ -445,7 +444,7 @@ export async function deleteSgOption(i: string, u?: AppUser) {
 
 export async function getMaOptions() { const s = await ensureSettingsDoc(); return (s?.maOptions || defaultActivityOptions).sort(); }
 export async function addMaOption(n: string, u?: AppUser) { 
-    const r = doc(db, 'settings', 'options'); 
+    const r = doc(db!, 'settings', 'options'); 
     const s = await ensureSettingsDoc(); 
     const current = s?.maOptions || [];
     const exists = current.some((x: string) => x.toLowerCase() === n.trim().toLowerCase());
@@ -465,7 +464,7 @@ export async function addMaOption(n: string, u?: AppUser) {
     return uo; 
 }
 export async function updateMaOption(o: string, n: string, u?: AppUser) { 
-    const r = doc(db, 'settings', 'options'); 
+    const r = doc(db!, 'settings', 'options'); 
     const s = await ensureSettingsDoc(); 
     const uo = (s?.maOptions || []).map((x:string)=>x===o?n:x); 
     
@@ -485,7 +484,7 @@ export async function deleteMaOption(i: string, u?: AppUser) {
     if (await isOptionInUse('lastMa', i)) {
         throw new Error(`Item '${i}' is currently used in call logs.`);
     }
-    const r = doc(db, 'settings', 'options'); const s = await ensureSettingsDoc(); const uo = (s?.maOptions || []).filter((x:string)=>x!==i); 
+    const r = doc(db!, 'settings', 'options'); const s = await ensureSettingsDoc(); const uo = (s?.maOptions || []).filter((x:string)=>x!==i); 
     
     updateDoc(r, { maOptions: uo }).catch(async (serverError) => {
       const permissionError = new FirestorePermissionError({
@@ -502,7 +501,7 @@ export async function deleteMaOption(i: string, u?: AppUser) {
 
 export async function getFrpOptions() { const s = await ensureSettingsDoc(); return (s?.frpOptions || defaultActivityOptions).sort(); }
 export async function addFrpOption(n: string, u?: AppUser) { 
-    const r = doc(db, 'settings', 'options'); 
+    const r = doc(db!, 'settings', 'options'); 
     const s = await ensureSettingsDoc(); 
     const current = s?.frpOptions || [];
     const exists = current.some((x: string) => x.toLowerCase() === n.trim().toLowerCase());
@@ -522,7 +521,7 @@ export async function addFrpOption(n: string, u?: AppUser) {
     return uo; 
 }
 export async function updateFrpOption(o: string, n: string, u?: AppUser) { 
-    const r = doc(db, 'settings', 'options'); 
+    const r = doc(db!, 'settings', 'options'); 
     const s = await ensureSettingsDoc(); 
     const uo = (s?.frpOptions || []).map((x:string)=>x===o?n:x); 
     
@@ -542,7 +541,7 @@ export async function deleteFrpOption(i: string, u?: AppUser) {
     if (await isOptionInUse('lastFrp', i)) {
         throw new Error(`Item '${i}' is currently used in call logs.`);
     }
-    const r = doc(db, 'settings', 'options'); const s = await ensureSettingsDoc(); const uo = (s?.frpOptions || []).filter((x:string)=>x!==i); 
+    const r = doc(db!, 'settings', 'options'); const s = await ensureSettingsDoc(); const uo = (s?.frpOptions || []).filter((x:string)=>x!==i); 
     
     updateDoc(r, { frpOptions: uo }).catch(async (serverError) => {
       const permissionError = new FirestorePermissionError({
@@ -563,7 +562,7 @@ export const getActivityFieldLabels = async (): Promise<ActivityFieldLabels> => 
 };
 
 export const updateActivityFieldLabels = async (labels: ActivityFieldLabels, userInfo?: AppUser) => {
-    const settingsDocRef = doc(db, 'settings', 'options');
+    const settingsDocRef = doc(db!, 'settings', 'options');
     
     updateDoc(settingsDocRef, { activityFieldLabels: labels }).catch(async (serverError) => {
       const permissionError = new FirestorePermissionError({
@@ -588,7 +587,7 @@ export const getCustomPersonFields = async (userInfo?: any): Promise<CustomField
 };
 
 export const saveCustomPersonFields = async (fields: CustomField[], userInfo?: AppUser) => {
-    const settingsDocRef = doc(db, 'settings', 'options');
+    const settingsDocRef = doc(db!, 'settings', 'options');
     
     updateDoc(settingsDocRef, { customPersonFields: fields }).catch(async (serverError) => {
       const permissionError = new FirestorePermissionError({
@@ -600,4 +599,29 @@ export const saveCustomPersonFields = async (fields: CustomField[], userInfo?: A
     });
 
     if(userInfo) logAudit('Update Custom Fields', `Updated custom fields definition.`, userInfo);
+};
+
+export const getExternalCoEnablers = async (): Promise<ExternalCoEnabler[]> => {
+  const collectionRef = collection(db!, 'externalCoEnablers');
+  const snap = await getDocs(collectionRef);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as ExternalCoEnabler));
+};
+
+export const addExternalCoEnabler = async (data: Omit<ExternalCoEnabler, 'id' | 'createdAt' | 'createdBy' | 'createdByName'>, userInfo: AppUser) => {
+  const collectionRef = collection(db!, 'externalCoEnablers');
+  const finalData = {
+    ...data,
+    createdBy: userInfo.id,
+    createdByName: userInfo.name,
+    createdAt: serverTimestamp(),
+  };
+  const docRef = await addDoc(collectionRef, finalData);
+  logAudit('Add External Co-Enabler', `Added volunteer: ${data.name}`, userInfo);
+  return { id: docRef.id, ...finalData } as ExternalCoEnabler;
+};
+
+export const deleteExternalCoEnabler = async (id: string, userInfo: AppUser) => {
+  const docRef = doc(db!, 'externalCoEnablers', id);
+  await deleteDoc(docRef);
+  logAudit('Delete External Co-Enabler', `Deleted volunteer record: ${id}`, userInfo);
 };

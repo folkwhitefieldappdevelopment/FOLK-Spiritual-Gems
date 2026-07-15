@@ -431,3 +431,12 @@ export type Goal = {
 };
 
 export type GoalRecord = Goal; // Alias for clarity if needed
+
+export type ExternalCoEnabler = {
+  id: string;
+  name: string;
+  email: string;
+  createdBy: string;
+  createdByName: string;
+  createdAt: any;
+};

@@ -20,7 +20,7 @@ export async function queuePulseReport(
   if (!to || !to.includes('@')) throw new Error("A valid email address is required.");
   await persistenceReady;
 
-  const mailRef = collection(db, 'mail');
+  const mailRef = collection(db!, 'mail');
   const { summary, chantingBrackets, enablerLeaderboard, dangerZone } = insights;
   const dangerIds = new Set(dangerZone.map(p => p.id));
 
@@ -169,5 +169,63 @@ export async function queuePulseReport(
   } catch (e: any) {
     console.error("[Mail Service] Dispatch failed:", e.message);
     throw e;
+  }
+}
+
+/**
+ * Sends a task invitation email to an external co-enabler.
+ */
+export async function sendCoEnablerInviteEmail(
+  to: string,
+  name: string,
+  task: string,
+  link: string,
+  peopleCount: number,
+  senderName: string,
+  durationHours: string
+) {
+  if (!to || !to.includes('@')) return;
+  await persistenceReady;
+
+  const mailRef = collection(db!, 'mail');
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; color: #333;">
+      <h2 style="color: #3f51b5; border-bottom: 2px solid #3f51b5; padding-bottom: 10px;">Interaction Invite: ${task}</h2>
+      <p>Hare Krishna <b>${name}</b>,</p>
+      <p><b>${senderName}</b> has shared a calling list with you for the spiritual mission.</p>
+      
+      <div style="background-color: #f5f5f5; padding: 20px; border-radius: 12px; margin: 20px 0;">
+        <p style="margin-top: 0;"><b>Task Summary:</b></p>
+        <ul style="margin-bottom: 0;">
+          <li><b>Purpose:</b> ${task}</li>
+          <li><b>Contacts:</b> ${peopleCount} records assigned</li>
+          <li><b>Link Expiry:</b> Access expires in ${durationHours} hours</li>
+        </ul>
+      </div>
+
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${link}" style="background-color: #3f51b5; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">BEGIN CALLING SESSION</a>
+      </div>
+
+      <p style="font-size: 12px; color: #666;">If the button above doesn't work, copy and paste this link into your browser:<br/>
+      <span style="color: #3f51b5;">${link}</span></p>
+
+      <p style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px; font-size: 11px; color: #999; text-align: center;">
+        FOLK Spiritual Gems CRM • Secure Outreach Portal
+      </p>
+    </div>
+  `;
+
+  try {
+    await addDoc(mailRef, {
+      to: [to],
+      message: {
+        subject: `📞 Outreach Assignment: ${task}`,
+        html: html,
+      },
+      createdAt: serverTimestamp(),
+    });
+  } catch (e) {
+    console.warn("[Mail Service] Co-enabler invite failed:", e);
   }
 }

@@ -6,6 +6,13 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
     
+    // External Co-Enabler registry rules
+    match /externalCoEnablers/{id} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role.hasAny(['Admin', 'Folk Guide']);
+    }
+    
     // Public access for registration and check-in (Self-Registration Flow)
     match /people/{personId} {
       // Allow creation and specific updates for anyone to support public onboarding
