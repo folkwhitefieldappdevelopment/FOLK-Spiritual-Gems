@@ -380,10 +380,6 @@ const ContactsPageComponent = () => {
                                 <Edit2 className="mr-2 h-4 w-4" /> Edit Fields
                             </Button>
 
-                            <Button variant="ghost" size="sm" onClick={() => setIsAssignCoEnablerDialogOpen(true)} className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-primary-foreground hover:bg-primary-foreground/10 rounded-xl">
-                                Co-Enabler
-                            </Button>
-
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild><Button variant="ghost" size="sm" className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-primary-foreground hover:bg-primary-foreground/10 rounded-xl">Group</Button></DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-64 max-h-80 overflow-y-auto bg-popover text-foreground p-2 rounded-2xl shadow-2xl">
