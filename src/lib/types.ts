@@ -225,26 +225,20 @@ export type BackgroundJob = {
 /**
  * Robust strict check for assignment.
  * Ensures enablers only see their own contacts.
+ * Tasks assigned via shared groups are accessed through the Groups tab only.
  */
 export const isAssignedToUser = (p: Person, userInfo: { id: string; name: string }) => {
   if (!p || !userInfo) return false;
   const myId = userInfo.id;
   const myName = (userInfo.name || '').trim();
 
-  // 1. Strict ID Match (Highly accurate)
+  // 1. Strict ID Match (Primary Enabler Only)
   if (p.enablerId && p.enablerId === myId) return true;
-  if (p.coEnablerId && p.coEnablerId === myId) return true;
 
   // 2. Fallback Name Match (Only if ID is missing on record)
-  // This handles legacy data while preventing overlaps for users with similar names.
   if (!p.enablerId && p.enablerInTouchWith) {
       const enablerOnRecord = p.enablerInTouchWith.split('::')[0].trim();
       if (enablerOnRecord === myName) return true;
-  }
-
-  if (!p.coEnablerId && p.coEnablerName) {
-      const coEnablerOnRecord = p.coEnablerName.trim();
-      if (coEnablerOnRecord === myName) return true;
   }
 
   return false;

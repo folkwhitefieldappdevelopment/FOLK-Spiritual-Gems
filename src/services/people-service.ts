@@ -41,10 +41,6 @@ let masterUnsubscribe: (() => void) | null = null;
 let cachePromise: Promise<Person[]> | null = null;
 let currentSyncStatus: SyncStatus = 'initializing';
 
-// Callback registry for reactive UI updates
-const statusListeners = new Set<(status: SyncStatus) => void>();
-const dataListeners = new Set<(people: Person[]) => void>();
-
 export const getSyncStatus = () => currentSyncStatus;
 
 const updateSyncStatus = (status: SyncStatus) => {
@@ -335,7 +331,6 @@ export const getPeople = async (
       filtered = basePeople.filter(p =>
         isAssignedToUser(p, userInfo) ||
         (p.enablerId && teamIds.has(p.enablerId)) ||
-        (p.coEnablerId && teamIds.has(p.coEnablerId)) ||
         (!p.enablerId && p.enablerInTouchWith && teamNames.has(p.enablerInTouchWith.split('::')[0].trim().toLowerCase()))
       );
     } else {
@@ -611,3 +606,6 @@ export const backfillEnablerId = async (allUsers: AppUser[], userInfo: { id: str
   }
   return count;
 };
+
+const statusListeners = new Set<(status: SyncStatus) => void>();
+const dataListeners = new Set<(people: Person[]) => void>();

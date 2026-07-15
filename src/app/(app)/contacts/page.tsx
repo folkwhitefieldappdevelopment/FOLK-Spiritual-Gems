@@ -69,6 +69,8 @@ import { ContactFilterPanel } from "@/components/contact-filter-panel";
 import { useBackgroundTasks } from "@/contexts/background-task-context";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { assignCoEnablerToPeople } from "@/services/people-service";
+import { AssignCoEnablerDialog } from "@/components/assign-helper-dialog";
 
 const EMPTY_FILTERS: FilterState = {
     name: '', phone: '', location: '', eventName: '', callerName: '', 
@@ -112,6 +114,7 @@ const ContactsPageComponent = () => {
   const [isGroupDialogOpen, setIsGroupDialogOpen] = React.useState(false);
   const [isQrDialogOpen, setIsQrDialogOpen] = React.useState(false);
   const [isGalleryOpen, setIsGalleryOpen] = React.useState(false);
+  const [isAssignCoEnablerDialogOpen, setIsAssignCoEnablerDialogOpen] = React.useState(false);
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(undefined);
   const [editingGroup, setEditingGroup] = React.useState<Group | undefined>(undefined);
   const [personToCall, setPersonToCall] = React.useState<Person | null>(null);
@@ -377,6 +380,10 @@ const ContactsPageComponent = () => {
                                 <Edit2 className="mr-2 h-4 w-4" /> Edit Fields
                             </Button>
 
+                            <Button variant="ghost" size="sm" onClick={() => setIsAssignCoEnablerDialogOpen(true)} className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-primary-foreground hover:bg-primary-foreground/10 rounded-xl">
+                                Co-Enabler
+                            </Button>
+
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild><Button variant="ghost" size="sm" className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-primary-foreground hover:bg-primary-foreground/10 rounded-xl">Group</Button></DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-64 max-h-80 overflow-y-auto bg-popover text-foreground p-2 rounded-2xl shadow-2xl">
@@ -473,6 +480,18 @@ const ContactsPageComponent = () => {
         setIsOpen={setIsBulkEditOpen} 
         selectedIds={Array.from(selectedIds)} 
         onSuccess={() => { fetchContacts(undefined, true); setSelectedIds(new Set()); }} 
+      />
+
+      <AssignCoEnablerDialog 
+        isOpen={isAssignCoEnablerDialogOpen} 
+        setIsOpen={setIsAssignCoEnablerDialogOpen} 
+        onSave={async (u) => { 
+            if (u) await assignCoEnablerToPeople(Array.from(selectedIds), u, appUser!); 
+            fetchContacts(undefined, true); 
+            setSelectedIds(new Set()); 
+        }} 
+        peopleCount={selectedIds.size} 
+        selectedPersonIds={Array.from(selectedIds)} 
       />
     </>
   );

@@ -1,11 +1,13 @@
 "use client";
 import Link from "next/link";
 import * as React from 'react';
-import { Users, MoreHorizontal, Edit, Trash2, PhoneCall, User } from "lucide-react";
+import { Users, MoreHorizontal, Edit, Trash2, PhoneCall, User, Clock } from "lucide-react";
 import type { Group } from "@/lib/types";
 import { useAuth } from "@/contexts/auth-context";
 import { getUserById } from "@/services/user-service";
 import Image from "next/image";
+import { format } from "date-fns";
+import { safeDate } from "@/utils/date";
 
 import {
   Card,
@@ -179,7 +181,18 @@ const GroupCardComponent = ({ group, onEdit, onDelete, onStartCall, ownerName, d
           </Link>
         </div>
         <CardDescription className="line-clamp-2 text-[11px] leading-relaxed min-h-[32px]">
-            {group.description || "No description provided."}
+            {group.task ? (
+                <div className="flex flex-col gap-0.5">
+                    <span className="font-bold text-primary uppercase text-[9px] tracking-tight">Task: {group.task}</span>
+                    <span className="text-muted-foreground">Assigned by {group.assignedByName}</span>
+                    <div className="flex items-center gap-1 text-orange-500 font-black">
+                        <Clock className="h-2.5 w-2.5" />
+                        Expires {group.expiresAt ? format(safeDate(group.expiresAt)!, 'dd MMM, p') : 'Never'}
+                    </div>
+                </div>
+            ) : (
+                group.description || "No description provided."
+            )}
         </CardDescription>
       </CardHeader>
 

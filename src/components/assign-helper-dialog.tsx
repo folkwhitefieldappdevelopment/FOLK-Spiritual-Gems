@@ -123,9 +123,11 @@ export function AssignCoEnablerDialog({
             assignedByName: appUser.name,
         }, { id: appUser.id, name: appUser.name, role: appUser.role });
 
-        await onSave(enabler);
+        // Assignment Successful - Refresh parent selection but skip direct person document update
+        // to prevent flooding the co-enabler's permanent Contacts tab.
         toast({ title: 'Assignment Successful' });
         setIsOpen(false);
+        onSave(null); 
     } catch (e) {
         toast({ variant: 'destructive', title: 'Assignment Failed' });
     } finally {
