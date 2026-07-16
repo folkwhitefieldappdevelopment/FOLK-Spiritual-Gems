@@ -95,7 +95,14 @@ export const computeGoalStatus = (goal: Goal): GoalStatus => {
   if (goal.achievedCount >= goal.targetCount) return 'achieved';
   
   const deadline = safeDate(goal.deadlineDate);
-  if (deadline && deadline < new Date()) return 'overdue';
+  const now = new Date();
+  
+  if (deadline && deadline < now) return 'overdue';
+  
+  // At-risk: Deadline within 3 days
+  if (deadline && (deadline.getTime() - now.getTime() < 3 * 24 * 60 * 60 * 1000)) {
+    return 'at-risk';
+  }
   
   if (goal.achievedCount > 0) return 'in-progress';
   

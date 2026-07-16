@@ -134,22 +134,31 @@ export function GoalsMatrix({ goals, enablers, categories, onUpdateProgress, onE
                                                 <div className={cn(
                                                     "absolute left-0 top-0 bottom-0 w-1",
                                                     status === 'achieved' ? 'bg-green-500' : 
+                                                    status === 'at-risk' ? 'bg-amber-500 animate-pulse' :
                                                     status === 'in-progress' ? 'bg-orange-500' : 
                                                     status === 'overdue' ? 'bg-destructive' : 'bg-muted-foreground/30'
                                                 )} />
                                                 
                                                 <div className="flex flex-col justify-between w-full space-y-2">
                                                     <div className="flex justify-between items-start gap-2">
-                                                        <span className="text-lg font-black text-foreground tracking-tighter leading-none">
-                                                            {goal.achievedCount} / {goal.targetCount}
-                                                        </span>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-lg font-black text-foreground tracking-tighter leading-none">
+                                                                {goal.achievedCount} / {goal.targetCount}
+                                                            </span>
+                                                            {status === 'at-risk' && (
+                                                                <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+                                                            )}
+                                                        </div>
                                                         <span className="text-[8px] font-black uppercase text-muted-foreground tracking-widest opacity-60">
                                                             {goal.targetUnit || 'SOULS'}
                                                         </span>
                                                     </div>
                                                     
                                                     <div className="space-y-1">
-                                                        <p className="text-[9px] font-bold text-muted-foreground uppercase truncate">
+                                                        <p className={cn(
+                                                            "text-[9px] font-bold uppercase truncate",
+                                                            status === 'at-risk' ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"
+                                                        )}>
                                                             {goal.deadlineLabel || (deadline ? format(deadline, 'dd MMM') : 'No Deadline')}
                                                         </p>
                                                         {goal.remark && (

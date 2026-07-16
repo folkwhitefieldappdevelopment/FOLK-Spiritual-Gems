@@ -67,26 +67,38 @@ export function GoalsMobileList({ goals, onUpdateProgress, onEditGoal, onDeleteG
                         return (
                             <Card 
                                 key={goal.id} 
-                                className="bg-popover border-none shadow-lg rounded-2xl overflow-hidden active:scale-[0.98] transition-all cursor-pointer group"
+                                className={cn(
+                                    "bg-popover border-none shadow-lg rounded-2xl overflow-hidden active:scale-[0.98] transition-all cursor-pointer group",
+                                    status === 'at-risk' && "ring-1 ring-amber-500/30"
+                                )}
                                 onClick={() => onUpdateProgress(goal)}
                             >
                                 <CardContent className="p-5 flex flex-col gap-4">
                                     <div className="flex items-center justify-between gap-4">
                                         <div className="flex items-center gap-4 min-w-0">
                                             <div className={cn(
-                                                "h-10 w-1 bg-muted-foreground/20 rounded-full shrink-0",
+                                                "h-10 w-1 rounded-full shrink-0",
                                                 status === 'achieved' ? 'bg-green-500' : 
+                                                status === 'at-risk' ? 'bg-amber-500 animate-pulse' :
                                                 status === 'in-progress' ? 'bg-orange-500' : 
-                                                status === 'overdue' ? 'bg-destructive' : ''
+                                                status === 'overdue' ? 'bg-destructive' : 'bg-muted-foreground/20'
                                             )} />
                                             <div className="min-w-0">
-                                                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-60 leading-none mb-1">
-                                                    {goal.category} • {goal.title}
-                                                </p>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-60 leading-none">
+                                                        {goal.category} • {goal.title}
+                                                    </p>
+                                                    {status === 'at-risk' && (
+                                                        <div className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                                    )}
+                                                </div>
                                                 <h4 className="text-lg font-black text-foreground uppercase tracking-tight leading-none truncate">
                                                     {goal.achievedCount} / {goal.targetCount}
                                                 </h4>
-                                                <div className="flex items-center gap-1.5 mt-2 text-[9px] font-bold text-muted-foreground uppercase">
+                                                <div className={cn(
+                                                    "flex items-center gap-1.5 mt-2 text-[9px] font-bold uppercase",
+                                                    status === 'at-risk' ? "text-amber-600" : "text-muted-foreground"
+                                                )}>
                                                     <Clock className="h-2.5 w-2.5" />
                                                     {goal.deadlineLabel || (deadline ? format(deadline, 'dd MMM yyyy') : 'No Deadline')}
                                                 </div>

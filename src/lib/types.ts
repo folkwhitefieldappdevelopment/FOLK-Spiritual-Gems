@@ -401,7 +401,7 @@ export type AppNotification = {
 };
 
 // Goals Tracking types
-export type GoalStatus = 'not-started' | 'in-progress' | 'achieved' | 'overdue';
+export type GoalStatus = 'not-started' | 'in-progress' | 'achieved' | 'overdue' | 'at-risk';
 export type GoalCategory = string;
 
 export type Goal = {
