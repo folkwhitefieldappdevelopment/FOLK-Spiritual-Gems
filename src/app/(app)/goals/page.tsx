@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useAppToast } from '@/contexts/toast-context';
-import { getGoals, deleteGoal, updateGoalProgress, createGoal } from '@/services/goals-service';
+import { getGoals, deleteGoal, updateGoalProgress, createGoal, updateGoal } from '@/services/goals-service';
 import { getAssignableUsersForAssignments } from '@/services/user-service';
 import type { Goal, GoalStatus, AppUser } from '@/lib/types';
 import { computeGoalStatus } from '@/lib/data';
@@ -24,7 +24,18 @@ import { Card, CardContent } from '@/components/ui/card';
 import { GoalsMatrix } from '@/components/goals/goals-matrix';
 import { GoalsMobileList } from '@/components/goals/goals-mobile-list';
 import { CreateGoalDialog } from '@/components/goals/create-goal-dialog';
+import { EditGoalDialog } from '@/components/goals/edit-goal-dialog';
 import { UpdateGoalProgressDialog } from '@/components/goals/update-goal-progress-dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 
 export default function GoalsPage() {
@@ -37,8 +48,12 @@ export default function GoalsPage() {
   const [isRefreshing, setIsRefreshing] = React.useState(false);
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = React.useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  
   const [selectedGoal, setSelectedGoal] = React.useState<Goal | null>(null);
+  const [goalToDelete, setGoalToDelete] = React.useState<Goal | null>(null);
 
   const isPrivileged = React.useMemo(() => {
     return appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
@@ -79,12 +94,33 @@ export default function GoalsPage() {
     setIsUpdateDialogOpen(true);
   };
 
+  const handleEditGoal = (goal: Goal) => {
+    setSelectedGoal(goal);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleDeletePrompt = (goal: Goal) => {
+    setGoalToDelete(goal);
+    setIsDeleteDialogOpen(true);
+  };
+
   const handleSaveProgress = async (achievedCount: number, remark?: string) => {
     if (!selectedGoal || !appUser) return;
     try {
         await updateGoalProgress(selectedGoal.id, { achievedCount, remark }, appUser);
         toast({ title: 'Progress Updated' });
-        fetchData(silent = true);
+        fetchData(true);
+    } catch (e) {
+        toast({ variant: 'destructive', title: 'Update Failed' });
+    }
+  };
+
+  const handleSaveGoalEdit = async (goalId: string, data: any) => {
+    if (!appUser) return;
+    try {
+        await updateGoal(goalId, data, appUser);
+        toast({ title: 'Goal Updated' });
+        fetchData(true);
     } catch (e) {
         toast({ variant: 'destructive', title: 'Update Failed' });
     }
@@ -95,9 +131,23 @@ export default function GoalsPage() {
     try {
         await createGoal(data, appUser);
         toast({ title: 'Goal Created' });
-        fetchData(silent = true);
+        fetchData(true);
     } catch (e) {
         toast({ variant: 'destructive', title: 'Creation Failed' });
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!goalToDelete || !appUser) return;
+    try {
+        await deleteGoal(goalToDelete.id, appUser);
+        toast({ title: 'Goal Removed' });
+        fetchData(true);
+    } catch (e) {
+        toast({ variant: 'destructive', title: 'Delete Failed' });
+    } finally {
+        setGoalToDelete(null);
+        setIsDeleteDialogOpen(false);
     }
   };
 
@@ -154,6 +204,8 @@ export default function GoalsPage() {
               goals={goals} 
               enablers={enablers}
               onUpdateProgress={handleUpdateProgress}
+              onEditGoal={handleEditGoal}
+              onDeleteGoal={handleDeletePrompt}
               isPrivileged={isPrivileged}
             />
         </div>
@@ -163,6 +215,9 @@ export default function GoalsPage() {
             <GoalsMobileList 
               goals={goals} 
               onUpdateProgress={handleUpdateProgress}
+              onEditGoal={handleEditGoal}
+              onDeleteGoal={handleDeletePrompt}
+              isPrivileged={isPrivileged}
               currentUserId={appUser?.id}
             />
         </div>
@@ -175,12 +230,35 @@ export default function GoalsPage() {
         onSave={handleCreateGoal}
       />
 
+      <EditGoalDialog 
+        isOpen={isEditDialogOpen} 
+        setIsOpen={setIsEditDialogOpen} 
+        goal={selectedGoal}
+        enablers={enablers}
+        onSave={handleSaveGoalEdit}
+      />
+
       <UpdateGoalProgressDialog 
         isOpen={isUpdateDialogOpen} 
         setIsOpen={setIsUpdateDialogOpen} 
         goal={selectedGoal}
         onSave={handleSaveProgress}
       />
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="bg-popover border-none rounded-[2rem] shadow-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-black uppercase tracking-tight">Delete Goal Target?</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground font-bold">
+                Are you sure you want to remove <span className="text-primary">"{goalToDelete?.title}"</span> for {goalToDelete?.enablerName}? This will permanently remove the record from all dashboards.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-muted border-border text-foreground rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive hover:bg-destructive/90 rounded-xl font-black uppercase tracking-widest">Delete Goal</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

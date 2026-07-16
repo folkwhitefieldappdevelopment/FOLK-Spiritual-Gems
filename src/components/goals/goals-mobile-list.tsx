@@ -4,20 +4,23 @@ import * as React from 'react';
 import { format } from 'date-fns';
 import type { Goal } from '@/lib/types';
 import { computeGoalStatus } from '@/lib/data';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { safeDate } from '@/utils/date';
-import { User, Clock, ArrowRight } from 'lucide-react';
+import { User, Clock, ArrowRight, Pencil, Trash2 } from 'lucide-react';
 
 type GoalsMobileListProps = {
   goals: Goal[];
   onUpdateProgress: (goal: Goal) => void;
+  onEditGoal: (goal: Goal) => void;
+  onDeleteGoal: (goal: Goal) => void;
+  isPrivileged: boolean;
   currentUserId?: string;
 };
 
-export function GoalsMobileList({ goals, onUpdateProgress, currentUserId }: GoalsMobileListProps) {
-  // Group goals by enabler
+export function GoalsMobileList({ goals, onUpdateProgress, onEditGoal, onDeleteGoal, isPrivileged, currentUserId }: GoalsMobileListProps) {
   const grouped = React.useMemo(() => {
     const map = new Map<string, Goal[]>();
     goals.forEach(g => {
@@ -64,31 +67,54 @@ export function GoalsMobileList({ goals, onUpdateProgress, currentUserId }: Goal
                         return (
                             <Card 
                                 key={goal.id} 
-                                className="bg-popover border-none shadow-lg rounded-2xl overflow-hidden active:scale-[0.98] transition-all cursor-pointer"
+                                className="bg-popover border-none shadow-lg rounded-2xl overflow-hidden active:scale-[0.98] transition-all cursor-pointer group"
                                 onClick={() => onUpdateProgress(goal)}
                             >
-                                <CardContent className="p-5 flex items-center justify-between gap-4">
-                                    <div className="flex items-center gap-4 min-w-0">
-                                        <div className={cn(
-                                            "h-10 w-1 bg-muted-foreground/20 rounded-full shrink-0",
-                                            status === 'achieved' ? 'bg-green-500' : 
-                                            status === 'in-progress' ? 'bg-orange-500' : 
-                                            status === 'overdue' ? 'bg-destructive' : ''
-                                        )} />
-                                        <div className="min-w-0">
-                                            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-60 leading-none mb-1">
-                                                {goal.category} • {goal.title}
-                                            </p>
-                                            <h4 className="text-lg font-black text-foreground uppercase tracking-tight leading-none truncate">
-                                                {goal.achievedCount} / {goal.targetCount}
-                                            </h4>
-                                            <div className="flex items-center gap-1.5 mt-2 text-[9px] font-bold text-muted-foreground uppercase">
-                                                <Clock className="h-2.5 w-2.5" />
-                                                {goal.deadlineLabel || (deadline ? format(deadline, 'dd MMM yyyy') : 'No Deadline')}
+                                <CardContent className="p-5 flex flex-col gap-4">
+                                    <div className="flex items-center justify-between gap-4">
+                                        <div className="flex items-center gap-4 min-w-0">
+                                            <div className={cn(
+                                                "h-10 w-1 bg-muted-foreground/20 rounded-full shrink-0",
+                                                status === 'achieved' ? 'bg-green-500' : 
+                                                status === 'in-progress' ? 'bg-orange-500' : 
+                                                status === 'overdue' ? 'bg-destructive' : ''
+                                            )} />
+                                            <div className="min-w-0">
+                                                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-60 leading-none mb-1">
+                                                    {goal.category} • {goal.title}
+                                                </p>
+                                                <h4 className="text-lg font-black text-foreground uppercase tracking-tight leading-none truncate">
+                                                    {goal.achievedCount} / {goal.targetCount}
+                                                </h4>
+                                                <div className="flex items-center gap-1.5 mt-2 text-[9px] font-bold text-muted-foreground uppercase">
+                                                    <Clock className="h-2.5 w-2.5" />
+                                                    {goal.deadlineLabel || (deadline ? format(deadline, 'dd MMM yyyy') : 'No Deadline')}
+                                                </div>
                                             </div>
                                         </div>
+                                        <ArrowRight className="h-4 w-4 text-muted-foreground/30 shrink-0" />
                                     </div>
-                                    <ArrowRight className="h-4 w-4 text-muted-foreground/30 shrink-0" />
+                                    
+                                    {isPrivileged && (
+                                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/50">
+                                          <Button 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            className="h-8 px-3 text-[9px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary"
+                                            onClick={(e) => { e.stopPropagation(); onEditGoal(goal); }}
+                                          >
+                                              <Pencil className="h-3 w-3 mr-1.5" /> Edit
+                                          </Button>
+                                          <Button 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            className="h-8 px-3 text-[9px] font-black uppercase tracking-widest text-muted-foreground hover:text-destructive"
+                                            onClick={(e) => { e.stopPropagation(); onDeleteGoal(goal); }}
+                                          >
+                                              <Trash2 className="h-3 w-3 mr-1.5" /> Delete
+                                          </Button>
+                                      </div>
+                                    )}
                                 </CardContent>
                             </Card>
                         );

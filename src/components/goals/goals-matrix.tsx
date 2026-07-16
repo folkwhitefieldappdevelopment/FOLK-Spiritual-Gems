@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import { format } from 'date-fns';
-import type { Goal, GoalStatus, AppUser } from '@/lib/types';
+import { Pencil, Trash2 } from 'lucide-react';
+import type { Goal, AppUser } from '@/lib/types';
 import { computeGoalStatus } from '@/lib/data';
 import { 
   Table, 
@@ -12,7 +13,7 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { safeDate } from '@/utils/date';
@@ -21,11 +22,12 @@ type GoalsMatrixProps = {
   goals: Goal[];
   enablers: AppUser[];
   onUpdateProgress: (goal: Goal) => void;
+  onEditGoal: (goal: Goal) => void;
+  onDeleteGoal: (goal: Goal) => void;
   isPrivileged: boolean;
 };
 
-export function GoalsMatrix({ goals, enablers, onUpdateProgress, isPrivileged }: GoalsMatrixProps) {
-  // 1. Logic to extract unique enablers (Rows) and titles (Columns)
+export function GoalsMatrix({ goals, enablers, onUpdateProgress, onEditGoal, onDeleteGoal, isPrivileged }: GoalsMatrixProps) {
   const rosterNames = enablers.map(e => e.name);
   const goalEnablerNames = goals.map(g => g.enablerName);
   const enablerNames = Array.from(new Set([...rosterNames, ...goalEnablerNames])).sort();
@@ -53,7 +55,6 @@ export function GoalsMatrix({ goals, enablers, onUpdateProgress, isPrivileged }:
         <div className="min-w-max">
             <Table>
                 <TableHeader>
-                    {/* Category Headers */}
                     <TableRow className="hover:bg-transparent border-b-2 border-border bg-muted/30 h-16">
                         <TableHead className="w-[240px] sticky left-0 z-20 bg-muted/95 backdrop-blur border-r border-border font-black text-[10px] uppercase tracking-[0.2em] text-muted-foreground pl-8">
                             Enabler List
@@ -71,7 +72,6 @@ export function GoalsMatrix({ goals, enablers, onUpdateProgress, isPrivileged }:
                         ))}
                     </TableRow>
                     
-                    {/* Title Headers */}
                     <TableRow className="hover:bg-transparent bg-muted/10 h-20">
                         <TableHead className="w-[240px] sticky left-0 z-20 bg-muted/95 backdrop-blur border-r border-border pl-8"></TableHead>
                         {columnsByCat.map(cat => (
@@ -106,11 +106,31 @@ export function GoalsMatrix({ goals, enablers, onUpdateProgress, isPrivileged }:
                                     return (
                                         <TableCell 
                                             key={goal.id} 
-                                            className="p-1 border-r border-border/30 cursor-pointer group"
+                                            className="p-1 border-r border-border/30 cursor-pointer group relative"
                                             onClick={() => onUpdateProgress(goal)}
                                         >
+                                            {isPrivileged && (
+                                              <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                                <Button 
+                                                  variant="secondary" 
+                                                  size="icon" 
+                                                  className="h-6 w-6 rounded-md shadow-sm"
+                                                  onClick={(e) => { e.stopPropagation(); onEditGoal(goal); }}
+                                                >
+                                                  <Pencil className="h-3 w-3" />
+                                                </Button>
+                                                <Button 
+                                                  variant="destructive" 
+                                                  size="icon" 
+                                                  className="h-6 w-6 rounded-md shadow-sm"
+                                                  onClick={(e) => { e.stopPropagation(); onDeleteGoal(goal); }}
+                                                >
+                                                  <Trash2 className="h-3 w-3" />
+                                                </Button>
+                                              </div>
+                                            )}
+
                                             <div className="flex h-full min-h-[90px] relative overflow-hidden transition-all hover:bg-muted/50 p-4">
-                                                {/* Left Status Bar */}
                                                 <div className={cn(
                                                     "absolute left-0 top-0 bottom-0 w-1",
                                                     status === 'achieved' ? 'bg-green-500' : 
