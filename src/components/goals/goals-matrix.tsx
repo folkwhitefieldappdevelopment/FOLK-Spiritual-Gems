@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { format } from 'date-fns';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Trophy } from 'lucide-react';
 import type { Goal, AppUser } from '@/lib/types';
 import { computeGoalStatus } from '@/lib/data';
 import { 
@@ -130,7 +130,12 @@ export function GoalsMatrix({ goals, enablers, categories, onUpdateProgress, onE
                                               </div>
                                             )}
 
-                                            <div className="flex h-full min-h-[90px] relative overflow-hidden transition-all hover:bg-muted/50 p-4">
+                                            <div className={cn(
+                                                "flex h-full min-h-[90px] relative overflow-hidden transition-all hover:bg-muted/50 p-4",
+                                                status === 'at-risk' && "bg-amber-500/5",
+                                                status === 'overdue' && "bg-destructive/10 ring-1 ring-destructive/40",
+                                                status === 'achieved' && "bg-green-500/10 ring-1 ring-green-500/30"
+                                            )}>
                                                 <div className={cn(
                                                     "absolute left-0 top-0 bottom-0 w-1",
                                                     status === 'achieved' ? 'bg-green-500' : 
@@ -148,6 +153,12 @@ export function GoalsMatrix({ goals, enablers, categories, onUpdateProgress, onE
                                                             {status === 'at-risk' && (
                                                                 <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
                                                             )}
+                                                            {status === 'overdue' && (
+                                                                <div className="h-2 w-2 rounded-full bg-destructive animate-[pulse_1s_ease-in-out_infinite] shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                                                            )}
+                                                            {status === 'achieved' && (
+                                                                <Trophy className="h-4 w-4 text-green-600" />
+                                                            )}
                                                         </div>
                                                         <span className="text-[8px] font-black uppercase text-muted-foreground tracking-widest opacity-60">
                                                             {goal.targetUnit || 'SOULS'}
@@ -157,7 +168,10 @@ export function GoalsMatrix({ goals, enablers, categories, onUpdateProgress, onE
                                                     <div className="space-y-1">
                                                         <p className={cn(
                                                             "text-[9px] font-bold uppercase truncate",
-                                                            status === 'at-risk' ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"
+                                                            status === 'at-risk' && "text-amber-600 dark:text-amber-400",
+                                                            status === 'overdue' && "text-destructive",
+                                                            status === 'achieved' && "text-green-600",
+                                                            (!['at-risk', 'overdue', 'achieved'].includes(status)) && "text-muted-foreground"
                                                         )}>
                                                             {goal.deadlineLabel || (deadline ? format(deadline, 'dd MMM') : 'No Deadline')}
                                                         </p>

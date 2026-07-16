@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { safeDate } from '@/utils/date';
-import { User, Clock, ArrowRight, Pencil, Trash2 } from 'lucide-react';
+import { User, Clock, ArrowRight, Pencil, Trash2, Trophy } from 'lucide-react';
 
 type GoalsMobileListProps = {
   goals: Goal[];
@@ -69,7 +69,9 @@ export function GoalsMobileList({ goals, onUpdateProgress, onEditGoal, onDeleteG
                                 key={goal.id} 
                                 className={cn(
                                     "bg-popover border-none shadow-lg rounded-2xl overflow-hidden active:scale-[0.98] transition-all cursor-pointer group",
-                                    status === 'at-risk' && "ring-1 ring-amber-500/30"
+                                    status === 'at-risk' && "ring-1 ring-amber-500/30 bg-amber-500/5",
+                                    status === 'overdue' && "ring-1 ring-destructive/40 bg-destructive/10",
+                                    status === 'achieved' && "ring-1 ring-green-500/30 bg-green-500/10"
                                 )}
                                 onClick={() => onUpdateProgress(goal)}
                             >
@@ -91,13 +93,22 @@ export function GoalsMobileList({ goals, onUpdateProgress, onEditGoal, onDeleteG
                                                     {status === 'at-risk' && (
                                                         <div className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
                                                     )}
+                                                    {status === 'overdue' && (
+                                                        <div className="h-1.5 w-1.5 rounded-full bg-destructive animate-[pulse_1s_ease-in-out_infinite]" />
+                                                    )}
+                                                    {status === 'achieved' && (
+                                                        <Trophy className="h-3 w-3 text-green-600" />
+                                                    )}
                                                 </div>
                                                 <h4 className="text-lg font-black text-foreground uppercase tracking-tight leading-none truncate">
                                                     {goal.achievedCount} / {goal.targetCount}
                                                 </h4>
                                                 <div className={cn(
                                                     "flex items-center gap-1.5 mt-2 text-[9px] font-bold uppercase",
-                                                    status === 'at-risk' ? "text-amber-600" : "text-muted-foreground"
+                                                    status === 'at-risk' && "text-amber-600",
+                                                    status === 'overdue' && "text-destructive",
+                                                    status === 'achieved' && "text-green-600",
+                                                    (!['at-risk', 'overdue', 'achieved'].includes(status)) && "text-muted-foreground"
                                                 )}>
                                                     <Clock className="h-2.5 w-2.5" />
                                                     {goal.deadlineLabel || (deadline ? format(deadline, 'dd MMM yyyy') : 'No Deadline')}
