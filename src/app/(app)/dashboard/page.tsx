@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -48,6 +47,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDuration } from '@/utils/format';
+import { GoalAlerts } from '@/components/dashboard/goal-alerts';
 
 export default function DashboardPage() {
   const { appUser } = useAuth();
@@ -168,6 +168,8 @@ export default function DashboardPage() {
         </PageHeader>
 
         <main className="flex-1 space-y-6 p-4 md:p-8 pt-0 pb-24">
+            <GoalAlerts />
+
             <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
                 <MiniStatCard 
                     title="ASSIGNED" 
