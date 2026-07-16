@@ -27,7 +27,8 @@ import {
     Wifi,
     ClipboardCheck,
     ArrowRight,
-    Flame
+    Flame,
+    Loader2
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -62,7 +63,7 @@ export default function DashboardPage() {
   const [selectedFolkGuideId, setSelectedFolkGuideId] = useState<string>('all');
   const [folkGuides, setFGuides] = useState<AppUser[]>([]);
   
-  const { data, syncStatus, isLoading } = useDashboardStats(dateRange, selectedFolkGuideId);
+  const { data, syncStatus, isLoading, isRefetching } = useDashboardStats(dateRange, selectedFolkGuideId);
 
   useEffect(() => {
     if (appUser?.role.includes('Admin')) {
@@ -126,7 +127,7 @@ export default function DashboardPage() {
                 {isAdmin && (
                     <Select value={selectedFolkGuideId} onValueChange={setSelectedFolkGuideId}>
                         <SelectTrigger className="w-[180px] h-9 rounded-xl border-border bg-muted/50 text-foreground font-black text-[10px] uppercase">
-                            <UsersRound className="h-3 w-3 mr-2" />
+                            <UsersRound className="h-3.5 w-3.5 mr-2" />
                             <SelectValue placeholder="All Guides" />
                         </SelectTrigger>
                         <SelectContent className="bg-popover border-border text-foreground">
@@ -141,8 +142,10 @@ export default function DashboardPage() {
                 <Popover>
                     <PopoverTrigger asChild>
                         <Button variant="outline" size="sm" className="h-9 rounded-xl border-border text-foreground bg-muted/50 font-black px-4 gap-2">
-                            <CalendarIcon className="h-3.5 w-3.5" />
-                            {dateRange?.from ? (
+                            {isRefetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CalendarIcon className="h-3.5 w-3.5" />}
+                            {isRefetching ? (
+                                <span className="text-[10px] uppercase">Updating...</span>
+                            ) : dateRange?.from ? (
                                 dateRange.to && !isSameDay(dateRange.from, dateRange.to) ? (
                                     <span className="text-[10px] uppercase">
                                         {format(dateRange.from, "MMM dd")} - {format(dateRange.to, "MMM dd")}
@@ -169,7 +172,16 @@ export default function DashboardPage() {
             </div>
         </PageHeader>
 
-        <main className="flex-1 space-y-6 p-4 md:p-8 pt-0 pb-24">
+        <main className={cn(
+            "flex-1 space-y-6 p-4 md:p-8 pt-0 pb-24 relative transition-opacity duration-300",
+            isRefetching && "opacity-50 pointer-events-none"
+        )}>
+            {isRefetching && (
+                <div className="absolute top-0 left-0 right-0 z-50">
+                    <div className="h-0.5 w-full bg-primary animate-pulse" />
+                </div>
+            )}
+            
             <GoalAlerts />
 
             <div className="grid gap-4 grid-cols-2 md:grid-cols-4">

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getDashboardStats, getFastSummaryStats } from '../services/dashboard-service';
 import { useAuth } from '../contexts/auth-context';
@@ -27,6 +26,7 @@ export function useDashboardStats(dateRange?: DateRange, folkGuideId?: string) {
   const folkGuideIdRef = useRef(folkGuideId);
   // Store accurate server counts to prevent regression from local cache snapshots
   const fastStatsRef = useRef<{ totalContactsCount: number; myContactsCount: number } | null>(null);
+  const hasMountedRef = useRef(false);
 
   useEffect(() => {
     dateRangeRef.current = dateRange;
@@ -50,6 +50,21 @@ export function useDashboardStats(dateRange?: DateRange, folkGuideId?: string) {
       console.error("Recompute failed", e);
     }
   }, [appUser]);
+
+  // Trigger recomputation immediately when filters change
+  useEffect(() => {
+    if (!appUser) return;
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return; // skip first run, initial fetch is handled elsewhere
+    }
+    let cancelled = false;
+    setIsRefetching(true);
+    recomputeStats([]).finally(() => {
+      if (!cancelled) setIsRefetching(false);
+    });
+    return () => { cancelled = true; };
+  }, [dateRange?.from?.getTime(), dateRange?.to?.getTime(), folkGuideId, appUser, recomputeStats]);
 
   useEffect(() => {
     if (!appUser) return;
@@ -87,7 +102,8 @@ export function useDashboardStats(dateRange?: DateRange, folkGuideId?: string) {
                         byEnabler: {},
                         byYear: {},
                         byChantingCategory: {},
-                        enablerBreakdown: []
+                        enablerBreakdown: [],
+                        chantingBreakdown: []
                     },
                     callingReportAll: emptyReport,
                     callingReportMy: emptyReport,
