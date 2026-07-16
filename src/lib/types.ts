@@ -135,6 +135,7 @@ export type FilterState = {
   contactSources: string[];
   stage: string;
   chantingRoundsMin: string;
+  chantingRoundsMax?: string;
 };
 
 export type Person = {
@@ -308,6 +309,16 @@ export type EnablerStageBreakdown = {
   totalContacts: number;
 };
 
+export type EnablerChantingBreakdown = {
+  enablerId: string;
+  enablerName: string;
+  rounds16Plus: number;
+  rounds9to15: number;
+  rounds3to8: number;
+  rounds0to2: number;
+  totalContacts: number;
+};
+
 export type DashboardData = {
   stats: {
     myContactsCount: number;
@@ -318,6 +329,7 @@ export type DashboardData = {
     byYear: Record<string, number>;
     byChantingCategory: Record<string, number>;
     enablerBreakdown?: EnablerStageBreakdown[];
+    chantingBreakdown?: EnablerChantingBreakdown[];
   };
   callingReportAll: CallingReport;
   callingReportMy: CallingReport;

@@ -1,4 +1,4 @@
-import type { Person, Group, FolkStage, EnablerStageBreakdown, AppUser } from './types';
+import type { Person, Group, FolkStage, EnablerStageBreakdown, EnablerChantingBreakdown, AppUser } from './types';
 import { ELIMINATED_STATUSES } from './types';
 
 // The structure for defining a dynamic group
@@ -141,4 +141,34 @@ export function computeEnablerStageBreakdown(people: Person[], enablers: AppUser
       totalContacts: enablerPeople.length
     };
   }).sort((a, b) => b.sixteenRounder - a.sixteenRounder || b.frp - a.frp || b.sgW - a.sgW || b.sgS - a.sgS);
+}
+
+/**
+ * Computes chanting round distribution for each enabler.
+ * Buckets: 16+, 9-15, 3-8, 0-2.
+ */
+export function computeEnablerChantingBreakdown(people: Person[], enablers: AppUser[]): EnablerChantingBreakdown[] {
+  return enablers.map(enabler => {
+    const enablerPeople = people.filter(p => {
+      if (p.isDeleted) return false;
+      const matchesId = p.enablerId === enabler.id;
+      const matchesName = !p.enablerId && p.enablerInTouchWith && p.enablerInTouchWith.split('::')[0].trim() === enabler.name.trim();
+      return matchesId || matchesName;
+    });
+
+    return {
+      enablerId: enabler.id,
+      enablerName: enabler.name,
+      rounds16Plus: enablerPeople.filter(p => (p.chantingStatus || 0) >= 16).length,
+      rounds9to15: enablerPeople.filter(p => (p.chantingStatus || 0) >= 9 && (p.chantingStatus || 0) <= 15).length,
+      rounds3to8: enablerPeople.filter(p => (p.chantingStatus || 0) >= 3 && (p.chantingStatus || 0) <= 8).length,
+      rounds0to2: enablerPeople.filter(p => (p.chantingStatus || 0) >= 0 && (p.chantingStatus || 0) <= 2).length,
+      totalContacts: enablerPeople.length
+    };
+  }).sort((a, b) => 
+    b.rounds16Plus - a.rounds16Plus || 
+    b.rounds9to15 - a.rounds9to15 || 
+    b.rounds3to8 - a.rounds3to8 || 
+    b.rounds0to2 - a.rounds0to2
+  );
 }

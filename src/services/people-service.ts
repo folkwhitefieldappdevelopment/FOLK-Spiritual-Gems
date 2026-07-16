@@ -287,12 +287,19 @@ export const getPeople = async (
           }
       }
       
-      if (filters.chantingRoundsMin) {
-          const min = parseInt(filters.chantingRoundsMin);
-          if ((p.chantingStatus || 0) < min) return false;
+      const rounds = p.chantingStatus || 0;
+      if (filters.chantingRoundsMin || filters.chantingRoundsMax) {
+          if (filters.chantingRoundsMin) {
+              const min = parseInt(filters.chantingRoundsMin);
+              if (rounds < min) return false;
+          }
+          if (filters.chantingRoundsMax) {
+              const max = parseInt(filters.chantingRoundsMax);
+              if (rounds > max) return false;
+          }
       } else if (filters.chantingRounds) {
-        const rounds = parseInt(filters.chantingRounds);
-        if (p.chantingStatus !== rounds) return false;
+        const target = parseInt(filters.chantingRounds);
+        if (rounds !== target) return false;
       }
 
       if (filters.name && !p.fullName?.toLowerCase().includes(filters.name.toLowerCase())) return false;

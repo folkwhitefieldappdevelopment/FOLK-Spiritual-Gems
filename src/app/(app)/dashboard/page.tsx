@@ -26,7 +26,8 @@ import {
     RefreshCw,
     Wifi,
     ClipboardCheck,
-    ArrowRight
+    ArrowRight,
+    Flame
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -38,7 +39,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { callStatuses } from '@/lib/types';
-import type { AppUser, EnablerStageBreakdown } from '@/lib/types';
+import type { AppUser, EnablerStageBreakdown, EnablerChantingBreakdown } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
   Collapsible,
@@ -73,6 +74,7 @@ export default function DashboardPage() {
   const reportAll = data?.callingReportAll;
   const leaderboard = data?.leaderboard || [];
   const enablerBreakdown = stats?.enablerBreakdown || [];
+  const chantingBreakdown = stats?.chantingBreakdown || [];
 
   const navigateToContacts = (params: Record<string, string>, includeDateRange: boolean = false) => {
     const searchParams = new URLSearchParams();
@@ -355,6 +357,101 @@ export default function DashboardPage() {
                                 </div>
                             </Card>
                         ))}
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Chanting Rounds Breakdown Section */}
+            <Card className="bg-popover border-none rounded-[2rem] shadow-2xl overflow-hidden">
+                <CardHeader className="p-8 pb-4 flex flex-row items-center justify-between bg-card border-b border-border">
+                    <div className="space-y-1">
+                        <CardTitle className="text-xl font-black text-foreground uppercase tracking-tight flex items-center gap-3">
+                            <Flame className="h-6 w-6 text-[#FF9800]" />
+                            Chanting Rounds Breakdown by Enabler
+                        </CardTitle>
+                        <CardDescription className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em]">
+                            Live distribution of contacts by daily chanting rounds
+                        </CardDescription>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <div className="hidden md:block overflow-x-auto">
+                        <Table>
+                            <TableHeader className="bg-muted/30">
+                                <TableRow className="hover:bg-transparent border-none">
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground pl-8 h-12">Enabler</TableHead>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-center h-12">16+</TableHead>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-center h-12">9 – 15</TableHead>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-center h-12">3 – 8</TableHead>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-center h-12">0 – 2</TableHead>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-right pr-8 h-12">Total</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {chantingBreakdown.length > 0 ? chantingBreakdown.map((entry) => (
+                                    <TableRow key={entry.enablerId} className="border-b border-border hover:bg-muted/50 transition-colors">
+                                        <TableCell 
+                                            className="pl-8 py-5 font-black text-foreground uppercase text-xs cursor-pointer hover:text-primary transition-colors"
+                                            onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName }, false)}
+                                        >
+                                            {entry.enablerName}
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <div 
+                                                className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all active:scale-95"
+                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '16' }, false)}
+                                            >
+                                                <Badge className="font-black bg-[#FF9800]/10 text-[#FF9800] border-none h-7 px-3">
+                                                    {entry.rounds16Plus}
+                                                </Badge>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <div 
+                                                className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all active:scale-95"
+                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '9', chantingRoundsMax: '15' }, false)}
+                                            >
+                                                <Badge variant="outline" className="font-black border-primary/20 text-primary bg-primary/5 h-7 px-3">
+                                                    {entry.rounds9to15}
+                                                </Badge>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <div 
+                                                className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all active:scale-95"
+                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '3', chantingRoundsMax: '8' }, false)}
+                                            >
+                                                <Badge variant="outline" className="font-black border-muted-foreground/20 text-muted-foreground bg-muted/5 h-7 px-3">
+                                                    {entry.rounds3to8}
+                                                </Badge>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <div 
+                                                className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all active:scale-95"
+                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '0', chantingRoundsMax: '2' }, false)}
+                                            >
+                                                <Badge variant="outline" className="font-black border-muted-foreground/10 text-muted-foreground/60 h-7 px-3">
+                                                    {entry.rounds0to2}
+                                                </Badge>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell 
+                                            className="text-right pr-8 font-black text-sm text-muted-foreground cursor-pointer hover:text-primary transition-colors"
+                                            onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName }, false)}
+                                        >
+                                            {entry.totalContacts}
+                                        </TableCell>
+                                    </TableRow>
+                                )) : (
+                                    <TableRow>
+                                        <TableCell colSpan={6} className="h-32 text-center opacity-30 italic font-bold text-foreground">
+                                            No data available.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
                     </div>
                 </CardContent>
             </Card>

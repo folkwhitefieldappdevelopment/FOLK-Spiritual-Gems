@@ -1,4 +1,3 @@
-
 'use client';
 
 /**
@@ -23,7 +22,7 @@ import { safeDate } from '@/utils/date';
 import { startOfDay, endOfDay, isWithinInterval, format } from 'date-fns';
 import { getCachedPeople } from './people-service';
 import { getAssignableUsersForAssignments } from './user-service';
-import { computeEnablerStageBreakdown } from '@/lib/dynamic-groups';
+import { computeEnablerStageBreakdown, computeEnablerChantingBreakdown } from '@/lib/dynamic-groups';
 
 /**
  * High-performance summary fetcher.
@@ -212,12 +211,14 @@ export async function getDashboardStats(
       else byChanting['0-1 R']++;
   });
 
-  // Calculate Enabler Breakdown for the dashboard table
+  // Calculate Breakdowns
   let enablerRoster = await getAssignableUsersForAssignments(appUser);
   if (appUser.role.includes('Folk Enabler') && !enablerRoster.some(e => e.id === appUser.id)) {
     enablerRoster = [appUser, ...enablerRoster];
   }
+  
   const enablerBreakdown = computeEnablerStageBreakdown(activePeople, enablerRoster);
+  const chantingBreakdown = computeEnablerChantingBreakdown(activePeople, enablerRoster);
 
   return {
     stats: { 
@@ -228,7 +229,8 @@ export async function getDashboardStats(
         byEnabler, 
         byYear, 
         byChantingCategory: byChanting,
-        enablerBreakdown
+        enablerBreakdown,
+        chantingBreakdown
     },
     callingReportAll: buildReport(activePeople),
     callingReportMy: buildReport(activePeople, appUser.id),
