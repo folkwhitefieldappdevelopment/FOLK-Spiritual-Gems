@@ -15,7 +15,8 @@ import {
   Save,
   ArrowLeft,
   Edit,
-  PhoneCall
+  PhoneCall,
+  MessageCircle
 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import type { Person, Group } from '@/lib/types';
@@ -45,6 +46,7 @@ import { Badge } from '@/components/ui/badge';
 import { EditablePersonDetailsForm, type EditablePersonDetailsFormRef } from '@/components/editable-person-details-form';
 import { format, isValid } from 'date-fns';
 import { ConfirmSessionDialog } from '@/components/confirm-session-dialog';
+import { AskEnablerDialog } from '@/components/ask-enabler-dialog';
 import { FullPageLoader } from './loader';
 import { CallLog } from '@/lib/call-log';
 
@@ -80,10 +82,12 @@ export default function PersonDetailClient({ personId }: { personId: string }) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isEditing, setIsEditing] = React.useState(false);
   const [isConfirmSessionDialogOpen, setIsConfirmSessionDialogOpen] = React.useState(false);
+  const [isAskEnablerOpen, setIsAskEnablerOpen] = React.useState(false);
   const [navIds, setNavIds] = React.useState<{ prev?: string; next?: string }>({});
   const detailsFormRef = React.useRef<EditablePersonDetailsFormRef>(null);
 
   const contextScope = (searchParams.get('scope') as 'all' | 'my') || 'my';
+  const isPrivileged = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
 
   const fetchData = React.useCallback(async () => {
     if (!personId || !appUser) return;
@@ -153,6 +157,11 @@ export default function PersonDetailClient({ personId }: { personId: string }) {
                     <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" disabled={!navIds.next} onClick={() => navIds.next && router.push(`/contacts/profile?id=${navIds.next}&scope=${contextScope}`)}><ChevronRight className="h-5 w-5" /></Button>
                 </div>
                 <div className="flex items-center gap-2">
+                    {isPrivileged && person.enablerId && (
+                        <Button onClick={() => setIsAskEnablerOpen(true)} variant="outline" className="h-9 px-3 font-black uppercase text-[10px] rounded-xl border-green-500/20 text-green-600 bg-green-500/5 hover:bg-green-500/10">
+                            <MessageCircle className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">Ask Enabler</span>
+                        </Button>
+                    )}
                     <Button onClick={handleDirectCall} className="h-9 font-black uppercase text-[10px] rounded-xl bg-green-500 hover:bg-green-600 shadow-lg shadow-green-500/10">
                         <PhoneCall className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">Call Now</span>
                     </Button>
@@ -194,6 +203,7 @@ export default function PersonDetailClient({ personId }: { personId: string }) {
             </div>
           </main>
       <ConfirmSessionDialog isOpen={isConfirmSessionDialogOpen} setIsOpen={setIsConfirmSessionDialogOpen} onStartSession={handleStartNewSession} singlePersonName={person.fullName} totalCount={1} />
+      <AskEnablerDialog isOpen={isAskEnablerOpen} setIsOpen={setIsAskEnablerOpen} mode="single" people={[person]} />
     </>
   );
 }

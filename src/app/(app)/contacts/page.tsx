@@ -17,7 +17,8 @@ import {
   PhoneCall, 
   Trash2,
   LayoutGrid,
-  Edit2
+  Edit2,
+  MessageCircle
 } from "lucide-react";
 import type { Person, Group, CustomField, FilterState } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,7 @@ import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { ContactGalleryDialog } from "@/components/contact-gallery-dialog";
 import { BulkEditPersonDialog } from '@/components/bulk-edit-person-dialog';
+import { AskEnablerDialog } from '@/components/ask-enabler-dialog';
 import { FreshLeadQRDialog } from "@/components/fresh-lead-qr-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -115,6 +117,7 @@ const ContactsPageComponent = () => {
   const [isQrDialogOpen, setIsQrDialogOpen] = React.useState(false);
   const [isGalleryOpen, setIsGalleryOpen] = React.useState(false);
   const [isAssignCoEnablerDialogOpen, setIsAssignCoEnablerDialogOpen] = React.useState(false);
+  const [isAskEnablerOpen, setIsAskEnablerOpen] = React.useState(false);
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(undefined);
   const [editingGroup, setEditingGroup] = React.useState<Group | undefined>(undefined);
   const [personToCall, setPersonToCall] = React.useState<Person | null>(null);
@@ -329,6 +332,10 @@ const ContactsPageComponent = () => {
       setFilters(prev => ({ ...prev, name: isNum ? '' : val, phone: isNum ? val : '' }));
   };
 
+  const selectedPeople = React.useMemo(() => {
+    return people.filter(p => selectedIds.has(p.id));
+  }, [people, selectedIds]);
+
   return (
     <>
       <PageHeader title="Outreach" description={totalCount !== null ? `Managing ${totalCount} records.` : "Outreach management."}>
@@ -376,6 +383,12 @@ const ContactsPageComponent = () => {
                         <div className="flex flex-wrap items-center gap-2 ml-auto pr-2">
                             <Button variant="ghost" size="sm" onClick={() => setIsConfirmSessionDialogOpen(true)} className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-primary-foreground hover:bg-primary-foreground/10 rounded-xl"><PhoneCall className="mr-2 h-4 w-4" /> Start Session</Button>
                             
+                            {isPrivileged && (
+                                <Button variant="ghost" size="sm" onClick={() => setIsAskEnablerOpen(true)} className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-primary-foreground hover:bg-primary-foreground/10 rounded-xl">
+                                    <MessageCircle className="mr-2 h-4 w-4" /> Ask Enabler
+                                </Button>
+                            )}
+
                             <Button variant="ghost" size="sm" onClick={() => setIsBulkEditOpen(true)} className="h-10 px-4 font-black uppercase text-[10px] tracking-widest text-primary-foreground hover:bg-primary-foreground/10 rounded-xl">
                                 <Edit2 className="mr-2 h-4 w-4" /> Edit Fields
                             </Button>
@@ -488,6 +501,13 @@ const ContactsPageComponent = () => {
         }} 
         peopleCount={selectedIds.size} 
         selectedPersonIds={Array.from(selectedIds)} 
+      />
+
+      <AskEnablerDialog 
+        isOpen={isAskEnablerOpen} 
+        setIsOpen={setIsAskEnablerOpen} 
+        mode="bulk" 
+        people={selectedPeople} 
       />
     </>
   );

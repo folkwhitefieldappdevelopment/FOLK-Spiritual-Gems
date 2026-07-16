@@ -212,6 +212,14 @@ export type AppUser = {
   whatsAppTemplate?: string;
 };
 
+export type SavedWhatsappQuestion = {
+  id: string;
+  text: string;
+  usageCount: number;
+  lastUsedAt: any;
+  createdBy: string;
+};
+
 export type BackgroundJob = {
   id: string;
   type: 'import' | 'export';
