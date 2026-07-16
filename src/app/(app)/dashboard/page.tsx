@@ -257,7 +257,8 @@ export default function DashboardPage() {
                         <Table>
                             <TableHeader className="bg-muted/30">
                                 <TableRow className="hover:bg-transparent border-none">
-                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground pl-8 h-12">Enabler</TableHead>
+                                    <TableHead className="w-12 text-center font-black text-[9px] uppercase tracking-widest text-muted-foreground pl-8 h-12">#</TableHead>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground h-12">Enabler</TableHead>
                                     <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-center h-12">16+ Rounds</TableHead>
                                     <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-center h-12">FRP</TableHead>
                                     <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-center h-12">SG-W</TableHead>
@@ -266,10 +267,13 @@ export default function DashboardPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {enablerBreakdown.length > 0 ? enablerBreakdown.map((entry) => (
+                                {enablerBreakdown.length > 0 ? enablerBreakdown.map((entry, index) => (
                                     <TableRow key={entry.enablerId} className="border-b border-border hover:bg-muted/50 transition-colors">
+                                        <TableCell className="pl-8 py-5 text-center font-black text-[10px] text-muted-foreground">
+                                            {index + 1}
+                                        </TableCell>
                                         <TableCell 
-                                            className="pl-8 py-5 font-black text-foreground uppercase text-xs cursor-pointer hover:text-primary transition-colors"
+                                            className="py-5 font-black text-foreground uppercase text-xs cursor-pointer hover:text-primary transition-colors"
                                             onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName }, false)}
                                         >
                                             {entry.enablerName}
@@ -323,7 +327,7 @@ export default function DashboardPage() {
                                     </TableRow>
                                 )) : (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="h-32 text-center opacity-30 italic font-bold text-foreground">
+                                        <TableCell colSpan={7} className="h-32 text-center opacity-30 italic font-bold text-foreground">
                                             No breakdown data available.
                                         </TableCell>
                                     </TableRow>
@@ -332,13 +336,18 @@ export default function DashboardPage() {
                         </Table>
                     </div>
                     <div className="md:hidden p-6 space-y-4">
-                        {enablerBreakdown.map((entry) => (
+                        {enablerBreakdown.map((entry, index) => (
                             <Card key={entry.enablerId} className="bg-muted/10 border-border p-5 rounded-[1.5rem] shadow-sm">
                                 <div 
                                     className="flex justify-between items-center mb-4 cursor-pointer group"
                                     onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName }, false)}
                                 >
-                                    <span className="font-black text-xs uppercase text-foreground group-hover:text-primary transition-colors">{entry.enablerName}</span>
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-black text-primary border border-primary/20 shrink-0">
+                                            {index + 1}
+                                        </div>
+                                        <span className="font-black text-xs uppercase text-foreground group-hover:text-primary transition-colors">{entry.enablerName}</span>
+                                    </div>
                                     <Badge variant="secondary" className="text-[9px] font-black uppercase bg-muted/50 text-muted-foreground group-hover:bg-primary group-hover:text-white transition-all">{entry.totalContacts} Contacts</Badge>
                                 </div>
                                 <div className="grid grid-cols-4 gap-2">
@@ -391,7 +400,8 @@ export default function DashboardPage() {
                         <Table>
                             <TableHeader className="bg-muted/30">
                                 <TableRow className="hover:bg-transparent border-none">
-                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground pl-8 h-12">Enabler</TableHead>
+                                    <TableHead className="w-12 text-center font-black text-[9px] uppercase tracking-widest text-muted-foreground pl-8 h-12">#</TableHead>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground h-12">Enabler</TableHead>
                                     <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-center h-12">16+</TableHead>
                                     <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-center h-12">9 – 15</TableHead>
                                     <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-center h-12">3 – 8</TableHead>
@@ -400,10 +410,13 @@ export default function DashboardPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {chantingBreakdown.length > 0 ? chantingBreakdown.map((entry) => (
+                                {chantingBreakdown.length > 0 ? chantingBreakdown.map((entry, index) => (
                                     <TableRow key={entry.enablerId} className="border-b border-border hover:bg-muted/50 transition-colors">
+                                        <TableCell className="pl-8 py-5 text-center font-black text-[10px] text-muted-foreground">
+                                            {index + 1}
+                                        </TableCell>
                                         <TableCell 
-                                            className="pl-8 py-5 font-black text-foreground uppercase text-xs cursor-pointer hover:text-primary transition-colors"
+                                            className="py-5 font-black text-foreground uppercase text-xs cursor-pointer hover:text-primary transition-colors"
                                             onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName }, false)}
                                         >
                                             {entry.enablerName}
@@ -457,13 +470,57 @@ export default function DashboardPage() {
                                     </TableRow>
                                 )) : (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="h-32 text-center opacity-30 italic font-bold text-foreground">
+                                        <TableCell colSpan={7} className="h-32 text-center opacity-30 italic font-bold text-foreground">
                                             No data available.
                                         </TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
                         </Table>
+                    </div>
+                    <div className="md:hidden p-6 space-y-4">
+                        {chantingBreakdown.map((entry, index) => (
+                            <Card key={entry.enablerId} className="bg-muted/10 border-border p-5 rounded-[1.5rem] shadow-sm">
+                                <div 
+                                    className="flex justify-between items-center mb-4 cursor-pointer group"
+                                    onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName }, false)}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-6 w-6 rounded-full bg-[#FF9800]/10 flex items-center justify-center text-[10px] font-black text-[#FF9800] border border-[#FF9800]/20 shrink-0">
+                                            {index + 1}
+                                        </div>
+                                        <span className="font-black text-xs uppercase text-foreground group-hover:text-primary transition-colors">{entry.enablerName}</span>
+                                    </div>
+                                    <Badge variant="secondary" className="text-[9px] font-black uppercase bg-muted/50 text-muted-foreground group-hover:bg-primary group-hover:text-white transition-all">{entry.totalContacts} Contacts</Badge>
+                                </div>
+                                <div className="grid grid-cols-4 gap-2">
+                                    <MobileBreakdownItem 
+                                        label="16+" 
+                                        count={entry.rounds16Plus} 
+                                        color="text-[#FF9800]" 
+                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '16' }, false)}
+                                    />
+                                    <MobileBreakdownItem 
+                                        label="9-15" 
+                                        count={entry.rounds9to15} 
+                                        color="text-primary" 
+                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '9', chantingRoundsMax: '15' }, false)}
+                                    />
+                                    <MobileBreakdownItem 
+                                        label="3-8" 
+                                        count={entry.rounds3to8} 
+                                        color="text-muted-foreground" 
+                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '3', chantingRoundsMax: '8' }, false)}
+                                    />
+                                    <MobileBreakdownItem 
+                                        label="0-2" 
+                                        count={entry.rounds0to2} 
+                                        color="text-muted-foreground/60" 
+                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '0', chantingRoundsMax: '2' }, false)}
+                                    />
+                                </div>
+                            </Card>
+                        ))}
                     </div>
                 </CardContent>
             </Card>
