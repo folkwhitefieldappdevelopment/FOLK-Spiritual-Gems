@@ -115,6 +115,7 @@ export const generateDynamicGroups = (people: Person[]): Group[] => {
 
 /**
  * Computes the stage distribution for each enabler in the roster.
+ * Sorted by priority: sixteenRounder → frp → sgW → sgS.
  */
 export function computeEnablerStageBreakdown(people: Person[], enablers: AppUser[]): EnablerStageBreakdown[] {
   const frpFilter = dynamicGroupDefinitions.find(d => d.id === 'dynamic-frp')?.filter;
@@ -139,5 +140,5 @@ export function computeEnablerStageBreakdown(people: Person[], enablers: AppUser
       sixteenRounder: enablerPeople.filter(p => (p.chantingStatus || 0) >= 16).length,
       totalContacts: enablerPeople.length
     };
-  });
+  }).sort((a, b) => b.sixteenRounder - a.sixteenRounder || b.frp - a.frp || b.sgW - a.sgW || b.sgS - a.sgS);
 }

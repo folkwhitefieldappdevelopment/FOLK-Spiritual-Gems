@@ -244,10 +244,10 @@ export default function DashboardPage() {
                             <TableHeader className="bg-muted/30">
                                 <TableRow className="hover:bg-transparent border-none">
                                     <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground pl-8 h-12">Enabler</TableHead>
-                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-center h-12">FRP</TableHead>
-                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-center h-12">SG-S</TableHead>
-                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-center h-12">SG-W</TableHead>
                                     <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-center h-12">16+ Rounds</TableHead>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-center h-12">FRP</TableHead>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-center h-12">SG-W</TableHead>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-center h-12">SG-S</TableHead>
                                     <TableHead className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-right pr-8 h-12">Total</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -263,20 +263,20 @@ export default function DashboardPage() {
                                         <TableCell className="text-center">
                                             <div 
                                                 className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all active:scale-95"
-                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'FRP' }, false)}
+                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '16' }, false)}
                                             >
-                                                <Badge variant="outline" className="font-black border-green-500/20 text-green-500 bg-green-500/5 h-7 px-3">
-                                                    {entry.frp}
+                                                <Badge variant="outline" className="font-black border-primary/20 text-primary bg-primary/5 h-7 px-3">
+                                                    {entry.sixteenRounder}
                                                 </Badge>
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-center">
                                             <div 
                                                 className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all active:scale-95"
-                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-S' }, false)}
+                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'FRP' }, false)}
                                             >
-                                                <Badge variant="outline" className="font-black border-yellow-500/20 text-yellow-600 bg-yellow-500/5 h-7 px-3">
-                                                    {entry.sgS}
+                                                <Badge variant="outline" className="font-black border-green-500/20 text-green-500 bg-green-500/5 h-7 px-3">
+                                                    {entry.frp}
                                                 </Badge>
                                             </div>
                                         </TableCell>
@@ -293,10 +293,10 @@ export default function DashboardPage() {
                                         <TableCell className="text-center">
                                             <div 
                                                 className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all active:scale-95"
-                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '16' }, false)}
+                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-S' }, false)}
                                             >
-                                                <Badge variant="outline" className="font-black border-primary/20 text-primary bg-primary/5 h-7 px-3">
-                                                    {entry.sixteenRounder}
+                                                <Badge variant="outline" className="font-black border-yellow-500/20 text-yellow-600 bg-yellow-500/5 h-7 px-3">
+                                                    {entry.sgS}
                                                 </Badge>
                                             </div>
                                         </TableCell>
@@ -329,16 +329,16 @@ export default function DashboardPage() {
                                 </div>
                                 <div className="grid grid-cols-4 gap-2">
                                     <MobileBreakdownItem 
+                                        label="16+ R" 
+                                        count={entry.sixteenRounder} 
+                                        color="text-primary" 
+                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '16' }, false)}
+                                    />
+                                    <MobileBreakdownItem 
                                         label="FRP" 
                                         count={entry.frp} 
                                         color="text-green-500" 
                                         onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'FRP' }, false)}
-                                    />
-                                    <MobileBreakdownItem 
-                                        label="SG-S" 
-                                        count={entry.sgS} 
-                                        color="text-yellow-600" 
-                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-S' }, false)}
                                     />
                                     <MobileBreakdownItem 
                                         label="SG-W" 
@@ -347,10 +347,10 @@ export default function DashboardPage() {
                                         onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-W' }, false)}
                                     />
                                     <MobileBreakdownItem 
-                                        label="16+ R" 
-                                        count={entry.sixteenRounder} 
-                                        color="text-primary" 
-                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '16' }, false)}
+                                        label="SG-S" 
+                                        count={entry.sgS} 
+                                        color="text-yellow-600" 
+                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-S' }, false)}
                                     />
                                 </div>
                             </Card>
