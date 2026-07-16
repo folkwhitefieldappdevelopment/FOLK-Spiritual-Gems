@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useAppToast } from '@/contexts/toast-context';
 import { getGoals, deleteGoal, updateGoalProgress, createGoal, updateGoal } from '@/services/goals-service';
 import { getAssignableUsersForAssignments } from '@/services/user-service';
+import { getGoalCategories } from '@/services/settings-service';
 import type { Goal, GoalStatus, AppUser } from '@/lib/types';
 import { computeGoalStatus } from '@/lib/data';
 
@@ -44,6 +45,7 @@ export default function GoalsPage() {
   
   const [goals, setGoals] = React.useState<Goal[]>([]);
   const [enablers, setEnablers] = React.useState<AppUser[]>([]);
+  const [categories, setCategories] = React.useState<string[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
 
@@ -65,12 +67,14 @@ export default function GoalsPage() {
     else setIsLoading(true);
     
     try {
-      const [goalsData, enablersData] = await Promise.all([
+      const [goalsData, enablersData, categoriesData] = await Promise.all([
         getGoals(appUser),
-        getAssignableUsersForAssignments(appUser)
+        getAssignableUsersForAssignments(appUser),
+        getGoalCategories()
       ]);
       setGoals(goalsData);
       setEnablers(enablersData);
+      setCategories(categoriesData);
     } catch (e) {
       console.error(e);
       toast({ variant: 'destructive', title: "Sync Failed" });
@@ -203,6 +207,7 @@ export default function GoalsPage() {
             <GoalsMatrix 
               goals={goals} 
               enablers={enablers}
+              categories={categories}
               onUpdateProgress={handleUpdateProgress}
               onEditGoal={handleEditGoal}
               onDeleteGoal={handleDeletePrompt}
@@ -246,7 +251,7 @@ export default function GoalsPage() {
       />
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="bg-popover border-none rounded-[2rem] shadow-2xl">
+        <AlertDialogContent className="bg-popover border-none rounded-[2.5rem] shadow-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="font-black uppercase tracking-tight">Delete Goal Target?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground font-bold">

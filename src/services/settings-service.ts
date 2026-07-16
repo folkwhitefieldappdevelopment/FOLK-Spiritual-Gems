@@ -13,6 +13,7 @@ const defaultOccupationStatuses = ['Working', 'Student', 'Searching for job', 'S
 const defaultStayingWithOptions = ['PG / Hostel', 'Flat', 'Family', 'Temple Residency'];
 const defaultActivityOptions = ['Yes', 'No', 'Partial'];
 const defaultActivityFieldLabels: ActivityFieldLabels = { sg: 'SG-S', ma: 'SG-W', frp: 'FRP' };
+const defaultGoalCategories = ['Trip Goal', 'Events'];
 
 export type EnablerOption = { value: string; label: string };
 
@@ -26,6 +27,16 @@ async function isOptionInUse(fieldName: string, value: string, isArray: boolean 
         where(fieldName, isArray ? 'array-contains' : '==', value), 
         limit(1)
     );
+    const snap = await getDocs(q);
+    return !snap.empty;
+}
+
+/**
+ * Checks if a goal category is currently assigned to any goals.
+ */
+async function isGoalCategoryInUse(value: string): Promise<boolean> {
+    const goalsRef = collection(db!, 'goals');
+    const q = query(goalsRef, where('category', '==', value), limit(1));
     const snap = await getDocs(q);
     return !snap.empty;
 }
@@ -45,6 +56,7 @@ export const ensureSettingsDoc = async () => {
                 maOptions: defaultActivityOptions,
                 frpOptions: defaultActivityOptions,
                 activityFieldLabels: defaultActivityFieldLabels,
+                goalCategories: defaultGoalCategories,
             };
             
             setDoc(settingsDocRef, defaults).catch(async (serverError) => {
@@ -599,6 +611,46 @@ export const saveCustomPersonFields = async (fields: CustomField[], userInfo?: A
     });
 
     if(userInfo) logAudit('Update Custom Fields', `Updated custom fields definition.`, userInfo);
+};
+
+export const getGoalCategories = async (userInfo?: any): Promise<string[]> => {
+    const settings = await ensureSettingsDoc();
+    return (settings?.goalCategories || defaultGoalCategories).sort();
+};
+
+export const addGoalCategory = async (newCategory: string, userInfo?: AppUser) => {
+    const settingsDocRef = doc(db!, 'settings', 'options');
+    const settings = await ensureSettingsDoc();
+    const current = settings?.goalCategories || [];
+    const exists = current.some((s: string) => s.toLowerCase() === newCategory.trim().toLowerCase());
+    if (!exists) {
+        const updated = [...current, newCategory.trim()];
+        updateDoc(settingsDocRef, { goalCategories: updated });
+        if(userInfo) logAudit('Add Goal Category', `Added: ${newCategory}`, userInfo);
+        return updated;
+    }
+    return current;
+};
+
+export const updateGoalCategory = async (oldName: string, newName: string, userInfo?: AppUser) => {
+    const settingsDocRef = doc(db!, 'settings', 'options');
+    const settings = await ensureSettingsDoc();
+    const updated = (settings?.goalCategories || []).map((s:string) => s === oldName ? newName : s);
+    updateDoc(settingsDocRef, { goalCategories: updated });
+    if(userInfo) logAudit('Update Goal Category', `Renamed: ${oldName} to ${newName}`, userInfo);
+    return updated;
+};
+
+export const deleteGoalCategory = async (categoryToDelete: string, userInfo?: AppUser) => {
+    if (await isGoalCategoryInUse(categoryToDelete)) {
+        throw new Error(`Cannot delete '${categoryToDelete}' because it is assigned to existing goals.`);
+    }
+    const settingsDocRef = doc(db!, 'settings', 'options');
+    const settings = await ensureSettingsDoc();
+    const updated = (settings?.goalCategories || []).filter((s:string) => s !== categoryToDelete);
+    updateDoc(settingsDocRef, { goalCategories: updated });
+    if(userInfo) logAudit('Delete Goal Category', `Deleted: ${categoryToDelete}`, userInfo);
+    return updated;
 };
 
 export const getExternalCoEnablers = async (): Promise<ExternalCoEnabler[]> => {

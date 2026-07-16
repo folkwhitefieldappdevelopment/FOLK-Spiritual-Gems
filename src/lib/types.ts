@@ -402,7 +402,7 @@ export type AppNotification = {
 
 // Goals Tracking types
 export type GoalStatus = 'not-started' | 'in-progress' | 'achieved' | 'overdue';
-export type GoalCategory = 'Trip Goal' | 'Events';
+export type GoalCategory = string;
 
 export type Goal = {
   id: string;

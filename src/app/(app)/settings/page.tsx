@@ -62,6 +62,10 @@ import {
   getExternalCoEnablers,
   addExternalCoEnabler,
   deleteExternalCoEnabler,
+  getGoalCategories,
+  addGoalCategory,
+  updateGoalCategory,
+  deleteGoalCategory,
 } from '@/services/settings-service';
 import { backfillIsDeleted, backfillEnablerId } from '@/services/people-service';
 import { 
@@ -102,6 +106,7 @@ export default function SettingsPage() {
   const [occupations, setOccupations] = React.useState<string[]>([]);
   const [stayingWithOptions, setStayingWithOptions] = React.useState<string[]>([]);
   const [folkStages, setFolkStages] = React.useState<FolkStage[]>([]);
+  const [goalCategories, setGoalCategories] = React.useState<string[]>([]);
   const [sgOptions, setSgOptions] = React.useState<string[]>([]);
   const [maOptions, setMaOptions] = React.useState<string[]>([]);
   const [frpOptions, setFrpOptions] = React.useState<string[]>([]);
@@ -119,10 +124,10 @@ export default function SettingsPage() {
   const fetchData = React.useCallback(async () => {
     setIsLoading(true);
     try {
-      const [sourcesData, occupationsData, stayingData, customFieldsData, sgData, maData, frpData, labelsData, folkStagesData, externalData] = await Promise.all([
+      const [sourcesData, occupationsData, stayingData, customFieldsData, sgData, maData, frpData, labelsData, folkStagesData, externalData, goalCatsData] = await Promise.all([
         getContactSources(), getOccupationStatuses(), getStayingWithOptions(), getCustomPersonFields(),
         getSgOptions(), getMaOptions(), getFrpOptions(), getActivityFieldLabels(), getCurrentFolkStages(),
-        getExternalCoEnablers()
+        getExternalCoEnablers(), getGoalCategories()
       ]);
       setSources(sourcesData);
       setOccupations(occupationsData);
@@ -134,6 +139,7 @@ export default function SettingsPage() {
       setActivityLabels(labelsData);
       setFolkStages(folkStagesData as FolkStage[]);
       setExternalCoEnablers(externalData);
+      setGoalCategories(goalCatsData);
       setNotifStatus(getNotificationPermission());
     } finally {
       setIsLoading(false);
@@ -424,6 +430,7 @@ export default function SettingsPage() {
               <CardHeader><CardTitle>Manage Dropdown Options</CardTitle></CardHeader>
               <CardContent className="space-y-10">
                 <EditableOptionsList title="Contact Sources" items={sources} onAdd={async i => setSources(await addContactSource(i, appUser || undefined))} onUpdate={async (o, n) => setSources(await updateContactSource(o, n, appUser || undefined))} onDelete={async i => setSources(await deleteContactSource(i, appUser || undefined))} />
+                <EditableOptionsList title="Goal Categories" items={goalCategories} onAdd={async i => setGoalCategories(await addGoalCategory(i, appUser || undefined))} onUpdate={async (o, n) => setGoalCategories(await updateGoalCategory(o, n, appUser || undefined))} onDelete={async i => setGoalCategories(await deleteGoalCategory(i, appUser || undefined))} />
                 <EditableOptionsList title="Current Folk Stage" items={folkStages} onAdd={async i => setFolkStages(await addCurrentFolkStage(i as FolkStage, appUser || undefined))} onUpdate={async (o, n) => setFolkStages(await updateCurrentFolkStage(o as FolkStage, n as FolkStage, appUser || undefined))} onDelete={async i => setFolkStages(await deleteCurrentFolkStage(i as FolkStage, appUser || undefined))} />
                 <EditableOptionsList title="SG-S Marks" items={sgOptions} onAdd={async i => setSgOptions(await addSgOption(i, appUser || undefined))} onUpdate={async (o, n) => setSgOptions(await updateSgOption(o, n, appUser || undefined))} onDelete={async i => setSgOptions(await deleteSgOption(i, appUser || undefined))} />
                 <EditableOptionsList title="SG-W Marks" items={maOptions} onAdd={async i => setMaOptions(await addMaOption(i, appUser || undefined))} onUpdate={async (o, n) => setMaOptions(await updateMaOption(o, n, appUser || undefined))} onDelete={async i => setMaOptions(await deleteMaOption(i, appUser || undefined))} />

@@ -21,11 +21,13 @@ import type { AppUser, Goal } from '@/lib/types';
 import { Timestamp } from 'firebase/firestore';
 import { safeDate } from '@/utils/date';
 import { format } from 'date-fns';
+import { getGoalCategories } from '@/services/settings-service';
+import Link from 'next/link';
 
 const goalSchema = z.object({
   enablerId: z.string().min(1, 'Please select an enabler.'),
   title: z.string().min(2, 'Title is required.'),
-  category: z.enum(['Trip Goal', 'Events'] as const),
+  category: z.string().min(1, 'Category is required.'),
   targetCount: z.coerce.number().min(1, 'Target must be at least 1.'),
   targetUnit: z.string().optional(),
   deadlineDate: z.string().min(1, 'Deadline is required.'),
@@ -45,13 +47,14 @@ type EditGoalDialogProps = {
 
 export function EditGoalDialog({ isOpen, setIsOpen, goal, enablers, onSave }: EditGoalDialogProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [categories, setCategories] = React.useState<string[]>([]);
 
   const form = useForm<GoalFormValues>({
     resolver: zodResolver(goalSchema),
     defaultValues: {
       enablerId: '',
       title: '',
-      category: 'Trip Goal',
+      category: '',
       targetCount: 1,
       targetUnit: 'boys',
       deadlineDate: '',
@@ -61,18 +64,21 @@ export function EditGoalDialog({ isOpen, setIsOpen, goal, enablers, onSave }: Ed
   });
 
   React.useEffect(() => {
-    if (isOpen && goal) {
-      const deadline = safeDate(goal.deadlineDate);
-      form.reset({
-        enablerId: goal.enablerId,
-        title: goal.title,
-        category: goal.category,
-        targetCount: goal.targetCount,
-        targetUnit: goal.targetUnit || 'boys',
-        deadlineDate: deadline ? format(deadline, 'yyyy-MM-dd') : '',
-        deadlineLabel: goal.deadlineLabel || '',
-        remark: goal.remark || '',
-      });
+    if (isOpen) {
+        getGoalCategories().then(setCategories);
+        if (goal) {
+            const deadline = safeDate(goal.deadlineDate);
+            form.reset({
+                enablerId: goal.enablerId,
+                title: goal.title,
+                category: goal.category,
+                targetCount: goal.targetCount,
+                targetUnit: goal.targetUnit || 'boys',
+                deadlineDate: deadline ? format(deadline, 'yyyy-MM-dd') : '',
+                deadlineLabel: goal.deadlineLabel || '',
+                remark: goal.remark || '',
+            });
+        }
     }
   }, [isOpen, goal, form]);
 
@@ -135,10 +141,14 @@ export function EditGoalDialog({ isOpen, setIsOpen, goal, enablers, onSave }: Ed
                         <FormItem>
                             <FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Goal Category</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl><SelectTrigger className="h-12 rounded-xl bg-muted border-border font-bold"><SelectValue/></SelectTrigger></FormControl>
+                                <FormControl><SelectTrigger className="h-12 rounded-xl bg-muted border-border font-bold"><SelectValue placeholder="Select Category..." /></SelectTrigger></FormControl>
                                 <SelectContent className="bg-popover border-border">
-                                    <SelectItem value="Trip Goal">Trip Goal</SelectItem>
-                                    <SelectItem value="Events">Events</SelectItem>
+                                    {categories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                                    <div className="p-2 border-t border-border mt-1">
+                                        <Button asChild variant="ghost" size="sm" className="w-full justify-start text-[10px] font-black uppercase text-primary hover:bg-primary/5">
+                                            <Link href="/settings">Manage Categories...</Link>
+                                        </Button>
+                                    </div>
                                 </SelectContent>
                             </Select>
                             <FormMessage />

@@ -19,11 +19,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, Target } from 'lucide-react';
 import type { AppUser } from '@/lib/types';
 import { Timestamp } from 'firebase/firestore';
+import { getGoalCategories } from '@/services/settings-service';
+import Link from 'next/link';
 
 const goalSchema = z.object({
   enablerId: z.string().min(1, 'Please select an enabler.'),
   title: z.string().min(2, 'Title is required.'),
-  category: z.enum(['Trip Goal', 'Events'] as const),
+  category: z.string().min(1, 'Category is required.'),
   targetCount: z.coerce.number().min(1, 'Target must be at least 1.'),
   targetUnit: z.string().optional(),
   deadlineDate: z.string().min(1, 'Deadline is required.'),
@@ -42,13 +44,14 @@ type CreateGoalDialogProps = {
 
 export function CreateGoalDialog({ isOpen, setIsOpen, enablers, onSave }: CreateGoalDialogProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [categories, setCategories] = React.useState<string[]>([]);
 
   const form = useForm<GoalFormValues>({
     resolver: zodResolver(goalSchema),
     defaultValues: {
       enablerId: '',
       title: '',
-      category: 'Trip Goal',
+      category: '',
       targetCount: 1,
       targetUnit: 'boys',
       deadlineDate: new Date().toISOString().split('T')[0],
@@ -56,6 +59,12 @@ export function CreateGoalDialog({ isOpen, setIsOpen, enablers, onSave }: Create
       remark: '',
     },
   });
+
+  React.useEffect(() => {
+    if (isOpen) {
+        getGoalCategories().then(setCategories);
+    }
+  }, [isOpen]);
 
   const onSubmit = async (data: GoalFormValues) => {
     const enabler = enablers.find(e => e.id === data.enablerId);
@@ -115,10 +124,14 @@ export function CreateGoalDialog({ isOpen, setIsOpen, enablers, onSave }: Create
                         <FormItem>
                             <FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Goal Category</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl><SelectTrigger className="h-12 rounded-xl bg-muted border-border font-bold"><SelectValue/></SelectTrigger></FormControl>
+                                <FormControl><SelectTrigger className="h-12 rounded-xl bg-muted border-border font-bold"><SelectValue placeholder="Select Category..." /></SelectTrigger></FormControl>
                                 <SelectContent className="bg-popover border-border">
-                                    <SelectItem value="Trip Goal">Trip Goal</SelectItem>
-                                    <SelectItem value="Events">Events</SelectItem>
+                                    {categories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                                    <div className="p-2 border-t border-border mt-1">
+                                        <Button asChild variant="ghost" size="sm" className="w-full justify-start text-[10px] font-black uppercase text-primary hover:bg-primary/5">
+                                            <Link href="/settings">Manage Categories...</Link>
+                                        </Button>
+                                    </div>
                                 </SelectContent>
                             </Select>
                             <FormMessage />

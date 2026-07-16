@@ -21,18 +21,18 @@ import { safeDate } from '@/utils/date';
 type GoalsMatrixProps = {
   goals: Goal[];
   enablers: AppUser[];
+  categories: string[];
   onUpdateProgress: (goal: Goal) => void;
   onEditGoal: (goal: Goal) => void;
   onDeleteGoal: (goal: Goal) => void;
   isPrivileged: boolean;
 };
 
-export function GoalsMatrix({ goals, enablers, onUpdateProgress, onEditGoal, onDeleteGoal, isPrivileged }: GoalsMatrixProps) {
+export function GoalsMatrix({ goals, enablers, categories, onUpdateProgress, onEditGoal, onDeleteGoal, isPrivileged }: GoalsMatrixProps) {
   const rosterNames = enablers.map(e => e.name);
   const goalEnablerNames = goals.map(g => g.enablerName);
   const enablerNames = Array.from(new Set([...rosterNames, ...goalEnablerNames])).sort();
   
-  const categories = ['Trip Goal', 'Events'] as const;
   const columnsByCat = categories.map(cat => ({
       name: cat,
       titles: Array.from(new Set(goals.filter(g => g.category === cat).map(g => g.title))).sort()
