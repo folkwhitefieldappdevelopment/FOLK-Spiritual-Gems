@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import { 
   MessageSquare, 
   Send, 
@@ -22,7 +23,8 @@ import {
   AlertCircle, 
   Loader2,
   Clock,
-  Sparkles
+  Sparkles,
+  RefreshCw
 } from 'lucide-react';
 import type { Person, AppUser, SavedWhatsappQuestion } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-context';
@@ -53,6 +55,9 @@ export function AskEnablerDialog({ isOpen, setIsOpen, mode, people }: AskEnabler
   const [enablersMap, setEnablersMap] = React.useState<Map<string, AppUser>>(new Map());
   const [isLoading, setIsLoading] = React.useState(true);
   const [showSuggestions, setShowSuggestions] = React.useState(false);
+  
+  // Track manual edits per enabler group to ensure the top question doesn't overwrite custom changes
+  const [manualMessages, setManualMessages] = React.useState<Record<string, string>>({});
 
   // Group people by enabler
   const groups = React.useMemo(() => {
@@ -69,6 +74,7 @@ export function AskEnablerDialog({ isOpen, setIsOpen, mode, people }: AskEnabler
   React.useEffect(() => {
     if (isOpen) {
       setIsLoading(true);
+      setManualMessages({}); // Clear manual edits on dialog re-open
       const fetchData = async () => {
         try {
           const [questions, ...enablerDocs] = await Promise.all([
@@ -97,16 +103,20 @@ export function AskEnablerDialog({ isOpen, setIsOpen, mode, people }: AskEnabler
       .slice(0, 5);
   }, [questionText, savedQuestions]);
 
-  const constructMessage = (enablerName: string, contacts: Person[]) => {
+  const constructDefaultMessage = (enablerName: string, contacts: Person[]) => {
     const intro = contacts.length > 1 
-      ? `Hi ${enablerName}, could you help with these contacts?`
-      : `Hi ${enablerName}, could you help with this contact?`;
+      ? `Hare Krishna ${enablerName}, could you help with these contacts?`
+      : `Hare Krishna ${enablerName}, could you help with this contact?`;
 
     const list = contacts.map((p, i) => 
       contacts.length > 1 ? `${i + 1}. ${p.fullName} — ${p.phone}` : `${p.fullName} — ${p.phone}`
     ).join('\n');
 
     return `${intro}\n\n${list}\n\n${questionText.trim()}`;
+  };
+
+  const getMessageForEnabler = (enablerId: string, enablerName: string, contacts: Person[]) => {
+      return manualMessages[enablerId] ?? constructDefaultMessage(enablerName, contacts);
   };
 
   const handleSend = async (enablerId: string, enablerName: string, contacts: Person[]) => {
@@ -118,11 +128,15 @@ export function AskEnablerDialog({ isOpen, setIsOpen, mode, people }: AskEnabler
       return;
     }
 
-    const message = constructMessage(enablerName, contacts);
+    const message = getMessageForEnabler(enablerId, enablerName, contacts);
     const link = generateWhatsappLink(enabler.phone, message);
     
     window.open(link, '_blank');
-    await upsertQuestion(questionText, appUser.id);
+    
+    // We only save the top question to suggestions, not the full personalized message
+    if (questionText.trim()) {
+        await upsertQuestion(questionText, appUser.id);
+    }
   };
 
   return (
@@ -153,8 +167,8 @@ export function AskEnablerDialog({ isOpen, setIsOpen, mode, people }: AskEnabler
               <>
                 <div className="space-y-4 relative">
                   <div className="flex items-center justify-between ml-1">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Your Question / Instructions</Label>
-                    <Badge variant="outline" className="text-[8px] font-black text-primary border-primary/20 bg-primary/5 uppercase">Ranking by usage</Badge>
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Main Question / Goal</Label>
+                    <Badge variant="outline" className="text-[8px] font-black text-primary border-primary/20 bg-primary/5 uppercase">Top Suggestions</Badge>
                   </div>
                   <div className="relative group">
                     <Input 
@@ -188,7 +202,7 @@ export function AskEnablerDialog({ isOpen, setIsOpen, mode, people }: AskEnabler
                 </div>
 
                 <div className="space-y-6">
-                  <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Targets & Previews</h4>
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Review & Edit Messages</h4>
                   
                   {mode === 'single' ? (
                     <div className="space-y-4">
@@ -204,15 +218,35 @@ export function AskEnablerDialog({ isOpen, setIsOpen, mode, people }: AskEnabler
                                     <Badge variant="destructive" className="font-black text-[9px] h-6 px-3">MISSING PHONE</Badge>
                                 )}
                             </div>
-                            <div className="bg-background rounded-2xl p-4 border border-border/50">
-                                <p className="text-[10px] font-black text-muted-foreground uppercase mb-2">Message Preview</p>
-                                <p className="text-xs text-foreground/80 font-bold whitespace-pre-wrap leading-relaxed italic">
-                                    {constructMessage(groups[0]?.[1]?.name, people)}
-                                </p>
+                            
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between px-1">
+                                    <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Message Text (Editable)</Label>
+                                    {manualMessages[groups[0]?.[0]] && (
+                                        <Button 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            className="h-5 px-2 text-[8px] font-black uppercase text-primary"
+                                            onClick={() => setManualMessages(prev => {
+                                                const next = { ...prev };
+                                                delete next[groups[0]?.[0]];
+                                                return next;
+                                            })}
+                                        >
+                                            <RefreshCw className="h-2 w-2 mr-1" /> Reset Template
+                                        </Button>
+                                    )}
+                                </div>
+                                <Textarea 
+                                    className="min-h-[160px] rounded-2xl bg-background border-border text-xs font-bold leading-relaxed italic p-4 focus-visible:ring-primary shadow-sm"
+                                    value={getMessageForEnabler(groups[0]?.[0], groups[0]?.[1]?.name, people)}
+                                    onChange={e => setManualMessages(prev => ({ ...prev, [groups[0]?.[0]]: e.target.value }))}
+                                />
                             </div>
+
                             <Button 
                                 className="w-full h-12 rounded-xl bg-green-500 hover:bg-green-600 text-white font-black uppercase text-[10px] tracking-widest shadow-xl shadow-green-500/20"
-                                disabled={!questionText.trim() || !enablersMap.get(groups[0]?.[0])?.phone}
+                                disabled={!getMessageForEnabler(groups[0]?.[0], groups[0]?.[1]?.name, people).trim() || !enablersMap.get(groups[0]?.[0])?.phone}
                                 onClick={() => handleSend(groups[0]?.[0], groups[0]?.[1]?.name, people)}
                             >
                                 <Send className="mr-2 h-4 w-4" /> Open WhatsApp Chat
@@ -223,6 +257,8 @@ export function AskEnablerDialog({ isOpen, setIsOpen, mode, people }: AskEnabler
                     <Accordion type="multiple" className="space-y-3">
                         {groups.map(([id, group]) => {
                           const hasPhone = !!enablersMap.get(id)?.phone;
+                          const currentMsg = getMessageForEnabler(id, group.name, group.contacts);
+                          
                           return (
                             <AccordionItem key={id} value={id} className="border-none">
                               <AccordionTrigger className="px-6 py-4 bg-muted/40 hover:bg-muted rounded-2xl transition-all border border-border data-[state=open]:rounded-b-none shadow-sm">
@@ -240,18 +276,38 @@ export function AskEnablerDialog({ isOpen, setIsOpen, mode, people }: AskEnabler
                                   {!hasPhone && (
                                       <div className="flex items-center gap-2 p-3 bg-red-500/10 text-red-500 rounded-xl border border-red-500/20">
                                           <AlertCircle className="h-4 w-4" />
-                                          <span className="text-[10px] font-black uppercase tracking-tight">Enabler phone number missing in user profile</span>
+                                          <span className="text-[10px] font-black uppercase tracking-tight">Enabler phone missing in profile</span>
                                       </div>
                                   )}
-                                  <div className="bg-background rounded-2xl p-4 border border-border/50">
-                                      <p className="text-[10px] font-black text-muted-foreground uppercase mb-2">Enabler Specific Preview</p>
-                                      <p className="text-xs text-foreground/80 font-bold whitespace-pre-wrap italic">
-                                          {constructMessage(group.name, group.contacts)}
-                                      </p>
+                                  
+                                  <div className="space-y-2">
+                                      <div className="flex items-center justify-between px-1">
+                                          <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Personalized Message</Label>
+                                          {manualMessages[id] && (
+                                              <Button 
+                                                  variant="ghost" 
+                                                  size="sm" 
+                                                  className="h-5 px-2 text-[8px] font-black uppercase text-primary"
+                                                  onClick={() => setManualMessages(prev => {
+                                                      const next = { ...prev };
+                                                      delete next[id];
+                                                      return next;
+                                                  })}
+                                              >
+                                                  <RefreshCw className="h-2 w-2 mr-1" /> Reset
+                                              </Button>
+                                          )}
+                                      </div>
+                                      <Textarea 
+                                          className="min-h-[140px] rounded-2xl bg-background border-border text-xs font-bold leading-relaxed italic p-4"
+                                          value={currentMsg}
+                                          onChange={e => setManualMessages(prev => ({ ...prev, [id]: e.target.value }))}
+                                      />
                                   </div>
+
                                   <Button 
                                       className="w-full h-11 rounded-xl bg-green-500 hover:bg-green-600 text-white font-black uppercase text-[10px] tracking-widest shadow-lg"
-                                      disabled={!questionText.trim() || !hasPhone}
+                                      disabled={!currentMsg.trim() || !hasPhone}
                                       onClick={() => handleSend(id, group.name, group.contacts)}
                                   >
                                       <Send className="mr-2 h-4 w-4" /> Send to {group.name}
