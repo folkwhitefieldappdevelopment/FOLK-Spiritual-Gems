@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { upsertPerson } from '@/services/people-service';
+import { upsertPerson, checkDuplicatePhone } from '@/services/people-service';
 import { markAttendance } from '@/services/attendance-service';
 import { getStayingWithOptions, getOccupationStatuses } from '@/services/settings-service';
 import { getFolkGuides, getAssignableUsersForAssignments, getUserById } from '@/services/user-service';
@@ -47,7 +47,7 @@ import { cn } from '@/lib/utils';
 const registrationSchema = z.object({
   fullName: z.string().min(2, 'Full name is required.'),
   phone: z.string().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit mobile number.'),
-  age: z.coerce.number().min(16).max(40).optional(),
+  age: z.coerce.number().min(16, 'Min 16').max(40, 'Max 40').optional(),
   location: z.string().optional(),
   stayingWith: z.string().min(1, 'Selection required.'),
   occupation: z.string().min(1, 'Selection required.'),
@@ -190,41 +190,50 @@ export default function RegistrationClient({ initialGuideId }: { initialGuideId:
   };
 
   const onSubmit = async (data: RegistrationValues) => {
-    let finalEnablerName = '';
-    let finalEnablerId = '';
-    let finalFolkGuideId = '';
-    let finalFolkGuide = '';
-
-    if (guideIdParam && enablerIdParam) {
-        const enabler = enablers.find(e => e.id === enablerIdParam);
-        const guide = folkGuides.find(g => g.id === guideIdParam);
-        finalEnablerName = enabler?.name || 'System';
-        finalEnablerId = enablerIdParam;
-        finalFolkGuideId = guideIdParam;
-        finalFolkGuide = guide ? `${guide.name} (${guide.fgCode || 'N/A'})` : '';
-    } else if (generator) {
-        const isAdmin = generator.role.includes('Admin');
-        const isGuide = generator.role.includes('Folk Guide') && !isAdmin;
-        const isEnabler = generator.role.includes('Folk Enabler') && !isGuide && !isAdmin;
-
-        if (isEnabler) {
-            finalEnablerName = generator.name;
-            finalEnablerId = generator.id;
-            finalFolkGuideId = generator.reportsTo?.guideId || '';
-            finalFolkGuide = generator.reportsTo ? `${generator.reportsTo.guideName} (${generator.reportsTo.guideFgCode})` : '';
-        } else {
-            const enabler = enablers.find(e => e.id === selectedEnablerId);
-            const guide = folkGuides.find(g => g.id === selectedGuideId) || (isGuide ? generator : null);
-            
-            finalEnablerName = enabler?.name || guide?.name || 'System';
-            finalEnablerId = enabler?.id || guide?.id || '';
-            finalFolkGuideId = guide?.id || '';
-            finalFolkGuide = guide ? `${guide.name} (${guide.fgCode || 'N/A'})` : '';
-        }
-    }
-
     setIsSubmitting(true);
     try {
+      const duplicate = await checkDuplicatePhone(data.phone);
+      if (duplicate) {
+        form.setError('phone', {
+          message: "Number Exists — This number is already in the database. Please contact your Admin or Folk Guide for more details."
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      let finalEnablerName = '';
+      let finalEnablerId = '';
+      let finalFolkGuideId = '';
+      let finalFolkGuide = '';
+
+      if (guideIdParam && enablerIdParam) {
+          const enabler = enablers.find(e => e.id === enablerIdParam);
+          const guide = folkGuides.find(g => g.id === guideIdParam);
+          finalEnablerName = enabler?.name || 'System';
+          finalEnablerId = enablerIdParam;
+          finalFolkGuideId = guideIdParam;
+          finalFolkGuide = guide ? `${guide.name} (${guide.fgCode || 'N/A'})` : '';
+      } else if (generator) {
+          const isAdmin = generator.role.includes('Admin');
+          const isGuide = generator.role.includes('Folk Guide') && !isAdmin;
+          const isEnabler = generator.role.includes('Folk Enabler') && !isGuide && !isAdmin;
+
+          if (isEnabler) {
+              finalEnablerName = generator.name;
+              finalEnablerId = generator.id;
+              finalFolkGuideId = generator.reportsTo?.guideId || '';
+              finalFolkGuide = generator.reportsTo ? `${generator.reportsTo.guideName} (${generator.reportsTo.guideFgCode})` : '';
+          } else {
+              const enabler = enablers.find(e => e.id === selectedEnablerId);
+              const guide = folkGuides.find(g => g.id === selectedGuideId) || (isGuide ? generator : null);
+              
+              finalEnablerName = enabler?.name || guide?.name || 'System';
+              finalEnablerId = enabler?.id || guide?.id || '';
+              finalFolkGuideId = guide?.id || '';
+              finalFolkGuide = guide ? `${guide.name} (${guide.fgCode || 'N/A'})` : '';
+          }
+      }
+
       const personData: Partial<Person> = { 
         ...data, 
         photoUrl: photoPreview || '', 

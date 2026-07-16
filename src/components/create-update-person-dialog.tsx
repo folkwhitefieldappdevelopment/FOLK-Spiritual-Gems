@@ -201,6 +201,17 @@ export function CreateUpdatePersonDialog({
     if (!appUser) return;
     setIsSubmitting(true);
     try {
+      const duplicate = await checkDuplicatePhone(data.phone, person?.id);
+      if (duplicate) {
+        toast({
+          variant: 'destructive',
+          title: 'Number Exists',
+          description: 'This number is already in the database. Please contact your Admin or Folk Guide for more details.',
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       let finalEnablerName = '';
       let finalEnablerId = '';
       let finalFolkGuideId = '';
