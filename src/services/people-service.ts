@@ -29,6 +29,7 @@ import { safeDate } from '@/utils/date';
 import { startOfDay, endOfDay } from 'date-fns';
 import { getFolkGuides, getUsers, getAssignableUsersForAssignments } from '@/services/user-service';
 import { getEnablers } from './settings-service';
+import { updateContactCache } from './contact-cache-service';
 
 const PAGE_SIZE = 100;
 const MAX_FIRESTORE_LIMIT = 5000;
@@ -48,28 +49,18 @@ const updateSyncStatus = (status: SyncStatus) => {
   statusListeners.forEach(l => l(status));
 };
 
-/**
- * Components can subscribe to the sync status (e.g. to show a "Syncing..." spinner)
- */
 export const subscribeToSyncStatus = (callback: (status: SyncStatus) => void) => {
   statusListeners.add(callback);
   callback(currentSyncStatus);
   return () => statusListeners.delete(callback);
 };
 
-/**
- * Components can subscribe to people data for reactive re-rendering as snapshots arrive.
- */
 export const subscribeToPeopleData = (callback: (people: Person[]) => void) => {
   dataListeners.add(callback);
   if (masterPeopleCache) callback(masterPeopleCache);
   return () => dataListeners.delete(callback);
 };
 
-/**
- * Core stream initializer. 
- * Resolves as soon as cache is available or after a 6s safety timeout.
- */
 export const initMasterPeopleStream = (): Promise<Person[]> => {
   if (cachePromise) return cachePromise;
 
@@ -79,10 +70,8 @@ export const initMasterPeopleStream = (): Promise<Person[]> => {
     
     let resolved = false;
 
-    // Timeout safety: Resolve after 6 seconds even if the network is dead
     const safetyTimeout = setTimeout(() => {
       if (!resolved) {
-        console.warn("[Sync] Initial snapshot timeout. Showing cached/empty data.");
         updateSyncStatus('timeout');
         resolved = true;
         resolve(masterPeopleCache || []);
@@ -102,6 +91,9 @@ export const initMasterPeopleStream = (): Promise<Person[]> => {
       masterPeopleCache = results;
       masterPeopleMap = newMap;
       
+      // Update local persistent cache for offline-first Caller ID
+      updateContactCache(results);
+
       const isFromCache = snap.metadata.fromCache;
       const isSyncing = snap.metadata.hasPendingWrites || !snap.metadata.fromCache;
       
@@ -113,10 +105,8 @@ export const initMasterPeopleStream = (): Promise<Person[]> => {
         updateSyncStatus('cached');
       }
 
-      // Notify all data listeners for instant UI updates
       dataListeners.forEach(l => l(results));
 
-      // Resolve the promise as soon as we have "something" (cache or net)
       if (!resolved) {
         clearTimeout(safetyTimeout);
         resolved = true;
@@ -260,8 +250,6 @@ export const getPeople = async (
 
   const applyUIFilters = (list: Person[]) => {
     return list.filter((p) => {
-      // Global exclusion for deleted or eliminated contacts, 
-      // unless specifically requested by ID or within their designated dynamic groups
       const isExplicitRequest = personIds !== undefined;
       const isDesignatedGroup = groupId === 'dynamic-recycle-bin' || groupId === 'dynamic-shifted-not-interested';
       
@@ -270,7 +258,6 @@ export const getPeople = async (
         if (ELIMINATED_STATUSES.includes(p.lastCallStatus || '')) return false;
       }
 
-      // New deep-link filters
       if (filters.stage && filters.stage !== '__ALL__' && p.currentFolkStage !== filters.stage) return false;
       
       if (filters.enablerId && filters.enablerId !== '__ALL__') {
@@ -381,10 +368,6 @@ export const getDynamicGroupCounts = async (userInfo: { id: string; name: string
   return counts;
 };
 
-/**
- * Computes live member counts for static groups by filtering the people cache.
- * Excludes soft-deleted and eliminated contacts to ensure UI consistency.
- */
 export const getLiveGroupMemberCounts = async (
   groups: { id: string; peopleIds: string[] }[]
 ): Promise<Record<string, number>> => {
@@ -485,7 +468,7 @@ export const restorePerson = async (personId: string, userInfo: { id: string; na
   await updateDoc(docRef, {
     isDeleted: false,
     deletedAt: null,
-    lastCallStatus: null, // Clearing this re-includes them in their prior stage dynamic group
+    lastCallStatus: null,
   });
   logAudit('Restore Contact', `Restored contact ${personId}`, userInfo);
 };
@@ -517,7 +500,6 @@ export const importPeople = async (
     try {
       if (!p.fullName || !p.phone) throw new Error("Missing required field.");
 
-      // Role-based assignment enforcement
       if (isEnabler) {
           p.enablerInTouchWith = userInfo.name;
           p.enablerId = userInfo.id;
@@ -533,7 +515,6 @@ export const importPeople = async (
               p.enablerInTouchWith = match.label;
               p.enablerId = match.value.split('::')[1];
           } else {
-              // Default to the guide themselves if no valid team enabler is provided
               p.enablerInTouchWith = userInfo.name;
               p.enablerId = userInfo.id;
           }

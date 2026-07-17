@@ -55,17 +55,21 @@ public class CallLogPlugin extends Plugin {
         String stage = call.getString("stage");
         String remark = call.getString("remark");
         String type = call.getString("type");
-
-        boolean shown = CallerOverlayManager.getInstance(getContext()).showOverlay(name, phone, photoUrl, stage, remark, type);
-        JSObject ret = new JSObject();
-        ret.put("shown", shown);
-        call.resolve(ret);
+    
+        getActivity().runOnUiThread(() -> {
+            boolean shown = CallerOverlayManager.getInstance(getContext()).showOverlay(name, phone, photoUrl, stage, remark, type);
+            JSObject ret = new JSObject();
+            ret.put("shown", shown);
+            call.resolve(ret);
+        });
     }
-
+    
     @PluginMethod
     public void hideNativeOverlay(PluginCall call) {
-        CallerOverlayManager.getInstance(getContext()).hideOverlay();
-        call.resolve();
+        getActivity().runOnUiThread(() -> {
+            CallerOverlayManager.getInstance(getContext()).hideOverlay();
+            call.resolve();
+        });
     }
 
     @PluginMethod

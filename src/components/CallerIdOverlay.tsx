@@ -4,6 +4,7 @@ import * as React from 'react';
 import { Capacitor } from '@capacitor/core';
 import { CallLog } from '@/lib/call-log';
 import { getPersonByPhone } from '@/services/people-service';
+import { getCachedContact } from '@/services/contact-cache-service';
 import { useAuth } from '@/contexts/auth-context';
 import { useAppToast } from '@/contexts/toast-context';
 import type { Person } from '@/lib/types';
@@ -35,12 +36,13 @@ export function CallerIdOverlay() {
   const { toast } = useAppToast();
   const router = useRouter();
   const [activeCall, setActiveCall] = React.useState<{ phoneNumber: string; type: string } | null>(null);
-  const [contact, setContact] = React.useState<Person | null>(null);
+  const [contact, setContact] = React.useState<Person | any | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isStartingSession, setIsStartingSession] = React.useState(false);
   const [isOpen, setIsOpen] = React.useState(false);
 
   const isAndroid = Capacitor.getPlatform() === 'android';
+  const isPrivileged = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
 
   React.useEffect(() => {
     if (!appUser || !Capacitor.isNativePlatform()) return;
@@ -51,10 +53,10 @@ export function CallerIdOverlay() {
     const setupListeners = async () => {
       try {
         nativeListener = await CallLog.addListener('callDetected', async (data) => {
+          // Persistence is now handled natively via markCallEnded()
           if (data.type === 'DISCONNECTED') {
-              setIsOpen(false);
-              if (isAndroid) await CallLog.hideNativeOverlay();
-              return;
+            if (!isAndroid) setIsOpen(false);
+            return;
           }
 
           setActiveCall(data);
@@ -62,47 +64,91 @@ export function CallerIdOverlay() {
           if (!isAndroid) setIsOpen(true);
           
           try {
-            const match = await getPersonByPhone(data.phoneNumber, { id: appUser.id, name: appUser.name, role: appUser.role });
-            setContact(match);
-
-            if (isAndroid && match) {
-                // A2. Surface failure to user if permission is missing
-                const result = await CallLog.showNativeOverlay({
-                    name: match.fullName,
-                    phone: data.phoneNumber,
-                    photoUrl: match.photoUrl || '',
-                    stage: match.currentFolkStage || 'Fresh Lead',
-                    remark: match.lastCallRemark || '',
-                    type: data.type
-                });
-
-                if (result.shown === false) {
-                    toast({
-                        title: "Caller ID overlay blocked",
-                        description: "Enable 'Display over other apps' in Settings to identify contacts during calls.",
-                        action: (
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className="h-8 rounded-lg font-bold"
-                                onClick={() => CallLog.requestOverlayPermission()}
-                            >
-                                Enable
-                            </Button>
-                        )
+            // 1. Try instant local cache first for zero-latency UI
+            const cachedMatch = await getCachedContact(data.phoneNumber);
+            if (cachedMatch) {
+                setContact({ id: 'cached', ...cachedMatch, phone: data.phoneNumber });
+                
+                if (isAndroid) {
+                    await CallLog.showNativeOverlay({
+                        name: cachedMatch.fullName,
+                        phone: data.phoneNumber,
+                        photoUrl: cachedMatch.photoUrl || '',
+                        stage: cachedMatch.currentFolkStage || 'Fresh Lead',
+                        remark: cachedMatch.lastCallRemark || '',
+                        type: data.type,
+                        occupation: cachedMatch.occupation,
+                        enabler: cachedMatch.enablerInTouchWith,
+                        folkGuide: cachedMatch.folkGuide,
+                        attendance: cachedMatch.attendanceHistory,
+                        isAdmin: isPrivileged
                     });
                 }
             }
-          } catch (e) { console.error('[CallerID] Lookup failed', e); } finally { setIsLoading(false); }
+
+            // 2. Refresh with latest from Firestore if online
+            if (navigator.onLine) {
+                const match = await getPersonByPhone(data.phoneNumber, { id: appUser.id, name: appUser.name, role: appUser.role });
+                if (match) {
+                    setContact(match);
+                    if (isAndroid) {
+                        const attendance = (match.attendanceHistory || [])
+                            .slice(0, 3)
+                            .map(a => `${a.eventName || a.groupName} · ${a.date}`);
+
+                        const result = await CallLog.showNativeOverlay({
+                            name: match.fullName,
+                            phone: data.phoneNumber,
+                            photoUrl: match.photoUrl || '',
+                            stage: match.currentFolkStage || 'Fresh Lead',
+                            remark: match.lastCallRemark || '',
+                            type: data.type,
+                            occupation: match.occupation,
+                            enabler: match.enablerInTouchWith,
+                            folkGuide: match.folkGuide,
+                            attendance: attendance,
+                            isAdmin: isPrivileged
+                        });
+
+                        if (result.shown === false) {
+                            toast({
+                                title: "Caller ID overlay blocked",
+                                description: "Enable 'Display over other apps' in Settings to identify contacts during calls.",
+                                action: (
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm" 
+                                        className="h-8 rounded-lg font-bold"
+                                        onClick={() => CallLog.requestOverlayPermission()}
+                                    >
+                                        Enable
+                                    </Button>
+                                )
+                            });
+                        }
+                    }
+                }
+            }
+          } catch (e) { 
+              console.error('[CallerID] Lookup failed', e); 
+          } finally { 
+              setIsLoading(false); 
+          }
         });
 
         if (isAndroid) {
             actionListener = await CallLog.addListener('nativeOverlayAction', (data: any) => {
                 if (data.action === 'startSession') handleQuickStartSession();
-                else if (data.action === 'viewProfile') router.push(`/contacts/profile?id=${contact?.id}`);
+                else if (data.action === 'viewProfile') {
+                    if (contact?.id) {
+                        router.push(`/contacts/profile?id=${contact.id}`);
+                    }
+                }
             });
         }
-      } catch (e) { console.warn('[CallerID] Native plugin initialization issue.'); }
+      } catch (e) { 
+          console.warn('[CallerID] Native plugin initialization issue.'); 
+      }
     };
 
     setupListeners();
@@ -110,21 +156,39 @@ export function CallerIdOverlay() {
       if (nativeListener) nativeListener.remove();
       if (actionListener) actionListener.remove();
     };
-  }, [appUser, isAndroid, contact, router, toast]);
+  }, [appUser, isAndroid, contact, router, toast, isPrivileged]);
 
   const handleQuickStartSession = async () => {
-    if (!appUser || !contact || isStartingSession) return;
+    if (!appUser || !contact || isStartingSession || contact.id === 'cached') return;
     setIsStartingSession(true);
     try {
         const isIncoming = activeCall?.type === 'INCOMING';
         const eventName = isIncoming ? `Incoming: ${contact.fullName}` : `Manual: ${contact.fullName}`;
-        const historyId = await trackSessionStart({ name: eventName, peopleIds: [contact.id], assignedById: appUser.id, assignedByName: appUser.name, coEnablerIds: contact.coEnablerId && contact.coEnablerId !== appUser.id ? [contact.coEnablerId] : [] }, appUser);
-        const pausedSession = { event: eventName, peopleIds: [contact.id], currentIndex: 0, assignedById: appUser.id, assignedByName: appUser.name, historyId, coEnablerIds: contact.coEnablerId && contact.coEnablerId !== appUser.id ? [contact.coEnablerId] : [] };
+        const historyId = await trackSessionStart({ 
+            name: eventName, 
+            peopleIds: [contact.id], 
+            assignedById: appUser.id, 
+            assignedByName: appUser.name, 
+            coEnablerIds: contact.coEnablerId && contact.coEnablerId !== appUser.id ? [contact.coEnablerId] : [] 
+        }, appUser);
+        const pausedSession = { 
+            event: eventName, 
+            peopleIds: [contact.id], 
+            currentIndex: 0, 
+            assignedById: appUser.id, 
+            assignedByName: appUser.name, 
+            historyId, 
+            coEnablerIds: contact.coEnablerId && contact.coEnablerId !== appUser.id ? [contact.coEnablerId] : [] 
+        };
         await updateUser(appUser.id, { pausedCallingSession: pausedSession });
         setAppUser(prev => prev ? {...prev, pausedCallingSession: pausedSession} : null);
         setIsOpen(false);
         router.push('/session');
-    } catch (e) { console.error("[CallerID] Session start failed", e); } finally { setIsStartingSession(false); }
+    } catch (e) { 
+        console.error("[CallerID] Session start failed", e); 
+    } finally { 
+        setIsStartingSession(false); 
+    }
   };
 
   if (isAndroid || !Capacitor.isNativePlatform()) return null;

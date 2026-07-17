@@ -44,6 +44,11 @@ export interface CallLogPlugin {
     stage: string;
     remark: string;
     type: string;
+    occupation?: string;
+    enabler?: string;
+    folkGuide?: string;
+    attendance?: string[];
+    isAdmin?: boolean;
   }): Promise<{ shown: boolean }>;
 
   hideNativeOverlay(): Promise<void>;
