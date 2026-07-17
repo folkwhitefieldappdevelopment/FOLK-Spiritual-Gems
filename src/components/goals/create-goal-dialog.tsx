@@ -19,8 +19,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, Target } from 'lucide-react';
 import type { AppUser } from '@/lib/types';
 import { Timestamp } from 'firebase/firestore';
-import { getGoalCategories } from '@/services/settings-service';
+import { getGoalCategories, addGoalCategory, getGoalTitles, addGoalTitle, getGoalLabels, addGoalLabel } from '@/services/settings-service';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/auth-context';
+import { AutocompleteInput } from '@/components/ui/autocomplete-input';
 
 const goalSchema = z.object({
   enablerId: z.string().min(1, 'Please select an enabler.'),
@@ -43,8 +45,11 @@ type CreateGoalDialogProps = {
 };
 
 export function CreateGoalDialog({ isOpen, setIsOpen, enablers, onSave }: CreateGoalDialogProps) {
+  const { appUser } = useAuth();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [categories, setCategories] = React.useState<string[]>([]);
+  const [titles, setTitles] = React.useState<string[]>([]);
+  const [labels, setLabels] = React.useState<string[]>([]);
 
   const form = useForm<GoalFormValues>({
     resolver: zodResolver(goalSchema),
@@ -62,7 +67,15 @@ export function CreateGoalDialog({ isOpen, setIsOpen, enablers, onSave }: Create
 
   React.useEffect(() => {
     if (isOpen) {
-        getGoalCategories().then(setCategories);
+        Promise.all([
+            getGoalCategories(),
+            getGoalTitles(),
+            getGoalLabels()
+        ]).then(([cats, tits, labs]) => {
+            setCategories(cats);
+            setTitles(tits);
+            setLabels(labs);
+        });
     }
   }, [isOpen]);
 
@@ -79,6 +92,14 @@ export function CreateGoalDialog({ isOpen, setIsOpen, enablers, onSave }: Create
             deadlineDate: Timestamp.fromDate(new Date(data.deadlineDate)),
             achievedCount: 0,
         };
+
+        // Persist suggestions
+        await Promise.all([
+            addGoalCategory(data.category, appUser || undefined),
+            addGoalTitle(data.title, appUser || undefined),
+            data.deadlineLabel ? addGoalLabel(data.deadlineLabel, appUser || undefined) : Promise.resolve()
+        ]);
+
         await onSave(finalData);
         setIsOpen(false);
         form.reset();
@@ -123,17 +144,19 @@ export function CreateGoalDialog({ isOpen, setIsOpen, enablers, onSave }: Create
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Goal Category</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl><SelectTrigger className="h-12 rounded-xl bg-muted border-border font-bold"><SelectValue placeholder="Select Category..." /></SelectTrigger></FormControl>
-                                <SelectContent className="bg-popover border-border">
-                                    {categories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                                    <div className="p-2 border-t border-border mt-1">
-                                        <Button asChild variant="ghost" size="sm" className="w-full justify-start text-[10px] font-black uppercase text-primary hover:bg-primary/5">
-                                            <Link href="/settings">Manage Categories...</Link>
-                                        </Button>
-                                    </div>
-                                </SelectContent>
-                            </Select>
+                            <FormControl>
+                                <AutocompleteInput 
+                                    placeholder="Search or type category..." 
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    suggestions={categories}
+                                />
+                            </FormControl>
+                            <div className="px-1 pt-1">
+                                <Button asChild variant="link" size="sm" className="h-auto p-0 text-[10px] font-black uppercase text-primary/60 hover:text-primary">
+                                    <Link href="/settings">Manage Categories...</Link>
+                                </Button>
+                            </div>
                             <FormMessage />
                         </FormItem>
                     )}
@@ -146,7 +169,14 @@ export function CreateGoalDialog({ isOpen, setIsOpen, enablers, onSave }: Create
                 render={({ field }) => (
                     <FormItem>
                         <FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Goal Title</FormLabel>
-                        <FormControl><Input placeholder="e.g. DD Hills Trip, Jagannath Puri" {...field} className="h-12 rounded-xl bg-muted border-border font-bold px-4" /></FormControl>
+                        <FormControl>
+                            <AutocompleteInput 
+                                placeholder="e.g. DD Hills Trip, Jagannath Puri" 
+                                value={field.value}
+                                onChange={field.onChange}
+                                suggestions={titles}
+                            />
+                        </FormControl>
                         <FormMessage />
                     </FormItem>
                 )}
@@ -195,7 +225,14 @@ export function CreateGoalDialog({ isOpen, setIsOpen, enablers, onSave }: Create
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Label Override (Optional)</FormLabel>
-                            <FormControl><Input placeholder="e.g. Oct 21st to 24th" {...field} className="h-12 rounded-xl bg-muted border-border font-bold px-4" /></FormControl>
+                            <FormControl>
+                                <AutocompleteInput 
+                                    placeholder="e.g. Oct 21st to 24th" 
+                                    value={field.value || ''}
+                                    onChange={field.onChange}
+                                    suggestions={labels}
+                                />
+                            </FormControl>
                         </FormItem>
                     )}
                 />

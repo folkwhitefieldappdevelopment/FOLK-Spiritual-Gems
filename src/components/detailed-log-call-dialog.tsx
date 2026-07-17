@@ -19,6 +19,9 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { callStatuses } from '@/lib/types';
 import { Loader2, ClipboardCheck } from 'lucide-react';
+import { AutocompleteInput } from './ui/autocomplete-input';
+import { getEventNames, addEventName } from '@/services/settings-service';
+import { useAuth } from '@/contexts/auth-context';
 
 const logSchema = z.object({
   outcome: z.string().min(1, "Please select an outcome."),
@@ -32,17 +35,26 @@ interface DetailedLogCallDialogProps {
 }
 
 export function DetailedLogCallDialog({ onLogCall, trigger }: DetailedLogCallDialogProps) {
+  const { appUser } = useAuth();
   const [isOpen, setIsOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [eventSuggestions, setEventSuggestions] = React.useState<string[]>([]);
 
   const form = useForm<z.infer<typeof logSchema>>({
     resolver: zodResolver(logSchema),
     defaultValues: { notes: '', outcome: '', eventName: '' },
   });
 
+  React.useEffect(() => {
+      if (isOpen) {
+          getEventNames().then(setEventSuggestions);
+      }
+  }, [isOpen]);
+
   const handleSubmit = async (values: z.infer<typeof logSchema>) => {
     setIsSubmitting(true);
     try {
+        await addEventName(values.eventName, appUser || undefined);
         await onLogCall(values);
         setIsOpen(false);
         form.reset();
@@ -76,10 +88,11 @@ export function DetailedLogCallDialog({ onLogCall, trigger }: DetailedLogCallDia
                 <FormItem className="space-y-2">
                   <FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Event Name</FormLabel>
                   <FormControl>
-                    <Input 
+                    <AutocompleteInput 
                       placeholder="e.g. Sunday Feast, Personal Follow-up" 
-                      className="h-12 rounded-xl border-border bg-muted text-foreground font-bold px-5 focus-visible:ring-primary"
-                      {...field} 
+                      value={field.value}
+                      onChange={field.onChange}
+                      suggestions={eventSuggestions}
                     />
                   </FormControl>
                   <FormMessage />

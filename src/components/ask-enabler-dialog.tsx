@@ -31,6 +31,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useAppToast } from '@/contexts/toast-context';
 import { getUserById } from '@/services/user-service';
 import { getSavedQuestions, upsertQuestion, generateWhatsappLink } from '@/services/whatsapp-service';
+import { getWhatsappReportTemplate } from '@/services/settings-service';
 import { cn } from '@/lib/utils';
 import {
   Accordion,
@@ -51,6 +52,7 @@ export function AskEnablerDialog({ isOpen, setIsOpen, mode, people }: AskEnabler
   const { toast } = useAppToast();
   
   const [questionText, setQuestionText] = React.useState('');
+  const [whatsappTemplate, setWhatsappTemplate] = React.useState('');
   const [savedQuestions, setSavedQuestions] = React.useState<SavedWhatsappQuestion[]>([]);
   const [enablersMap, setEnablersMap] = React.useState<Map<string, AppUser>>(new Map());
   const [isLoading, setIsLoading] = React.useState(true);
@@ -77,12 +79,14 @@ export function AskEnablerDialog({ isOpen, setIsOpen, mode, people }: AskEnabler
       setManualMessages({}); // Clear manual edits on dialog re-open
       const fetchData = async () => {
         try {
-          const [questions, ...enablerDocs] = await Promise.all([
+          const [questions, template, ...enablerDocs] = await Promise.all([
             getSavedQuestions(),
+            getWhatsappReportTemplate(),
             ...Array.from(new Set(people.map(p => p.enablerId).filter(Boolean))).map(id => getUserById(id!))
           ]);
           
           setSavedQuestions(questions);
+          setWhatsappTemplate(template);
           const eMap = new Map();
           enablerDocs.forEach(u => { if (u) eMap.set(u.id, u); });
           setEnablersMap(eMap);
@@ -104,15 +108,18 @@ export function AskEnablerDialog({ isOpen, setIsOpen, mode, people }: AskEnabler
   }, [questionText, savedQuestions]);
 
   const constructDefaultMessage = (enablerName: string, contacts: Person[]) => {
-    const intro = contacts.length > 1 
-      ? `Hare Krishna ${enablerName}, could you help with these contacts?`
-      : `Hare Krishna ${enablerName}, could you help with this contact?`;
-
+    const contactCountLabel = contacts.length > 1 ? 'these contacts' : 'this contact';
     const list = contacts.map((p, i) => 
       contacts.length > 1 ? `${i + 1}. ${p.fullName} — ${p.phone}` : `${p.fullName} — ${p.phone}`
     ).join('\n');
 
-    return `${intro}\n\n${list}\n\n${questionText.trim()}`;
+    const templateToUse = whatsappTemplate || `Hare Krishna {enablerName}, could you help with {contactCountLabel}?\n\n{contactList}\n\n{question}`;
+
+    return templateToUse
+      .replace(/{enablerName}/g, enablerName)
+      .replace(/{contactCountLabel}/g, contactCountLabel)
+      .replace(/{contactList}/g, list)
+      .replace(/{question}/g, questionText.trim());
   };
 
   const getMessageForEnabler = (enablerId: string, enablerName: string, contacts: Person[]) => {

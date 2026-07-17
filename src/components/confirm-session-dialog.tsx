@@ -17,6 +17,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from './ui/input';
 import { PlayCircle, RotateCcw, ArrowRight, ChevronRight, History } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
+import { AutocompleteInput } from './ui/autocomplete-input';
+import { getEventNames, addEventName } from '@/services/settings-service';
 
 const createFormSchema = () => z.object({
   eventName: z.string().min(1, 'Event name is required.'),
@@ -50,6 +52,8 @@ export function ConfirmSessionDialog({
   const { appUser } = useAuth();
   const [mode, setMode] = React.useState<'choice' | 'new'>(pausedSession ? 'choice' : 'new');
   const [isStarting, setIsStarting] = React.useState(false);
+  const [eventSuggestions, setEventSuggestions] = React.useState<string[]>([]);
+
   const formSchema = React.useMemo(() => createFormSchema(), []);
   type FormValues = z.infer<typeof formSchema>;
 
@@ -65,11 +69,18 @@ export function ConfirmSessionDialog({
       form.reset({ eventName: '' });
       setMode(pausedSession ? 'choice' : 'new');
       setIsStarting(false);
+      getEventNames().then(setEventSuggestions);
     }
   }, [isOpen, form, pausedSession]);
   
   const onSubmit = async (data: FormValues) => {
-    onStartSession(data.eventName);
+    setIsStarting(true);
+    try {
+      await addEventName(data.eventName, appUser || undefined);
+      onStartSession(data.eventName);
+    } finally {
+      setIsStarting(false);
+    }
   };
   
   if (mode === 'choice' && pausedSession) {
@@ -158,7 +169,12 @@ export function ConfirmSessionDialog({
                 <FormItem>
                   <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">What is the occasion?</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Sunday Feast, Janmashtami Invite" {...field} autoFocus className="h-12 text-lg font-bold border-2" />
+                    <AutocompleteInput 
+                      placeholder="e.g. Sunday Feast, Janmashtami Invite" 
+                      value={field.value}
+                      onChange={field.onChange}
+                      suggestions={eventSuggestions}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

@@ -14,6 +14,11 @@ const defaultStayingWithOptions = ['PG / Hostel', 'Flat', 'Family', 'Temple Resi
 const defaultActivityOptions = ['Yes', 'No', 'Partial'];
 const defaultActivityFieldLabels: ActivityFieldLabels = { sg: 'SG-S', ma: 'SG-W', frp: 'FRP' };
 const defaultGoalCategories = ['Trip Goal', 'Events'];
+const defaultWhatsappReportTemplate = `Hare Krishna {enablerName}, could you help with {contactCountLabel}?
+
+{contactList}
+
+{question}`;
 
 export type EnablerOption = { value: string; label: string };
 
@@ -57,17 +62,13 @@ export const ensureSettingsDoc = async () => {
                 frpOptions: defaultActivityOptions,
                 activityFieldLabels: defaultActivityFieldLabels,
                 goalCategories: defaultGoalCategories,
+                whatsappReportTemplate: defaultWhatsappReportTemplate,
+                eventNames: [],
+                goalTitles: [],
+                goalLabels: [],
             };
             
-            setDoc(settingsDocRef, defaults).catch(async (serverError) => {
-              const permissionError = new FirestorePermissionError({
-                path: settingsDocRef.path,
-                operation: 'create',
-                requestResourceData: defaults,
-              } satisfies SecurityRuleContext);
-              errorEmitter.emit('permission-error', permissionError);
-            });
-            
+            await setDoc(settingsDocRef, defaults);
             return defaults;
         }
         return docSnap.data();
@@ -677,3 +678,46 @@ export const deleteExternalCoEnabler = async (id: string, userInfo: AppUser) => 
   await deleteDoc(docRef);
   logAudit('Delete External Co-Enabler', `Deleted volunteer record: ${id}`, userInfo);
 };
+
+/**
+ * WhatsApp Report Request Template management.
+ * Available tokens: {enablerName}, {contactList}, {question}, {contactCountLabel}
+ */
+export const getWhatsappReportTemplate = async (): Promise<string> => {
+    const settings = await ensureSettingsDoc();
+    return settings?.whatsappReportTemplate || defaultWhatsappReportTemplate;
+};
+
+export const updateWhatsappReportTemplate = async (template: string, userInfo?: AppUser) => {
+    const settingsDocRef = doc(db!, 'settings', 'options');
+    await updateDoc(settingsDocRef, { whatsappReportTemplate: template });
+    if (userInfo) logAudit('Update WhatsApp Template', `Modified default report request template.`, userInfo);
+};
+
+// --- Autocomplete Helpers ---
+
+const getGenericList = async (key: string): Promise<string[]> => {
+    const settings = await ensureSettingsDoc();
+    return (settings?.[key] || []).sort();
+};
+
+const addGenericItem = async (key: string, value: string, userInfo?: AppUser) => {
+    if (!value?.trim()) return;
+    const settingsDocRef = doc(db!, 'settings', 'options');
+    const settings = await ensureSettingsDoc();
+    const current = settings?.[key] || [];
+    const exists = current.some((s: string) => s.toLowerCase() === value.trim().toLowerCase());
+    if (!exists) {
+        const updated = [...current, value.trim()];
+        await updateDoc(settingsDocRef, { [key]: updated });
+    }
+};
+
+export const getEventNames = () => getGenericList('eventNames');
+export const addEventName = (name: string, u?: AppUser) => addGenericItem('eventNames', name, u);
+
+export const getGoalTitles = () => getGenericList('goalTitles');
+export const addGoalTitle = (title: string, u?: AppUser) => addGenericItem('goalTitles', title, u);
+
+export const getGoalLabels = () => getGenericList('goalLabels');
+export const addGoalLabel = (label: string, u?: AppUser) => addGenericItem('goalLabels', label, u);

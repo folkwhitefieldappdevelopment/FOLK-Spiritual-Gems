@@ -66,6 +66,8 @@ import {
   addGoalCategory,
   updateGoalCategory,
   deleteGoalCategory,
+  getWhatsappReportTemplate,
+  updateWhatsappReportTemplate,
 } from '@/services/settings-service';
 import { backfillIsDeleted, backfillEnablerId } from '@/services/people-service';
 import { 
@@ -92,6 +94,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 
 export default function SettingsPage() {
   const { toast } = useAppToast();
@@ -114,6 +117,9 @@ export default function SettingsPage() {
   const [activityLabels, setActivityLabels] = React.useState<ActivityFieldLabels>({ sg: 'SG-S', ma: 'SG-W', frp: 'FRP'});
   const [isUpdatingLabels, setIsUpdatingLabels] = React.useState(false);
   
+  const [whatsappTemplate, setWhatsappTemplate] = React.useState('');
+  const [isUpdatingWhatsappTemplate, setIsUpdatingWhatsappTemplate] = React.useState(false);
+
   const [externalCoEnablers, setExternalCoEnablers] = React.useState<ExternalCoEnabler[]>([]);
   const [isExternalDialogOpen, setIsExternalDialogOpen] = React.useState(false);
   const [newExternal, setNewExternal] = React.useState({ name: '', email: '' });
@@ -124,10 +130,10 @@ export default function SettingsPage() {
   const fetchData = React.useCallback(async () => {
     setIsLoading(true);
     try {
-      const [sourcesData, occupationsData, stayingData, customFieldsData, sgData, maData, frpData, labelsData, folkStagesData, externalData, goalCatsData] = await Promise.all([
+      const [sourcesData, occupationsData, stayingData, customFieldsData, sgData, maData, frpData, labelsData, folkStagesData, externalData, goalCatsData, waTemplate] = await Promise.all([
         getContactSources(), getOccupationStatuses(), getStayingWithOptions(), getCustomPersonFields(),
         getSgOptions(), getMaOptions(), getFrpOptions(), getActivityFieldLabels(), getCurrentFolkStages(),
-        getExternalCoEnablers(), getGoalCategories()
+        getExternalCoEnablers(), getGoalCategories(), getWhatsappReportTemplate()
       ]);
       setSources(sourcesData);
       setOccupations(occupationsData);
@@ -140,6 +146,7 @@ export default function SettingsPage() {
       setFolkStages(folkStagesData as FolkStage[]);
       setExternalCoEnablers(externalData);
       setGoalCategories(goalCatsData);
+      setWhatsappTemplate(waTemplate);
       setNotifStatus(getNotificationPermission());
     } finally {
       setIsLoading(false);
@@ -155,6 +162,16 @@ export default function SettingsPage() {
           toast({ title: 'Labels Updated' });
       } finally {
           setIsUpdatingLabels(false);
+      }
+  };
+
+  const handleUpdateWhatsappTemplate = async () => {
+      setIsUpdatingWhatsappTemplate(true);
+      try {
+          await updateWhatsappReportTemplate(whatsappTemplate, appUser || undefined);
+          toast({ title: 'Template Saved' });
+      } finally {
+          setIsUpdatingWhatsappTemplate(false);
       }
   };
 
@@ -390,6 +407,24 @@ export default function SettingsPage() {
                           Re-map IDs
                        </Button>
                     </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {isPrivileged && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>WhatsApp Report Request Template</CardTitle>
+                  <CardDescription>Customize the default message sent to enablers when asking for a contact status update. Available tokens: {'{enablerName}'}, {'{contactList}'}, {'{question}'}, {'{contactCountLabel}'}.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Textarea value={whatsappTemplate} onChange={e => setWhatsappTemplate(e.target.value)} className="min-h-[140px] font-mono text-xs" />
+                  <div className="flex justify-end">
+                    <Button onClick={handleUpdateWhatsappTemplate} disabled={isUpdatingWhatsappTemplate}>
+                      {isUpdatingWhatsappTemplate ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                      Save Template
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
