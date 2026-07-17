@@ -56,15 +56,64 @@ export function NativePermissionGuard() {
     setIsProcessing(true);
     try {
         const step = steps[currentStep];
+        let advanced = true;
+
         switch (step.id) {
             case 'call_logs': if (CallLog.requestPermissions) await CallLog.requestPermissions(); break;
-            case 'overlay': if (CallLog.requestOverlayPermission) { await CallLog.requestOverlayPermission(); toast({ title: "Opening Settings", description: "Enable 'Draw Over Other Apps' for SG CRM." }); } break;
+            case 'overlay': {
+                if (CallLog.requestOverlayPermission) {
+                    await CallLog.requestOverlayPermission();
+                    toast({ title: "Opening Settings", description: "Enable 'Draw Over Other Apps' for SG CRM, then return here." });
+
+                    // Poll for up to ~15s after returning to the app for the permission to register
+                    const waitForGrant = () => new Promise<boolean>((resolve) => {
+                        let attempts = 0;
+                        const check = async () => {
+                            const perms = await CallLog.checkPermissions();
+                            if (perms.overlay === 'granted') { resolve(true); return; }
+                            attempts++;
+                            if (attempts >= 15) { resolve(false); return; }
+                            setTimeout(check, 1000);
+                        };
+                        const onVisible = () => {
+                            if (document.visibilityState === 'visible') {
+                                document.removeEventListener('visibilitychange', onVisible);
+                                check();
+                            }
+                        };
+                        // If already visible, start checking immediately, otherwise wait for return
+                        if (document.visibilityState === 'visible') {
+                            check();
+                        } else {
+                            document.addEventListener('visibilitychange', onVisible);
+                        }
+                    });
+
+                    const granted = await waitForGrant();
+                    if (!granted) {
+                        setErrorCount(prev => prev + 1);
+                        toast({ variant: 'destructive', title: "Not enabled yet", description: "'Display over other apps' still isn't granted. Try again or tap Enable Now once more." });
+                        advanced = false;
+                    }
+                }
+                break;
+            }
             case 'media': await Camera.requestPermissions(); break;
             case 'contacts': await Contacts.requestPermissions(); break;
             case 'notifications': await LocalNotifications.requestPermissions(); break;
             case 'background': if (CallLog.requestBatteryExemption) { await CallLog.requestBatteryExemption(); toast({ title: "Opening Settings", description: "Set Battery to 'Unrestricted' or 'Ignore Optimizations'." }); } break;
         }
-        if (currentStep < steps.length - 1) { setCurrentStep(currentStep + 1); setErrorCount(0); } else { localStorage.setItem('onboarding_permissions_completed_v9', 'true'); setIsOpen(false); toast({ title: "Setup Complete!" }); }
+
+        if (advanced) {
+            if (currentStep < steps.length - 1) { 
+                setCurrentStep(currentStep + 1); 
+                setErrorCount(0); 
+            } else { 
+                localStorage.setItem('onboarding_permissions_completed_v9', 'true'); 
+                setIsOpen(false); 
+                toast({ title: "Setup Complete!" }); 
+            }
+        }
     } catch (e) {
         setErrorCount(prev => prev + 1);
         if (errorCount > 0) { if (currentStep < steps.length - 1) setCurrentStep(currentStep + 1); else setIsOpen(false); }

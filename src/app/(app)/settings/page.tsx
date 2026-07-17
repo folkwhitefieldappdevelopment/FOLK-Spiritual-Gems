@@ -19,7 +19,8 @@ import {
   Info,
   UserPlus,
   Mail,
-  MessageSquare
+  MessageSquare,
+  Layers
 } from 'lucide-react';
 import { useAppToast } from '@/contexts/toast-context';
 import { useAuth } from '@/contexts/auth-context';
@@ -86,6 +87,7 @@ import { BroadcastNotificationCard } from '@/components/broadcast-notification-c
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Capacitor } from '@capacitor/core';
+import { CallLog } from '@/lib/call-log';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   Dialog,
@@ -174,7 +176,15 @@ export default function SettingsPage() {
   const [isAddingExternal, setIsAddingExternal] = React.useState(false);
 
   const [notifStatus, setNotifStatus] = React.useState<string>('default');
-  
+  const [overlayStatus, setOverlayStatus] = React.useState<'granted' | 'denied' | 'checking'>('checking');
+
+  const refreshOverlayStatus = React.useCallback(async () => {
+      if (!Capacitor.isNativePlatform()) return;
+      setOverlayStatus('checking');
+      const perms = await CallLog.checkPermissions();
+      setOverlayStatus(perms.overlay === 'granted' ? 'granted' : 'denied');
+  }, []);
+
   const fetchData = React.useCallback(async () => {
     setIsLoading(true);
     try {
@@ -196,12 +206,25 @@ export default function SettingsPage() {
       setGoalCategories(goalCatsData);
       setWhatsappTemplate(waTemplate);
       setNotifStatus(getNotificationPermission());
+      refreshOverlayStatus();
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [refreshOverlayStatus]);
 
   React.useEffect(() => { fetchData(); }, [fetchData]);
+
+  React.useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+        const onVisible = () => {
+            if (document.visibilityState === 'visible') {
+                refreshOverlayStatus();
+            }
+        };
+        document.addEventListener('visibilitychange', onVisible);
+        return () => document.removeEventListener('visibilitychange', onVisible);
+    }
+  }, [refreshOverlayStatus]);
 
   const handleUpdateLabels = async () => {
       setIsUpdatingLabels(true);
@@ -372,6 +395,45 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
 
+            {Capacitor.isNativePlatform() && (
+              <Card className="bg-popover border-none rounded-[2rem] shadow-xl overflow-hidden">
+                <CardHeader className="bg-card border-b border-border p-8 pb-4">
+                  <CardTitle className="flex items-center gap-3 text-xl font-black uppercase tracking-tight">
+                    <Layers className="h-6 w-6 text-primary" />
+                    Caller ID Overlay
+                  </CardTitle>
+                  <CardDescription className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Required to show contact info during calls</CardDescription>
+                </CardHeader>
+                <CardContent className="p-8 space-y-6">
+                  <div className="flex items-center justify-between p-5 rounded-2xl border-2 border-dashed bg-muted/20 border-border">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Display Over Other Apps</p>
+                      <p className="text-sm font-bold text-foreground">Current system permission</p>
+                    </div>
+                    <Badge variant={overlayStatus === 'granted' ? 'default' : 'secondary'} className="h-7 px-4 rounded-xl font-black text-[10px] uppercase tracking-widest">
+                      {overlayStatus}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Button 
+                      variant="outline" 
+                      onClick={refreshOverlayStatus}
+                      className="h-14 rounded-2xl border-2 border-primary/20 text-primary hover:bg-primary/5 font-black uppercase text-[10px] tracking-widest"
+                    >
+                      Re-check Status
+                    </Button>
+                    <Button 
+                      onClick={async () => { await CallLog.requestOverlayPermission(); }} 
+                      disabled={overlayStatus === 'granted'}
+                      className="h-14 rounded-2xl bg-primary text-primary-foreground shadow-xl shadow-primary/20 font-black uppercase text-[10px] tracking-widest"
+                    >
+                      Enable Permission
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {isPrivileged && (
               <Card className="bg-popover border-none rounded-[2rem] shadow-xl overflow-hidden">
                 <CardHeader className="bg-card border-b border-border p-8 pb-4 flex flex-row items-center justify-between">
@@ -474,7 +536,7 @@ export default function SettingsPage() {
                           variant="outline"
                           className="w-full border-primary/20 text-primary hover:bg-primary/5 font-black uppercase text-[10px] tracking-widest"
                        >
-                          {isBackfillingIds ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Database className="mr-2 h-3 w-3" />}
+                          {isBackfillingIds ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Database className="mr-2 h-4 w-4" />}
                           Re-map IDs
                        </Button>
                     </div>
