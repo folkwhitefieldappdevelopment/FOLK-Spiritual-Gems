@@ -20,7 +20,10 @@ import {
   UserPlus,
   Mail,
   MessageSquare,
-  Layers
+  Layers,
+  MessageCircle,
+  Pencil,
+  Plus
 } from 'lucide-react';
 import { useAppToast } from '@/contexts/toast-context';
 import { useAuth } from '@/contexts/auth-context';
@@ -177,6 +180,7 @@ export default function SettingsPage() {
 
   const [notifStatus, setNotifStatus] = React.useState<string>('default');
   const [overlayStatus, setOverlayStatus] = React.useState<'granted' | 'denied' | 'checking'>('checking');
+  const [isPreviewingOverlay, setIsPreviewingOverlay] = React.useState(false);
 
   const refreshOverlayStatus = React.useCallback(async () => {
       if (!Capacitor.isNativePlatform()) return;
@@ -184,6 +188,39 @@ export default function SettingsPage() {
       const perms = await CallLog.checkPermissions();
       setOverlayStatus(perms.overlay === 'granted' ? 'granted' : 'denied');
   }, []);
+
+  const handlePreviewOverlay = async () => {
+    setIsPreviewingOverlay(true);
+    try {
+        const result = await CallLog.showNativeOverlay({
+            name: 'Sample Contact',
+            phone: '+91 98765 43210',
+            photoUrl: '',
+            stage: 'Fresh Lead',
+            remark: 'This is a preview of the caller ID overlay.',
+            type: 'INCOMING'
+        });
+
+        if (result && (result as any).shown === false) {
+            toast({
+                variant: 'destructive',
+                title: "Preview blocked",
+                description: "'Display over other apps' isn't granted, so the overlay couldn't be shown. Tap Enable above and try again."
+            });
+            setIsPreviewingOverlay(false);
+            return;
+        }
+
+        toast({ title: "Preview shown", description: "Check your screen — the sample overlay will auto-hide in 5 seconds." });
+        setTimeout(async () => {
+            await CallLog.hideNativeOverlay();
+            setIsPreviewingOverlay(false);
+        }, 5000);
+    } catch (e) {
+        setIsPreviewingOverlay(false);
+        toast({ variant: 'destructive', title: "Preview failed", description: "Could not trigger the overlay." });
+    }
+  };
 
   const fetchData = React.useCallback(async () => {
     setIsLoading(true);
@@ -414,21 +451,13 @@ export default function SettingsPage() {
                       {overlayStatus}
                     </Badge>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Button 
-                      variant="outline" 
-                      onClick={refreshOverlayStatus}
-                      className="h-14 rounded-2xl border-2 border-primary/20 text-primary hover:bg-primary/5 font-black uppercase text-[10px] tracking-widest"
-                    >
-                      Re-check Status
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <Button variant="outline" onClick={refreshOverlayStatus}>Re-check Status</Button>
+                    <Button variant="outline" onClick={handlePreviewOverlay} disabled={isPreviewingOverlay || overlayStatus !== 'granted'}>
+                      {isPreviewingOverlay ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      Preview Overlay
                     </Button>
-                    <Button 
-                      onClick={async () => { await CallLog.requestOverlayPermission(); }} 
-                      disabled={overlayStatus === 'granted'}
-                      className="h-14 rounded-2xl bg-primary text-primary-foreground shadow-xl shadow-primary/20 font-black uppercase text-[10px] tracking-widest"
-                    >
-                      Enable Permission
-                    </Button>
+                    <Button onClick={async () => { await CallLog.requestOverlayPermission(); }} disabled={overlayStatus === 'granted'}>Enable</Button>
                   </div>
                 </CardContent>
               </Card>
