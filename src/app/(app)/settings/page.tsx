@@ -18,7 +18,8 @@ import {
   Smartphone,
   Info,
   UserPlus,
-  Mail
+  Mail,
+  MessageSquare
 } from 'lucide-react';
 import { useAppToast } from '@/contexts/toast-context';
 import { useAuth } from '@/contexts/auth-context';
@@ -95,6 +96,53 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+
+const DEFAULT_WHATSAPP_TEMPLATE = "Hare Krishna {name}, we are inviting you for our upcoming spiritual session. Hope to see you there!";
+
+function WhatsAppTemplateCard({ initialTemplate, onSave }: { initialTemplate: string, onSave: (template: string) => Promise<void> }) {
+  const [template, setTemplate] = React.useState(initialTemplate);
+  const [isSaving, setIsSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    setTemplate(initialTemplate);
+  }, [initialTemplate]);
+
+  const isDirty = template !== initialTemplate;
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    await onSave(template);
+    setIsSaving(false);
+  };
+
+  return (
+     <Card className="bg-popover border-none rounded-[2rem] shadow-xl overflow-hidden">
+      <CardHeader className="bg-card border-b border-border p-8 pb-4">
+        <CardTitle className="flex items-center gap-3 text-xl font-black uppercase tracking-tight">
+          <MessageSquare className="h-6 w-6 text-primary" />
+          Personal WhatsApp Template
+        </CardTitle>
+        <CardDescription className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+          Set your own default message for one-on-one outreach. Use <code className="bg-muted px-1 py-0.5 rounded-sm">{'{name}'}</code> as a placeholder for the contact's name.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="p-8 space-y-4">
+        <Textarea
+          value={template}
+          onChange={(e) => setTemplate(e.target.value)}
+          placeholder="e.g., Hare Krishna {name}, ..."
+          className="w-full min-h-[120px] rounded-2xl border-border bg-muted text-foreground font-bold p-5"
+        />
+        <div className="flex justify-end">
+          <Button onClick={handleSave} disabled={isSaving || !isDirty} className="rounded-xl h-11 px-8 font-black uppercase tracking-widest text-[10px]">
+            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save My Template
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function SettingsPage() {
   const { toast } = useAppToast();
@@ -173,6 +221,17 @@ export default function SettingsPage() {
       } finally {
           setIsUpdatingWhatsappTemplate(false);
       }
+  };
+
+  const handleSaveWhatsAppTemplate = async (template: string) => {
+    if (!appUser) return;
+    try {
+      await updateUser(appUser.id, { whatsAppTemplate: template });
+      setAppUser(prev => prev ? { ...prev, whatsAppTemplate: template } : null);
+      toast({ title: 'Template Saved' });
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to save template.' });
+    }
   };
 
   const handleAddExternal = async () => {
@@ -358,7 +417,19 @@ export default function SettingsPage() {
               </Card>
             )}
 
-            <Card><CardHeader><CardTitle>Appearance & Personalization</CardTitle></CardHeader><CardContent><ThemeSwitcher /></CardContent></Card>
+            <WhatsAppTemplateCard 
+                initialTemplate={appUser?.whatsAppTemplate || DEFAULT_WHATSAPP_TEMPLATE} 
+                onSave={handleSaveWhatsAppTemplate} 
+            />
+
+            <Card className="bg-popover border-none rounded-[2.5rem] shadow-xl overflow-hidden">
+                <CardHeader className="bg-card border-b border-border p-8 pb-4">
+                    <CardTitle className="text-xl font-black uppercase tracking-tight">Appearance & Personalization</CardTitle>
+                </CardHeader>
+                <CardContent className="p-8">
+                    <ThemeSwitcher />
+                </CardContent>
+            </Card>
             
             {isAdmin && (
               <Card className="border-orange-500/20 bg-orange-500/5 rounded-[2rem]">
@@ -413,17 +484,17 @@ export default function SettingsPage() {
             )}
 
             {isPrivileged && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>WhatsApp Report Request Template</CardTitle>
-                  <CardDescription>Customize the default message sent to enablers when asking for a contact status update. Available tokens: {'{enablerName}'}, {'{contactList}'}, {'{question}'}, {'{contactCountLabel}'}.</CardDescription>
+              <Card className="bg-popover border-none rounded-[2rem] shadow-xl overflow-hidden">
+                <CardHeader className="bg-card border-b border-border p-8 pb-4">
+                  <CardTitle className="text-xl font-black uppercase tracking-tight">WhatsApp Report Request Template</CardTitle>
+                  <CardDescription className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Customize the default message sent to enablers when asking for a contact status update. Available tokens: {'{enablerName}'}, {'{contactList}'}, {'{question}'}, {'{contactCountLabel}'}.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <Textarea value={whatsappTemplate} onChange={e => setWhatsappTemplate(e.target.value)} className="min-h-[140px] font-mono text-xs" />
+                <CardContent className="p-8 space-y-4">
+                  <Textarea value={whatsappTemplate} onChange={e => setWhatsappTemplate(e.target.value)} className="min-h-[140px] rounded-2xl border-border bg-muted text-foreground font-bold p-5 font-mono text-xs" />
                   <div className="flex justify-end">
-                    <Button onClick={handleUpdateWhatsappTemplate} disabled={isUpdatingWhatsappTemplate}>
+                    <Button onClick={handleUpdateWhatsappTemplate} disabled={isUpdatingWhatsappTemplate} className="rounded-xl h-11 px-8 font-black uppercase tracking-widest text-[10px]">
                       {isUpdatingWhatsappTemplate ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                      Save Template
+                      Save Team Template
                     </Button>
                   </div>
                 </CardContent>
@@ -431,28 +502,28 @@ export default function SettingsPage() {
             )}
 
             {isAdmin && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Calling Session Labels</CardTitle>
-                  <CardDescription>Customize the display names for quick-mark fields.</CardDescription>
+              <Card className="bg-popover border-none rounded-[2rem] shadow-xl overflow-hidden">
+                <CardHeader className="bg-card border-b border-border p-8 pb-4">
+                  <CardTitle className="text-xl font-black uppercase tracking-tight">Calling Session Labels</CardTitle>
+                  <CardDescription className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Customize the display names for quick-mark fields.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="p-8 space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="space-y-1.5">
-                      <Label htmlFor="label-sg">SG-S Label</Label>
-                      <Input id="label-sg" value={activityLabels.sg} onChange={e => setActivityLabels(p => ({...p, sg: e.target.value}))} />
+                      <Label htmlFor="label-sg" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">SG-S Label</Label>
+                      <Input id="label-sg" value={activityLabels.sg} onChange={e => setActivityLabels(p => ({...p, sg: e.target.value}))} className="h-12 rounded-xl bg-muted border-border font-bold px-4" />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="label-ma">SG-W Label</Label>
-                      <Input id="label-ma" value={activityLabels.ma} onChange={e => setActivityLabels(p => ({...p, ma: e.target.value}))} />
+                      <Label htmlFor="label-ma" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">SG-W Label</Label>
+                      <Input id="label-ma" value={activityLabels.ma} onChange={e => setActivityLabels(p => ({...p, ma: e.target.value}))} className="h-12 rounded-xl bg-muted border-border font-bold px-4" />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="label-frp">FRP Label</Label>
-                      <Input id="label-frp" value={activityLabels.frp} onChange={e => setActivityLabels(p => ({...p, frp: e.target.value}))} />
+                      <Label htmlFor="label-frp" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">FRP Label</Label>
+                      <Input id="label-frp" value={activityLabels.frp} onChange={e => setActivityLabels(p => ({...p, frp: e.target.value}))} className="h-12 rounded-xl bg-muted border-border font-bold px-4" />
                     </div>
                   </div>
                   <div className="flex justify-end pt-2">
-                    <Button onClick={handleUpdateLabels} disabled={isUpdatingLabels}>
+                    <Button onClick={handleUpdateLabels} disabled={isUpdatingLabels} className="rounded-xl h-11 px-8 font-black uppercase tracking-widest text-[10px]">
                         {isUpdatingLabels ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         Apply Custom Labels
                     </Button>
@@ -461,9 +532,9 @@ export default function SettingsPage() {
               </Card>
             )}
 
-            <Card>
-              <CardHeader><CardTitle>Manage Dropdown Options</CardTitle></CardHeader>
-              <CardContent className="space-y-10">
+            <Card className="bg-popover border-none rounded-[2rem] shadow-xl overflow-hidden">
+              <CardHeader className="bg-card border-b border-border p-8 pb-4"><CardTitle className="text-xl font-black uppercase tracking-tight">Manage Dropdown Options</CardTitle></CardHeader>
+              <CardContent className="p-8 space-y-10">
                 <EditableOptionsList title="Contact Sources" items={sources} onAdd={async i => setSources(await addContactSource(i, appUser || undefined))} onUpdate={async (o, n) => setSources(await updateContactSource(o, n, appUser || undefined))} onDelete={async i => setSources(await deleteContactSource(i, appUser || undefined))} />
                 <EditableOptionsList title="Goal Categories" items={goalCategories} onAdd={async i => setGoalCategories(await addGoalCategory(i, appUser || undefined))} onUpdate={async (o, n) => setGoalCategories(await updateGoalCategory(o, n, appUser || undefined))} onDelete={async i => setGoalCategories(await deleteGoalCategory(i, appUser || undefined))} />
                 <EditableOptionsList title="Current Folk Stage" items={folkStages} onAdd={async i => setFolkStages(await addCurrentFolkStage(i as FolkStage, appUser || undefined))} onUpdate={async (o, n) => setFolkStages(await updateCurrentFolkStage(o as FolkStage, n as FolkStage, appUser || undefined))} onDelete={async i => setFolkStages(await deleteCurrentFolkStage(i as FolkStage, appUser || undefined))} />
