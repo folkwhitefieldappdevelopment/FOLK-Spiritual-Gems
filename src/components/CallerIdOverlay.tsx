@@ -76,7 +76,7 @@ export function CallerIdOverlay() {
                     type: data.type
                 });
 
-                if (result && (result as any).shown === false) {
+                if (result.shown === false) {
                     toast({
                         title: "Caller ID overlay blocked",
                         description: "Enable 'Display over other apps' in Settings to identify contacts during calls.",

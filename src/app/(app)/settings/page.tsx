@@ -201,7 +201,7 @@ export default function SettingsPage() {
             type: 'INCOMING'
         });
 
-        if (result && (result as any).shown === false) {
+        if (result.shown === false) {
             toast({
                 variant: 'destructive',
                 title: "Preview blocked",
@@ -331,7 +331,7 @@ export default function SettingsPage() {
         description: `Successfully patched ${count} legacy contact(s) with missing isDeleted fields.` 
       });
     } catch (e) {
-      toast({ variant: 'destructive', title: 'Backfill Failed', description: 'Could not complete the data migration.' });
+      toast({ variant: 'destructive', title: 'Backfill Failed', description: 'Could complete the data migration.' });
     } finally {
       setIsBackfilling(false);
     }

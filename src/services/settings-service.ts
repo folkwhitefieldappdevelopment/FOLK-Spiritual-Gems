@@ -696,16 +696,18 @@ export const updateWhatsappReportTemplate = async (template: string, userInfo?: 
 
 // --- Autocomplete Helpers ---
 
-const getGenericList = async (key: string): Promise<string[]> => {
+type SettingsListKey = 'eventNames' | 'goalTitles' | 'goalLabels' | 'goalCategories';
+
+const getGenericList = async (key: SettingsListKey): Promise<string[]> => {
     const settings = await ensureSettingsDoc();
-    return (settings?.[key] || []).sort();
+    return ((settings as any)?.[key] || []).sort();
 };
 
-const addGenericItem = async (key: string, value: string, userInfo?: AppUser) => {
+const addGenericItem = async (key: SettingsListKey, value: string, userInfo?: AppUser) => {
     if (!value?.trim()) return;
     const settingsDocRef = doc(db!, 'settings', 'options');
     const settings = await ensureSettingsDoc();
-    const current = settings?.[key] || [];
+    const current: string[] = (settings as any)?.[key] || [];
     const exists = current.some((s: string) => s.toLowerCase() === value.trim().toLowerCase());
     if (!exists) {
         const updated = [...current, value.trim()];

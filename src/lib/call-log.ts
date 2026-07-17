@@ -1,4 +1,3 @@
-
 import { registerPlugin, type PluginListenerHandle } from '@capacitor/core';
 
 export interface CallLogEntry {
@@ -45,7 +44,7 @@ export interface CallLogPlugin {
     stage: string;
     remark: string;
     type: string;
-  }): Promise<void>;
+  }): Promise<{ shown: boolean }>;
 
   hideNativeOverlay(): Promise<void>;
 
