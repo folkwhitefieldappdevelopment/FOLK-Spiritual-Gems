@@ -52,9 +52,14 @@
             </intent-filter>
         </receiver>
 
+        <!-- AndroidManifest.xml -->
         <service android:name=".CallerOverlayService"
             android:exported="false"
-            android:foregroundServiceType="phoneCall" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="caller_id_overlay" />
+        </service>
 
     </application>
 </manifest>
