@@ -1,4 +1,3 @@
-// CallStateReceiver.java
 package com.folkcrm.gems;
 
 import android.content.BroadcastReceiver;
@@ -32,15 +31,10 @@ public class CallStateReceiver extends BroadcastReceiver {
         serviceIntent.putExtra("type", type);
 
         if (type.equals("DISCONNECTED")) {
-            // NEW: don't tear the overlay down — flip it into a "call ended" state
-            // that stays on screen until the user taps Back/X. JS still gets notified
-            // in case it wants to refresh session data, but it no longer controls dismissal.
             CallerOverlayManager.getInstance(context).markCallEnded();
             context.stopService(serviceIntent);
             CallLogPlugin.emitCallEvent(null, "DISCONNECTED");
         } else {
-            // NEW: draw a bare overlay immediately, natively — before JS/network involved.
-            // This is what makes it appear reliably even if the WebView is asleep or slow.
             CallerOverlayManager.getInstance(context).showOverlay(
                 null, phoneNumber, null, null, null, type
             );

@@ -1,17 +1,19 @@
-
 'use client';
 
+import { CallLog } from '@/lib/call-log';
+import { Capacitor } from '@capacitor/core';
 import type { Person } from '@/lib/types';
 
 /**
  * @fileOverview Local persistent cache for contact lookups.
  * Ensures the Caller ID overlay works instantly and fully offline.
- * Uses localStorage for robust cross-platform persistence without external dependencies.
+ * Uses localStorage for robust cross-platform persistence and syncs to a native-readable file.
  */
 
 const CONTACT_CACHE_KEY = 'sg_contact_lookup_cache';
 
 export type CachedContact = {
+  id: string;
   fullName: string;
   photoUrl: string;
   occupation: string;
@@ -20,6 +22,7 @@ export type CachedContact = {
   currentFolkStage: string;
   lastCallRemark: string;
   lastCallStatus: string;
+  chantingStatus: number;
   attendanceHistory: string[]; // Formatted as ["Event Name · Date"]
 };
 
@@ -35,7 +38,6 @@ export async function updateContactCache(people: Person[]) {
 
     people.forEach(p => {
       if (p.phone) {
-        // Fix: Ensure phone is treated as a string before manipulation
         const phoneStr = String(p.phone).trim();
         if (!phoneStr) return;
         const norm = phoneStr.replace(/\D/g, '').slice(-10);
@@ -46,6 +48,7 @@ export async function updateContactCache(people: Person[]) {
           .map(a => `${a.eventName || a.groupName} · ${a.date}`);
 
         cache[norm] = {
+          id: p.id,
           fullName: p.fullName,
           photoUrl: p.photoUrl,
           occupation: p.occupation || '',
@@ -54,12 +57,21 @@ export async function updateContactCache(people: Person[]) {
           currentFolkStage: p.currentFolkStage || '',
           lastCallRemark: p.lastCallRemark || '',
           lastCallStatus: p.lastCallStatus || '',
+          chantingStatus: p.chantingStatus || 0,
           attendanceHistory: attendance
         };
       }
     });
 
-    localStorage.setItem(CONTACT_CACHE_KEY, JSON.stringify(cache));
+    const json = JSON.stringify(cache);
+    localStorage.setItem(CONTACT_CACHE_KEY, json);
+
+    // Sync to native file system for zero-latency lookup outside WebView
+    if (Capacitor.isNativePlatform()) {
+        CallLog.syncNativeContactCache({ json }).catch(e => {
+            console.warn('[Cache] Native sync failed', e);
+        });
+    }
   } catch (e) {
     console.error('[Cache] Update failed', e);
   }
@@ -72,7 +84,6 @@ export async function getCachedContact(phone: string): Promise<CachedContact | n
   if (typeof window === 'undefined') return null;
 
   try {
-    // Fix: Guard against non-string phone types and null values
     if (!phone) return null;
     const norm = String(phone).replace(/\D/g, '').slice(-10);
     if (!norm) return null;

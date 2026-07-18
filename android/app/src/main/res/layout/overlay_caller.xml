@@ -16,7 +16,6 @@
             android:layout_width="match_parent" android:layout_height="4dp"
             android:background="#6C7FE0" />
 
-        <!-- Drag handle: header row, grab anywhere here to move the card -->
         <LinearLayout android:id="@+id/drag_handle"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="horizontal" android:gravity="center_vertical"
@@ -88,3 +87,24 @@
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="4dp" android:ellipsize="end" android:maxLines="2"
                 android:textColor="#CCCCCC" android:textSize="12sp" android:textStyle="italic" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginHorizontal="20dp" android:layout_marginBottom="20dp"
+            android:orientation="horizontal">
+
+            <Button android:id="@+id/btn_start_session"
+                android:layout_width="0dp" android:layout_height="50dp" android:layout_weight="1"
+                android:backgroundTint="#FF9800" android:text="Log Call"
+                android:textColor="#000000" android:textSize="12sp" android:textStyle="bold" />
+
+            <View android:layout_width="12dp" android:layout_height="match_parent" />
+
+            <Button android:id="@+id/btn_view_profile"
+                android:layout_width="0dp" android:layout_height="50dp" android:layout_weight="1"
+                android:backgroundTint="#1E1E2E" android:text="View Profile"
+                android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+</androidx.cardview.widget.CardView>

@@ -14,6 +14,7 @@ export interface CallLogPlugin {
     camera: string;
     contacts: string;
     notifications: string;
+    outgoingCalls: string;
   }>;
 
   checkPermissions(): Promise<{
@@ -22,6 +23,7 @@ export interface CallLogPlugin {
     contacts: string;
     notifications: string;
     overlay: string;
+    outgoingCalls: string;
   }>;
 
   requestOverlayPermission(): Promise<void>;
@@ -37,6 +39,10 @@ export interface CallLogPlugin {
     phoneNumber: string;
   }): Promise<void>;
 
+  syncNativeContactCache(options: {
+    json: string;
+  }): Promise<void>;
+
   showNativeOverlay(options: {
     name: string;
     phone: string;
@@ -49,6 +55,10 @@ export interface CallLogPlugin {
     folkGuide?: string;
     attendance?: string[];
     isAdmin?: boolean;
+    chantingStatus?: number;
+    sessionId?: string;
+    currentIndex?: number;
+    sessionName?: string;
   }): Promise<{ shown: boolean }>;
 
   hideNativeOverlay(): Promise<void>;
@@ -60,7 +70,11 @@ export interface CallLogPlugin {
 
   addListener(
     eventName: 'nativeOverlayAction',
-    listenerFunc: (data: { action: 'startSession' | 'viewProfile' }) => void
+    listenerFunc: (data: { 
+      action: 'startSession' | 'viewProfile' | 'resumeSession';
+      sessionId?: string;
+      currentIndex?: number;
+    }) => void
   ): Promise<PluginListenerHandle>;
 }
 

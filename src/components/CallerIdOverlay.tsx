@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -6,9 +5,10 @@ import { Capacitor } from '@capacitor/core';
 import { CallLog } from '@/lib/call-log';
 import { getPersonByPhone } from '@/services/people-service';
 import { getCachedContact } from '@/services/contact-cache-service';
+import { getSessionsForContact } from '@/services/session-history-service';
 import { useAuth } from '@/contexts/auth-context';
 import { useAppToast } from '@/contexts/toast-context';
-import type { Person } from '@/lib/types';
+import type { Person, CallingSessionRecord } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -30,14 +30,14 @@ import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { safeDate } from '@/utils/date';
 import { trackSessionStart } from '@/services/session-history-service';
-import { updateUser } from '@/services/user-service';
+import { updateUser, getUserById } from '@/services/user-service';
 
 export function CallerIdOverlay() {
   const { appUser, setAppUser } = useAuth();
   const { toast } = useAppToast();
   const router = useRouter();
   const [activeCall, setActiveCall] = React.useState<{ phoneNumber: string; type: string } | null>(null);
-  const [contact, setContact] = React.useState<Person | any | null>(null);
+  const [contact, setContact] = React.useState<any | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isStartingSession, setIsStartingSession] = React.useState(false);
   const [isOpen, setIsOpen] = React.useState(false);
@@ -54,8 +54,6 @@ export function CallerIdOverlay() {
     const setupListeners = async () => {
       try {
         nativeListener = await CallLog.addListener('callDetected', async (data) => {
-          // Fix: Persistence is now handled natively via markCallEnded()
-          // We no longer auto-hide on DISCONNECTED to allow the user to view data after call
           if (data.type === 'DISCONNECTED') {
             return;
           }
@@ -68,7 +66,11 @@ export function CallerIdOverlay() {
             // 1. Try instant local cache first for zero-latency UI
             const cachedMatch = await getCachedContact(data.phoneNumber);
             if (cachedMatch) {
-                setContact({ id: 'cached', ...cachedMatch, phone: data.phoneNumber });
+                // Check for active sessions for this contact
+                const sessions = await getSessionsForContact(cachedMatch.id, appUser.id);
+                const activeSession = sessions[0]; // Take the most recent one
+
+                setContact({ ...cachedMatch, phone: data.phoneNumber, activeSession });
                 
                 if (isAndroid) {
                     await CallLog.showNativeOverlay({
@@ -82,7 +84,11 @@ export function CallerIdOverlay() {
                         enabler: cachedMatch.enablerInTouchWith,
                         folkGuide: cachedMatch.folkGuide,
                         attendance: cachedMatch.attendanceHistory,
-                        isAdmin: isPrivileged
+                        chantingStatus: cachedMatch.chantingStatus,
+                        isAdmin: isPrivileged,
+                        sessionId: activeSession?.id,
+                        sessionName: activeSession?.name,
+                        currentIndex: activeSession ? activeSession.peopleIds.indexOf(cachedMatch.id) : undefined
                     });
                 }
             }
@@ -91,13 +97,17 @@ export function CallerIdOverlay() {
             if (navigator.onLine) {
                 const match = await getPersonByPhone(data.phoneNumber, { id: appUser.id, name: appUser.name, role: appUser.role });
                 if (match) {
-                    setContact(match);
+                    const sessions = await getSessionsForContact(match.id, appUser.id);
+                    const activeSession = sessions[0];
+                    
+                    setContact({ ...match, activeSession });
+                    
                     if (isAndroid) {
                         const attendance = (match.attendanceHistory || [])
                             .slice(0, 3)
                             .map(a => `${a.eventName || a.groupName} · ${a.date}`);
 
-                        const result = await CallLog.showNativeOverlay({
+                        await CallLog.showNativeOverlay({
                             name: match.fullName,
                             phone: data.phoneNumber,
                             photoUrl: match.photoUrl || '',
@@ -108,25 +118,12 @@ export function CallerIdOverlay() {
                             enabler: match.enablerInTouchWith,
                             folkGuide: match.folkGuide,
                             attendance: attendance,
-                            isAdmin: isPrivileged
+                            chantingStatus: match.chantingStatus,
+                            isAdmin: isPrivileged,
+                            sessionId: activeSession?.id,
+                            sessionName: activeSession?.name,
+                            currentIndex: activeSession ? activeSession.peopleIds.indexOf(match.id) : undefined
                         });
-
-                        if (result.shown === false) {
-                            toast({
-                                title: "Caller ID overlay blocked",
-                                description: "Enable 'Display over other apps' in Settings to identify contacts during calls.",
-                                action: (
-                                    <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        className="h-8 rounded-lg font-bold"
-                                        onClick={() => CallLog.requestOverlayPermission()}
-                                    >
-                                        Enable
-                                    </Button>
-                                )
-                            });
-                        }
                     }
                 }
             }
@@ -138,12 +135,14 @@ export function CallerIdOverlay() {
         });
 
         if (isAndroid) {
-            actionListener = await CallLog.addListener('nativeOverlayAction', (data: any) => {
+            actionListener = await CallLog.addListener('nativeOverlayAction', async (data: any) => {
                 if (data.action === 'startSession') handleQuickStartSession();
                 else if (data.action === 'viewProfile') {
                     if (contact?.id) {
                         router.push(`/contacts/profile?id=${contact.id}`);
                     }
+                } else if (data.action === 'resumeSession') {
+                    if (data.sessionId) handleResumeSession(data.sessionId, data.currentIndex || 0);
                 }
             });
         }
@@ -192,6 +191,33 @@ export function CallerIdOverlay() {
     }
   };
 
+  const handleResumeSession = async (sessionId: string, currentIndex: number) => {
+      if (!appUser) return;
+      try {
+          const docRef = await doc(db!, 'calling_sessions', sessionId);
+          const snap = await getDoc(docRef);
+          if (!snap.exists()) return;
+          
+          const session = snap.data() as CallingSessionRecord;
+          const pausedSession = {
+              event: session.name,
+              peopleIds: session.peopleIds,
+              currentIndex: currentIndex,
+              assignedById: session.assignedById,
+              assignedByName: session.assignedByName,
+              historyId: snap.id,
+              coEnablerIds: session.coEnablerIds || []
+          };
+
+          await updateUser(appUser.id, { pausedCallingSession: pausedSession });
+          setAppUser(prev => prev ? { ...prev, pausedCallingSession: pausedSession } : null);
+          setIsOpen(false);
+          router.push('/session');
+      } catch (e) {
+          console.error("[CallerID] Resume failed", e);
+      }
+  };
+
   if (isAndroid || !Capacitor.isNativePlatform()) return null;
 
   return (
@@ -222,7 +248,19 @@ export function CallerIdOverlay() {
                             <div className="space-y-1"><p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Age / Status</p><p className="text-[10px] font-bold text-foreground uppercase">{contact.age}y • {contact.relationshipStatus || 'Single'}</p></div>
                         </div>
                         {contact.lastCallRemark && (<div className="bg-primary/5 p-5 rounded-2xl border border-primary/10 space-y-2"><div className="flex items-center justify-between"><div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-primary/60">Note</div>{contact.lastCallAt && <div className="flex items-center gap-1 text-[8px] font-bold text-muted-foreground uppercase"><Clock className="h-2" />{formatDistanceToNow(safeDate(contact.lastCallAt)!, { addSuffix: true })}</div>}</div><p className="text-xs font-bold text-foreground/80 leading-relaxed italic line-clamp-3">"{contact.lastCallRemark}"</p></div>)}
-                        <div className="pt-2 flex flex-col gap-3"><Button className="w-full h-14 rounded-2xl bg-orange-500 text-black font-black uppercase tracking-widest text-[10px] shadow-xl shadow-orange-500/20" onClick={handleQuickStartSession} disabled={isStartingSession}>{isStartingSession ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlayCircle className="mr-2 h-4 w-4" />} Initialize Interaction</Button><Button variant="outline" className="w-full h-12 rounded-2xl border-border text-muted-foreground hover:text-foreground bg-muted/50 font-black uppercase tracking-widest text-[10px]" onClick={() => { setIsOpen(false); router.push(`/contacts/profile?id=${contact.id}`); }}><ExternalLink className="mr-2 h-4 w-4" /> Open Journey</Button></div>
+                        
+                        <div className="pt-2 flex flex-col gap-3">
+                            {contact.activeSession ? (
+                                <Button className="w-full h-14 rounded-2xl bg-primary text-primary-foreground font-black uppercase tracking-widest text-[10px] shadow-xl shadow-primary/20" onClick={() => handleResumeSession(contact.activeSession.id, contact.activeSession.peopleIds.indexOf(contact.id))} disabled={isStartingSession}>
+                                    <PlayCircle className="mr-2 h-4 w-4" /> Resume Session: {contact.activeSession.name}
+                                </Button>
+                            ) : (
+                                <Button className="w-full h-14 rounded-2xl bg-orange-500 text-black font-black uppercase tracking-widest text-[10px] shadow-xl shadow-orange-500/20" onClick={handleQuickStartSession} disabled={isStartingSession}>
+                                    {isStartingSession ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlayCircle className="mr-2 h-4 w-4" />} Initialize Interaction
+                                </Button>
+                            )}
+                            <Button variant="outline" className="w-full h-12 rounded-2xl border-border text-muted-foreground hover:text-foreground bg-muted/50 font-black uppercase tracking-widest text-[10px]" onClick={() => { setIsOpen(false); router.push(`/contacts/profile?id=${contact.id}`); }}><ExternalLink className="mr-2 h-4 w-4" /> Open Journey</Button>
+                        </div>
                     </div>
                 ) : <div className="flex flex-col items-center py-10 space-y-4 text-center"><div className="bg-muted/50 p-5 rounded-full"><User className="h-10 w-10 text-muted-foreground" /></div><div className="space-y-1"><p className="text-foreground text-lg font-black uppercase tracking-tight">{activeCall?.phoneNumber}</p><p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Not in database</p></div><Button variant="outline" className="rounded-xl border-border text-muted-foreground hover:text-foreground" onClick={() => setIsOpen(false)}>Dismiss</Button></div>}
             </div>

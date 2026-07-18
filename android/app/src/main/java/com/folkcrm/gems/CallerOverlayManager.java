@@ -1,4 +1,3 @@
-// CallerOverlayManager.java
 package com.folkcrm.gems;
 
 import android.content.Context;
@@ -24,7 +23,6 @@ public class CallerOverlayManager {
     private WindowManager.LayoutParams params;
     private boolean callEnded = false;
 
-    // Same indigo family as the app's dark theme (--primary: 226 70% 65%)
     private static final int[] AVATAR_PALETTE = {
         Color.parseColor("#6C7FE0"), Color.parseColor("#8B6CE0"),
         Color.parseColor("#4FA3D9"), Color.parseColor("#E08B6C"),
@@ -47,9 +45,6 @@ public class CallerOverlayManager {
         }
         callEnded = false;
 
-        // If the window is already up (e.g. native placeholder shown, JS data now ready),
-        // update the same view in place instead of tearing it down and rebuilding —
-        // this is also what preserves the user's dragged position.
         if (overlayView != null) {
             bindContent(name, phone, photoUrl, stage, remark, type, false);
             return true;
@@ -85,8 +80,6 @@ public class CallerOverlayManager {
         }
     }
 
-    /** Called from CallStateReceiver on DISCONNECTED — keeps the card visible with a
-     *  "Call Ended" header instead of dismissing it. Only Back/X remove it now. */
     public void markCallEnded() {
         callEnded = true;
         if (overlayView == null) return;
@@ -124,7 +117,6 @@ public class CallerOverlayManager {
             tvInitial.setVisibility(View.GONE);
             Glide.with(appContext).load(photoUrl).circleCrop().into(ivPhoto);
         } else {
-            // Truecaller-style fallback: colored circle + initial, never a broken image box
             ivPhoto.setVisibility(View.GONE);
             tvInitial.setVisibility(View.VISIBLE);
             String initial = hasName ? name.substring(0, 1).toUpperCase() : "#";
@@ -143,7 +135,6 @@ public class CallerOverlayManager {
         btnSession.setOnClickListener(v -> { CallLogPlugin.emitOverlayAction("startSession"); hideOverlay(); });
     }
 
-    /** Truecaller-style free drag: grabbing the card header moves the whole window. */
     private void attachDragHandle() {
         View dragHandle = overlayView.findViewById(R.id.drag_handle);
         dragHandle.setOnTouchListener(new View.OnTouchListener() {
