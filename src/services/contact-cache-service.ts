@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Person } from '@/lib/types';
@@ -34,8 +35,11 @@ export async function updateContactCache(people: Person[]) {
 
     people.forEach(p => {
       if (p.phone) {
-        // Use last 10 digits as normalized key
-        const norm = p.phone.replace(/\D/g, '').slice(-10);
+        // Fix: Ensure phone is treated as a string before manipulation
+        const phoneStr = String(p.phone).trim();
+        if (!phoneStr) return;
+        const norm = phoneStr.replace(/\D/g, '').slice(-10);
+        if (!norm) return;
         
         const attendance = (p.attendanceHistory || [])
           .slice(0, 3)
@@ -68,7 +72,11 @@ export async function getCachedContact(phone: string): Promise<CachedContact | n
   if (typeof window === 'undefined') return null;
 
   try {
-    const norm = phone.replace(/\D/g, '').slice(-10);
+    // Fix: Guard against non-string phone types and null values
+    if (!phone) return null;
+    const norm = String(phone).replace(/\D/g, '').slice(-10);
+    if (!norm) return null;
+
     const storedValue = localStorage.getItem(CONTACT_CACHE_KEY);
     if (!storedValue) return null;
     

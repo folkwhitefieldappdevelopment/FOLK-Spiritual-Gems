@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -53,9 +54,9 @@ export function CallerIdOverlay() {
     const setupListeners = async () => {
       try {
         nativeListener = await CallLog.addListener('callDetected', async (data) => {
-          // Persistence is now handled natively via markCallEnded()
+          // Fix: Persistence is now handled natively via markCallEnded()
+          // We no longer auto-hide on DISCONNECTED to allow the user to view data after call
           if (data.type === 'DISCONNECTED') {
-            if (!isAndroid) setIsOpen(false);
             return;
           }
 
