@@ -1,6 +1,7 @@
 package com.folkcrm.gems;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.GradientDrawable;
@@ -14,6 +15,7 @@ import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.TextView;
 import com.bumptech.glide.Glide;
+import java.util.List;
 
 public class CallerOverlayManager {
     private static CallerOverlayManager instance;
@@ -39,14 +41,17 @@ public class CallerOverlayManager {
         return instance;
     }
 
-    public boolean showOverlay(String name, String phone, String photoUrl, String stage, String remark, String type) {
+    public boolean showOverlay(String name, String phone, String photoUrl, String stage, String remark, String type,
+                               String occupation, String enabler, String folkGuide, Integer chantingStatus,
+                               List<String> attendance, boolean isAdmin, String sessionId, String sessionName, Integer currentIndex) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(appContext)) {
             return false;
         }
         callEnded = false;
 
         if (overlayView != null) {
-            bindContent(name, phone, photoUrl, stage, remark, type, false);
+            bindContent(name, phone, photoUrl, stage, remark, type, occupation, enabler, folkGuide,
+                chantingStatus, attendance, isAdmin, sessionId, sessionName, currentIndex);
             return true;
         }
 
@@ -68,7 +73,8 @@ public class CallerOverlayManager {
 
         overlayView = LayoutInflater.from(appContext).inflate(R.layout.overlay_caller, null);
         attachDragHandle();
-        bindContent(name, phone, photoUrl, stage, remark, type, true);
+        bindContent(name, phone, photoUrl, stage, remark, type, occupation, enabler, folkGuide,
+            chantingStatus, attendance, isAdmin, sessionId, sessionName, currentIndex);
 
         try {
             windowManager.addView(overlayView, params);
@@ -89,7 +95,18 @@ public class CallerOverlayManager {
         if (indicator != null) indicator.setBackgroundColor(Color.parseColor("#555577"));
     }
 
-    private void bindContent(String name, String phone, String photoUrl, String stage, String remark, String type, boolean isFresh) {
+    private void setRow(View row, TextView valueView, String value) {
+        if (value == null || value.trim().isEmpty()) {
+            row.setVisibility(View.GONE);
+        } else {
+            row.setVisibility(View.VISIBLE);
+            valueView.setText(value);
+        }
+    }
+
+    private void bindContent(String name, String phone, String photoUrl, String stage, String remark, String type,
+                              String occupation, String enabler, String folkGuide, Integer chantingStatus,
+                              List<String> attendance, boolean isAdmin, String sessionId, String sessionName, Integer currentIndex) {
         TextView tvName = overlayView.findViewById(R.id.tv_caller_name);
         TextView tvPhone = overlayView.findViewById(R.id.tv_caller_phone);
         TextView tvStage = overlayView.findViewById(R.id.tv_caller_stage);
@@ -103,14 +120,63 @@ public class CallerOverlayManager {
         View btnProfile = overlayView.findViewById(R.id.btn_view_profile);
         View btnSession = overlayView.findViewById(R.id.btn_start_session);
 
+        View rowOccupation = overlayView.findViewById(R.id.row_occupation);
+        TextView tvOccupation = overlayView.findViewById(R.id.tv_caller_occupation);
+        View rowEnabler = overlayView.findViewById(R.id.row_enabler);
+        TextView tvEnabler = overlayView.findViewById(R.id.tv_caller_enabler);
+        View rowFg = overlayView.findViewById(R.id.row_fg);
+        TextView tvFg = overlayView.findViewById(R.id.tv_caller_fg);
+        View rowChanting = overlayView.findViewById(R.id.row_chanting);
+        TextView tvChanting = overlayView.findViewById(R.id.tv_caller_chanting);
+        View rowAttendance = overlayView.findViewById(R.id.row_attendance);
+        TextView tvAttendance = overlayView.findViewById(R.id.tv_caller_attendance);
+        View btnResumeSession = overlayView.findViewById(R.id.btn_resume_session);
+
         boolean hasName = name != null && !name.isEmpty();
         tvName.setText(hasName ? name : "Identifying…");
         tvPhone.setText(phone != null ? phone : "");
-        tvStage.setText(stage != null ? stage : "Fresh Lead");
+        tvStage.setText(stage != null && !stage.isEmpty() ? stage : "Fresh Lead");
         tvRemark.setText(remark != null && !remark.isEmpty() ? "\u201c" + remark + "\u201d" : "No previous remarks recorded.");
         tvStatus.setText(callEnded ? "CALL ENDED" : ("INCOMING".equals(type) ? "INCOMING CALL" : "OUTGOING CALL"));
         indicator.setBackgroundColor(callEnded ? Color.parseColor("#555577")
             : "INCOMING".equals(type) ? Color.parseColor("#6C7FE0") : Color.parseColor("#5FBF8F"));
+
+        setRow(rowOccupation, tvOccupation, occupation);
+        setRow(rowEnabler, tvEnabler, enabler);
+        setRow(rowFg, tvFg, isAdmin ? folkGuide : null);
+
+        if (chantingStatus != null && chantingStatus > 0) {
+            rowChanting.setVisibility(View.VISIBLE);
+            tvChanting.setText("Chanting: " + chantingStatus + " rounds");
+        } else {
+            rowChanting.setVisibility(View.GONE);
+        }
+
+        if (attendance != null && !attendance.isEmpty()) {
+            rowAttendance.setVisibility(View.VISIBLE);
+            StringBuilder sb = new StringBuilder();
+            int shown = Math.min(3, attendance.size());
+            for (int i = 0; i < shown; i++) {
+                if (i > 0) sb.append("\n");
+                sb.append(attendance.get(i));
+            }
+            if (attendance.size() > shown) sb.append("\n+" + (attendance.size() - shown) + " more");
+            tvAttendance.setText(sb.toString());
+        } else {
+            rowAttendance.setVisibility(View.GONE);
+        }
+
+        if (sessionId != null && !sessionId.isEmpty()) {
+            btnResumeSession.setVisibility(View.VISIBLE);
+            ((TextView) btnResumeSession).setText("Resume: " + (sessionName != null ? sessionName : "Session"));
+            btnResumeSession.setOnClickListener(v -> {
+                launchApp();
+                CallLogPlugin.emitOverlayAction("resumeSession", sessionId, currentIndex != null ? currentIndex : 0);
+                hideOverlay();
+            });
+        } else {
+            btnResumeSession.setVisibility(View.GONE);
+        }
 
         if (photoUrl != null && !photoUrl.isEmpty()) {
             ivPhoto.setVisibility(View.VISIBLE);
@@ -131,8 +197,14 @@ public class CallerOverlayManager {
         btnClose.setOnClickListener(v -> hideOverlay());
         btnBack.setOnClickListener(v -> hideOverlay());
 
-        btnProfile.setOnClickListener(v -> { CallLogPlugin.emitOverlayAction("viewProfile"); hideOverlay(); });
-        btnSession.setOnClickListener(v -> { CallLogPlugin.emitOverlayAction("startSession"); hideOverlay(); });
+        btnProfile.setOnClickListener(v -> { launchApp(); CallLogPlugin.emitOverlayAction("viewProfile"); hideOverlay(); });
+        btnSession.setOnClickListener(v -> { launchApp(); CallLogPlugin.emitOverlayAction("startSession"); hideOverlay(); });
+    }
+
+    private void launchApp() {
+        Intent launchIntent = new Intent(appContext, MainActivity.class);
+        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+        appContext.startActivity(launchIntent);
     }
 
     private void attachDragHandle() {

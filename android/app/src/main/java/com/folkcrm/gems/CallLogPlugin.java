@@ -12,11 +12,13 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
+import java.util.List;
 
 @CapacitorPlugin(
     name = "CallLog",
     permissions = {
         @Permission(alias = "callLog", strings = {Manifest.permission.READ_CALL_LOG, Manifest.permission.READ_PHONE_STATE, Manifest.permission.CALL_PHONE}),
+        @Permission(alias = "outgoingCalls", strings = {Manifest.permission.PROCESS_OUTGOING_CALLS, Manifest.permission.READ_PHONE_NUMBERS}),
         @Permission(alias = "camera", strings = {Manifest.permission.CAMERA}),
         @Permission(alias = "contacts", strings = {Manifest.permission.READ_CONTACTS}),
         @Permission(alias = "notifications", strings = {Manifest.permission.POST_NOTIFICATIONS})
@@ -40,9 +42,17 @@ public class CallLogPlugin extends Plugin {
     }
 
     public static void emitOverlayAction(String action) {
+        emitOverlayAction(action, null, -1);
+    }
+
+    public static void emitOverlayAction(String action, String sessionId, int currentIndex) {
         if (staticInstance != null) {
             JSObject ret = new JSObject();
             ret.put("action", action);
+            if (sessionId != null) {
+                ret.put("sessionId", sessionId);
+                ret.put("currentIndex", currentIndex);
+            }
             staticInstance.notifyListeners("nativeOverlayAction", ret);
         }
     }
@@ -55,9 +65,22 @@ public class CallLogPlugin extends Plugin {
         String stage = call.getString("stage");
         String remark = call.getString("remark");
         String type = call.getString("type");
-    
+        String occupation = call.getString("occupation");
+        String enabler = call.getString("enabler");
+        String folkGuide = call.getString("folkGuide");
+        Integer chantingStatus = call.getInt("chantingStatus");
+        Boolean isAdmin = call.getBoolean("isAdmin", false);
+        String sessionId = call.getString("sessionId");
+        String sessionName = call.getString("sessionName");
+        Integer currentIndex = call.getInt("currentIndex");
+        List<String> attendance = call.getArray("attendance", String.class);
+
         getActivity().runOnUiThread(() -> {
-            boolean shown = CallerOverlayManager.getInstance(getContext()).showOverlay(name, phone, photoUrl, stage, remark, type);
+            boolean shown = CallerOverlayManager.getInstance(getContext()).showOverlay(
+                name, phone, photoUrl, stage, remark, type,
+                occupation, enabler, folkGuide, chantingStatus, attendance,
+                isAdmin != null && isAdmin, sessionId, sessionName, currentIndex
+            );
             JSObject ret = new JSObject();
             ret.put("shown", shown);
             call.resolve(ret);
@@ -70,6 +93,15 @@ public class CallLogPlugin extends Plugin {
             CallerOverlayManager.getInstance(getContext()).hideOverlay();
             call.resolve();
         });
+    }
+
+    @PluginMethod
+    public void syncNativeContactCache(PluginCall call) {
+        String json = call.getString("json");
+        if (json != null) {
+            ContactCacheStore.writeCache(getContext(), json);
+        }
+        call.resolve();
     }
 
     @PluginMethod

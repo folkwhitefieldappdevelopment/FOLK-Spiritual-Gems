@@ -31,6 +31,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { safeDate } from '@/utils/date';
 import { trackSessionStart } from '@/services/session-history-service';
 import { updateUser, getUserById } from '@/services/user-service';
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 export function CallerIdOverlay() {
   const { appUser, setAppUser } = useAuth();
@@ -194,7 +196,7 @@ export function CallerIdOverlay() {
   const handleResumeSession = async (sessionId: string, currentIndex: number) => {
       if (!appUser) return;
       try {
-          const docRef = await doc(db!, 'calling_sessions', sessionId);
+          const docRef = doc(db!, 'calling_sessions', sessionId);
           const snap = await getDoc(docRef);
           if (!snap.exists()) return;
           

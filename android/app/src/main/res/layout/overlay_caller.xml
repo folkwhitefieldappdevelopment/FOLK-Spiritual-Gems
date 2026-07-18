@@ -77,6 +77,63 @@
 
         <LinearLayout
             android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginHorizontal="20dp" android:layout_marginTop="10dp"
+            android:orientation="vertical">
+
+            <LinearLayout android:id="@+id/row_occupation"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:layout_marginBottom="4dp">
+                <TextView android:layout_width="90dp" android:layout_height="wrap_content"
+                    android:text="OCCUPATION" android:textColor="#5A6099" android:textSize="8sp" android:textStyle="bold" />
+                <TextView android:id="@+id/tv_caller_occupation"
+                    android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                    android:textColor="#CCCCCC" android:textSize="11sp" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/row_enabler"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:layout_marginBottom="4dp">
+                <TextView android:layout_width="90dp" android:layout_height="wrap_content"
+                    android:text="ENABLER" android:textColor="#5A6099" android:textSize="8sp" android:textStyle="bold" />
+                <TextView android:id="@+id/tv_caller_enabler"
+                    android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                    android:textColor="#CCCCCC" android:textSize="11sp" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/row_fg"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:layout_marginBottom="4dp">
+                <TextView android:layout_width="90dp" android:layout_height="wrap_content"
+                    android:text="FOLK GUIDE" android:textColor="#5A6099" android:textSize="8sp" android:textStyle="bold" />
+                <TextView android:id="@+id/tv_caller_fg"
+                    android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                    android:textColor="#CCCCCC" android:textSize="11sp" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/row_chanting"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:layout_marginBottom="4dp">
+                <TextView android:layout_width="90dp" android:layout_height="wrap_content"
+                    android:text="CHANTING" android:textColor="#5A6099" android:textSize="8sp" android:textStyle="bold" />
+                <TextView android:id="@+id/tv_caller_chanting"
+                    android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                    android:textColor="#CCCCCC" android:textSize="11sp" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/row_attendance"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:layout_marginBottom="4dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="GROUPS &amp; ATTENDANCE" android:textColor="#5A6099" android:textSize="8sp" android:textStyle="bold" />
+                <TextView android:id="@+id/tv_caller_attendance"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp" android:maxLines="3" android:ellipsize="end"
+                    android:textColor="#CCCCCC" android:textSize="11sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_margin="20dp" android:background="#1E1E2E"
             android:orientation="vertical" android:padding="14dp">
 
@@ -88,6 +145,13 @@
                 android:layout_marginTop="4dp" android:ellipsize="end" android:maxLines="2"
                 android:textColor="#CCCCCC" android:textSize="12sp" android:textStyle="italic" />
         </LinearLayout>
+
+        <Button android:id="@+id/btn_resume_session"
+            android:layout_width="match_parent" android:layout_height="46dp"
+            android:layout_marginHorizontal="20dp" android:layout_marginBottom="10dp"
+            android:backgroundTint="#6C7FE0" android:text="Resume Session"
+            android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold"
+            android:visibility="gone" />
 
         <LinearLayout
             android:layout_width="match_parent" android:layout_height="wrap_content"

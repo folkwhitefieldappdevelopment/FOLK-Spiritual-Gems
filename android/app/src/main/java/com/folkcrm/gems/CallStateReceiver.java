@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.telephony.TelephonyManager;
+import org.json.JSONObject;
 
 public class CallStateReceiver extends BroadcastReceiver {
     @Override
@@ -35,9 +36,30 @@ public class CallStateReceiver extends BroadcastReceiver {
             context.stopService(serviceIntent);
             CallLogPlugin.emitCallEvent(null, "DISCONNECTED");
         } else {
-            CallerOverlayManager.getInstance(context).showOverlay(
-                null, phoneNumber, null, null, null, type
-            );
+            // Native-first lookup: this MUST run before anything else, so the
+            // overlay never depends on the WebView/JS process being alive.
+            JSONObject cached = ContactCacheStore.lookupByPhone(context, phoneNumber);
+            if (cached != null) {
+                String name = cached.optString("fullName", null);
+                String photoUrl = cached.optString("photoUrl", null);
+                String stage = cached.optString("currentFolkStage", null);
+                String remark = cached.optString("lastCallRemark", null);
+                String occupation = cached.optString("occupation", null);
+                String enabler = cached.optString("enablerInTouchWith", null);
+                String folkGuide = cached.optString("folkGuide", null);
+                int chantingStatus = cached.optInt("chantingStatus", 0);
+
+                CallerOverlayManager.getInstance(context).showOverlay(
+                    name, phoneNumber, photoUrl, stage, remark, type,
+                    occupation, enabler, folkGuide, chantingStatus, null,
+                    false, null, null, null
+                );
+            } else {
+                CallerOverlayManager.getInstance(context).showOverlay(
+                    null, phoneNumber, null, null, null, type,
+                    null, null, null, null, null, false, null, null, null
+                );
+            }
 
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                 context.startForegroundService(serviceIntent);
