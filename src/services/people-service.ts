@@ -341,8 +341,14 @@ export const getPeople = async (
   });
 
   if (ignoreLimit) return { people: sorted, lastDocId: null, totalCount: sorted.length };
-  const slice = sorted.slice(0, PAGE_SIZE);
-  const lastId = sorted.length > PAGE_SIZE ? sorted[PAGE_SIZE - 1].id : null;
+  
+  let startIndex = 0;
+  if (options.lastDocId) {
+    const idx = sorted.findIndex(p => p.id === options.lastDocId);
+    startIndex = idx >= 0 ? idx + 1 : 0;
+  }
+  const slice = sorted.slice(startIndex, startIndex + PAGE_SIZE);
+  const lastId = (startIndex + PAGE_SIZE) < sorted.length ? sorted[startIndex + PAGE_SIZE - 1].id : null;
   return { people: slice, lastDocId: lastId, totalCount: sorted.length };
 };
 
