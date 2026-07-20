@@ -63,13 +63,6 @@
                 android:value="caller_id_overlay" />
         </service>
 
-        <service android:name=".FolkCallScreeningService"
-            android:permission="android.permission.BIND_SCREENING_SERVICE"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.telecom.CallScreeningService" />
-            </intent-filter>
-        </service>
-
+        
     </application>
 </manifest>

@@ -73,7 +73,13 @@ public class CallLogPlugin extends Plugin {
         String sessionId = call.getString("sessionId");
         String sessionName = call.getString("sessionName");
         Integer currentIndex = call.getInt("currentIndex");
-        List<String> attendance = call.getArray("attendance", String.class);
+        com.getcapacitor.JSArray attendanceArr = call.getArray("attendance");
+        List<String> attendance = new java.util.ArrayList<>();
+        if (attendanceArr != null) {
+            for (int i = 0; i < attendanceArr.length(); i++) {
+                attendance.add(attendanceArr.optString(i));
+            }
+        }
 
         getActivity().runOnUiThread(() -> {
             boolean shown = CallerOverlayManager.getInstance(getContext()).showOverlay(
