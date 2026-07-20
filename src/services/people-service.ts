@@ -17,6 +17,7 @@ import {
   serverTimestamp,
   documentId,
   onSnapshot,
+  writeBatch,
 } from 'firebase/firestore';
 import type { Person, AppUser, UserRole, FolkStage, CoEnablerSession, FilterState } from '@/lib/types';
 import { isAssignedToUser, ELIMINATED_STATUSES } from '@/lib/types';
@@ -65,7 +66,7 @@ export const initMasterPeopleStream = (): Promise<Person[]> => {
   if (cachePromise) return cachePromise;
 
   cachePromise = new Promise((resolve) => {
-    const peopleRef = collection(db, 'people');
+    const peopleRef = collection(db!, 'people');
     const q = query(peopleRef, limit(MAX_FIRESTORE_LIMIT));
     
     let resolved = false;
@@ -572,6 +573,87 @@ export const scanForDuplicates = async (userInfo: { id: string; name: string; ro
   const duplicates: Record<string, Person[]> = {};
   phoneMap.forEach((list, phone) => { if (list.length > 1) duplicates[phone] = list; });
   return duplicates;
+};
+
+export const findDuplicateContacts = async (): Promise<Record<string, Person[]>> => {
+  const allPeople = await getCachedPeople();
+  const phoneMap = new Map<string, Person[]>();
+
+  allPeople.forEach(p => {
+    if (p.isDeleted) return;
+    const norm = normalizePhone(p.phone);
+    if (!norm || norm.length < 10) return;
+    
+    if (!phoneMap.has(norm)) {
+      phoneMap.set(norm, []);
+    }
+    phoneMap.get(norm)!.push(p);
+  });
+
+  const duplicates: Record<string, Person[]> = {};
+  phoneMap.forEach((list, phone) => {
+    if (list.length > 1) {
+      duplicates[phone] = list;
+    }
+  });
+
+  return duplicates;
+};
+
+export const mergeContacts = async (keepId: string, discardIds: string[], userInfo: { id: string; name: string; role: UserRole[] }) => {
+  await persistenceReady;
+  const keepRef = doc(db!, 'people', keepId);
+  const keepSnap = await getDoc(keepRef);
+  if (!keepSnap.exists()) throw new Error("Target contact not found.");
+  
+  const keepData = processPersonDoc(keepSnap);
+  const discards = await getPeopleByIds(discardIds);
+  
+  const updates: any = {};
+  let mergedCallHistory = [...(keepData.callHistory || [])];
+  let mergedAttendanceHistory = [...(keepData.attendanceHistory || [])];
+
+  discards.forEach(d => {
+    const fieldsToMerge: (keyof Person)[] = [
+      'location', 'nativePlace', 'stayingWith', 'occupation', 'organisation', 
+      'folkId', 'rentDetails', 'relationshipStatus', 'customData', 'photoUrl',
+      'currentFolkStage', 'enablerInTouchWith', 'enablerId', 'folkGuide', 'folkGuideId'
+    ];
+
+    fieldsToMerge.forEach(field => {
+      if (!keepData[field] && d[field]) {
+        updates[field] = d[field];
+      }
+    });
+
+    if (d.callHistory && Array.isArray(d.callHistory)) {
+      mergedCallHistory = [...mergedCallHistory, ...d.callHistory];
+    }
+    if (d.attendanceHistory && Array.isArray(d.attendanceHistory)) {
+      mergedAttendanceHistory = [...mergedAttendanceHistory, ...d.attendanceHistory];
+    }
+  });
+
+  mergedCallHistory.sort((a, b) => {
+    const da = safeDate(a.calledAt)?.getTime() || 0;
+    const db = safeDate(b.calledAt)?.getTime() || 0;
+    return db - da;
+  });
+
+  const docRef = doc(db!, 'people', keepId);
+  await updateDoc(docRef, {
+      ...updates,
+      callHistory: mergedCallHistory,
+      attendanceHistory: mergedAttendanceHistory,
+  });
+  
+  const batch = writeBatch(db!);
+  discardIds.forEach(id => {
+    batch.delete(doc(db!, 'people', id));
+  });
+  await batch.commit();
+
+  await logAudit('Merge Contacts', `Merged ${discardIds.length} duplicates into ${keepData.fullName}`, userInfo);
 };
 
 export const backfillIsDeleted = async (userInfo: { id: string; name: string; role: UserRole[] }) => {

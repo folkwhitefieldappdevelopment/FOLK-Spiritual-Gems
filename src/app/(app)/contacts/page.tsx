@@ -1,6 +1,6 @@
 'use client';
 
-import * as React from "react";
+import * as React from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   PlusCircle, 
@@ -18,7 +18,8 @@ import {
   Trash2,
   LayoutGrid,
   Edit2,
-  MessageCircle
+  MessageCircle,
+  CopyCheck
 } from "lucide-react";
 import type { Person, Group, CustomField, FilterState } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -54,6 +55,7 @@ import { ContactGalleryDialog } from "@/components/contact-gallery-dialog";
 import { BulkEditPersonDialog } from '@/components/bulk-edit-person-dialog';
 import { AskEnablerDialog } from '@/components/ask-enabler-dialog';
 import { FreshLeadQRDialog } from "@/components/fresh-lead-qr-dialog";
+import { DuplicateContactsDialog } from '@/components/duplicate-contacts-dialog';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   AlertDialog,
@@ -118,6 +120,7 @@ const ContactsPageComponent = () => {
   const [isGalleryOpen, setIsGalleryOpen] = React.useState(false);
   const [isAssignCoEnablerDialogOpen, setIsAssignCoEnablerDialogOpen] = React.useState(false);
   const [isAskEnablerOpen, setIsAskEnablerOpen] = React.useState(false);
+  const [isDedupeOpen, setIsDedupeOpen] = React.useState(false);
   const [editingPerson, setEditingPerson] = React.useState<Person | undefined>(undefined);
   const [editingGroup, setEditingGroup] = React.useState<Group | undefined>(undefined);
   const [personToCall, setPersonToCall] = React.useState<Person | null>(null);
@@ -340,6 +343,16 @@ const ContactsPageComponent = () => {
     <>
       <PageHeader title="Outreach" description={totalCount !== null ? `Managing ${totalCount} records.` : "Outreach management."}>
         <div className="flex items-center gap-1.5 py-1">
+            {isPrivileged && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setIsDedupeOpen(true)} 
+                className="h-9 font-bold px-2.5 rounded-xl border-2 border-primary/20 bg-primary/5 text-primary"
+              >
+                  <CopyCheck className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">Deduplicate</span>
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={() => fetchContacts(undefined, true)} disabled={isLoading} className="h-9 font-bold px-2.5 rounded-xl border-2 border-border bg-muted/50 text-foreground">
                 <RefreshCw className={cn("h-4 w-4 sm:mr-2", isLoading && "animate-spin")} /> <span className="hidden sm:inline">Refresh</span>
             </Button>
@@ -508,6 +521,12 @@ const ContactsPageComponent = () => {
         setIsOpen={setIsAskEnablerOpen} 
         mode="bulk" 
         people={selectedPeople} 
+      />
+
+      <DuplicateContactsDialog 
+        isOpen={isDedupeOpen} 
+        setIsOpen={setIsDedupeOpen} 
+        onSuccess={() => fetchContacts(undefined, true)} 
       />
     </>
   );
