@@ -360,11 +360,18 @@ const ContactsPageComponent = () => {
                 <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="h-9 font-bold px-2.5 rounded-xl border-2 border-border bg-muted/50 text-foreground"><FileSpreadsheet className="h-4 w-4 sm:mr-2" /> <span className="hidden xs:inline">Data</span></Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-popover border-border">
+                <DropdownMenuContent align="end" className="bg-popover border-border max-w-[240px]">
+                    <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest text-primary/70 px-2 py-1">Import & Export</DropdownMenuLabel>
                     <DropdownMenuItem onSelect={() => fileInputRef.current?.click()} className="font-bold"><Upload className="mr-2 h-4 w-4" /> Import Excel</DropdownMenuItem>
                     <DropdownMenuItem onSelect={handleExportExcel} className="font-bold"><Download className="mr-2 h-4 w-4" /> Export Full List</DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-border" />
                     <DropdownMenuItem onSelect={() => appUser && downloadImportTemplate(appUser)} className="font-bold"><Layers className="mr-2 h-4 w-4" /> Download Template</DropdownMenuItem>
+                    <DropdownMenuSeparator className="bg-border" />
+                    <div className="px-2 py-2">
+                        <p className="text-[8px] font-bold text-muted-foreground leading-tight">
+                            TIP: For bulk updates to existing contacts, only include the Phone column plus fields you want to change.
+                        </p>
+                    </div>
                 </DropdownMenuContent>
             </DropdownMenu>
             <Button size="icon" onClick={() => setIsAddMethodDialogOpen(true)} className="h-9 w-9 bg-primary hover:bg-primary/90 rounded-full shadow-lg ml-2"><Plus className="h-5 w-5 text-primary-foreground" /></Button>

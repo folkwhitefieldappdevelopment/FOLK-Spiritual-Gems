@@ -141,9 +141,9 @@ export async function downloadImportTemplate(appUser: AppUser) {
   instructions.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF9800' } };
 
   const instructionRows = [
-    { field: 'Full Name', required: 'YES', format: 'Letters and spaces only.' },
-    { field: 'Phone', required: 'YES', format: '10-digit mobile number (e.g. 9876543210).' },
-    { field: 'Age', required: 'YES', format: 'Number between 16 and 40.' },
+    { field: 'Full Name', required: 'YES*', format: 'Letters and spaces only. *Mandatory only for NEW contacts.' },
+    { field: 'Phone', required: 'YES', format: '10-digit mobile number (e.g. 9876543210). Used to match existing contacts.' },
+    { field: 'Age', required: 'YES*', format: 'Number between 16 and 40. *Mandatory for new contacts.' },
     { field: 'Current Folk Stage', required: 'NO', format: `Valid values: ${folkStages.join(', ')}` },
     { field: 'Location', required: 'NO', format: 'Current city or area.' },
     { field: 'Native Place', required: 'NO', format: 'Home town.' },
@@ -171,6 +171,12 @@ export async function downloadImportTemplate(appUser: AppUser) {
   }
 
   instructionRows.push({ field: 'General Remarks', required: 'NO', format: 'Any additional notes or summary.' });
+  
+  instructionRows.push({ 
+    field: 'Bulk Update Note', 
+    required: '-', 
+    format: 'For bulk updates to existing contacts, you only need to include the Phone column plus whichever fields you want to change — leave other columns out entirely, and existing data won\'t be touched.' 
+  });
 
   instructions.addRows(instructionRows);
 

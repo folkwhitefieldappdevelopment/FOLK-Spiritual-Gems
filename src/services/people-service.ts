@@ -505,7 +505,9 @@ export const importPeople = async (
   for (let i = 0; i < total; i++) {
     const p = peopleData[i];
     try {
-      if (!p.fullName || !p.phone) throw new Error("Missing required field.");
+      if (!p.phone) throw new Error("Phone number is required.");
+      const existingMatch = await checkDuplicatePhone(p.phone);
+      if (!existingMatch && !p.fullName) throw new Error("Full name is required for new contacts.");
 
       if (isEnabler) {
           p.enablerInTouchWith = userInfo.name;
