@@ -167,7 +167,8 @@ const ContactsPageComponent = () => {
 
       // Update global total first via server count
       const counts = await getFastSummaryStats(appUser);
-      setTotalCount(fetchScope === 'all' ? counts.totalContactsCount : counts.myContactsCount);
+      // Only set org total optimistically; "My Contacts" will be determined by getPeople result shortly
+      if (fetchScope === 'all') setTotalCount(counts.totalContactsCount);
 
       const result = await getPeople(appUser, { 
         scope: fetchScope, 
@@ -178,6 +179,10 @@ const ContactsPageComponent = () => {
       setPeople(prev => lastId ? [...prev, ...result.people] : result.people);
       setLastDocId(result.lastDocId);
       setHasMore(result.lastDocId !== null);
+      
+      // Update with exact filtered/scoped count from the result
+      setTotalCount(result.totalCount);
+      
     } catch (error) { 
       console.error('[Contacts] fetchContacts failed:', error);
       if (thisFetchId === fetchIdRef.current) {

@@ -24,7 +24,7 @@ export function useDashboardStats(dateRange?: DateRange, folkGuideId?: string) {
 
   const dateRangeRef = useRef(dateRange);
   const folkGuideIdRef = useRef(folkGuideId);
-  const fastStatsRef = useRef<{ totalContactsCount: number; myContactsCount: number } | null>(null);
+  const fastStatsRef = useRef<{ totalContactsCount: number } | null>(null);
   const hasMountedRef = useRef(false);
 
   useEffect(() => {
@@ -80,8 +80,7 @@ export function useDashboardStats(dateRange?: DateRange, folkGuideId?: string) {
                         ...prev,
                         stats: {
                             ...prev.stats,
-                            totalContactsCount: counts.totalContactsCount,
-                            myContactsCount: counts.myContactsCount
+                            totalContactsCount: counts.totalContactsCount
                         }
                     };
                 }
@@ -94,7 +93,7 @@ export function useDashboardStats(dateRange?: DateRange, folkGuideId?: string) {
 
                 return {
                     stats: {
-                        myContactsCount: counts.myContactsCount,
+                        myContactsCount: 0, // Will be computed by recomputeStats shortly
                         totalContactsCount: counts.totalContactsCount,
                         myNewInRange: 0,
                         allNewInRange: 0,

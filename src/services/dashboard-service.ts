@@ -28,7 +28,7 @@ import { computeEnablerStageBreakdown, computeEnablerChantingBreakdown } from '@
 /**
  * High-performance summary fetcher.
  * Uses Firestore server-side aggregation for instant card results.
- * This avoids triggering a full collection sync just to get basic counts.
+ * Now only fetches global total to avoid illegal NOT_IN + OR query combinations.
  */
 export async function getFastSummaryStats(appUser: AppUser) {
     const peopleRef = collection(db!, 'people');
@@ -41,29 +41,10 @@ export async function getFastSummaryStats(appUser: AppUser) {
             where('lastCallStatus', 'not-in', ELIMINATED_STATUSES)
         );
         
-        const myCriteria = or(
-            where('enablerId', '==', appUser.id),
-            where('coEnablerId', '==', appUser.id)
-        );
-        
-        // Fix: Nest all criteria in a single and() block to avoid top-level combinator collision
-        const myActiveQuery = query(
-            peopleRef, 
-            and(
-                where('isDeleted', '==', false), 
-                where('lastCallStatus', 'not-in', ELIMINATED_STATUSES),
-                myCriteria
-            )
-        );
-
-        const [totalActiveSnap, myActiveSnap] = await Promise.all([
-            getCountFromServer(activeQuery),
-            getCountFromServer(myActiveQuery)
-        ]);
+        const totalActiveSnap = await getCountFromServer(activeQuery);
 
         return {
-            totalContactsCount: totalActiveSnap.data().count,
-            myContactsCount: myActiveSnap.data().count
+            totalContactsCount: totalActiveSnap.data().count
         };
     } catch (e) {
         console.error('[getFastSummaryStats] Falling back to simple count:', e);
@@ -71,8 +52,7 @@ export async function getFastSummaryStats(appUser: AppUser) {
         const notDeletedQuery = query(peopleRef, where('isDeleted', '==', false));
         const totalNotDeletedSnap = await getCountFromServer(notDeletedQuery);
         return {
-            totalContactsCount: totalNotDeletedSnap.data().count,
-            myContactsCount: 0
+            totalContactsCount: totalNotDeletedSnap.data().count
         };
     }
 }
@@ -84,7 +64,7 @@ export async function getDashboardStats(
     to?: Date; 
     timezoneOffset: number, 
     targetFolkGuideId?: string,
-    trustedTotalCounts?: { totalContactsCount: number; myContactsCount: number }
+    trustedTotalCounts?: { totalContactsCount: number }
   },
 ): Promise<DashboardData> {
   const { from, to } = options;
@@ -97,6 +77,22 @@ export async function getDashboardStats(
     p.isDeleted !== true && 
     !ELIMINATED_STATUSES.includes(p.lastCallStatus || '')
   );
+
+  // Compute myContactsCount using canonical business logic (same as Contacts page)
+  let myContactsCount: number;
+  if (appUser.role.includes('Folk Guide') && !appUser.role.includes('Admin')) {
+    const teamMembers = await getAssignableUsersForAssignments(appUser);
+    const teamIds = new Set(teamMembers.map(u => u.id));
+    const teamNames = new Set(teamMembers.map(u => (u.name || '').trim().toLowerCase()));
+    
+    myContactsCount = activePeople.filter(p =>
+        isAssignedToUser(p, appUser) ||
+        (p.enablerId && teamIds.has(p.enablerId)) ||
+        (!p.enablerId && p.enablerInTouchWith && teamNames.has(p.enablerInTouchWith.split('::')[0].trim().toLowerCase()))
+    ).length;
+  } else {
+    myContactsCount = activePeople.filter(p => isAssignedToUser(p, appUser)).length;
+  }
 
   let allNewInRange = 0;
   let myNewInRange = 0;
@@ -216,7 +212,7 @@ export async function getDashboardStats(
 
   return {
     stats: { 
-        myContactsCount: options.trustedTotalCounts?.myContactsCount ?? 0, 
+        myContactsCount, 
         totalContactsCount: options.trustedTotalCounts?.totalContactsCount ?? activePeople.length, 
         myNewInRange, 
         allNewInRange, 
