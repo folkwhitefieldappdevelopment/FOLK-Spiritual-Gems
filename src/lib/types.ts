@@ -25,6 +25,21 @@ export const folkStages: FolkStage[] = [
   'Club 16 - Inactive'
 ];
 
+/**
+ * SLA thresholds for follow-ups based on the contact's current stage.
+ */
+export const FOLLOW_UP_SLA_DAYS: Record<FolkStage, number> = {
+  'Fresh Lead': 3,
+  'Interested (Visited Residency or Temple)': 4,
+  '21 Days Challenge': 2,
+  'FRJ': 7,
+  'FRP': 7,
+  'SG-W': 10,
+  'SG-S': 10,
+  'Diamond-club 16': 14,
+  'Club 16 - Inactive': 30,
+};
+
 export const ELIMINATED_STATUSES = ['A2 - Not Interested', 'A3 - Wrong Number', 'G - Completely Shifted to Another city'];
 
 export type CallStatus = 

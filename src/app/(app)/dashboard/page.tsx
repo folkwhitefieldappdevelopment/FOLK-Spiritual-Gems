@@ -29,7 +29,8 @@ import {
     ArrowRight,
     Flame,
     Loader2,
-    Sigma
+    Sigma,
+    AlertCircle
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,6 +38,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { useAuth } from '@/contexts/auth-context';
 import { getFolkGuides } from '@/services/user-service';
+import { getFollowUpItemsForCurrentUser, getFollowUpSummaryForGuide } from '@/services/follow-up-service';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -64,6 +66,7 @@ export default function DashboardPage() {
   
   const [selectedFolkGuideId, setSelectedFolkGuideId] = useState<string>('all');
   const [folkGuides, setFGuides] = useState<AppUser[]>([]);
+  const [followUpCount, setFollowUpCount] = useState<number | null>(null);
   
   const { data, syncStatus, isLoading, isRefetching } = useDashboardStats(dateRange, selectedFolkGuideId);
 
@@ -72,6 +75,20 @@ export default function DashboardPage() {
         getFolkGuides().then(setFGuides);
     }
   }, [appUser]);
+
+  useEffect(() => {
+    if (!appUser) return;
+    const fetchFollowUp = async () => {
+        if (appUser.role.includes('Admin') || appUser.role.includes('Folk Guide')) {
+            const summaries = await getFollowUpSummaryForGuide(appUser);
+            setFollowUpCount(summaries.reduce((acc, s) => acc + s.total, 0));
+        } else {
+            const items = await getFollowUpItemsForCurrentUser(appUser);
+            setFollowUpCount(items.length);
+        }
+    };
+    fetchFollowUp();
+  }, [appUser, syncStatus]);
 
   const stats = data?.stats;
   const reportAll = data?.callingReportAll;
@@ -212,7 +229,7 @@ export default function DashboardPage() {
             
             <GoalAlerts />
 
-            <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+            <div className="grid gap-4 grid-cols-2 md:grid-cols-5">
                 <MiniStatCard 
                     title="ASSIGNED" 
                     value={(!isSyncStable && stats?.myContactsCount === 0) ? undefined : stats?.myContactsCount} 
@@ -235,6 +252,14 @@ export default function DashboardPage() {
                     colorClass="text-orange-500"
                     onClick={() => navigateToContacts({ scope: 'my' }, true)}
                     barColor="bg-orange-500"
+                />
+                <MiniStatCard 
+                    title="FOLLOW-UP" 
+                    value={followUpCount ?? undefined} 
+                    icon={AlertCircle} 
+                    colorClass="text-red-500"
+                    onClick={() => router.push('/follow-up')}
+                    barColor="bg-red-500"
                 />
                 <MiniStatCard 
                     title="ALL NEW" 
