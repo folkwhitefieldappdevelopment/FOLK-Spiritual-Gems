@@ -8,20 +8,30 @@ import type { AppUser } from '@/lib/types';
 import { Capacitor } from '@capacitor/core';
 
 let syncInterval: any = null;
+let lastSyncTimestamp = 0;
+const MIN_SYNC_COOLDOWN = 1000 * 60 * 5; // 5 minutes
 
-async function syncAllCallLogs(appUser: AppUser) {
+async function syncAllCallLogs(appUser: AppUser, isForegroundTrigger = false) {
   if (!appUser || !appUser.id) return;
   
   if (!Capacitor.isNativePlatform()) {
     return;
   }
+
+  // Throttle foreground triggers
+  const now = Date.now();
+  if (isForegroundTrigger && (now - lastSyncTimestamp < MIN_SYNC_COOLDOWN)) {
+    return;
+  }
+  
+  lastSyncTimestamp = now;
   
   try {
     const { people } = await getPeople(appUser, { scope: 'my', ignoreLimit: true });
     if (people.length === 0) return;
 
-    const callLogCollection = collection(db, 'call-logs');
-    const batch = writeBatch(db);
+    const callLogCollection = collection(db!, 'call-logs');
+    const batch = writeBatch(db!);
     let totalSynced = 0;
 
     for (const person of people) {
@@ -51,7 +61,7 @@ async function syncAllCallLogs(appUser: AppUser) {
           totalSynced++;
         });
 
-        const personRef = doc(db, 'people', person.id);
+        const personRef = doc(db!, 'people', person.id);
         const latestTimestamp = Math.max(...nativeLogs.map(l => l.timestamp));
         batch.update(personRef, { lastSyncTimestamp: latestTimestamp });
       }
@@ -68,14 +78,13 @@ async function syncAllCallLogs(appUser: AppUser) {
 export function startBackgroundSync(appUser: AppUser) {
   if (syncInterval) clearInterval(syncInterval);
 
-  // Staggered initial sync to prioritize dashboard loading (10s delay)
   setTimeout(() => syncAllCallLogs(appUser), 10000);
   
   if (Capacitor.isNativePlatform()) {
     import('@capacitor/app').then(({ App }) => {
         App.addListener('appStateChange', (state) => {
             if (state.isActive) {
-                syncAllCallLogs(appUser);
+                syncAllCallLogs(appUser, true);
             }
         });
     }).catch(err => console.warn("Capacitor App plugin load failed", err));

@@ -2,7 +2,7 @@
 
 /**
  * @fileOverview Optimized dashboard statistics generator.
- * Accurate counting for large datasets (10k limit) and Date-Wise Leaderboard.
+ * Accurate counting for large datasets (50k limit) and Date-Wise Leaderboard.
  * Uses Shared Data Layer to minimize document reads.
  */
 
@@ -13,7 +13,8 @@ import {
     limit,
     getCountFromServer,
     where,
-    or
+    or,
+    and
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { AppUser, DashboardData, CallingReport, Person, LeaderboardEntry } from '@/lib/types';
@@ -32,15 +33,12 @@ import { computeEnablerStageBreakdown, computeEnablerChantingBreakdown } from '@
 export async function getFastSummaryStats(appUser: AppUser) {
     const peopleRef = collection(db!, 'people');
     
-    // We calculate active counts by subtracting eliminated contacts from the non-deleted pool.
-    // This is more resilient than a 'not-in' filter which fails if the field is missing.
-    
+    // Canonical definition of "Active": not deleted and not in eliminated categories.
     // 1. Total Active Logic
-    const notDeletedQuery = query(peopleRef, where('isDeleted', '==', false));
-    const eliminatedQuery = query(
+    const activeQuery = query(
         peopleRef, 
         where('isDeleted', '==', false), 
-        where('lastCallStatus', 'in', ELIMINATED_STATUSES)
+        where('lastCallStatus', 'not-in', ELIMINATED_STATUSES)
     );
     
     // 2. My Active Logic
@@ -49,33 +47,31 @@ export async function getFastSummaryStats(appUser: AppUser) {
         where('coEnablerId', '==', appUser.id)
     );
     
-    const myNotDeletedQuery = query(peopleRef, where('isDeleted', '==', false), myCriteria);
-    const myEliminatedQuery = query(
+    const myActiveQuery = query(
         peopleRef, 
-        where('isDeleted', '==', false), 
-        myCriteria,
-        where('lastCallStatus', 'in', ELIMINATED_STATUSES)
+        and(where('isDeleted', '==', false), where('lastCallStatus', 'not-in', ELIMINATED_STATUSES)),
+        myCriteria
     );
 
-    const [
-        totalNotDeletedSnap, 
-        totalEliminatedSnap,
-        myNotDeletedSnap,
-        myEliminatedSnap
-    ] = await Promise.all([
-        getCountFromServer(notDeletedQuery),
-        getCountFromServer(eliminatedQuery),
-        getCountFromServer(myNotDeletedQuery),
-        getCountFromServer(myEliminatedQuery)
-    ]);
+    try {
+        const [totalActiveSnap, myActiveSnap] = await Promise.all([
+            getCountFromServer(activeQuery),
+            getCountFromServer(myActiveQuery)
+        ]);
 
-    const totalActive = totalNotDeletedSnap.data().count - totalEliminatedSnap.data().count;
-    const myActive = myNotDeletedSnap.data().count - myEliminatedSnap.data().count;
-
-    return {
-        totalContactsCount: Math.max(0, totalActive),
-        myContactsCount: Math.max(0, myActive)
-    };
+        return {
+            totalContactsCount: totalActiveSnap.data().count,
+            myContactsCount: myActiveSnap.data().count
+        };
+    } catch (e) {
+        // Fallback for missing indices
+        const notDeletedQuery = query(peopleRef, where('isDeleted', '==', false));
+        const totalNotDeletedSnap = await getCountFromServer(notDeletedQuery);
+        return {
+            totalContactsCount: totalNotDeletedSnap.data().count,
+            myContactsCount: 0
+        };
+    }
 }
 
 export async function getDashboardStats(
@@ -92,16 +88,13 @@ export async function getDashboardStats(
   const start = startOfDay(from || new Date());
   const end = endOfDay(to || from || new Date());
 
-  // Use the cached people stream to reduce redundant Firestore reads
   const allPeople = await getCachedPeople();
 
-  // Apply global exclusion rules for "Active" contacts
   const activePeople = allPeople.filter(p => 
     p.isDeleted !== true && 
     !ELIMINATED_STATUSES.includes(p.lastCallStatus || '')
   );
 
-  let myContactsCount = 0;
   let allNewInRange = 0;
   let myNewInRange = 0;
 
@@ -110,7 +103,6 @@ export async function getDashboardStats(
       const isMine = isAssignedToUser(p, appUser);
       const isInRange = created && isWithinInterval(created, { start, end });
       
-      if (isMine) myContactsCount++;
       if (isInRange) { 
           allNewInRange++; 
           if (isMine) myNewInRange++; 
@@ -211,7 +203,6 @@ export async function getDashboardStats(
       else byChanting['0-1 R']++;
   });
 
-  // Calculate Breakdowns
   let enablerRoster = await getAssignableUsersForAssignments(appUser);
   if (appUser.role.includes('Folk Enabler') && !enablerRoster.some(e => e.id === appUser.id)) {
     enablerRoster = [appUser, ...enablerRoster];
@@ -222,7 +213,7 @@ export async function getDashboardStats(
 
   return {
     stats: { 
-        myContactsCount: options.trustedTotalCounts?.myContactsCount ?? myContactsCount, 
+        myContactsCount: options.trustedTotalCounts?.myContactsCount ?? 0, 
         totalContactsCount: options.trustedTotalCounts?.totalContactsCount ?? activePeople.length, 
         myNewInRange, 
         allNewInRange, 

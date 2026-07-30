@@ -35,7 +35,7 @@ import { ScrollArea } from './ui/scroll-area';
 
 type PersonTableRowProps = {
   person: Person;
-  index?: number;
+  index: number;
   onEdit: (person: Person) => void;
   onDelete: (personId: string) => void;
   onStartCall: (person: Person) => void;
@@ -108,11 +108,7 @@ const PersonTableRowComponent = ({
                     return;
                 }
             }
-            // Execute native dialer
             await CallLog.makeCall({ phoneNumber: String(person.phone) });
-            
-            // Manual Trigger for Overlay: Outgoing broadcasts are restricted on Android 10+,
-            // so we push the context window manually for calls started from inside the app.
             await CallLog.showNativeOverlay({
                 name: person.fullName,
                 phone: person.phone,
@@ -143,6 +139,10 @@ const PersonTableRowComponent = ({
           </div>
         </TableCell>
         
+        <TableCell className="w-[30px] px-1 sm:px-2 text-center font-mono text-[10px] text-muted-foreground">
+            {index}
+        </TableCell>
+
         <TableCell className="px-4">
           <div className="flex items-center gap-4">
             <Avatar className="h-12 w-12 border-2 border-border shadow-xl shrink-0">
@@ -249,11 +249,4 @@ const PersonTableRowComponent = ({
   );
 };
 
-export const PersonTableRow = React.memo(PersonTableRowComponent, (prev, next) => {
-    return (
-        prev.isSelected === next.isSelected &&
-        prev.person.id === next.person.id &&
-        prev.person.lastCallAt === next.person.lastCallAt &&
-        prev.visibleColumns === next.visibleColumns
-    );
-});
+export const PersonTableRow = React.memo(PersonTableRowComponent);

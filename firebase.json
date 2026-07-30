@@ -7,14 +7,17 @@
         "node_modules",
         ".git",
         "firebase-debug.log",
-        "firebase-debug.*.log",
-        "*.local"
+        "firebase-debug.*.log"
       ],
       "predeploy": [
         "npm --prefix \"$RESOURCE_DIR\" run build"
       ]
     }
   ],
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
   "hosting": {
     "public": "out",
     "ignore": [
@@ -22,6 +25,36 @@
       "**/.*",
       "**/node_modules/**"
     ],
-    "trailingSlash": true
+    "trailingSlash": true,
+    "rewrites": [
+      {
+        "source": "/check-in/:id",
+        "destination": "/check-in/view/index.html"
+      },
+      {
+        "source": "/check-in/:id/:eventId",
+        "destination": "/check-in/view/entry/index.html"
+      },
+      {
+        "source": "/register/:id",
+        "destination": "/register/public/index.html"
+      },
+      {
+        "source": "/co-enabler/:id",
+        "destination": "/co-enabler/portal/index.html"
+      },
+      {
+        "source": "/groups/:id",
+        "destination": "/groups/view/index.html"
+      },
+      {
+        "source": "/contacts/:id",
+        "destination": "/contacts/details/index.html"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
   }
 }

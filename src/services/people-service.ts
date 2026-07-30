@@ -10,6 +10,7 @@ import {
   updateDoc,
   query,
   where,
+  or,
   type DocumentSnapshot,
   limit,
   arrayUnion,
@@ -18,6 +19,8 @@ import {
   documentId,
   onSnapshot,
   writeBatch,
+  orderBy,
+  getCountFromServer,
 } from 'firebase/firestore';
 import type { Person, AppUser, UserRole, FolkStage, CoEnablerSession, FilterState } from '@/lib/types';
 import { isAssignedToUser, ELIMINATED_STATUSES } from '@/lib/types';
@@ -33,7 +36,8 @@ import { getEnablers } from './settings-service';
 import { updateContactCache } from './contact-cache-service';
 
 const PAGE_SIZE = 100;
-const MAX_FIRESTORE_LIMIT = 5000;
+const MAX_ADMIN_LIMIT = 50000;
+const SCOPED_LIMIT = 5000;
 
 export type SyncStatus = 'initializing' | 'cached' | 'syncing' | 'synced' | 'timeout';
 
@@ -42,17 +46,20 @@ let masterPeopleMap: Map<string, Person> = new Map();
 let masterUnsubscribe: (() => void) | null = null;
 let cachePromise: Promise<Person[]> | null = null;
 let currentSyncStatus: SyncStatus = 'initializing';
+let currentSyncWarning: string | null = null;
 
 export const getSyncStatus = () => currentSyncStatus;
+export const getSyncWarning = () => currentSyncWarning;
 
-const updateSyncStatus = (status: SyncStatus) => {
+const updateSyncStatus = (status: SyncStatus, warning: string | null = null) => {
   currentSyncStatus = status;
-  statusListeners.forEach(l => l(status));
+  currentSyncWarning = warning;
+  statusListeners.forEach(l => l(status, warning));
 };
 
-export const subscribeToSyncStatus = (callback: (status: SyncStatus) => void) => {
+export const subscribeToSyncStatus = (callback: (status: SyncStatus, warning: string | null) => void) => {
   statusListeners.add(callback);
-  callback(currentSyncStatus);
+  callback(currentSyncStatus, currentSyncWarning);
   return () => statusListeners.delete(callback);
 };
 
@@ -62,12 +69,32 @@ export const subscribeToPeopleData = (callback: (people: Person[]) => void) => {
   return () => dataListeners.delete(callback);
 };
 
-export const initMasterPeopleStream = (): Promise<Person[]> => {
+/**
+ * Initializes a role-aware master stream to optimize Firestore costs.
+ * Folk Enablers only sync their assigned contacts.
+ */
+export const initMasterPeopleStream = (user: AppUser): Promise<Person[]> => {
   if (cachePromise) return cachePromise;
 
   cachePromise = new Promise((resolve) => {
     const peopleRef = collection(db!, 'people');
-    const q = query(peopleRef, limit(MAX_FIRESTORE_LIMIT));
+    let q;
+
+    const isAdmin = user.role.includes('Admin');
+    const isGuide = user.role.includes('Folk Guide') && !isAdmin;
+
+    if (isAdmin) {
+      q = query(peopleRef, orderBy(documentId()), limit(MAX_ADMIN_LIMIT));
+    } else if (isGuide) {
+      q = query(peopleRef, where('folkGuideId', '==', user.id), limit(SCOPED_LIMIT));
+    } else {
+      // Scoped query for Enablers (My Contacts + Co-Enabler assignments)
+      q = query(
+        peopleRef, 
+        or(where('enablerId', '==', user.id), where('coEnablerId', '==', user.id)),
+        limit(SCOPED_LIMIT)
+      );
+    }
     
     let resolved = false;
 
@@ -77,9 +104,9 @@ export const initMasterPeopleStream = (): Promise<Person[]> => {
         resolved = true;
         resolve(masterPeopleCache || []);
       }
-    }, 6000);
+    }, 10000);
 
-    masterUnsubscribe = onSnapshot(q, { includeMetadataChanges: true }, (snap) => {
+    masterUnsubscribe = onSnapshot(q, async (snap) => {
       const results: Person[] = [];
       const newMap = new Map<string, Person>();
 
@@ -92,18 +119,31 @@ export const initMasterPeopleStream = (): Promise<Person[]> => {
       masterPeopleCache = results;
       masterPeopleMap = newMap;
       
-      // Update local persistent cache for offline-first Caller ID
       updateContactCache(results);
 
       const isFromCache = snap.metadata.fromCache;
-      const isSyncing = snap.metadata.hasPendingWrites || !snap.metadata.fromCache;
+      const isSyncing = snap.metadata.hasPendingWrites;
       
-      if (!isFromCache) {
-        updateSyncStatus('synced');
-      } else if (isSyncing) {
-        updateSyncStatus('syncing');
+      // Verification logic for missing records in large sets
+      let warning: string | null = null;
+      if (!isFromCache && isAdmin) {
+          try {
+            const countSnap = await getCountFromServer(peopleRef);
+            const serverCount = countSnap.data().count;
+            if (serverCount > results.length) {
+                warning = `Loaded ${results.length.toLocaleString()} of ${serverCount.toLocaleString()} contacts — some records may be hidden due to system limits.`;
+            }
+          } catch (e) {
+            console.warn("Count check failed", e);
+          }
+      }
+
+      if (!isFromCache && !isSyncing) {
+        updateSyncStatus('synced', warning);
+      } else if (isSyncing || !isFromCache) {
+        updateSyncStatus('syncing', warning);
       } else {
-        updateSyncStatus('cached');
+        updateSyncStatus('cached', warning);
       }
 
       dataListeners.forEach(l => l(results));
@@ -128,7 +168,7 @@ export const initMasterPeopleStream = (): Promise<Person[]> => {
 
 export const getCachedPeople = async (): Promise<Person[]> => {
   if (masterPeopleCache) return masterPeopleCache;
-  return initMasterPeopleStream();
+  return []; // Should be initialized via App Shell first
 };
 
 export const normalizePhone = (phone: string): string => {
@@ -175,7 +215,7 @@ export async function getPeopleByIds(ids: string[]): Promise<Person[]> {
   const cached = ids.map(id => masterPeopleMap.get(id)).filter((p): p is Person => !!p);
   if (cached.length === ids.length) return cached;
 
-  const peopleCollection = collection(db, 'people');
+  const peopleCollection = collection(db!, 'people');
   const results: Person[] = [];
   const CHUNK_SIZE = 30;
   for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
@@ -197,7 +237,7 @@ export const getPersonByPhone = async (phone: string, userInfo: { id: string; na
     const match = masterPeopleCache.find(p => normalizePhone(p.phone) === norm);
     if (match) return (isAdmin || isAssignedToUser(match, userInfo)) ? match : null;
   }
-  const peopleRef = collection(db, 'people');
+  const peopleRef = collection(db!, 'people');
   const q = query(peopleRef, where('phone', '==', norm), limit(1));
   const snap = await getDocs(q);
   if (snap.empty) return null;
@@ -241,7 +281,7 @@ export const getPeople = async (
       const idsToFetch = dynamicGroups.find((g) => g.id === groupId)?.peopleIds || [];
       basePeople = allResults.filter((p) => idsToFetch.includes(p.id));
     } else {
-      const groupDoc = await getDoc(doc(db, 'groups', groupId));
+      const groupDoc = await getDoc(doc(db!, 'groups', groupId));
       const idsInGroup = groupDoc.exists() ? groupDoc.data()?.peopleIds || [] : [];
       basePeople = allResults.filter(p => idsInGroup.includes(p.id));
     }
@@ -394,14 +434,14 @@ export const getLiveGroupMemberCounts = async (
 export const getPerson = async (id: string): Promise<Person | null> => {
   if (!id) return null;
   if (masterPeopleMap.has(id)) return masterPeopleMap.get(id)!;
-  const docRef = doc(db, 'people', id);
+  const docRef = doc(db!, 'people', id);
   const docSnap = await getDoc(docRef);
   return docSnap.exists() ? processPersonDoc(docSnap) : null;
 };
 
 export const createPerson = async (data: Partial<Person>, userInfo: { id: string; name: string; role: UserRole[] }): Promise<{ success: boolean; message?: string; person?: Person }> => {
   await persistenceReady;
-  const docRef = doc(collection(db, 'people'));
+  const docRef = doc(collection(db!, 'people'));
   const normPhone = normalizePhone(data.phone!);
   const finalData = sanitizeData({ ...data, phone: normPhone, createdAt: serverTimestamp(), isDeleted: false, fullName_lowercase: (data.fullName || '').toLowerCase(), progress: data.progress && data.progress.length > 0 ? data.progress : createInitialProgress() });
   try {
@@ -416,7 +456,7 @@ export const createPerson = async (data: Partial<Person>, userInfo: { id: string
 
 export const updatePerson = async (id: string, data: Partial<Person>, userInfo?: { id: string; name: string; role: UserRole[] }): Promise<{ success: boolean; message?: string }> => {
   await persistenceReady;
-  const docRef = doc(db, 'people', id);
+  const docRef = doc(db!, 'people', id);
   const { callHistory, ...rest } = data;
   const finalData = sanitizeData(rest);
   if (finalData.lastCallAt === '__now__') finalData.lastCallAt = serverTimestamp();
@@ -441,7 +481,7 @@ export const updatePerson = async (id: string, data: Partial<Person>, userInfo?:
 };
 
 export const upsertPerson = async (data: Partial<Person>, userInfo: { id: string; name: string; role: UserRole[] }): Promise<{ success: boolean; message?: string; person?: Person }> => {
-  const q = query(collection(db, 'people'), where('phone', '==', normalizePhone(data.phone!)), limit(1));
+  const q = query(collection(db!, 'people'), where('phone', '==', normalizePhone(data.phone!)), limit(1));
   const snap = await getDocs(q);
   if (!snap.empty) {
     const existing = processPersonDoc(snap.docs[0]);
@@ -458,7 +498,7 @@ export const checkDuplicatePhone = async (phone: string, excludeId?: string): Pr
     const match = masterPeopleCache.find(p => normalizePhone(p.phone) === norm && p.id !== excludeId);
     if (match) return match;
   }
-  const q = query(collection(db, 'people'), where('phone', '==', norm), limit(1));
+  const q = query(collection(db!, 'people'), where('phone', '==', norm), limit(1));
   const snap = await getDocs(q);
   if (snap.empty) return null;
   const p = processPersonDoc(snap.docs[0]);
@@ -471,7 +511,7 @@ export const deletePerson = async (id: string, userInfo: { id: string; name: str
 
 export const restorePerson = async (personId: string, userInfo: { id: string; name: string; role: UserRole[] }) => {
   await persistenceReady;
-  const docRef = doc(db, 'people', personId);
+  const docRef = doc(db!, 'people', personId);
   await updateDoc(docRef, {
     isDeleted: false,
     deletedAt: null,
@@ -550,7 +590,7 @@ export const assignCoEnablerToPeople = async (personIds: string[], coEnabler: Ap
 
 export const assignCoEnablerSession = async (personIds: string[], sessionData: Omit<CoEnablerSession, 'id'>, userInfo: AppUser): Promise<string> => {
   await persistenceReady;
-  const sessionRef = doc(collection(db, 'co_enabler_sessions'));
+  const sessionRef = doc(collection(db!, 'co_enabler_sessions'));
   await setDoc(sessionRef, { ...sessionData, createdAt: serverTimestamp() });
   logAudit('Create Co-Enabler Session', `Created external session for task: ${sessionData.task}`, { id: userInfo.id, name: userInfo.name, role: userInfo.role });
   return sessionRef.id;
@@ -637,8 +677,8 @@ export const mergeContacts = async (keepId: string, discardIds: string[], userIn
   });
 
   mergedCallHistory.sort((a, b) => {
-    const da = safeDate(a.calledAt)?.getTime() || 0;
-    const db = safeDate(b.calledAt)?.getTime() || 0;
+    const da = a.calledAt ? new Date(a.calledAt as string).getTime() : 0;
+    const db = b.calledAt ? new Date(b.calledAt as string).getTime() : 0;
     return db - da;
   });
 
@@ -660,8 +700,8 @@ export const mergeContacts = async (keepId: string, discardIds: string[], userIn
 
 export const backfillIsDeleted = async (userInfo: { id: string; name: string; role: UserRole[] }) => {
   await persistenceReady;
-  const peopleRef = collection(db, 'people');
-  const snap = await getDocs(query(peopleRef, limit(MAX_FIRESTORE_LIMIT)));
+  const peopleRef = collection(db!, 'people');
+  const snap = await getDocs(query(peopleRef, limit(1000)));
   let count = 0;
   for (const d of snap.docs) { if (d.data().isDeleted === undefined) { await updateDoc(d.ref, { isDeleted: false }); count++; } }
   return count;
@@ -669,8 +709,8 @@ export const backfillIsDeleted = async (userInfo: { id: string; name: string; ro
 
 export const backfillEnablerId = async (allUsers: AppUser[], userInfo: { id: string; name: string; role: UserRole[] }) => {
   await persistenceReady;
-  const peopleRef = collection(db, 'people');
-  const snap = await getDocs(query(peopleRef, limit(MAX_FIRESTORE_LIMIT)));
+  const peopleRef = collection(db!, 'people');
+  const snap = await getDocs(query(peopleRef, limit(1000)));
   let count = 0;
   const userMap = new Map<string, string>();
   allUsers.forEach(u => userMap.set(u.name.toLowerCase().trim(), u.id));
@@ -685,5 +725,5 @@ export const backfillEnablerId = async (allUsers: AppUser[], userInfo: { id: str
   return count;
 };
 
-const statusListeners = new Set<(status: SyncStatus) => void>();
+const statusListeners = new Set<(status: SyncStatus, warning: string | null) => void>();
 const dataListeners = new Set<(people: Person[]) => void>();

@@ -20,7 +20,8 @@ import {
   Users, 
   CheckCircle2,
   Loader2,
-  ListChecks
+  ListChecks,
+  AlertCircle
 } from 'lucide-react';
 import type { Person, Group } from '@/lib/types';
 import { PersonTableRow } from './person-table-row';
@@ -40,6 +41,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from './ui/scroll-area';
+import { getSyncWarning } from '@/services/people-service';
 
 type PersonTableProps = {
   people: Person[];
@@ -134,6 +136,7 @@ export function PersonTable({
   const [viewMode, setViewMode] = React.useState<'table' | 'grid'>('table');
   const [isLoaded, setIsLoaded] = React.useState(false);
   const [visibleColumns, setVisibleColumns] = React.useState<Record<string, boolean>>(DEFAULT_COLUMNS);
+  const warning = getSyncWarning();
   
   const [rangeFrom, setRangeFrom] = React.useState("1");
   const [rangeTo, setRangeTo] = React.useState("60");
@@ -233,6 +236,13 @@ export function PersonTable({
 
   return (
     <div className="space-y-6">
+      {warning && (
+          <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-3 text-amber-600 dark:text-amber-400">
+              <AlertCircle className="h-5 w-5 shrink-0" />
+              <p className="text-xs font-bold leading-tight">{warning}</p>
+          </div>
+      )}
+
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
             {totalCount !== null && (
@@ -355,6 +365,7 @@ export function PersonTable({
                       </Popover>
                     </div>
                   </TableHead>
+                  <TableHead className="w-[30px] px-1 sm:px-2 text-center text-[10px] font-black uppercase tracking-widest">#</TableHead>
                   <TableHead className="font-black text-[11px] uppercase tracking-[0.2em] text-muted-foreground min-w-[300px]">CONTACT PROFILE</TableHead>
                   {Object.keys(COLUMN_LABELS).map(key => (
                     visibleColumns[key] && (

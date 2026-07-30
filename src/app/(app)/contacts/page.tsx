@@ -19,7 +19,9 @@ import {
   LayoutGrid,
   Edit2,
   MessageCircle,
-  CopyCheck
+  CopyCheck,
+  CheckCircle2,
+  AlertTriangle
 } from "lucide-react";
 import type { Person, Group, CustomField, FilterState } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -37,7 +39,8 @@ import {
   deletePeople, 
   subscribeToSyncStatus,
   getSyncStatus,
-  type SyncStatus
+  type SyncStatus,
+  checkDuplicatePhone
 } from '@/services/people-service';
 import { createGroup, getStaticGroups, addPeopleToGroup, updateGroup as updateGroupSvc } from "@/services/groups-service";
 import { getEnablers, getContactSources, getStayingWithOptions, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
@@ -68,6 +71,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { updateUser } from '@/services/user-service';
 import { ContactFilterPanel } from "@/components/contact-filter-panel";
 import { useBackgroundTasks } from "@/contexts/background-task-context";
@@ -75,6 +86,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { assignCoEnablerToPeople } from "@/services/people-service";
 import { AssignCoEnablerDialog } from "@/components/assign-helper-dialog";
+import { getFastSummaryStats } from '@/services/dashboard-service';
 
 const EMPTY_FILTERS: FilterState = {
     name: '', phone: '', location: '', eventName: '', callerName: '', 
@@ -125,8 +137,11 @@ const ContactsPageComponent = () => {
   const [editingGroup, setEditingGroup] = React.useState<Group | undefined>(undefined);
   const [personToCall, setPersonToCall] = React.useState<Person | null>(null);
   const [isConfirmSessionDialogOpen, setIsConfirmSessionDialogOpen] = React.useState(false);
-  
   const [isBulkEditOpen, setIsBulkEditOpen] = React.useState(false);
+
+  // Import Preview State
+  const [importPreview, setImportPreview] = React.useState<{ new: any[], duplicates: any[] } | null>(null);
+  const [isImportPreviewOpen, setIsImportPreviewOpen] = React.useState(false);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const fetchIdRef = React.useRef(0);
@@ -143,6 +158,11 @@ const ContactsPageComponent = () => {
     
     try {
       const fetchScope = activeTab === 'all-contacts' ? 'all' : 'my';
+      
+      // Update global total first via server count
+      const counts = await getFastSummaryStats(appUser);
+      setTotalCount(fetchScope === 'all' ? counts.totalContactsCount : counts.myContactsCount);
+
       const result = await getPeople(appUser, { 
         scope: fetchScope, 
         lastDocId: lastId,
@@ -151,7 +171,6 @@ const ContactsPageComponent = () => {
       if (thisFetchId !== fetchIdRef.current) return;
       setPeople(prev => lastId ? [...prev, ...result.people] : result.people);
       setLastDocId(result.lastDocId);
-      setTotalCount(result.totalCount);
       setHasMore(result.lastDocId !== null);
     } catch (error) { 
       if (thisFetchId === fetchIdRef.current) toast({ variant: 'destructive', title: "Sync Error" }); 
@@ -165,7 +184,7 @@ const ContactsPageComponent = () => {
   }, [appUser, activeTab, toast, filters]);
 
   React.useEffect(() => {
-    return subscribeToSyncStatus(setSyncStatus);
+    return subscribeToSyncStatus((status) => setSyncStatus(status));
   }, []);
 
   React.useEffect(() => {
@@ -248,17 +267,51 @@ const ContactsPageComponent = () => {
     }
   };
 
-  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !appUser) return;
-    
-    const jobId = startJob({ type: 'import', fileName: file.name, total: 0 });
 
     try {
-      const mappedData = await parseImportFile(file);
-      updateJob(jobId, { total: mappedData.length });
+        const mappedData = await parseImportFile(file);
+        const newContacts = [];
+        const duplicates = [];
 
-      const result = await importPeople(mappedData, appUser, (current) => {
+        for (const row of mappedData) {
+            const existing = await checkDuplicatePhone(row.phone);
+            if (existing) duplicates.push(row);
+            else newContacts.push(row);
+        }
+
+        setImportPreview({ new: newContacts, duplicates });
+        setIsImportPreviewOpen(true);
+    } catch (error) {
+        toast({ variant: 'destructive', title: "Parsing Failed" });
+    } finally {
+        if (e.target) e.target.value = '';
+    }
+  };
+
+  const executeImport = async (updateDuplicates: boolean) => {
+    if (!importPreview || !appUser) return;
+    setIsImportPreviewOpen(false);
+
+    const dataToImport = updateDuplicates 
+        ? [...importPreview.new, ...importPreview.duplicates]
+        : importPreview.new;
+
+    if (dataToImport.length === 0) {
+        toast({ title: "Import Skipped", description: "No new records to import." });
+        return;
+    }
+
+    const jobId = startJob({ 
+        type: 'import', 
+        fileName: 'Spreadsheet Import', 
+        total: dataToImport.length 
+    });
+
+    try {
+      const result = await importPeople(dataToImport, appUser, (current) => {
         updateJob(jobId, { current });
       });
 
@@ -272,8 +325,6 @@ const ContactsPageComponent = () => {
       updateJob(jobId, { status: 'error' });
       toast({ variant: 'destructive', title: "Import Failed" }); 
     }
-
-    if (e.target) e.target.value = '';
   };
 
   const handleExportExcel = async () => {
@@ -366,17 +417,11 @@ const ContactsPageComponent = () => {
                     <DropdownMenuItem onSelect={handleExportExcel} className="font-bold"><Download className="mr-2 h-4 w-4" /> Export Full List</DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-border" />
                     <DropdownMenuItem onSelect={() => appUser && downloadImportTemplate(appUser)} className="font-bold"><Layers className="mr-2 h-4 w-4" /> Download Template</DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-border" />
-                    <div className="px-2 py-2">
-                        <p className="text-[8px] font-bold text-muted-foreground leading-tight">
-                            TIP: For bulk updates to existing contacts, only include the Phone column plus fields you want to change.
-                        </p>
-                    </div>
                 </DropdownMenuContent>
             </DropdownMenu>
             <Button size="icon" onClick={() => setIsAddMethodDialogOpen(true)} className="h-9 w-9 bg-primary hover:bg-primary/90 rounded-full shadow-lg ml-2"><Plus className="h-5 w-5 text-primary-foreground" /></Button>
         </div>
-        <input type="file" hide="true" ref={fileInputRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={handleImportExcel} />
+        <input type="file" hide="true" ref={fileInputRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={handleFileSelection} />
       </PageHeader>
       
       <main className="flex-1 p-4 sm:px-6 space-y-6 pb-20">
@@ -497,6 +542,48 @@ const ContactsPageComponent = () => {
         </Tabs>
       </main>
 
+      <Dialog hide="true" open={isImportPreviewOpen} onOpenChange={setIsImportPreviewOpen}>
+        <DialogContent className="sm:max-w-xl bg-popover border-none rounded-[2.5rem] p-0 overflow-hidden shadow-2xl">
+          <DialogHeader className="p-8 pb-4 bg-card border-b border-border">
+            <DialogTitle className="text-xl font-black text-foreground uppercase tracking-tight flex items-center gap-3">
+              <FileSpreadsheet className="h-6 w-6 text-primary" />
+              Import Preview
+            </DialogTitle>
+            <DialogDescription className="font-bold">Review detected duplicates before writing to database.</DialogDescription>
+          </DialogHeader>
+          <div className="p-8 space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-2xl text-center">
+                <p className="text-2xl font-black text-green-600">{importPreview?.new.length}</p>
+                <p className="text-[10px] font-black uppercase text-green-700/60 tracking-widest">New Contacts</p>
+              </div>
+              <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-center">
+                <p className="text-2xl font-black text-amber-600">{importPreview?.duplicates.length}</p>
+                <p className="text-[10px] font-black uppercase text-amber-700/60 tracking-widest">Existing Matches</p>
+              </div>
+            </div>
+
+            {importPreview?.duplicates.length ? (
+                <div className="bg-muted p-5 rounded-2xl border border-border flex gap-4">
+                    <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                    <p className="text-xs font-bold text-muted-foreground leading-relaxed">
+                        We found contacts already in your database. Do you want to update their fields with the new information, or skip them and only add new records?
+                    </p>
+                </div>
+            ) : null}
+          </div>
+          <DialogFooter className="p-8 bg-card border-t border-border flex flex-col sm:flex-row gap-3">
+             <Button variant="ghost" onClick={() => setIsImportPreviewOpen(false)} className="rounded-xl font-bold flex-1">Cancel</Button>
+             {importPreview?.duplicates.length ? (
+                 <Button variant="outline" onClick={() => executeImport(false)} className="rounded-xl font-black uppercase text-[10px] tracking-widest flex-1 border-primary/20 text-primary">Skip Duplicates</Button>
+             ) : null}
+             <Button onClick={() => executeImport(true)} className="rounded-xl font-black uppercase text-[10px] tracking-widest flex-1 shadow-xl shadow-primary/20">
+                {importPreview?.duplicates.length ? 'Update & Import' : 'Confirm Import'}
+             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <AddContactMethodDialog isOpen={isAddMethodDialogOpen} setIsOpen={setIsAddMethodDialogOpen} onSelectManual={() => { setEditingPerson(undefined); setIsPersonDialogOpen(true); }} onSelectQR={() => setIsQrDialogOpen(true)} onSelectNewGroup={() => { setEditingGroup(undefined); setIsGroupDialogOpen(true); }} />
       <CreateUpdatePersonDialog isOpen={isPersonDialogOpen} setIsOpen={setIsPersonDialogOpen} onSave={async d => { const r = editingPerson ? await updatePerson(editingPerson.id, d, appUser!) : await createPerson(d, appUser!); if (r.success) fetchContacts(undefined, true); return r; }} person={editingPerson} allPeople={people} />
       <CreateUpdateGroupDialog isOpen={isGroupDialogOpen} setIsOpen={setIsGroupDialogOpen} group={editingGroup} onSave={async (d) => { editingGroup ? await updateGroupSvc(editingGroup.id, d, appUser!) : await createGroup(d, appUser!); getStaticGroups(appUser!).then(setGroups); }} />
@@ -528,7 +615,7 @@ const ContactsPageComponent = () => {
         setIsOpen={setIsAskEnablerOpen} 
         mode="bulk" 
         people={selectedPeople} 
-      />
+    />
 
       <DuplicateContactsDialog 
         isOpen={isDedupeOpen} 

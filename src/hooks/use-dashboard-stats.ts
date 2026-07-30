@@ -17,14 +17,13 @@ export function useDashboardStats(dateRange?: DateRange, folkGuideId?: string) {
   
   const [data, setData] = useState<DashboardData | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('initializing');
+  const [syncWarning, setSyncWarning] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefetching, setIsRefetching] = useState(false);
   const [error, setError] = useState<any | null>(null);
 
-  // Use refs to prevent stale closure data in the reactive sync
   const dateRangeRef = useRef(dateRange);
   const folkGuideIdRef = useRef(folkGuideId);
-  // Store accurate server counts to prevent regression from local cache snapshots
   const fastStatsRef = useRef<{ totalContactsCount: number; myContactsCount: number } | null>(null);
   const hasMountedRef = useRef(false);
 
@@ -51,12 +50,11 @@ export function useDashboardStats(dateRange?: DateRange, folkGuideId?: string) {
     }
   }, [appUser]);
 
-  // Trigger recomputation immediately when filters change
   useEffect(() => {
     if (!appUser) return;
     if (!hasMountedRef.current) {
       hasMountedRef.current = true;
-      return; // skip first run, initial fetch is handled elsewhere
+      return;
     }
     let cancelled = false;
     setIsRefetching(true);
@@ -70,6 +68,8 @@ export function useDashboardStats(dateRange?: DateRange, folkGuideId?: string) {
     if (!appUser) return;
 
     const refreshFastStats = async () => {
+        if (document.visibilityState === 'hidden') return;
+        
         try {
             const counts = await getFastSummaryStats(appUser);
             fastStatsRef.current = counts;
@@ -86,7 +86,6 @@ export function useDashboardStats(dateRange?: DateRange, folkGuideId?: string) {
                     };
                 }
                 
-                // Initial skeleton data so dashboard isn't blank
                 const emptyReport: CallingReport = {
                     totalCalls: 0, picked: 0, notPicked: 0, eliminated: 0, totalDuration: 0,
                     percentages: { picked: 0, notPicked: 0, eliminated: 0 },
@@ -111,53 +110,51 @@ export function useDashboardStats(dateRange?: DateRange, folkGuideId?: string) {
                     isPrivileged: appUser.role.includes('Admin') || appUser.role.includes('Folk Guide'),
                 };
             });
-
-            // Once we have counts, we can show the dashboard cards immediately
             setIsLoading(false);
         } catch (e) {
             console.warn("[Dashboard] Fast summary refresh failed", e);
         }
     };
 
-    // 1. Initial fast path - fetches counts via server-side aggregation
     refreshFastStats();
 
-    // 2. Subscribe to sync status to show progress indicator
-    const unsubStatus = subscribeToSyncStatus((status) => {
+    const unsubStatus = subscribeToSyncStatus((status, warning) => {
         setSyncStatus(status);
-        // Refresh accurate server counts when hitting live sync to ensure ref is fresh
-        if (status === 'synced') {
-            refreshFastStats();
-        }
+        setSyncWarning(warning);
+        if (status === 'synced') refreshFastStats();
     });
 
-    // 3. Subscribe to people data. This triggers every time Firestore delivers more items
     const unsubData = subscribeToPeopleData(recomputeStats);
 
-    // Ensure the stream is running
-    initMasterPeopleStream();
+    initMasterPeopleStream(appUser);
 
-    // Background heartbeat for counts
-    const interval = setInterval(refreshFastStats, 30000);
+    const interval = setInterval(refreshFastStats, 90000); // 90 second interval
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') refreshFastStats();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
       unsubStatus();
       unsubData();
       clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [appUser, recomputeStats]);
 
   const refetch = useCallback(async () => {
       if (!appUser) return;
       setIsRefetching(true);
-      await recomputeStats([]); // Forces a clear if needed
-      initMasterPeopleStream();
+      await recomputeStats([]); 
+      initMasterPeopleStream(appUser);
       setIsRefetching(false);
   }, [appUser, recomputeStats]);
 
   return { 
     data, 
     syncStatus,
+    syncWarning,
     isLoading, 
     isRefetching, 
     error, 
