@@ -11,6 +11,7 @@ import {
   query,
   where,
   or,
+  and,
   type DocumentSnapshot,
   limit,
   arrayUnion,
@@ -496,7 +497,15 @@ export const createPerson = async (data: Partial<Person>, userInfo: { id: string
   await persistenceReady;
   const docRef = doc(collection(db!, 'people'));
   const normPhone = normalizePhone(data.phone!);
-  const finalData = sanitizeData({ ...data, phone: normPhone, createdAt: serverTimestamp(), isDeleted: false, fullName_lowercase: (data.fullName || '').toLowerCase(), progress: data.progress && data.progress.length > 0 ? data.progress : createInitialProgress() });
+  const finalData = sanitizeData({ 
+    ...data, 
+    phone: normPhone, 
+    createdAt: serverTimestamp(), 
+    isDeleted: false, 
+    lastCallStatus: data.lastCallStatus || '', // Ensure field exists for Firestore indexing
+    fullName_lowercase: (data.fullName || '').toLowerCase(), 
+    progress: data.progress && data.progress.length > 0 ? data.progress : createInitialProgress() 
+  });
   try {
     await setDoc(docRef, finalData);
     logAudit('Create Contact', `Created: ${data.fullName}`, userInfo);
@@ -751,31 +760,92 @@ export const mergeContacts = async (keepId: string, discardIds: string[], userIn
   await logAudit('Merge Contacts', `Merged ${discardIds.length} duplicates into ${keepData.fullName}`, userInfo);
 };
 
-export const backfillIsDeleted = async (userInfo: { id: string; name: string; role: UserRole[] }) => {
+/**
+ * Paginates through entire collection to backfill missing mandatory query fields.
+ * Required for Dashboard and statistical accuracy in Firestore.
+ */
+export const backfillMissingFields = async (userInfo: { id: string; name: string; role: UserRole[] }) => {
   await persistenceReady;
   const peopleRef = collection(db!, 'people');
-  const snap = await getDocs(query(peopleRef, limit(1000)));
-  let count = 0;
-  for (const d of snap.docs) { if (d.data().isDeleted === undefined) { await updateDoc(d.ref, { isDeleted: false }); count++; } }
-  return count;
+  let lastDoc: any = null;
+  let totalScanned = 0;
+  let totalFixed = 0;
+
+  while (true) {
+    let q = query(peopleRef, orderBy(documentId()), limit(500));
+    if (lastDoc) q = query(q, startAfter(lastDoc));
+    const snap = await getDocs(q);
+    if (snap.empty) break;
+
+    const batch = writeBatch(db!);
+    let batchHasWrites = false;
+
+    snap.docs.forEach(d => {
+      const data = d.data();
+      const patch: Record<string, any> = {};
+      if (data.isDeleted === undefined) patch.isDeleted = false;
+      if (data.lastCallStatus === undefined) patch.lastCallStatus = '';
+      if (Object.keys(patch).length > 0) {
+        batch.update(d.ref, patch);
+        batchHasWrites = true;
+        totalFixed++;
+      }
+    });
+
+    if (batchHasWrites) await batch.commit();
+
+    totalScanned += snap.docs.length;
+    lastDoc = snap.docs[snap.docs.length - 1];
+  }
+
+  await logAudit('Data Maintenance', `Backfilled missing fields for ${totalFixed} contacts. Scanned ${totalScanned}.`, userInfo);
+  return { totalScanned, totalFixed };
 };
 
+/**
+ * Paginates through entire collection to link legacy name-based enabler strings to modern system IDs.
+ */
 export const backfillEnablerId = async (allUsers: AppUser[], userInfo: { id: string; name: string; role: UserRole[] }) => {
   await persistenceReady;
   const peopleRef = collection(db!, 'people');
-  const snap = await getDocs(query(peopleRef, limit(1000)));
-  let count = 0;
+  
   const userMap = new Map<string, string>();
   allUsers.forEach(u => userMap.set(u.name.toLowerCase().trim(), u.id));
-  for (const d of snap.docs) {
-    const data = d.data();
-    if (data.enablerInTouchWith && !data.enablerId) {
-      const name = data.enablerInTouchWith.split('::')[0].toLowerCase().trim();
-      const id = userMap.get(name);
-      if (id) { await updateDoc(d.ref, { enablerId: id }); count++; }
-    }
+
+  let lastDoc: any = null;
+  let totalScanned = 0;
+  let totalFixed = 0;
+
+  while (true) {
+    let q = query(peopleRef, orderBy(documentId()), limit(500));
+    if (lastDoc) q = query(q, startAfter(lastDoc));
+    const snap = await getDocs(q);
+    if (snap.empty) break;
+
+    const batch = writeBatch(db!);
+    let batchHasWrites = false;
+
+    snap.docs.forEach(d => {
+      const data = d.data();
+      if (data.enablerInTouchWith && !data.enablerId) {
+        const name = data.enablerInTouchWith.split('::')[0].toLowerCase().trim();
+        const id = userMap.get(name);
+        if (id) {
+          batch.update(d.ref, { enablerId: id });
+          batchHasWrites = true;
+          totalFixed++;
+        }
+      }
+    });
+
+    if (batchHasWrites) await batch.commit();
+
+    totalScanned += snap.docs.length;
+    lastDoc = snap.docs[snap.docs.length - 1];
   }
-  return count;
+
+  await logAudit('Data Maintenance', `Linked Enabler IDs for ${totalFixed} contacts. Scanned ${totalScanned}.`, userInfo);
+  return { totalScanned, totalFixed };
 };
 
 const statusListeners = new Set<(status: SyncStatus, warning: string | null) => void>();

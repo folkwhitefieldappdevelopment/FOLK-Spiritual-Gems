@@ -74,7 +74,7 @@ import {
   getWhatsappReportTemplate,
   updateWhatsappReportTemplate,
 } from '@/services/settings-service';
-import { backfillIsDeleted, backfillEnablerId } from '@/services/people-service';
+import { backfillMissingFields, backfillEnablerId } from '@/services/people-service';
 import { 
   getNotificationPermission, 
   requestNotificationPermission, 
@@ -321,17 +321,17 @@ export default function SettingsPage() {
     }
   };
 
-  const handleBackfillDeleted = async () => {
+  const handleBackfillMissingFields = async () => {
     if (!appUser) return;
     setIsBackfilling(true);
     try {
-      const count = await backfillIsDeleted({ id: appUser.id, name: appUser.name, role: appUser.role });
+      const { totalScanned, totalFixed } = await backfillMissingFields({ id: appUser.id, name: appUser.name, role: appUser.role });
       toast({ 
         title: 'Backfill Complete', 
-        description: `Successfully patched ${count} legacy contact(s) with missing isDeleted fields.` 
+        description: `Scanned ${totalScanned.toLocaleString()} contacts, fixed ${totalFixed.toLocaleString()} missing fields.` 
       });
     } catch (e) {
-      toast({ variant: 'destructive', title: 'Backfill Failed', description: 'Could complete the data migration.' });
+      toast({ variant: 'destructive', title: 'Backfill Failed', description: 'Could not complete the data migration.' });
     } finally {
       setIsBackfilling(false);
     }
@@ -342,10 +342,10 @@ export default function SettingsPage() {
     setIsBackfillingIds(true);
     try {
       const allUsers = await getUsers(appUser);
-      const count = await backfillEnablerId(allUsers, { id: appUser.id, name: appUser.name, role: appUser.role });
+      const { totalScanned, totalFixed } = await backfillEnablerId(allUsers, { id: appUser.id, name: appUser.name, role: appUser.role });
       toast({ 
         title: 'ID Linkage Complete', 
-        description: `Successfully mapped Enabler IDs for ${count} contact(s).` 
+        description: `Scanned ${totalScanned.toLocaleString()} contacts, linked ${totalFixed.toLocaleString()} enabler IDs.` 
       });
     } catch (e) {
       toast({ variant: 'destructive', title: 'Migration Failed' });
@@ -528,7 +528,7 @@ export default function SettingsPage() {
                   <CardTitle className="flex items-center gap-2 text-orange-600 dark:text-orange-400 font-black uppercase tracking-tight">
                     <Database className="h-5 w-5" />
                     Data Maintenance
-                  </CardTitle>
+                  </Title>
                   <CardDescription className="font-bold text-orange-600/60">Advanced tools to repair legacy data and improve Dashboard accuracy.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -536,13 +536,13 @@ export default function SettingsPage() {
                     <div className="p-4 rounded-xl border border-orange-500/10 bg-background space-y-3">
                        <div className="flex items-center gap-2">
                           <AlertTriangle className="h-4 w-4 text-orange-500" />
-                          <h4 className="text-sm font-black uppercase tracking-tight">isDeleted Patch</h4>
+                          <h4 className="text-sm font-black uppercase tracking-tight">System Schema Patch</h4>
                        </div>
                        <p className="text-xs text-muted-foreground leading-relaxed">
-                          Legacy contacts created before soft-delete may be missing the <code className="bg-muted px-1 rounded">isDeleted</code> flag.
+                          Legacy contacts created before modern indexing may be missing the <code>isDeleted</code> or <code>lastCallStatus</code> fields.
                        </p>
                        <Button 
-                          onClick={handleBackfillDeleted} 
+                          onClick={handleBackfillMissingFields} 
                           disabled={isBackfilling}
                           className="w-full bg-orange-500 hover:bg-orange-600 text-black font-black uppercase text-[10px] tracking-widest"
                        >
@@ -557,7 +557,7 @@ export default function SettingsPage() {
                           <h4 className="text-sm font-black uppercase tracking-tight">Enabler ID Linkage</h4>
                        </div>
                        <p className="text-xs text-muted-foreground leading-relaxed">
-                          Maps legacy name-based assignments to modern system IDs.
+                          Maps legacy name-based assignments to modern system IDs across the whole mission.
                        </p>
                        <Button 
                           onClick={handleBackfillEnablerIds} 
