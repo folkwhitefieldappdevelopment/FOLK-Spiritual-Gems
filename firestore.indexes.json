@@ -4,6 +4,14 @@
       "collectionGroup": "people",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "folkGuideId", "order": "ASCENDING" },
+        { "fieldPath": "isDeleted", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
         { "fieldPath": "enablerId", "order": "ASCENDING" },
         { "fieldPath": "isDeleted", "order": "ASCENDING" }
       ]
@@ -20,7 +28,7 @@
       "collectionGroup": "people",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "folkGuideId", "order": "ASCENDING" },
+        { "fieldPath": "enablerInTouchWith", "order": "ASCENDING" },
         { "fieldPath": "isDeleted", "order": "ASCENDING" }
       ]
     },
@@ -28,16 +36,26 @@
       "collectionGroup": "people",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "enablerInTouchWith", "order": "ASCENDING" },
-        { "fieldPath": "isDeleted", "order": "ASCENDING" }
+        { "fieldPath": "isDeleted", "order": "ASCENDING" },
+        { "fieldPath": "enablerId", "order": "ASCENDING" },
+        { "fieldPath": "lastCallStatus", "order": "ASCENDING" }
       ]
     },
     {
-      "collectionGroup": "call-logs",
+      "collectionGroup": "people",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "phoneNumber", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
+        { "fieldPath": "isDeleted", "order": "ASCENDING" },
+        { "fieldPath": "coEnablerId", "order": "ASCENDING" },
+        { "fieldPath": "lastCallStatus", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "people",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isDeleted", "order": "ASCENDING" },
+        { "fieldPath": "lastCallStatus", "order": "ASCENDING" }
       ]
     }
   ],

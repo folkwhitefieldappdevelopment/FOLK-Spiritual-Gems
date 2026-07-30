@@ -179,7 +179,10 @@ const ContactsPageComponent = () => {
       setLastDocId(result.lastDocId);
       setHasMore(result.lastDocId !== null);
     } catch (error) { 
-      if (thisFetchId === fetchIdRef.current) toast({ variant: 'destructive', title: "Sync Error" }); 
+      console.error('[Contacts] fetchContacts failed:', error);
+      if (thisFetchId === fetchIdRef.current) {
+          toast({ variant: 'destructive', title: "Sync Error" }); 
+      }
     } 
     finally { 
       if (thisFetchId === fetchIdRef.current) {

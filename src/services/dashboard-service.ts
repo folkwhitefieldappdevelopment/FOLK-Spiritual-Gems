@@ -33,27 +33,29 @@ import { computeEnablerStageBreakdown, computeEnablerChantingBreakdown } from '@
 export async function getFastSummaryStats(appUser: AppUser) {
     const peopleRef = collection(db!, 'people');
     
-    // Canonical definition of "Active": not deleted and not in eliminated categories.
-    // 1. Total Active Logic
-    const activeQuery = query(
-        peopleRef, 
-        where('isDeleted', '==', false), 
-        where('lastCallStatus', 'not-in', ELIMINATED_STATUSES)
-    );
-    
-    // 2. My Active Logic
-    const myCriteria = or(
-        where('enablerId', '==', appUser.id),
-        where('coEnablerId', '==', appUser.id)
-    );
-    
-    const myActiveQuery = query(
-        peopleRef, 
-        and(where('isDeleted', '==', false), where('lastCallStatus', 'not-in', ELIMINATED_STATUSES)),
-        myCriteria
-    );
-
     try {
+        // Canonical definition of "Active": not deleted and not in eliminated categories.
+        const activeQuery = query(
+            peopleRef, 
+            where('isDeleted', '==', false), 
+            where('lastCallStatus', 'not-in', ELIMINATED_STATUSES)
+        );
+        
+        const myCriteria = or(
+            where('enablerId', '==', appUser.id),
+            where('coEnablerId', '==', appUser.id)
+        );
+        
+        // Fix: Nest all criteria in a single and() block to avoid top-level combinator collision
+        const myActiveQuery = query(
+            peopleRef, 
+            and(
+                where('isDeleted', '==', false), 
+                where('lastCallStatus', 'not-in', ELIMINATED_STATUSES),
+                myCriteria
+            )
+        );
+
         const [totalActiveSnap, myActiveSnap] = await Promise.all([
             getCountFromServer(activeQuery),
             getCountFromServer(myActiveQuery)
@@ -64,7 +66,8 @@ export async function getFastSummaryStats(appUser: AppUser) {
             myContactsCount: myActiveSnap.data().count
         };
     } catch (e) {
-        // Fallback for missing indices
+        console.error('[getFastSummaryStats] Falling back to simple count:', e);
+        // Fallback for missing indices or other query errors
         const notDeletedQuery = query(peopleRef, where('isDeleted', '==', false));
         const totalNotDeletedSnap = await getCountFromServer(notDeletedQuery);
         return {
