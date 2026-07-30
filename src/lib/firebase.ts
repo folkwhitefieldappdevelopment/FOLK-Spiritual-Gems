@@ -4,6 +4,7 @@ import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { initializeFirestore, type Firestore, enableIndexedDbPersistence } from "firebase/firestore";
 import { getAuth, type Auth } from "firebase/auth";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
+import { getFunctions, type Functions } from "firebase/functions";
 import { Capacitor } from '@capacitor/core';
 
 const firebaseConfig = {
@@ -19,6 +20,7 @@ let app: FirebaseApp | undefined;
 let db: Firestore | undefined;
 let auth: Auth | undefined;
 let storage: FirebaseStorage | undefined;
+let functions: Functions | undefined;
 let configError: Error | null = null;
 
 // Persistence lock promise to prevent race conditions on early app writes
@@ -31,28 +33,19 @@ try {
   app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
   
   // Use long-polling only in the browser preview (Firebase Studio) to bypass proxy streaming issues.
-  // Native apps should use standard high-performance WebChannel streaming.
   db = initializeFirestore(app, { 
     experimentalAutoDetectLongPolling: !Capacitor.isNativePlatform() 
   });
   
   if (typeof window !== 'undefined') {
-    // forceOwnership: true is critical for Capacitor/WebView apps to prevent hangs on reload
     enableIndexedDbPersistence(db, { forceOwnership: true })
       .then(() => {
         console.log('[Firebase] Persistence lock acquired successfully.');
       })
       .catch((err) => {
-        if (err.code === 'failed-precondition') {
-          console.error('[Firebase] Persistence Failed: Multiple tabs/instances open. Data will be re-downloaded.');
-        } else if (err.code === 'unimplemented') {
-          console.warn('[Firebase] Persistence Unsupported: Browser does not support IndexedDB.');
-        } else {
-          console.warn('[Firebase] Persistence Error:', err.code, err.message);
-        }
+        console.warn('[Firebase] Persistence Error:', err.code, err.message);
       })
       .finally(() => {
-        // Resolve either way so app doesn't hang if persistence fails
         resolvePersistence();
       });
   } else {
@@ -61,16 +54,13 @@ try {
 
   auth = getAuth(app);
   storage = getStorage(app);
+  functions = getFunctions(app, "asia-south1");
 } catch (error) {
   console.error("Firebase Init Error:", error);
   configError = error instanceof Error ? error : new Error('Firebase failed to initialize');
   resolvePersistence();
 }
 
-/**
- * Utility to race a network request against a timeout, returning a fallback value if the network is too slow.
- * Useful for slow-connection scenarios where stale-but-available local data is better than a hang.
- */
 export async function withCacheFallback<T>(
   networkPromise: Promise<T>,
   fallbackValue: T,
@@ -82,4 +72,4 @@ export async function withCacheFallback<T>(
   ]);
 }
 
-export { db, auth, storage, configError };
+export { db, auth, storage, functions, configError };

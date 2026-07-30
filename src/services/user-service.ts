@@ -1,31 +1,56 @@
 'use client';
 
-import { db, persistenceReady } from '@/lib/firebase';
+import { db, persistenceReady, functions } from '@/lib/firebase';
 import {
   collection,
-  addDoc,
-  serverTimestamp,
   query,
   where,
   getDocs,
   doc,
   getDoc,
-  setDoc,
   updateDoc,
   deleteField,
   type QueryConstraint,
 } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import type { AppUser, UserRole } from '@/lib/types';
 import { logAudit } from '@/services/audit-service';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 /**
- * Fetches a user document directly by its ID (preferred method).
+ * Provisions a new user using server-side Cloud Function.
+ */
+export const provisionUserOnServer = async (data: {
+  name: string;
+  email: string;
+  phone: string;
+  role: UserRole[];
+  fgCode?: string;
+  guideId?: string;
+}) => {
+  if (!functions) throw new Error("Functions not initialized");
+  const createAppUser = httpsCallable(functions, 'createAppUser');
+  const result = await createAppUser(data);
+  return result.data;
+};
+
+/**
+ * Deletes a user using server-side Cloud Function.
+ */
+export const deleteUserOnServer = async (targetUid: string) => {
+  if (!functions) throw new Error("Functions not initialized");
+  const deleteAppUser = httpsCallable(functions, 'deleteAppUser');
+  const result = await deleteAppUser({ targetUid });
+  return result.data;
+};
+
+/**
+ * Fetches a user document directly by its ID.
  */
 export const getUserById = async (id: string): Promise<AppUser | null> => {
   if (!id) return null;
-  const docRef = doc(db, 'users', id);
+  const docRef = doc(db!, 'users', id);
   const docSnap = await getDoc(docRef);
   
   if (!docSnap.exists()) return null;
@@ -40,69 +65,44 @@ export const getUserById = async (id: string): Promise<AppUser | null> => {
   } as AppUser;
 };
 
-export const createUser = async (userData: Omit<AppUser, 'id' | 'createdAt'>, uid?: string): Promise<AppUser> => {
-  await persistenceReady;
-  const usersCollection = collection(db, 'users');
-  
-  const q = query(usersCollection, where("email", "==", userData.email));
-  const existingUserSnapshot = await getDocs(q);
-  
-  if (!existingUserSnapshot.empty) {
-    const existingDoc = existingUserSnapshot.docs[0];
-    const existingData = existingDoc.data();
-    const role = existingData.role;
-    return { 
-      id: existingDoc.id, 
-      ...existingData,
-      role: Array.isArray(role) ? role : (role ? [role] : []),
-      createdAt: existingData.createdAt?.toDate ? existingData.createdAt.toDate().toISOString() : new Date().toISOString()
-    } as AppUser;
-  }
-
-  const dataToSave: any = { ...userData, createdAt: serverTimestamp() };
-  
-  if (uid) {
-    const docRef = doc(db, 'users', uid);
-    setDoc(docRef, dataToSave)
-        .catch(async (serverError) => {
-            const permissionError = new FirestorePermissionError({
-                path: docRef.path,
-                operation: 'create',
-                requestResourceData: dataToSave,
-            } satisfies SecurityRuleContext);
-            errorEmitter.emit('permission-error', permissionError);
-        });
-    return { id: uid, ...userData, createdAt: new Date().toISOString() } as AppUser;
-  } else {
-    const docRef = await addDoc(usersCollection, dataToSave);
-    return { id: docRef.id, ...userData, createdAt: new Date().toISOString() } as AppUser;
-  }
-};
-
-export const updateUser = async (id: string, userData: { [key: string]: any }): Promise<void> => {
+/**
+ * Updates an existing user record with strict error handling and awaited writes.
+ */
+export const updateUser = async (
+  id: string, 
+  userData: { [key: string]: any }, 
+  operatorInfo: { id: string; name: string; role: UserRole[] }
+): Promise<void> => {
   if (id === 'anonymous-user') return;
   await persistenceReady;
   
-  const userDocRef = doc(db, 'users', id);
+  const userDocRef = doc(db!, 'users', id);
   const dataToUpdate = { ...userData };
+  
+  // Cleanup optional fields
   if (dataToUpdate.reportsTo === null) dataToUpdate.reportsTo = deleteField();
   if (dataToUpdate.pausedCallingSession === null) dataToUpdate.pausedCallingSession = deleteField();
   
-  updateDoc(userDocRef, dataToUpdate)
-    .catch(async (serverError) => {
-        const permissionError = new FirestorePermissionError({
-            path: userDocRef.path,
-            operation: 'update',
-            requestResourceData: dataToUpdate,
-        } satisfies SecurityRuleContext);
-        errorEmitter.emit('permission-error', permissionError);
-    });
-  
-  logAudit('Update User', `Updated user: ${id}`, { id, name: userData.name || 'User', role: userData.role });
+  try {
+    await updateDoc(userDocRef, dataToUpdate);
+    // Move audit log to after successful await
+    await logAudit('Update User', `Updated user record: ${userData.name || id}`, operatorInfo);
+  } catch (err: any) {
+    const permissionError = new FirestorePermissionError({
+        path: userDocRef.path,
+        operation: 'update',
+        requestResourceData: dataToUpdate,
+    } satisfies SecurityRuleContext);
+    errorEmitter.emit('permission-error', permissionError);
+    throw err; // Re-throw so UI can handle the error toast
+  }
 };
 
+/**
+ * Fetches users with robust deduplication logic.
+ */
 export const getUsers = async (userInfo?: AppUser): Promise<AppUser[]> => {
-    const usersCollection = collection(db, 'users');
+    const usersCollection = collection(db!, 'users');
     let rawUsers: AppUser[] = [];
 
     if (userInfo && !userInfo.role.includes('Admin')) {
@@ -116,9 +116,6 @@ export const getUsers = async (userInfo?: AppUser): Promise<AppUser[]> => {
         rawUsers = snapshots.flatMap(snap => snap.docs.map(doc => {
             const data = doc.data();
             const role = data.role;
-            if (role && !Array.isArray(role)) {
-                console.warn(`[Migration Required] User ${doc.id} (${data.email}) has role in legacy string format: ${role}`);
-            }
             return {
                 id: doc.id,
                 ...data,
@@ -131,9 +128,6 @@ export const getUsers = async (userInfo?: AppUser): Promise<AppUser[]> => {
         rawUsers = snapshot.docs.map(doc => {
           const data = doc.data();
           const role = data.role;
-          if (role && !Array.isArray(role)) {
-            console.warn(`[Migration Required] User ${doc.id} (${data.email}) has role in legacy string format: ${role}`);
-          }
           return { 
             id: doc.id, 
             ...data, 
@@ -150,40 +144,30 @@ export const getUsers = async (userInfo?: AppUser): Promise<AppUser[]> => {
             uniqueUsersMap.set(user.id, user);
             return;
         }
-        const existing = uniqueUsersMap.get(email);
-        if (!existing || (user.id.length > existing.id.length)) {
-            uniqueUsersMap.set(email, user);
+        if (uniqueUsersMap.has(email)) {
+            console.warn(`[Duplicate Entry] Hiding redundant user record ${user.id} with email ${email}`);
+            return;
         }
+        uniqueUsersMap.set(email, user);
     });
 
     return Array.from(uniqueUsersMap.values());
 };
 
 export const getFolkGuides = async (): Promise<AppUser[]> => {
-    const usersCollection = collection(db, 'users');
-    
-    // Fetch all users to handle both legacy string and modern array role formats.
-    // Firestore's array-contains only works if the field is actually an array.
+    const usersCollection = collection(db!, 'users');
     const snapshot = await getDocs(query(usersCollection));
     
     const rawUsers = snapshot.docs.map(doc => {
         const data = doc.data();
         const role = data.role;
-        
-        // Resilience logic: check both array and legacy string format
         const isFolkGuide = Array.isArray(role) ? role.includes('Folk Guide') : role === 'Folk Guide';
-        
         if (!isFolkGuide) return null;
-
-        // Diagnostic warning for data migration purposes
-        if (role && !Array.isArray(role)) {
-            console.warn(`[Migration Required] User ${doc.id} (${data.email}) has role in legacy string format: ${role}`);
-        }
 
         return { 
           id: doc.id, 
           ...data,
-          role: Array.isArray(role) ? role : [role], // Normalize to array for type safety
+          role: Array.isArray(role) ? role : [role],
           createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString() 
         } as AppUser;
     }).filter((u): u is AppUser => u !== null);
@@ -195,19 +179,15 @@ export const getFolkGuides = async (): Promise<AppUser[]> => {
             uniqueUsersMap.set(u.id, u);
             return;
         }
-        const existing = uniqueUsersMap.get(email);
-        if (!existing || u.id.length > existing.id.length) {
-            uniqueUsersMap.set(email, u);
-        }
+        if (uniqueUsersMap.has(email)) return;
+        uniqueUsersMap.set(email, u);
     });
 
     return Array.from(uniqueUsersMap.values());
 }
 
 export const getAssignableUsersForAssignments = async(userInfo: AppUser): Promise<AppUser[]> => {
-    const usersCollection = collection(db, 'users');
-    
-    // Handle potential legacy role formats for Enablers when an Admin is requesting assignments
+    const usersCollection = collection(db!, 'users');
     let snapshot;
     if (userInfo.role.includes('Admin')) {
         snapshot = await getDocs(query(usersCollection));
@@ -218,20 +198,14 @@ export const getAssignableUsersForAssignments = async(userInfo: AppUser): Promis
     const rawUsers = snapshot.docs.map(doc => {
         const data = doc.data();
         const role = data.role;
-
         if (userInfo.role.includes('Admin')) {
             const isEnabler = Array.isArray(role) ? role.includes('Folk Enabler') : role === 'Folk Enabler';
             if (!isEnabler) return null;
         }
-
-        if (role && !Array.isArray(role)) {
-            console.warn(`[Migration Required] User ${doc.id} (${data.email}) has role in legacy string format: ${role}`);
-        }
-
         return { 
           id: doc.id, 
           ...data, 
-          role: Array.isArray(role) ? role : [role], // Normalize to array
+          role: Array.isArray(role) ? role : [role],
           createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString() 
         } as AppUser;
     }).filter((u): u is AppUser => u !== null);
@@ -243,10 +217,8 @@ export const getAssignableUsersForAssignments = async(userInfo: AppUser): Promis
             uniqueUsersMap.set(u.id, u);
             return;
         }
-        const existing = uniqueUsersMap.get(email);
-        if (!existing || u.id.length > existing.id.length) {
-            uniqueUsersMap.set(email, u);
-        }
+        if (uniqueUsersMap.has(email)) return;
+        uniqueUsersMap.set(email, u);
     });
 
     return Array.from(uniqueUsersMap.values());

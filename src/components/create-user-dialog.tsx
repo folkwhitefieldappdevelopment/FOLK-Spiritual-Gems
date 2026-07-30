@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -13,7 +12,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { Button } from './ui/button';
 import {
   Form,
   FormControl,
@@ -22,8 +21,8 @@ import {
   FormLabel,
   FormMessage,
   FormDescription,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
+} from './ui/form';
+import { Input } from './ui/input';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -37,11 +36,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ShieldCheck } from 'lucide-react';
 import { userRoles, type AppUser, type UserRole } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { db } from '@/lib/firebase';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { provisionUserOnServer } from '@/services/user-service';
 import { useAuth } from '@/contexts/auth-context';
 
 const userFormSchema = z.object({
@@ -133,49 +131,29 @@ export function CreateUserDialog({ isOpen, setIsOpen, onUpdate, user, folkGuides
         if (user) {
             await onUpdate(data, user.id);
         } else {
-            // In static mode, we just create the Firestore document.
-            // We use the email as a temporary deterministic ID or a random one.
-            const tempId = `user_${Date.now()}`;
-            const userDocRef = doc(db, 'users', tempId);
-            
-            const dataToSave: any = {
+            // provision user using server-side logic
+            await provisionUserOnServer({
                 name: data.name,
                 email: data.email,
                 phone: data.phone,
                 role: data.role as UserRole[],
-                createdAt: serverTimestamp(),
-            };
-
-            if (data.role.includes('Folk Guide') && data.fgCode) {
-                dataToSave.fgCode = data.fgCode;
-            }
-
-            if (data.role.includes('Folk Enabler') && data.guideId) {
-                const guide = folkGuides.find(g => g.id === data.guideId);
-                if (guide) {
-                    dataToSave.reportsTo = {
-                        guideId: guide.id,
-                        guideName: guide.name,
-                        guideFgCode: guide.fgCode || '',
-                    };
-                }
-            }
-
-            await setDoc(userDocRef, dataToSave);
+                fgCode: data.fgCode,
+                guideId: data.guideId
+            });
             
             toast({
-                title: 'User Record Created',
-                description: 'Record added to database. The user must still register an account manually using this email.',
+                title: 'User Provisioned',
+                description: `Auth account created for ${data.name}. A welcome email has been sent.`,
             });
             onUserCreated();
             setIsOpen(false);
         }
-    } catch (error) {
-        console.error("Error in onSubmit:", error);
+    } catch (error: any) {
+        console.error("User creation error:", error);
         toast({
             variant: 'destructive',
-            title: 'Error Saving User',
-            description: 'Failed to update database record.',
+            title: 'Provisioning Failed',
+            description: error.message || 'Failed to create user account.',
         });
     } finally {
         setIsSubmitting(false);
@@ -184,146 +162,149 @@ export function CreateUserDialog({ isOpen, setIsOpen, onUpdate, user, folkGuides
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{user ? 'Edit User' : 'Create User Record'}</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden bg-popover border-none shadow-2xl max-w-lg">
+        <DialogHeader className="p-8 pb-4 bg-card border-b border-border">
+          <DialogTitle className="text-2xl font-black text-foreground uppercase tracking-tight flex items-center gap-3">
+             <ShieldCheck className="h-6 w-6 text-primary" />
+             {user ? 'Update Profile' : 'Provision User'}
+          </DialogTitle>
+          <DialogDescription className="font-bold">
             {user
-              ? "Update the user's details in the database."
-              : 'Add a new user record. Note: Static builds cannot create Auth accounts directly.'}
+              ? "Modify the existing user's credentials and role."
+              : 'Create a new Firebase Auth account and database record.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Full Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., John Doe" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email Address</FormLabel>
-                  <FormControl>
-                    <Input type="email" placeholder="e.g., user@example.com" {...field} disabled={!!user} />
-                  </FormControl>
-                  {!!user && <FormDescription className="text-xs">Email cannot be changed after creation.</FormDescription>}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="phone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Phone Number</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., 9876543210" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Roles</FormLabel>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <FormControl>
-                        <Button variant="outline" className="w-full justify-start text-left font-normal">
-                          <div className="truncate">
-                            {(field.value || []).length > 0 ? (field.value || []).join(', ') : 'Select roles'}
-                          </div>
-                        </Button>
-                      </FormControl>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-                      {userRoles.map((roleOption) => (
-                        <DropdownMenuCheckboxItem
-                          key={roleOption}
-                          checked={(field.value || []).includes(roleOption)}
-                          onCheckedChange={(checked) => {
-                            const currentRoles = field.value || [];
-                            const newRoles = checked
-                              ? [...currentRoles, roleOption]
-                              : currentRoles.filter((r) => r !== roleOption);
-                            field.onChange(newRoles);
-                          }}
-                        >
-                          {roleOption}
-                        </DropdownMenuCheckboxItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {isGuideSelected && (
-                 <FormField
-                    control={form.control}
-                    name="fgCode"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>FG Code</FormLabel>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="p-8 space-y-6">
+            <div className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Full Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. Rahul Dev" {...field} className="h-12 rounded-xl bg-muted border-border font-bold px-4" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Email Address</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="e.g. user@example.com" {...field} disabled={!!user} className="h-12 rounded-xl bg-muted border-border font-bold px-4" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Phone Number</FormLabel>
+                    <FormControl>
+                      <Input placeholder="10-digit mobile" {...field} className="h-12 rounded-xl bg-muted border-border font-bold px-4" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">System Roles</FormLabel>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
                         <FormControl>
-                            <Input placeholder="Enter a unique code for the Folk Guide" {...field} />
+                          <Button variant="outline" className="w-full h-12 justify-between font-bold rounded-xl border-border bg-muted px-4">
+                            <span className="truncate">{(field.value || []).join(', ') || 'Select roles...'}</span>
+                            <Loader2 className="h-4 w-4 opacity-30" />
+                          </Button>
                         </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-            )}
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                        {userRoles.map((roleOption) => (
+                          <DropdownMenuCheckboxItem
+                            key={roleOption}
+                            checked={(field.value || []).includes(roleOption)}
+                            onCheckedChange={(checked) => {
+                              const currentRoles = field.value || [];
+                              const newRoles = checked
+                                ? [...currentRoles, roleOption]
+                                : currentRoles.filter((r) => r !== roleOption);
+                              field.onChange(newRoles);
+                            }}
+                          >
+                            {roleOption}
+                          </DropdownMenuCheckboxItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            {isEnablerSelected && (
-                 <FormField
-                    control={form.control}
-                    name="guideId"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Assign to Folk Guide</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                    <SelectTrigger>
-                                    <SelectValue placeholder="Select a Folk Guide" />
-                                    </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    {folkGuides.map(guide => (
-                                        <SelectItem key={guide.id} value={guide.id}>
-                                            {guide.name} ({guide.fgCode || 'N/A'})
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-            )}
+              {isGuideSelected && (
+                  <FormField
+                      control={form.control}
+                      name="fgCode"
+                      render={({ field }) => (
+                          <FormItem>
+                          <FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Folk Guide Code</FormLabel>
+                          <FormControl>
+                              <Input placeholder="Enter unique ID (e.g. FG01)" {...field} className="h-12 rounded-xl bg-muted border-border font-bold px-4" />
+                          </FormControl>
+                          <FormMessage />
+                          </FormItem>
+                      )}
+                  />
+              )}
+
+              {isEnablerSelected && (
+                  <FormField
+                      control={form.control}
+                      name="guideId"
+                      render={({ field }) => (
+                          <FormItem>
+                              <FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Reporting Folk Guide</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                  <FormControl>
+                                      <SelectTrigger className="h-12 rounded-xl bg-muted border-border font-bold px-4">
+                                      <SelectValue placeholder="Select a Folk Guide" />
+                                      </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                      {folkGuides.map(guide => (
+                                          <SelectItem key={guide.id} value={guide.id} className="font-bold">
+                                              {guide.name} ({guide.fgCode || 'N/A'})
+                                          </SelectItem>
+                                      ))}
+                                  </SelectContent>
+                              </Select>
+                              <FormMessage />
+                          </FormItem>
+                      )}
+                  />
+              )}
+            </div>
             
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting}>
+            <DialogFooter className="gap-3 pt-2">
+              <Button type="button" variant="ghost" onClick={() => setIsOpen(false)} className="rounded-xl font-bold">
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {user ? 'Save Changes' : 'Create Record'}
+              <Button type="submit" disabled={isSubmitting} className="rounded-xl h-12 px-8 font-black uppercase tracking-widest bg-primary text-primary-foreground shadow-xl">
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {user ? 'Update Database' : 'Provision Account'}
               </Button>
             </DialogFooter>
           </form>
