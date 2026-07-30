@@ -411,10 +411,11 @@ export function PersonTable({
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pb-32">
-          {people.map((person) => (
+          {people.map((person, index) => (
             <PersonCard
               key={person.id}
               person={person}
+              index={index + 1}
               isSelected={!!selectedIds && selectedIds.has(person.id)}
               onSelectionChange={handleSelectOne}
               groups={allGroups}

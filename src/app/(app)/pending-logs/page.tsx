@@ -84,9 +84,12 @@ export default function PendingLogsPage() {
           </div>
         ) : logs.length > 0 ? (
           <div className="space-y-4 pb-20">
-            {logs.map((log) => (
-              <Card key={log.id} className="bg-popover border-none shadow-xl rounded-[2rem] overflow-hidden group hover:shadow-2xl transition-all">
-                <CardContent className="p-6">
+            {logs.map((log, index) => (
+              <Card key={log.id} className="bg-popover border-none shadow-xl rounded-[2rem] overflow-hidden group hover:shadow-2xl transition-all relative">
+                <div className="absolute top-4 left-6 z-10">
+                    <span className="text-[10px] font-mono font-black text-primary/30 uppercase tracking-widest">Queue #{index + 1}</span>
+                </div>
+                <CardContent className="p-6 pt-10">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                     <div className="flex items-center gap-4 min-w-0">
                       <Avatar className="h-14 w-14 border-2 border-primary/20 rounded-2xl shadow-lg">

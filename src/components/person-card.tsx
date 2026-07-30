@@ -29,6 +29,7 @@ type PersonCardProps = {
   isSelectionActive: boolean;
   navigationContext?: { groupId?: string; scope?: string };
   tier?: FollowUpTier;
+  index?: number;
 };
 
 const parseNumber = (str: string): number | null => {
@@ -81,7 +82,7 @@ const getCategoryStatus = (category: TProgressCategory): 'completed' | 'in-progr
 }
 
 
-const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups = [], isSelectionActive, navigationContext, tier }: PersonCardProps) => {
+const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups = [], isSelectionActive, navigationContext, tier, index }: PersonCardProps) => {
   const router = useRouter();
 
   const personGroups = React.useMemo(() => {
@@ -143,6 +144,14 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups = [
                className="h-5 w-5 bg-background shadow-sm"
              />
         </div>
+
+        {index !== undefined && (
+          <div className="absolute top-3 left-3 z-10">
+            <Badge variant="outline" className="h-5 px-1.5 bg-background/80 backdrop-blur border-border text-[9px] font-mono text-muted-foreground shadow-sm">
+                #{index}
+            </Badge>
+          </div>
+        )}
         
         <div className="flex flex-col h-full items-center text-center p-4 pt-8">
             <div className="flex flex-col items-center mb-2 w-full">
@@ -213,6 +222,7 @@ export const PersonCard = React.memo(PersonCardComponent, (prev, next) => {
         prev.isSelected === next.isSelected &&
         prev.person.id === next.person.id &&
         prev.isSelectionActive === next.isSelectionActive &&
-        prev.tier === next.tier
+        prev.tier === next.tier &&
+        prev.index === next.index
     );
 });
