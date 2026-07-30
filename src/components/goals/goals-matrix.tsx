@@ -50,13 +50,13 @@ export function GoalsMatrix({ goals, enablers, categories, onUpdateProgress, onE
   }
 
   return (
-    <div className="bg-card border border-border rounded-[2.5rem] shadow-2xl overflow-hidden">
+    <div className="bg-card border border-border rounded-[2.5rem] shadow-2xl">
       <ScrollArea className="w-full">
         <div className="min-w-max">
             <Table>
-                <TableHeader>
-                    <TableRow className="hover:bg-transparent border-b-2 border-border bg-muted/30 h-16">
-                        <TableHead className="w-[240px] sticky left-0 z-20 bg-muted/95 backdrop-blur border-r border-border font-black text-[10px] uppercase tracking-[0.2em] text-muted-foreground pl-8">
+                <TableHeader className="sticky top-0 z-30 bg-card">
+                    <TableRow className="hover:bg-transparent border-b-2 border-border h-16">
+                        <TableHead className="w-[240px] sticky top-0 left-0 z-40 bg-muted border-r border-border font-black text-[10px] uppercase tracking-[0.2em] text-muted-foreground pl-8">
                             Enabler List
                         </TableHead>
                         {columnsByCat.map(cat => (
@@ -64,7 +64,7 @@ export function GoalsMatrix({ goals, enablers, categories, onUpdateProgress, onE
                                 <TableHead 
                                     key={cat.name} 
                                     colSpan={cat.titles.length}
-                                    className="text-center font-black text-[11px] uppercase tracking-[0.3em] text-primary border-r border-border"
+                                    className="text-center font-black text-[11px] uppercase tracking-[0.3em] text-primary border-r border-border bg-muted/50"
                                 >
                                     {cat.name}
                                 </TableHead>
@@ -73,10 +73,10 @@ export function GoalsMatrix({ goals, enablers, categories, onUpdateProgress, onE
                     </TableRow>
                     
                     <TableRow className="hover:bg-transparent bg-muted/10 h-20">
-                        <TableHead className="w-[240px] sticky left-0 z-20 bg-muted/95 backdrop-blur border-r border-border pl-8"></TableHead>
+                        <TableHead className="w-[240px] sticky left-0 z-30 bg-muted/95 backdrop-blur border-r border-border pl-8"></TableHead>
                         {columnsByCat.map(cat => (
                             cat.titles.map(title => (
-                                <TableHead key={`${cat.name}-${title}`} className="px-6 min-w-[180px] border-r border-border/50 text-center">
+                                <TableHead key={`${cat.name}-${title}`} className="px-6 min-w-[180px] border-r border-border/50 text-center bg-muted/5">
                                     <div className="flex flex-col items-center gap-1">
                                         <span className="font-black text-[10px] uppercase tracking-tight text-foreground leading-tight">{title}</span>
                                         <div className="h-0.5 w-8 bg-primary/20 rounded-full" />
@@ -89,7 +89,7 @@ export function GoalsMatrix({ goals, enablers, categories, onUpdateProgress, onE
                 <TableBody>
                     {enablerNames.map(enablerName => (
                         <TableRow key={enablerName} className="hover:bg-muted/30 border-b border-border transition-colors">
-                            <TableCell className="w-[240px] sticky left-0 z-10 bg-background/95 backdrop-blur font-black text-xs uppercase text-foreground/80 pl-8 border-r border-border py-6">
+                            <TableCell className="w-[240px] sticky left-0 z-10 bg-background font-black text-xs uppercase text-foreground/80 pl-8 border-r border-border py-6">
                                 {enablerName}
                             </TableCell>
                             {columnsByCat.map(cat => (
@@ -197,3 +197,4 @@ export function GoalsMatrix({ goals, enablers, categories, onUpdateProgress, onE
     </div>
   );
 }
+

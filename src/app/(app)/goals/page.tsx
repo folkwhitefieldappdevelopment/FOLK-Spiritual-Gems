@@ -9,7 +9,8 @@ import {
   Clock, 
   Activity, 
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Sigma
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useAppToast } from '@/contexts/toast-context';
@@ -38,6 +39,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 export default function GoalsPage() {
   const { appUser } = useAuth();
@@ -157,14 +159,28 @@ export default function GoalsPage() {
 
   const stats = React.useMemo(() => {
     const statuses = goals.map(g => computeGoalStatus(g));
+    const totalCommitted = goals.reduce((sum, g) => sum + (g.targetCount || 0), 0);
+    const totalAchieved = goals.reduce((sum, g) => sum + (g.achievedCount || 0), 0);
     
+    const categoryStats = categories.map(cat => {
+      const catGoals = goals.filter(g => g.category === cat);
+      return {
+        name: cat,
+        committed: catGoals.reduce((sum, g) => sum + (g.targetCount || 0), 0),
+        achieved: catGoals.reduce((sum, g) => sum + (g.achievedCount || 0), 0),
+      };
+    }).filter(c => c.committed > 0);
+
     return {
         total: goals.length,
         achieved: statuses.filter(s => s === 'achieved').length,
         overdue: statuses.filter(s => s === 'overdue').length,
         inProgress: statuses.filter(s => s === 'in-progress').length,
+        totalCommitted,
+        totalAchieved,
+        categoryStats,
     };
-  }, [goals]);
+  }, [goals, categories]);
 
   if (isLoading && goals.length === 0) {
       return (
@@ -195,12 +211,27 @@ export default function GoalsPage() {
 
       <main className="flex-1 p-4 sm:p-6 sm:pt-0 space-y-8 pb-32">
         {/* KPI Cards */}
-        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-            <SummaryCard title="Total Goals" value={stats.total} icon={Target} color="bg-primary" />
-            <SummaryCard title="Achieved" value={stats.achieved} icon={Trophy} color="bg-green-500" />
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+            <SummaryCard title="Total Committed" value={stats.totalCommitted} icon={Target} color="bg-blue-500" />
+            <SummaryCard title="Total Achieved" value={stats.totalAchieved} icon={Trophy} color="bg-green-600" />
+            <SummaryCard title="Total Goals" value={stats.total} icon={Sigma} color="bg-primary" />
+            <SummaryCard title="Achieved (Rec)" value={stats.achieved} icon={Trophy} color="bg-green-500" />
             <SummaryCard title="In Progress" value={stats.inProgress} icon={Activity} color="bg-orange-500" />
             <SummaryCard title="Overdue" value={stats.overdue} icon={AlertCircle} color="bg-destructive" />
         </div>
+
+        {/* Category Breakdown Row */}
+        {stats.categoryStats.length > 0 && (
+          <div className="flex flex-wrap gap-2 px-2">
+            <span className="text-[9px] font-black uppercase text-muted-foreground tracking-widest self-center mr-2">By Category:</span>
+            {stats.categoryStats.map(cat => (
+              <Badge key={cat.name} variant="outline" className="h-8 gap-3 px-3 bg-card border-border shadow-sm rounded-lg">
+                <span className="text-[10px] font-black uppercase tracking-tight text-foreground/70">{cat.name}</span>
+                <span className="text-sm font-black text-primary">{cat.achieved} / {cat.committed}</span>
+              </Badge>
+            ))}
+          </div>
+        )}
 
         {/* Desktop Matrix View */}
         <div className="hidden md:block">
@@ -284,3 +315,4 @@ function SummaryCard({ title, value, icon: Icon, color }: { title: string, value
         </Card>
     );
 }
+
