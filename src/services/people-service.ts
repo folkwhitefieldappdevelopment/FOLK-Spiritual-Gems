@@ -21,6 +21,7 @@ import {
   writeBatch,
   orderBy,
   getCountFromServer,
+  startAfter,
 } from 'firebase/firestore';
 import type { Person, AppUser, UserRole, FolkStage, CoEnablerSession, FilterState } from '@/lib/types';
 import { isAssignedToUser, ELIMINATED_STATUSES } from '@/lib/types';
@@ -36,7 +37,8 @@ import { getEnablers } from './settings-service';
 import { updateContactCache } from './contact-cache-service';
 
 const PAGE_SIZE = 100;
-const MAX_ADMIN_LIMIT = 50000;
+const ADMIN_PAGE_SIZE = 5000;
+const MAX_ADMIN_RECORDS = 60000;
 const SCOPED_LIMIT = 5000;
 
 export type SyncStatus = 'initializing' | 'cached' | 'syncing' | 'synced' | 'timeout';
@@ -71,31 +73,25 @@ export const subscribeToPeopleData = (callback: (people: Person[]) => void) => {
 
 /**
  * Initializes a role-aware master stream to optimize Firestore costs.
- * Folk Enablers only sync their assigned contacts.
+ * Admins use paginated getDocs (one-time fetch) to handle 10k+ records.
+ * Guides and Enablers use real-time onSnapshot for scoped data.
  */
-export const initMasterPeopleStream = (user: AppUser): Promise<Person[]> => {
-  if (cachePromise) return cachePromise;
+export const initMasterPeopleStream = (user: AppUser, force = false): Promise<Person[]> => {
+  if (cachePromise && !force) return cachePromise;
+
+  if (force) {
+      if (masterUnsubscribe) {
+          masterUnsubscribe();
+          masterUnsubscribe = null;
+      }
+      cachePromise = null;
+  }
 
   cachePromise = new Promise((resolve) => {
     const peopleRef = collection(db!, 'people');
-    let q;
-
     const isAdmin = user.role.includes('Admin');
     const isGuide = user.role.includes('Folk Guide') && !isAdmin;
 
-    if (isAdmin) {
-      q = query(peopleRef, orderBy(documentId()), limit(MAX_ADMIN_LIMIT));
-    } else if (isGuide) {
-      q = query(peopleRef, where('folkGuideId', '==', user.id), limit(SCOPED_LIMIT));
-    } else {
-      // Scoped query for Enablers (My Contacts + Co-Enabler assignments)
-      q = query(
-        peopleRef, 
-        or(where('enablerId', '==', user.id), where('coEnablerId', '==', user.id)),
-        limit(SCOPED_LIMIT)
-      );
-    }
-    
     let resolved = false;
 
     const safetyTimeout = setTimeout(() => {
@@ -104,63 +100,120 @@ export const initMasterPeopleStream = (user: AppUser): Promise<Person[]> => {
         resolved = true;
         resolve(masterPeopleCache || []);
       }
-    }, 10000);
+    }, 15000);
 
-    masterUnsubscribe = onSnapshot(q, async (snap) => {
-      const results: Person[] = [];
-      const newMap = new Map<string, Person>();
+    if (isAdmin) {
+      // Use paginated getDocs for Admin to bypass the 10k limit and handle scale up to 60k
+      (async () => {
+        updateSyncStatus('syncing');
+        let lastDoc = null;
+        let totalFetched = 0;
+        let isFirstPage = true;
 
-      snap.docs.forEach((d) => {
-        const p = processPersonDoc(d);
-        results.push(p);
-        newMap.set(p.id, p);
-      });
+        try {
+          while (totalFetched < MAX_ADMIN_RECORDS) {
+            let q = query(peopleRef, orderBy(documentId()), limit(ADMIN_PAGE_SIZE));
+            if (lastDoc) q = query(q, startAfter(lastDoc));
 
-      masterPeopleCache = results;
-      masterPeopleMap = newMap;
-      
-      updateContactCache(results);
+            const snap = await getDocs(q);
+            if (snap.empty) break;
 
-      const isFromCache = snap.metadata.fromCache;
-      const isSyncing = snap.metadata.hasPendingWrites;
-      
-      // Verification logic for missing records in large sets
-      let warning: string | null = null;
-      if (!isFromCache && isAdmin) {
-          try {
-            const countSnap = await getCountFromServer(peopleRef);
-            const serverCount = countSnap.data().count;
-            if (serverCount > results.length) {
-                warning = `Loaded ${results.length.toLocaleString()} of ${serverCount.toLocaleString()} contacts — some records may be hidden due to system limits.`;
+            const results = snap.docs.map(d => processPersonDoc(d));
+            
+            if (isFirstPage) {
+              masterPeopleCache = results;
+              masterPeopleMap.clear();
+            } else {
+              masterPeopleCache = [...(masterPeopleCache || []), ...results];
             }
-          } catch (e) {
-            console.warn("Count check failed", e);
+            
+            results.forEach(p => masterPeopleMap.set(p.id, p));
+            dataListeners.forEach(l => l(masterPeopleCache!));
+            updateContactCache(results);
+
+            totalFetched += snap.docs.length;
+            lastDoc = snap.docs[snap.docs.length - 1];
+            
+            // Resolve promise on first page to unblock initial UI
+            if (isFirstPage && !resolved) {
+              resolved = true;
+              clearTimeout(safetyTimeout);
+              resolve(masterPeopleCache);
+            }
+            isFirstPage = false;
           }
-      }
 
-      if (!isFromCache && !isSyncing) {
-        updateSyncStatus('synced', warning);
-      } else if (isSyncing || !isFromCache) {
-        updateSyncStatus('syncing', warning);
+          // Accuracy verification
+          const countSnap = await getCountFromServer(peopleRef);
+          const serverCount = countSnap.data().count;
+          let warning = null;
+          if (serverCount > (masterPeopleCache?.length || 0)) {
+            warning = `Loaded ${(masterPeopleCache?.length || 0).toLocaleString()} of ${serverCount.toLocaleString()} contacts — use manual refresh for latest data.`;
+          }
+          updateSyncStatus('synced', warning);
+        } catch (err) {
+          console.error("[MasterStream] Admin pagination loop failed:", err);
+          updateSyncStatus('timeout', "Failed to load full database.");
+          if (!resolved) {
+              resolved = true;
+              resolve(masterPeopleCache || []);
+          }
+        }
+      })();
+    } else {
+      // Use real-time onSnapshot for Guides and Enablers (limits safely under 10k)
+      let q;
+      if (isGuide) {
+        q = query(peopleRef, where('folkGuideId', '==', user.id), limit(SCOPED_LIMIT));
       } else {
-        updateSyncStatus('cached', warning);
+        q = query(
+          peopleRef, 
+          or(where('enablerId', '==', user.id), where('coEnablerId', '==', user.id)),
+          limit(SCOPED_LIMIT)
+        );
       }
 
-      dataListeners.forEach(l => l(results));
+      masterUnsubscribe = onSnapshot(q, async (snap) => {
+        const results: Person[] = [];
+        const newMap = new Map<string, Person>();
 
-      if (!resolved) {
-        clearTimeout(safetyTimeout);
-        resolved = true;
-        resolve(results);
-      }
-    }, (err) => {
-      console.error("[MasterStream] Listener failed:", err);
-      if (!resolved) {
-        clearTimeout(safetyTimeout);
-        resolved = true;
-        resolve([]);
-      }
-    });
+        snap.docs.forEach((d) => {
+          const p = processPersonDoc(d);
+          results.push(p);
+          newMap.set(p.id, p);
+        });
+
+        masterPeopleCache = results;
+        masterPeopleMap = newMap;
+        updateContactCache(results);
+
+        const isFromCache = snap.metadata.fromCache;
+        const isSyncing = snap.metadata.hasPendingWrites;
+        
+        if (!isFromCache && !isSyncing) {
+          updateSyncStatus('synced');
+        } else if (isSyncing || !isFromCache) {
+          updateSyncStatus('syncing');
+        } else {
+          updateSyncStatus('cached');
+        }
+
+        dataListeners.forEach(l => l(results));
+
+        if (!resolved) {
+          clearTimeout(safetyTimeout);
+          resolved = true;
+          resolve(results);
+        }
+      }, (err) => {
+        console.error("[MasterStream] Listener failed:", err);
+        if (!resolved) {
+          clearTimeout(safetyTimeout);
+          resolved = true;
+          resolve([]);
+        }
+      });
+    }
   });
 
   return cachePromise;
@@ -168,7 +221,7 @@ export const initMasterPeopleStream = (user: AppUser): Promise<Person[]> => {
 
 export const getCachedPeople = async (): Promise<Person[]> => {
   if (masterPeopleCache) return masterPeopleCache;
-  return []; // Should be initialized via App Shell first
+  return []; 
 };
 
 export const normalizePhone = (phone: string): string => {

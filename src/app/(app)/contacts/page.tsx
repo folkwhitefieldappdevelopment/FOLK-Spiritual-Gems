@@ -40,7 +40,8 @@ import {
   subscribeToSyncStatus,
   getSyncStatus,
   type SyncStatus,
-  checkDuplicatePhone
+  checkDuplicatePhone,
+  initMasterPeopleStream
 } from '@/services/people-service';
 import { createGroup, getStaticGroups, addPeopleToGroup, updateGroup as updateGroupSvc } from "@/services/groups-service";
 import { getEnablers, getContactSources, getStayingWithOptions, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
@@ -159,6 +160,11 @@ const ContactsPageComponent = () => {
     try {
       const fetchScope = activeTab === 'all-contacts' ? 'all' : 'my';
       
+      // For admins, re-sync master cache on manual refresh since it's no longer live
+      if (!lastId && !silent && appUser.role.includes('Admin')) {
+          await initMasterPeopleStream(appUser, true);
+      }
+
       // Update global total first via server count
       const counts = await getFastSummaryStats(appUser);
       setTotalCount(fetchScope === 'all' ? counts.totalContactsCount : counts.myContactsCount);
@@ -404,7 +410,7 @@ const ContactsPageComponent = () => {
                   <CopyCheck className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">Deduplicate</span>
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={() => fetchContacts(undefined, true)} disabled={isLoading} className="h-9 font-bold px-2.5 rounded-xl border-2 border-border bg-muted/50 text-foreground">
+            <Button variant="outline" size="sm" onClick={() => fetchContacts(undefined)} disabled={isLoading} className="h-9 font-bold px-2.5 rounded-xl border-2 border-border bg-muted/50 text-foreground">
                 <RefreshCw className={cn("h-4 w-4 sm:mr-2", isLoading && "animate-spin")} /> <span className="hidden sm:inline">Refresh</span>
             </Button>
             <DropdownMenu>
@@ -421,7 +427,7 @@ const ContactsPageComponent = () => {
             </DropdownMenu>
             <Button size="icon" onClick={() => setIsAddMethodDialogOpen(true)} className="h-9 w-9 bg-primary hover:bg-primary/90 rounded-full shadow-lg ml-2"><Plus className="h-5 w-5 text-primary-foreground" /></Button>
         </div>
-        <input type="file" hide="true" ref={fileInputRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={handleFileSelection} />
+        <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={handleFileSelection} />
       </PageHeader>
       
       <main className="flex-1 p-4 sm:px-6 space-y-6 pb-20">
@@ -542,7 +548,7 @@ const ContactsPageComponent = () => {
         </Tabs>
       </main>
 
-      <Dialog hide="true" open={isImportPreviewOpen} onOpenChange={setIsImportPreviewOpen}>
+      <Dialog open={isImportPreviewOpen} onOpenChange={setIsImportPreviewOpen}>
         <DialogContent className="sm:max-w-xl bg-popover border-none rounded-[2.5rem] p-0 overflow-hidden shadow-2xl">
           <DialogHeader className="p-8 pb-4 bg-card border-b border-border">
             <DialogTitle className="text-xl font-black text-foreground uppercase tracking-tight flex items-center gap-3">

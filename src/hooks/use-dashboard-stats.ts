@@ -128,7 +128,7 @@ export function useDashboardStats(dateRange?: DateRange, folkGuideId?: string) {
 
     initMasterPeopleStream(appUser);
 
-    const interval = setInterval(refreshFastStats, 90000); // 90 second interval
+    const interval = setInterval(refreshFastStats, 90000); 
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') refreshFastStats();
@@ -146,8 +146,13 @@ export function useDashboardStats(dateRange?: DateRange, folkGuideId?: string) {
   const refetch = useCallback(async () => {
       if (!appUser) return;
       setIsRefetching(true);
+      
+      // For admins, re-run the paginated master fetch manually since it's not live
+      if (appUser.role.includes('Admin')) {
+          await initMasterPeopleStream(appUser, true);
+      }
+      
       await recomputeStats([]); 
-      initMasterPeopleStream(appUser);
       setIsRefetching(false);
   }, [appUser, recomputeStats]);
 
