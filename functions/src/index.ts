@@ -24,10 +24,14 @@ export const createAppUser = onCall(async (request) => {
     throw new HttpsError("permission-denied", "Only administrators can provision new users.");
   }
 
-  const { name, email, phone, role, fgCode, guideId } = request.data;
+  const { name, email, phone, password, role, fgCode, guideId } = request.data;
 
-  if (!email || !name || !role) {
-    throw new HttpsError("invalid-argument", "Missing required fields: email, name, or role.");
+  if (!email || !name || !role || !password) {
+    throw new HttpsError("invalid-argument", "Missing required fields: email, name, role, or password.");
+  }
+
+  if (password.length < 6) {
+    throw new HttpsError("invalid-argument", "Password must be at least 6 characters.");
   }
 
   try {
@@ -36,10 +40,10 @@ export const createAppUser = onCall(async (request) => {
       email: email.toLowerCase(),
       phoneNumber: phone ? `+91${phone.replace(/\D/g, "").slice(-10)}` : undefined,
       displayName: name,
-      password: Math.random().toString(36).slice(-12) + "A1!", // Random temporary password
+      password: password,
     });
 
-    // 2. Generate Password Reset Link & Dispatch Email
+    // 2. Generate Optional Reset Link & Dispatch Welcome Email
     const resetLink = await admin.auth().generatePasswordResetLink(email);
     await db.collection("mail").add({
       to: [email],
@@ -47,11 +51,11 @@ export const createAppUser = onCall(async (request) => {
         subject: "Welcome to FOLK Spiritual Gems CRM",
         html: `<div style="font-family: sans-serif; max-width: 600px;">
           <h2>Hare Krishna ${name},</h2>
-          <p>An account has been created for you in the FOLK CRM. To begin managing your outreach, please set your password using the link below:</p>
-          <p><a href="${resetLink}" style="background: #3F51B5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">Set My Password</a></p>
-          <p>After setting your password, you can sign in at: <a href="https://${process.env.GCLOUD_PROJECT}.firebaseapp.com">FOLK CRM Portal</a></p>
+          <p>An account has been created for you in the FOLK CRM. Your account is now active and ready for use.</p>
+          <p>Please log in using the password shared with you by your administrator at: <a href="https://${process.env.GCLOUD_PROJECT}.firebaseapp.com">FOLK CRM Portal</a></p>
           <hr/>
-          <p style="font-size: 11px; color: #666;">If the button doesn't work, copy and paste this URL: ${resetLink}</p>
+          <p style="font-size: 12px; color: #666;"><b>Security Tip:</b> We recommend changing your password after your first login. If you ever forget your password, you can use the link below to reset it:</p>
+          <p><a href="${resetLink}" style="color: #3F51B5; text-decoration: underline;">Reset my password</a></p>
         </div>`,
       },
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -108,7 +112,7 @@ export const createAppUser = onCall(async (request) => {
  */
 export const deleteAppUser = onCall(async (request) => {
   if (!request.auth) {
-    throw new HttpsError("unauthenticated", "Authentication required.");
+    throw new HttpsError("unauthenticated", "User must be logged in.");
   }
 
   const callerUid = request.auth.uid;

@@ -25,6 +25,7 @@ export const provisionUserOnServer = async (data: {
   name: string;
   email: string;
   phone: string;
+  password: string;
   role: UserRole[];
   fgCode?: string;
   guideId?: string;

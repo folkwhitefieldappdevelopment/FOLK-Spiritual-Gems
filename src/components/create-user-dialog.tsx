@@ -36,7 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, ShieldCheck } from 'lucide-react';
+import { Loader2, ShieldCheck, Eye, EyeOff, Wand2 } from 'lucide-react';
 import { userRoles, type AppUser, type UserRole } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { provisionUserOnServer } from '@/services/user-service';
@@ -46,25 +46,27 @@ const userFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   email: z.string().email({ message: 'Please enter a valid email address.' }),
   phone: z.string().regex(/^[6-9]\d{9}$/, { message: 'Please enter a valid 10-digit Indian mobile number.' }),
+  password: z.string().optional(),
   role: z.array(z.string()).min(1, { message: 'Please select at least one role.' }),
   fgCode: z.string().optional(),
   guideId: z.string().optional(),
-}).refine(data => {
-    if (data.role.includes('Folk Guide')) {
-        return !!data.fgCode && data.fgCode.trim().length > 0;
+}).superRefine((data, ctx) => {
+    // FG Code check
+    if (data.role.includes('Folk Guide') && (!data.fgCode || data.fgCode.trim().length === 0)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'FG Code is required for Folk Guides.',
+            path: ['fgCode'],
+        });
     }
-    return true;
-}, {
-    message: 'FG Code is required for Folk Guides.',
-    path: ['fgCode'],
-}).refine(data => {
-    if (data.role.includes('Folk Enabler')) {
-        return !!data.guideId;
+    // Enabler guide check
+    if (data.role.includes('Folk Enabler') && !data.guideId) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'A Folk Guide must be assigned to an Enabler.',
+            path: ['guideId'],
+        });
     }
-    return true;
-}, {
-    message: 'A Folk Guide must be assigned to an Enabler.',
-    path: ['guideId'],
 });
 
 export type UserFormValues = z.infer<typeof userFormSchema>;
@@ -82,6 +84,7 @@ export function CreateUserDialog({ isOpen, setIsOpen, onUpdate, user, folkGuides
   const { toast } = useToast();
   const { appUser } = useAuth();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [showPassword, setShowPassword] = React.useState(false);
   
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
@@ -89,6 +92,7 @@ export function CreateUserDialog({ isOpen, setIsOpen, onUpdate, user, folkGuides
       name: '',
       email: '',
       phone: '',
+      password: '',
       role: [],
       fgCode: '',
       guideId: '',
@@ -106,6 +110,7 @@ export function CreateUserDialog({ isOpen, setIsOpen, onUpdate, user, folkGuides
           name: user.name,
           email: user.email,
           phone: user.phone,
+          password: '',
           role: user.role,
           fgCode: user.fgCode || '',
           guideId: user.reportsTo?.guideId || '',
@@ -115,27 +120,48 @@ export function CreateUserDialog({ isOpen, setIsOpen, onUpdate, user, folkGuides
           name: '',
           email: '',
           phone: '',
+          password: '',
           role: [],
           fgCode: '',
           guideId: '',
         });
       }
       setIsSubmitting(false);
+      setShowPassword(false);
     }
   }, [isOpen, user, form]);
 
+  const generatePassword = () => {
+    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+    let pass = "";
+    for (let i = 0; i < 12; i++) {
+        pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    // Ensure it meets complexity for safety
+    pass += "A1!"; 
+    form.setValue('password', pass, { shouldValidate: true, shouldDirty: true });
+    setShowPassword(true);
+  };
+
   async function onSubmit(data: UserFormValues) {
     if (!appUser) return;
+
+    // Manual validation for password on create path
+    if (!user && (!data.password || data.password.length < 6)) {
+        form.setError('password', { message: 'Password is required and must be at least 6 characters.' });
+        return;
+    }
+
     setIsSubmitting(true);
     try {
         if (user) {
             await onUpdate(data, user.id);
         } else {
-            // provision user using server-side logic
             await provisionUserOnServer({
                 name: data.name,
                 email: data.email,
                 phone: data.phone,
+                password: data.password!,
                 role: data.role as UserRole[],
                 fgCode: data.fgCode,
                 guideId: data.guideId
@@ -143,7 +169,7 @@ export function CreateUserDialog({ isOpen, setIsOpen, onUpdate, user, folkGuides
             
             toast({
                 title: 'User Provisioned',
-                description: `Auth account created for ${data.name}. A welcome email has been sent.`,
+                description: `Auth account created for ${data.name}.`,
             });
             onUserCreated();
             setIsOpen(false);
@@ -190,32 +216,77 @@ export function CreateUserDialog({ isOpen, setIsOpen, onUpdate, user, folkGuides
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Email Address</FormLabel>
-                    <FormControl>
-                      <Input type="email" placeholder="e.g. user@example.com" {...field} disabled={!!user} className="h-12 rounded-xl bg-muted border-border font-bold px-4" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Phone Number</FormLabel>
-                    <FormControl>
-                      <Input placeholder="10-digit mobile" {...field} className="h-12 rounded-xl bg-muted border-border font-bold px-4" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Email Address</FormLabel>
+                        <FormControl>
+                        <Input type="email" placeholder="e.g. user@example.com" {...field} disabled={!!user} className="h-12 rounded-xl bg-muted border-border font-bold px-4" />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel className="text-[10px] font-black uppercase text-muted-foreground ml-1">Phone Number</FormLabel>
+                        <FormControl>
+                        <Input placeholder="10-digit mobile" {...field} className="h-12 rounded-xl bg-muted border-border font-bold px-4" />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+              </div>
+
+              {!user && (
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                        <FormItem>
+                            <div className="flex items-center justify-between ml-1">
+                                <FormLabel className="text-[10px] font-black uppercase text-muted-foreground">Initial Password</FormLabel>
+                                <Button 
+                                    type="button" 
+                                    variant="ghost" 
+                                    onClick={generatePassword}
+                                    className="h-auto p-0 text-[9px] font-black uppercase text-primary hover:bg-transparent"
+                                >
+                                    <Wand2 className="h-2.5 w-2.5 mr-1" /> Generate
+                                </Button>
+                            </div>
+                            <div className="relative">
+                                <FormControl>
+                                    <Input 
+                                        type={showPassword ? "text" : "password"} 
+                                        placeholder="••••••••" 
+                                        {...field} 
+                                        className="h-12 rounded-xl bg-muted border-border font-bold px-4 pr-10" 
+                                    />
+                                </FormControl>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-10 w-10 text-muted-foreground hover:bg-transparent"
+                                >
+                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </Button>
+                            </div>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                  />
+              )}
+
               <FormField
                 control={form.control}
                 name="role"
@@ -227,7 +298,7 @@ export function CreateUserDialog({ isOpen, setIsOpen, onUpdate, user, folkGuides
                         <FormControl>
                           <Button variant="outline" className="w-full h-12 justify-between font-bold rounded-xl border-border bg-muted px-4">
                             <span className="truncate">{(field.value || []).join(', ') || 'Select roles...'}</span>
-                            <Loader2 className="h-4 w-4 opacity-30" />
+                            <ChevronDown className="h-4 w-4 opacity-30" />
                           </Button>
                         </FormControl>
                       </DropdownMenuTrigger>
@@ -312,4 +383,23 @@ export function CreateUserDialog({ isOpen, setIsOpen, onUpdate, user, folkGuides
       </DialogContent>
     </Dialog>
   );
+}
+
+function ChevronDown(props: any) {
+    return (
+        <svg
+            {...props}
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="m6 9 6 6 6-9" />
+        </svg>
+    )
 }
