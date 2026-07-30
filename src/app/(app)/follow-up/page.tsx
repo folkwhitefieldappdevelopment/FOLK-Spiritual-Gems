@@ -59,7 +59,7 @@ export default function FollowUpPage() {
         setSummaries(summaryData);
       } else {
         const itemData = drillDownEnabler 
-            ? await getFollowUpItemsForEnabler(drillDownEnabler.enablerId)
+            ? await getFollowUpItemsForEnabler({ id: drillDownEnabler.enablerId, name: drillDownEnabler.enablerName })
             : await getFollowUpItemsForCurrentUser(appUser);
         setItems(itemData);
       }

@@ -130,14 +130,15 @@ export async function getFollowUpSummaryForGuide(guideUserInfo: AppUser): Promis
 }
 
 /**
- * Returns follow-up items for a specific enabler ID (used for Guide drill-down).
+ * Returns follow-up items for a specific enabler (used for Guide drill-down).
+ * Now accepts a full enabler object to support both ID and name fallback matching.
  */
-export async function getFollowUpItemsForEnabler(enablerId: string): Promise<FollowUpItem[]> {
+export async function getFollowUpItemsForEnabler(enabler: { id: string; name: string }): Promise<FollowUpItem[]> {
   const allPeople = await getCachedPeople();
   const items: FollowUpItem[] = [];
   
   allPeople.forEach(p => {
-    if (p.enablerId === enablerId || (p.enablerInTouchWith && p.enablerInTouchWith.includes(enablerId))) {
+    if (isAssignedToUser(p, enabler)) {
       const result = getFollowUpTier(p);
       if (result) {
         items.push({ person: p, ...result });
