@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { logAudit } from '@/services/audit-service';
 import { db } from '@/lib/firebase';
 import { doc, serverTimestamp } from 'firebase/firestore';
+import { cn } from '@/lib/utils';
 
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
