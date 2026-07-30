@@ -1,7 +1,11 @@
 import * as admin from 'firebase-admin';
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { setGlobalOptions } from "firebase-functions/v2";
 
 admin.initializeApp();
+
+// Set global options to ensure functions deploy to the correct region
+setGlobalOptions({ region: "asia-south1" });
 
 export { goalDeadlineReminders } from './goal-reminders';
 export { cleanupExpiredAssignments } from './co-enabler-expiry';
@@ -121,7 +125,7 @@ export const deleteAppUser = onCall(async (request) => {
   const callerDoc = await db.collection("users").doc(callerUid).get();
   const callerData = callerDoc.data();
   if (!callerData?.role?.includes("Admin")) {
-    throw new HttpsError("permission-denied", "Admin privileges required.");
+    throw new HttpsError("permission-denied", "Only administrators can terminate accounts.");
   }
 
   const { targetUid } = request.data;
@@ -129,12 +133,25 @@ export const deleteAppUser = onCall(async (request) => {
     throw new HttpsError("invalid-argument", "Target user ID is required.");
   }
 
+  // SELF DELETION GUARD
+  if (callerUid === targetUid) {
+    throw new HttpsError("failed-precondition", "You cannot delete your own account.");
+  }
+
   try {
     const targetDoc = await db.collection("users").doc(targetUid).get();
     const targetName = targetDoc.data()?.name || targetUid;
 
-    // Remove from Auth
-    await admin.auth().deleteUser(targetUid);
+    // Remove from Auth (resilient to missing accounts)
+    try {
+      await admin.auth().deleteUser(targetUid);
+    } catch (authError: any) {
+      if (authError.code !== 'auth/user-not-found') {
+        throw authError; // re-throw unexpected errors
+      }
+      // no matching Auth account — fine, just proceed to remove the Firestore record
+      console.warn(`No Auth account found for ${targetUid}, removing Firestore record only.`);
+    }
     
     // Remove from Firestore
     await db.collection("users").doc(targetUid).delete();
