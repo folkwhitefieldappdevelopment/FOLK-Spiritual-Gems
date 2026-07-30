@@ -4,7 +4,6 @@ import * as React from 'react';
 import { 
   AlertCircle, 
   Clock, 
-  UserX, 
   RefreshCw, 
   Loader2, 
   PhoneCall, 
@@ -24,29 +23,35 @@ import {
   type FollowUpItem,
   type EnablerFollowUpSummary
 } from '@/services/follow-up-service';
-import { updatePerson } from '@/services/people-service';
+import { updatePerson, deletePerson } from '@/services/people-service';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { DetailedLogCallDialog } from '@/components/detailed-log-call-dialog';
-import { formatDistanceToNow } from 'date-fns';
-import { safeDate } from '@/utils/date';
 import { cn } from '@/lib/utils';
 import type { CallLog } from '@/lib/types';
+import { PersonTable } from '@/components/person-table';
+import { ConfirmSessionDialog } from '@/components/confirm-session-dialog';
+import { trackSessionStart } from "@/services/session-history-service";
+import { updateUser } from '@/services/user-service';
+import { useRouter } from 'next/navigation';
 
 export default function FollowUpPage() {
-  const { appUser } = useAuth();
+  const { appUser, setAppUser } = useAuth();
   const { toast } = useAppToast();
+  const router = useRouter();
   
   const [items, setItems] = React.useState<FollowUpItem[]>([]);
   const [summaries, setSummaries] = React.useState<EnablerFollowUpSummary[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [drillDownEnabler, setDrillDownEnabler] = React.useState<EnablerFollowUpSummary | null>(null);
   const [searchTerm, setSearchTerm] = React.useState('');
+
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+  const [isConfirmSessionDialogOpen, setIsConfirmSessionDialogOpen] = React.useState(false);
+  const [personToCall, setPersonToCall] = React.useState<any | null>(null);
 
   const isPrivileged = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
 
@@ -99,6 +104,24 @@ export default function FollowUpPage() {
       toast({ variant: 'destructive', title: "Save Failed" });
     }
   };
+
+  const handleStartSession = React.useCallback(async (eventName: string) => {
+    if (!appUser) return;
+    try {
+        let pIds: string[] = [];
+        if (personToCall) pIds = [personToCall.id];
+        else if (selectedIds.size > 0) pIds = Array.from(selectedIds);
+        else {
+            pIds = items.map(i => i.person.id);
+        }
+        
+        const hId = await trackSessionStart({ name: eventName, peopleIds: pIds }, appUser);
+        const pSession = { event: eventName, peopleIds: pIds, currentIndex: 0, assignedById: appUser.id, assignedByName: appUser.name, historyId: hId };
+        await updateUser(appUser.id, { pausedCallingSession: pSession });
+        setAppUser(prev => prev ? {...prev, pausedCallingSession: pSession} : null);
+        router.push('/session');
+    } catch (e) { toast({ variant: 'destructive', title: 'Session Error' }); }
+  }, [appUser, setAppUser, personToCall, selectedIds, items, router, toast]);
 
   const filteredItems = items.filter(i => 
     i.person.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -199,56 +222,49 @@ export default function FollowUpPage() {
               />
             </div>
 
-            <div className="space-y-4">
-              {filteredItems.map((item) => (
-                <Card key={item.person.id} className="bg-popover border-none shadow-xl rounded-[2rem] overflow-hidden group hover:shadow-2xl transition-all">
-                  <CardContent className="p-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-                      <div className="flex items-center gap-4 min-w-0">
-                        <Avatar className="h-14 w-14 border-2 border-primary/20 rounded-2xl shadow-lg">
-                          <AvatarImage src={item.person.photoUrl} className="object-cover" />
-                          <AvatarFallback className="bg-muted text-foreground font-black">{item.person.fullName[0]}</AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0">
-                          <h3 className="font-black text-foreground uppercase truncate">{item.person.fullName}</h3>
-                          <div className="flex items-center gap-2 mt-1">
-                             <Badge variant="outline" className="text-[8px] font-black uppercase bg-primary/5 text-primary border-primary/10">{item.person.currentFolkStage}</Badge>
-                             <span className="text-[10px] font-bold text-muted-foreground uppercase">{item.person.phone}</span>
-                          </div>
-                          <div className="flex items-center gap-3 mt-2">
-                             <TierBadge tier={item.tier} />
-                             <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase">
-                                <Clock className="h-3 w-3" />
-                                {item.tier === 'never' ? 'Waiting since registration' : `Last call ${formatDistanceToNow(safeDate(item.person.lastCallAt)!, { addSuffix: true })}`}
-                             </div>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-4 shrink-0 justify-end">
-                        <DetailedLogCallDialog 
-                          onLogCall={(details) => handleLogSave(item.person.id, details)}
-                          trigger={
-                            <Button className="h-12 px-8 rounded-xl font-black uppercase tracking-widest text-[10px] bg-primary text-primary-foreground shadow-xl shadow-primary/10">
-                              <PhoneCall className="mr-2 h-4 w-4" /> Resolve Now
+            <PersonTable 
+                people={filteredItems.map(i => i.person)}
+                tierByPersonId={Object.fromEntries(filteredItems.map(i => [i.person.id, i.tier]))}
+                renderRowAction={(person) => (
+                    <DetailedLogCallDialog 
+                        onLogCall={(details) => handleLogSave(person.id, details)}
+                        trigger={
+                            <Button className="h-10 px-6 rounded-xl font-black uppercase tracking-widest text-[10px] bg-primary text-primary-foreground shadow-xl shadow-primary/10">
+                                <PhoneCall className="mr-2 h-4 w-4" /> Resolve Now
                             </Button>
-                          }
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-              {filteredItems.length === 0 && (
+                        }
+                    />
+                )}
+                onEdit={() => {}}
+                onDelete={id => deletePerson(id, appUser!).then(() => fetchData())}
+                onStartCall={p => { setPersonToCall(p); setIsConfirmSessionDialogOpen(true); }}
+                selectedIds={selectedIds}
+                setSelectedIds={setSelectedIds}
+                isSelectionActive={selectedIds.size > 0}
+                showEnablerColumn={!!drillDownEnabler}
+                isLoading={isLoading}
+                totalCount={filteredItems.length}
+            />
+
+            {filteredItems.length === 0 && (
                 <div className="py-32 text-center space-y-6 bg-muted/20 border-2 border-dashed border-border rounded-[3rem]">
                    <CheckCircle2 className="h-16 w-16 mx-auto mb-2 text-green-500 opacity-20" />
                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-[0.3em]">Queue is currently clear!</p>
                 </div>
-              )}
-            </div>
+            )}
           </div>
         )}
       </main>
+
+      <ConfirmSessionDialog 
+        isOpen={isConfirmSessionDialogOpen} 
+        setIsOpen={setIsConfirmSessionDialogOpen} 
+        onStartSession={handleStartSession} 
+        onResumeSession={() => router.push('/session')} 
+        singlePersonName={personToCall?.fullName} 
+        pausedSession={appUser?.pausedCallingSession} 
+        totalCount={personToCall ? 1 : (selectedIds.size > 0 ? selectedIds.size : items.length)} 
+      />
     </>
   );
 }
@@ -261,12 +277,4 @@ function SummaryMetricCard({ title, count, color }: { title: string, count: numb
             <h3 className="text-3xl font-black text-foreground leading-none">{count}</h3>
         </Card>
     );
-}
-
-function TierBadge({ tier }: { tier: FollowUpItem['tier'] }) {
-    switch (tier) {
-        case 'never': return <Badge className="bg-blue-500/10 text-blue-500 border-none font-black text-[8px] uppercase px-2 h-5">Never Contacted</Badge>;
-        case 'overdue': return <Badge className="bg-red-500/10 text-red-500 border-none font-black text-[8px] uppercase px-2 h-5">Overdue Callback</Badge>;
-        case 'stale': return <Badge className="bg-orange-500/10 text-orange-500 border-none font-black text-[8px] uppercase px-2 h-5">SLA Stale</Badge>;
-    }
 }

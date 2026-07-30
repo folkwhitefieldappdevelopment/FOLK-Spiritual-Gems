@@ -32,6 +32,7 @@ import { cn } from '@/lib/utils';
 import { safeDate } from '@/utils/date';
 import { FolkStageDisplay } from './editable-person-details-form';
 import { ScrollArea } from './ui/scroll-area';
+import { TierBadge } from './tier-badge';
 
 type PersonTableRowProps = {
   person: Person;
@@ -46,6 +47,8 @@ type PersonTableRowProps = {
   visibleColumns: Record<string, boolean>;
   showEnablerColumn?: boolean;
   navigationContext?: { groupId?: string; scope?: string };
+  tierByPersonId?: Record<string, 'never' | 'overdue' | 'stale'>;
+  renderRowAction?: (person: Person) => React.ReactNode;
 };
 
 const PersonTableRowComponent = ({
@@ -59,6 +62,8 @@ const PersonTableRowComponent = ({
   onSelect,
   visibleColumns,
   navigationContext,
+  tierByPersonId,
+  renderRowAction,
 }: PersonTableRowProps) => {
   const [isOpen, setIsOpen] = React.useState(false);
   const { toast } = useToast();
@@ -125,6 +130,8 @@ const PersonTableRowComponent = ({
     }
   }, [person.phone, person.fullName, person.photoUrl, person.currentFolkStage, person.lastCallRemark, toast]);
 
+  const personTier = tierByPersonId?.[person.id];
+
   return (
     <React.Fragment>
       <TableRow className={cn("group/row transition-all border-b border-border h-20", isOpen && "bg-muted/30", person.isDeleted && "bg-red-500/5")}>
@@ -154,6 +161,7 @@ const PersonTableRowComponent = ({
                 <Link href={`/contacts/profile?id=${person.id}${navigationContext?.scope ? `&scope=${navigationContext.scope}` : ''}`} className="font-black text-base hover:text-primary transition-colors truncate text-foreground leading-none uppercase">
                   {fullName}
                 </Link>
+                {personTier && <TierBadge tier={personTier} className="ml-1" />}
                 {person.verifiedByFg === 'Yes' && <BadgeCheck className="h-4 w-4 text-blue-500 shrink-0" />}
               </div>
               <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1.5">{person.phone}</p>
@@ -196,6 +204,8 @@ const PersonTableRowComponent = ({
               >
                   <RotateCcw className="h-3.5 w-3.5 mr-2" /> Restore
               </Button>
+            ) : renderRowAction ? (
+                renderRowAction(person)
             ) : (
               <>
                 <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10 rounded-xl" onClick={handleDirectCall}>

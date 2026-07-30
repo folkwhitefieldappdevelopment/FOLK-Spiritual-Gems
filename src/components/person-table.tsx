@@ -61,6 +61,8 @@ type PersonTableProps = {
   onSelectRangeGlobal?: (from: number, to: number) => Promise<void>;
   isSelectingAll?: boolean;
   isLoading?: boolean;
+  tierByPersonId?: Record<string, 'never' | 'overdue' | 'stale'>;
+  renderRowAction?: (person: Person) => React.ReactNode;
 };
 
 const STORAGE_KEY = 'folk_crm_table_columns_v2';
@@ -132,6 +134,8 @@ export function PersonTable({
   onSelectRangeGlobal,
   isSelectingAll = false,
   isLoading = false,
+  tierByPersonId,
+  renderRowAction,
 }: PersonTableProps) {
   const [viewMode, setViewMode] = React.useState<'table' | 'grid'>('table');
   const [isLoaded, setIsLoaded] = React.useState(false);
@@ -394,6 +398,8 @@ export function PersonTable({
                       visibleColumns={visibleColumns}
                       showEnablerColumn={showEnablerColumn}
                       navigationContext={navigationContext}
+                      tierByPersonId={tierByPersonId}
+                      renderRowAction={renderRowAction}
                     />
                   ))
                 ) : (
@@ -414,6 +420,7 @@ export function PersonTable({
               groups={allGroups}
               isSelectionActive={isSelectionActive}
               navigationContext={navigationContext}
+              tier={tierByPersonId?.[person.id]}
             />
           ))}
         </div>

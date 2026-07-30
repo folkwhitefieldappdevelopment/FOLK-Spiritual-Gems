@@ -17,6 +17,8 @@ import { Separator } from './ui/separator';
 import { StarRating } from './star-rating';
 import { Badge } from './ui/badge';
 import { FolkStageDisplay } from './editable-person-details-form';
+import { TierBadge } from './tier-badge';
+import type { FollowUpTier } from '@/services/follow-up-service';
 
 
 type PersonCardProps = {
@@ -26,6 +28,7 @@ type PersonCardProps = {
   groups: Group[];
   isSelectionActive: boolean;
   navigationContext?: { groupId?: string; scope?: string };
+  tier?: FollowUpTier;
 };
 
 const parseNumber = (str: string): number | null => {
@@ -78,7 +81,7 @@ const getCategoryStatus = (category: TProgressCategory): 'completed' | 'in-progr
 }
 
 
-const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups = [], isSelectionActive, navigationContext }: PersonCardProps) => {
+const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups = [], isSelectionActive, navigationContext, tier }: PersonCardProps) => {
   const router = useRouter();
 
   const personGroups = React.useMemo(() => {
@@ -157,9 +160,12 @@ const PersonCardComponent = ({ person, isSelected, onSelectionChange, groups = [
             </div>
             
              <CardHeader className="p-0 pt-2 w-full">
-                <div className="flex items-center justify-center gap-1.5 px-2">
-                    <CardTitle className={cn("text-base sm:text-lg line-clamp-1", !isSelectionActive && "group-hover:underline")}>{fullName}</CardTitle>
-                    {person.verifiedByFg === 'Yes' && <BadgeCheck className="h-4 w-4 text-blue-500 shrink-0" />}
+                <div className="flex flex-col items-center gap-1.5 px-2">
+                    <div className="flex items-center gap-1.5 justify-center">
+                        <CardTitle className={cn("text-base sm:text-lg line-clamp-1", !isSelectionActive && "group-hover:underline")}>{fullName}</CardTitle>
+                        {person.verifiedByFg === 'Yes' && <BadgeCheck className="h-4 w-4 text-blue-500 shrink-0" />}
+                    </div>
+                    {tier && <TierBadge tier={tier} />}
                 </div>
                 <div className="mt-2 flex justify-center">
                     <FolkStageDisplay stage={person.currentFolkStage} />
@@ -206,6 +212,7 @@ export const PersonCard = React.memo(PersonCardComponent, (prev, next) => {
     return (
         prev.isSelected === next.isSelected &&
         prev.person.id === next.person.id &&
-        prev.isSelectionActive === next.isSelectionActive
+        prev.isSelectionActive === next.isSelectionActive &&
+        prev.tier === next.tier
     );
 });
