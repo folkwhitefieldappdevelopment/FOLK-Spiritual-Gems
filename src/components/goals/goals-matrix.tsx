@@ -14,7 +14,6 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { safeDate } from '@/utils/date';
 
@@ -50,8 +49,8 @@ export function GoalsMatrix({ goals, enablers, categories, onUpdateProgress, onE
   }
 
   return (
-    <div className="bg-card border border-border rounded-[2.5rem] shadow-2xl overflow-hidden">
-      <ScrollArea className="w-full max-h-[calc(100vh-280px)]">
+    <div className="bg-card border border-border rounded-[2.5rem] shadow-2xl">
+      <div className="w-full overflow-x-auto scrollbar-hide">
         <div className="min-w-max">
             <Table className="border-separate border-spacing-0">
                 <TableHeader className="sticky top-0 z-30">
@@ -210,8 +209,7 @@ export function GoalsMatrix({ goals, enablers, categories, onUpdateProgress, onE
                 </TableBody>
             </Table>
         </div>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
+      </div>
     </div>
   );
 }
