@@ -528,7 +528,7 @@ export default function SettingsPage() {
                   <CardTitle className="flex items-center gap-2 text-orange-600 dark:text-orange-400 font-black uppercase tracking-tight">
                     <Database className="h-5 w-5" />
                     Data Maintenance
-                  </Title>
+                  </CardTitle>
                   <CardDescription className="font-bold text-orange-600/60">Advanced tools to repair legacy data and improve Dashboard accuracy.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
