@@ -50,6 +50,7 @@ let masterUnsubscribe: (() => void) | null = null;
 let cachePromise: Promise<Person[]> | null = null;
 let currentSyncStatus: SyncStatus = 'initializing';
 let currentSyncWarning: string | null = null;
+let lastAdminSyncAt: number = 0;
 
 export const getSyncStatus = () => currentSyncStatus;
 export const getSyncWarning = () => currentSyncWarning;
@@ -77,7 +78,18 @@ export const subscribeToPeopleData = (callback: (people: Person[]) => void) => {
  * Admins use paginated getDocs (one-time fetch) to handle 10k+ records.
  * Guides and Enablers use real-time onSnapshot for scoped data.
  */
-export const initMasterPeopleStream = (user: AppUser, force = false): Promise<Person[]> => {
+export const initMasterPeopleStream = (
+  user: AppUser, 
+  options: boolean | { force?: boolean; forceIfStaleMs?: number } = false
+): Promise<Person[]> => {
+  const force = typeof options === 'boolean' ? options : (options.force || false);
+  const forceIfStaleMs = typeof options === 'object' ? options.forceIfStaleMs : undefined;
+
+  // Staleness check
+  if (!force && forceIfStaleMs && masterPeopleCache && (Date.now() - lastAdminSyncAt < forceIfStaleMs)) {
+      return Promise.resolve(masterPeopleCache);
+  }
+
   if (cachePromise && !force) return cachePromise;
 
   if (force) {
@@ -143,6 +155,8 @@ export const initMasterPeopleStream = (user: AppUser, force = false): Promise<Pe
             }
             isFirstPage = false;
           }
+
+          lastAdminSyncAt = Date.now();
 
           // Accuracy verification
           const countSnap = await getCountFromServer(peopleRef);

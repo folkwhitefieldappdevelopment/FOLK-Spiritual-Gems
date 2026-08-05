@@ -160,9 +160,14 @@ const ContactsPageComponent = () => {
     try {
       const fetchScope = activeTab === 'all-contacts' ? 'all' : 'my';
       
-      // For admins, re-sync master cache on manual refresh since it's no longer live
-      if (!lastId && !silent && appUser.role.includes('Admin')) {
-          await initMasterPeopleStream(appUser, true);
+      // For admins, reuse the cache if it's fresh (less than 5 mins old) on automatic mount
+      // But always force a resync if the Refresh button (passed as silent: false with no lastId) was clicked
+      if (!lastId && appUser.role.includes('Admin')) {
+          const force = !silent; // true on explicit refresh
+          await initMasterPeopleStream(appUser, { 
+            force, 
+            forceIfStaleMs: force ? undefined : 5 * 60 * 1000 
+          });
       }
 
       // Update global total first via server count
@@ -231,7 +236,7 @@ const ContactsPageComponent = () => {
   }, [searchParams]);
 
   React.useEffect(() => { 
-    if (appUser?.id) { fetchContacts(); }
+    if (appUser?.id) { fetchContacts(undefined, true); }
   }, [fetchContacts, appUser?.id, isSyncStable]);
 
   React.useEffect(() => {
