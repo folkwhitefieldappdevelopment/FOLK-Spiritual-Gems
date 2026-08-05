@@ -286,7 +286,7 @@ export default function SettingsPage() {
   const handleSaveWhatsAppTemplate = async (template: string) => {
     if (!appUser) return;
     try {
-      await updateUser(appUser.id, { whatsAppTemplate: template });
+      await updateUser(appUser.id, { whatsAppTemplate: template }, { id: appUser.id, name: appUser.name, role: appUser.role });
       setAppUser(prev => prev ? { ...prev, whatsAppTemplate: template } : null);
       toast({ title: 'Template Saved' });
     } catch (e) {
