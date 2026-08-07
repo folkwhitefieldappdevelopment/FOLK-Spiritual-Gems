@@ -41,6 +41,7 @@ import { getFolkGuides, getAssignableUsersForAssignments } from '@/services/user
 import { getFollowUpItemsForCurrentUser, getFollowUpSummaryForGuide } from '@/services/follow-up-service';
 import { getGoals } from '@/services/goals-service';
 import { getGoalCategories } from '@/services/settings-service';
+import { groupByTeam } from '@/lib/dynamic-groups';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -128,6 +129,14 @@ export default function DashboardPage() {
         };
     });
   }, [enablerBreakdown, chantingBreakdown]);
+
+  const groupedBreakdown = useMemo(() => {
+      return groupByTeam(mergedBreakdown, enablers, (item) => item.enablerId);
+  }, [mergedBreakdown, enablers]);
+
+  const groupedLeaderboard = useMemo(() => {
+      return groupByTeam(leaderboard, enablers, (item) => item.callerId, (item) => item.callerName);
+  }, [leaderboard, enablers]);
 
   const grandTotals = useMemo(() => {
     return mergedBreakdown.reduce((acc, e) => ({
@@ -344,7 +353,7 @@ export default function DashboardPage() {
                             </TableHeader>
                             <TableBody>
                                 {mergedBreakdown.length > 0 && (
-                                    <TableRow className="bg-primary/5 hover:bg-primary/5 border-b-2 border-primary/20 font-black">
+                                    <TableRow className="bg-primary/10 hover:bg-primary/10 border-b-2 border-primary/20 font-black">
                                         <TableCell className="text-center text-xs text-primary"><Sigma className="h-3 w-3 mx-auto" /></TableCell>
                                         <TableCell className="py-4 text-foreground uppercase text-xs">All Enablers</TableCell>
                                         <TableCell className="text-center">{grandTotals.frp}</TableCell>
@@ -362,95 +371,127 @@ export default function DashboardPage() {
                                     </TableRow>
                                 )}
 
-                                {mergedBreakdown.length > 0 ? mergedBreakdown.map((entry, index) => (
-                                    <TableRow key={entry.enablerId} className="border-b border-border hover:bg-muted/50 transition-colors">
-                                        <TableCell className="pl-8 py-5 text-center font-black text-[10px] text-muted-foreground">
-                                            {index + 1}
-                                        </TableCell>
-                                        <TableCell 
-                                            className="py-5 font-black text-foreground uppercase text-xs cursor-pointer hover:text-primary transition-colors"
-                                            onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName }, false)}
-                                        >
-                                            {entry.enablerName}
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <div 
-                                                className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all"
-                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'FRP' }, false)}
-                                            >
-                                                <Badge variant="outline" className="font-black border-green-500/20 text-green-500 bg-green-500/5 h-7 px-3">
-                                                    {entry.frp}
-                                                </Badge>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <div 
-                                                className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all"
-                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-W' }, false)}
-                                            >
-                                                <Badge variant="outline" className="font-black border-yellow-500/20 text-yellow-600 bg-yellow-500/5 h-7 px-3">
-                                                    {entry.sgW}
-                                                </Badge>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <div 
-                                                className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all"
-                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-S' }, false)}
-                                            >
-                                                <Badge variant="outline" className="font-black border-yellow-500/20 text-yellow-600 bg-yellow-500/5 h-7 px-3">
-                                                    {entry.sgS}
-                                                </Badge>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <div 
-                                                className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all"
-                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '16' }, false)}
-                                            >
-                                                <Badge className="font-black bg-[#FF9800]/10 text-[#FF9800] border-none h-7 px-3">
-                                                    {entry.sixteenRounder}
-                                                </Badge>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-center border-l-2 border-border/50">
-                                            <div 
-                                                className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all"
-                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '9', chantingRoundsMax: '15' }, false)}
-                                            >
-                                                <Badge variant="outline" className="font-black border-primary/20 text-primary bg-primary/5 h-7 px-3">
-                                                    {entry.rounds9to15}
-                                                </Badge>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <div 
-                                                className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all"
-                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '3', chantingRoundsMax: '8' }, false)}
-                                            >
-                                                <Badge variant="outline" className="font-black border-muted-foreground/20 text-muted-foreground bg-muted/10 h-7 px-3">
-                                                    {entry.rounds3to8}
-                                                </Badge>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <div 
-                                                className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all"
-                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '0', chantingRoundsMax: '2' }, false)}
-                                            >
-                                                <Badge variant="outline" className="font-black border-muted-foreground/10 text-muted-foreground/60 h-7 px-3">
-                                                    {entry.rounds0to2}
-                                                </Badge>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell 
-                                            className="text-right pr-8 font-black text-sm text-muted-foreground cursor-pointer hover:text-primary transition-colors"
-                                            onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName }, false)}
-                                        >
-                                            {entry.totalContacts}
-                                        </TableCell>
-                                    </TableRow>
-                                )) : (
+                                {groupedBreakdown.map((group) => {
+                                    const teamTotals = group.items.reduce((acc, e) => ({
+                                        frp: acc.frp + e.frp,
+                                        sgW: acc.sgW + e.sgW,
+                                        sgS: acc.sgS + e.sgS,
+                                        sixteenRounder: acc.sixteenRounder + e.sixteenRounder,
+                                        rounds9to15: acc.rounds9to15 + e.rounds9to15,
+                                        rounds3to8: acc.rounds3to8 + e.rounds3to8,
+                                        rounds0to2: acc.rounds0to2 + e.rounds0to2,
+                                        totalContacts: acc.totalContacts + e.totalContacts,
+                                    }), { frp: 0, sgW: 0, sgS: 0, sixteenRounder: 0, rounds9to15: 0, rounds3to8: 0, rounds0to2: 0, totalContacts: 0 });
+
+                                    return (
+                                        <React.Fragment key={group.teamId || 'unassigned'}>
+                                            <TableRow className="bg-primary/5 hover:bg-primary/5 border-b border-primary/10 font-bold">
+                                                <TableCell className="text-center"><Users className="h-3 w-3 mx-auto text-primary/60" /></TableCell>
+                                                <TableCell className="py-2 text-[10px] uppercase text-primary tracking-wider">TEAM: {group.teamName}</TableCell>
+                                                <TableCell className="text-center text-[10px]">{teamTotals.frp}</TableCell>
+                                                <TableCell className="text-center text-[10px]">{teamTotals.sgW}</TableCell>
+                                                <TableCell className="text-center text-[10px]">{teamTotals.sgS}</TableCell>
+                                                <TableCell className="text-center text-[10px]">{teamTotals.sixteenRounder}</TableCell>
+                                                <TableCell className="text-center border-l-2 border-border/50 text-[10px]">{teamTotals.rounds9to15}</TableCell>
+                                                <TableCell className="text-center text-[10px]">{teamTotals.rounds3to8}</TableCell>
+                                                <TableCell className="text-center text-[10px]">{teamTotals.rounds0to2}</TableCell>
+                                                <TableCell className="text-right pr-8 text-[10px]">{teamTotals.totalContacts}</TableCell>
+                                            </TableRow>
+
+                                            {group.items.map((entry, index) => (
+                                                <TableRow key={entry.enablerId} className="border-b border-border hover:bg-muted/50 transition-colors">
+                                                    <TableCell className="pl-8 py-5 text-center font-black text-[10px] text-muted-foreground">
+                                                        {index + 1}
+                                                    </TableCell>
+                                                    <TableCell 
+                                                        className="py-5 font-black text-foreground uppercase text-xs cursor-pointer hover:text-primary transition-colors"
+                                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName }, false)}
+                                                    >
+                                                        {entry.enablerName}
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <div 
+                                                            className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all"
+                                                            onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'FRP' }, false)}
+                                                        >
+                                                            <Badge variant="outline" className="font-black border-green-500/20 text-green-500 bg-green-500/5 h-7 px-3">
+                                                                {entry.frp}
+                                                            </Badge>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <div 
+                                                            className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all"
+                                                            onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-W' }, false)}
+                                                        >
+                                                            <Badge variant="outline" className="font-black border-yellow-500/20 text-yellow-600 bg-yellow-500/5 h-7 px-3">
+                                                                {entry.sgW}
+                                                            </Badge>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <div 
+                                                            className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all"
+                                                            onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-S' }, false)}
+                                                        >
+                                                            <Badge variant="outline" className="font-black border-yellow-500/20 text-yellow-600 bg-yellow-500/5 h-7 px-3">
+                                                                {entry.sgS}
+                                                            </Badge>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <div 
+                                                            className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all"
+                                                            onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '16' }, false)}
+                                                        >
+                                                            <Badge className="font-black bg-[#FF9800]/10 text-[#FF9800] border-none h-7 px-3">
+                                                                {entry.sixteenRounder}
+                                                            </Badge>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-center border-l-2 border-border/50">
+                                                        <div 
+                                                            className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all"
+                                                            onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '9', chantingRoundsMax: '15' }, false)}
+                                                        >
+                                                            <Badge variant="outline" className="font-black border-primary/20 text-primary bg-primary/5 h-7 px-3">
+                                                                {entry.rounds9to15}
+                                                            </Badge>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <div 
+                                                            className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all"
+                                                            onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '3', chantingRoundsMax: '8' }, false)}
+                                                        >
+                                                            <Badge variant="outline" className="font-black border-muted-foreground/20 text-muted-foreground bg-muted/10 h-7 px-3">
+                                                                {entry.rounds3to8}
+                                                            </Badge>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <div 
+                                                            className="inline-block p-1 hover:bg-muted/80 rounded-lg cursor-pointer transition-all"
+                                                            onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '0', chantingRoundsMax: '2' }, false)}
+                                                        >
+                                                            <Badge variant="outline" className="font-black border-muted-foreground/10 text-muted-foreground/60 h-7 px-3">
+                                                                {entry.rounds0to2}
+                                                            </Badge>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell 
+                                                        className="text-right pr-8 font-black text-sm text-muted-foreground cursor-pointer hover:text-primary transition-colors"
+                                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName }, false)}
+                                                    >
+                                                        {entry.totalContacts}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </React.Fragment>
+                                    );
+                                })}
+
+                                {mergedBreakdown.length === 0 && (
                                     <TableRow>
                                         <TableCell colSpan={10} className="h-32 text-center opacity-30 italic font-bold text-foreground">
                                             No breakdown data available.
@@ -460,7 +501,7 @@ export default function DashboardPage() {
                             </TableBody>
                         </Table>
                     </div>
-                    <div className="lg:hidden p-6 space-y-4">
+                    <div className="lg:hidden p-6 space-y-8">
                         {/* Totals Summary Card Mobile */}
                         {mergedBreakdown.length > 0 && (
                             <Card className="bg-primary/5 border-2 border-primary/20 p-5 rounded-[1.5rem] shadow-sm">
@@ -497,77 +538,85 @@ export default function DashboardPage() {
                             </Card>
                         )}
 
-                        {mergedBreakdown.map((entry, index) => (
-                            <Card key={entry.enablerId} className="bg-muted/10 border-border p-5 rounded-[1.5rem] shadow-sm">
-                                <div 
-                                    className="flex justify-between items-center mb-4 cursor-pointer group"
-                                    onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName }, false)}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-black text-primary border border-primary/20 shrink-0">
-                                            {index + 1}
-                                        </div>
-                                        <span className="font-black text-xs uppercase text-foreground group-hover:text-primary transition-colors">{entry.enablerName}</span>
-                                    </div>
-                                    <Badge variant="secondary" className="text-[9px] font-black uppercase bg-muted/50 text-muted-foreground group-hover:bg-primary group-hover:text-white transition-all">{entry.totalContacts} Contacts</Badge>
+                        {groupedBreakdown.map((group) => (
+                            <div key={group.teamId || 'unassigned'} className="space-y-4">
+                                <div className="flex items-center gap-2 px-2">
+                                    <Users className="h-3.5 w-3.5 text-primary/40" />
+                                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">{group.teamName}</h4>
                                 </div>
+                                {group.items.map((entry, index) => (
+                                    <Card key={entry.enablerId} className="bg-muted/10 border-border p-5 rounded-[1.5rem] shadow-sm">
+                                        <div 
+                                            className="flex justify-between items-center mb-4 cursor-pointer group"
+                                            onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName }, false)}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-black text-primary border border-primary/20 shrink-0">
+                                                    {index + 1}
+                                                </div>
+                                                <span className="font-black text-xs uppercase text-foreground group-hover:text-primary transition-colors">{entry.enablerName}</span>
+                                            </div>
+                                            <Badge variant="secondary" className="text-[9px] font-black uppercase bg-muted/50 text-muted-foreground group-hover:bg-primary group-hover:text-white transition-all">{entry.totalContacts} Contacts</Badge>
+                                        </div>
 
-                                <div className="space-y-4">
-                                    <div className="space-y-1.5">
-                                        <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Stage</p>
-                                        <div className="grid grid-cols-4 gap-2">
-                                            <MobileBreakdownItem 
-                                                label="FRP" 
-                                                count={entry.frp} 
-                                                color="text-green-500" 
-                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'FRP' }, false)}
-                                            />
-                                            <MobileBreakdownItem 
-                                                label="SG-W" 
-                                                count={entry.sgW} 
-                                                color="text-yellow-600" 
-                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-W' }, false)}
-                                            />
-                                            <MobileBreakdownItem 
-                                                label="SG-S" 
-                                                count={entry.sgS} 
-                                                color="text-yellow-600" 
-                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-S' }, false)}
-                                            />
-                                            <MobileBreakdownItem 
-                                                label="16+" 
-                                                count={entry.sixteenRounder} 
-                                                color="text-[#FF9800]" 
-                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '16' }, false)}
-                                            />
+                                        <div className="space-y-4">
+                                            <div className="space-y-1.5">
+                                                <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Stage</p>
+                                                <div className="grid grid-cols-4 gap-2">
+                                                    <MobileBreakdownItem 
+                                                        label="FRP" 
+                                                        count={entry.frp} 
+                                                        color="text-green-500" 
+                                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'FRP' }, false)}
+                                                    />
+                                                    <MobileBreakdownItem 
+                                                        label="SG-W" 
+                                                        count={entry.sgW} 
+                                                        color="text-yellow-600" 
+                                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-W' }, false)}
+                                                    />
+                                                    <MobileBreakdownItem 
+                                                        label="SG-S" 
+                                                        count={entry.sgS} 
+                                                        color="text-yellow-600" 
+                                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-S' }, false)}
+                                                    />
+                                                    <MobileBreakdownItem 
+                                                        label="16+" 
+                                                        count={entry.sixteenRounder} 
+                                                        color="text-[#FF9800]" 
+                                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '16' }, false)}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <Separator className="bg-border/50" />
+                                            <div className="space-y-1.5">
+                                                <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Chanting Rounds</p>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    <MobileBreakdownItem 
+                                                        label="9-15" 
+                                                        count={entry.rounds9to15} 
+                                                        color="text-primary" 
+                                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '9', chantingRoundsMax: '15' }, false)}
+                                                    />
+                                                    <MobileBreakdownItem 
+                                                        label="3-8" 
+                                                        count={entry.rounds3to8} 
+                                                        color="text-muted-foreground" 
+                                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '3', chantingRoundsMax: '8' }, false)}
+                                                    />
+                                                    <MobileBreakdownItem 
+                                                        label="0-2" 
+                                                        count={entry.rounds0to2} 
+                                                        color="text-muted-foreground/60" 
+                                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '0', chantingRoundsMax: '2' }, false)}
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <Separator className="bg-border/50" />
-                                    <div className="space-y-1.5">
-                                        <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Chanting Rounds</p>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            <MobileBreakdownItem 
-                                                label="9-15" 
-                                                count={entry.rounds9to15} 
-                                                color="text-primary" 
-                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '9', chantingRoundsMax: '15' }, false)}
-                                            />
-                                            <MobileBreakdownItem 
-                                                label="3-8" 
-                                                count={entry.rounds3to8} 
-                                                color="text-muted-foreground" 
-                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '3', chantingRoundsMax: '8' }, false)}
-                                            />
-                                            <MobileBreakdownItem 
-                                                label="0-2" 
-                                                count={entry.rounds0to2} 
-                                                color="text-muted-foreground/60" 
-                                                onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '0', chantingRoundsMax: '2' }, false)}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </Card>
+                                    </Card>
+                                ))}
+                            </div>
                         ))}
                     </div>
                 </CardContent>
@@ -604,57 +653,82 @@ export default function DashboardPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {leaderboard.length > 0 ? leaderboard.map((entry) => (
-                                <TableRow key={entry.callerId} className="border-b border-border hover:bg-muted/50 transition-colors">
-                                    <TableCell 
-                                        className="pl-8 py-5 cursor-pointer group"
-                                        onClick={() => navigateToContacts({ scope: 'all', callerName: entry.callerName }, false)}
-                                    >
-                                        <div className="flex items-center gap-4">
-                                            <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-lg group-hover:scale-110 transition-transform">
-                                                <AvatarImage src={entry.photoUrl} />
-                                                <AvatarFallback className="bg-muted text-foreground font-black">{entry.callerName.charAt(0)}</AvatarFallback>
-                                            </Avatar>
-                                            <span className="text-sm font-black text-foreground uppercase truncate group-hover:text-primary transition-colors">{entry.callerName}</span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                        <div 
-                                            className="inline-block cursor-pointer active:scale-95 transition-transform"
-                                            onClick={() => navigateToContacts({ scope: 'all', callerName: entry.callerName }, false)}
-                                        >
-                                            <Badge className="bg-orange-500/10 text-orange-500 border-none font-black text-lg h-9 px-4 hover:bg-orange-500/20">
-                                                {entry.totalCalls}
-                                            </Badge>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-center font-mono text-sm text-foreground">
-                                        {formatDuration(entry.totalDuration)}
-                                    </TableCell>
-                                    <TableCell className="text-right pr-8">
-                                        <div className="flex flex-col items-end gap-1.5">
-                                            {Object.entries(entry.dailyStats).map(([dateKey, stat]) => (
-                                                <div 
-                                                    key={dateKey} 
-                                                    className="flex items-center gap-3 cursor-pointer group/date hover:bg-muted p-1 px-2 rounded-lg transition-colors"
-                                                    onClick={() => navigateToContacts({ 
-                                                        scope: 'all', 
-                                                        callerName: entry.callerName, 
-                                                        callDateFrom: dateKey, 
-                                                        callDateTo: dateKey 
-                                                    }, false)}
+                            {groupedLeaderboard.length > 0 ? groupedLeaderboard.map((group) => {
+                                const teamTotals = group.items.reduce((acc, entry) => ({
+                                    totalCalls: acc.totalCalls + entry.totalCalls,
+                                    totalDuration: acc.totalDuration + entry.totalDuration
+                                }), { totalCalls: 0, totalDuration: 0 });
+
+                                return (
+                                    <React.Fragment key={group.teamId || 'unassigned'}>
+                                        <TableRow className="bg-orange-500/5 hover:bg-orange-500/10 border-b border-orange-500/10 font-bold">
+                                            <TableCell className="pl-8 py-2 flex items-center gap-2">
+                                                <Users className="h-3 w-3 text-orange-500/60" />
+                                                <span className="text-[10px] uppercase text-orange-600 tracking-wider">TEAM: {group.teamName}</span>
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                <Badge className="bg-orange-500/10 text-orange-600 border-none font-black text-[10px] h-6 px-3">{teamTotals.totalCalls} Calls</Badge>
+                                            </TableCell>
+                                            <TableCell className="text-center text-[10px] font-mono text-orange-600">
+                                                {formatDuration(teamTotals.totalDuration)}
+                                            </TableCell>
+                                            <TableCell></TableCell>
+                                        </TableRow>
+
+                                        {group.items.map((entry) => (
+                                            <TableRow key={entry.callerId} className="border-b border-border hover:bg-muted/50 transition-colors">
+                                                <TableCell 
+                                                    className="pl-8 py-5 cursor-pointer group"
+                                                    onClick={() => navigateToContacts({ scope: 'all', callerName: entry.callerName }, false)}
                                                 >
-                                                    <span className="text-[9px] font-black uppercase text-muted-foreground group-hover/date:text-foreground">{format(new Date(dateKey), 'MMM dd')}</span>
-                                                    <Badge variant="outline" className="text-[9px] font-black border-border text-primary bg-muted/50 group-hover/date:bg-primary group-hover/date:text-white transition-all">
-                                                        {stat.count} calls
-                                                    </Badge>
-                                                    <span className="text-[9px] font-mono text-muted-foreground">{formatDuration(stat.duration)}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            )) : (
+                                                    <div className="flex items-center gap-4">
+                                                        <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-lg group-hover:scale-110 transition-transform">
+                                                            <AvatarImage src={entry.photoUrl} />
+                                                            <AvatarFallback className="bg-muted text-foreground font-black">{entry.callerName.charAt(0)}</AvatarFallback>
+                                                        </Avatar>
+                                                        <span className="text-sm font-black text-foreground uppercase truncate group-hover:text-primary transition-colors">{entry.callerName}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    <div 
+                                                        className="inline-block cursor-pointer active:scale-95 transition-transform"
+                                                        onClick={() => navigateToContacts({ scope: 'all', callerName: entry.callerName }, false)}
+                                                    >
+                                                        <Badge className="bg-orange-500/10 text-orange-500 border-none font-black text-lg h-9 px-4 hover:bg-orange-500/20">
+                                                            {entry.totalCalls}
+                                                        </Badge>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-center font-mono text-sm text-foreground">
+                                                    {formatDuration(entry.totalDuration)}
+                                                </TableCell>
+                                                <TableCell className="text-right pr-8">
+                                                    <div className="flex flex-col items-end gap-1.5">
+                                                        {Object.entries(entry.dailyStats).map(([dateKey, stat]) => (
+                                                            <div 
+                                                                key={dateKey} 
+                                                                className="flex items-center gap-3 cursor-pointer group/date hover:bg-muted p-1 px-2 rounded-lg transition-colors"
+                                                                onClick={() => navigateToContacts({ 
+                                                                    scope: 'all', 
+                                                                    callerName: entry.callerName, 
+                                                                    callDateFrom: dateKey, 
+                                                                    callDateTo: dateKey 
+                                                                }, false)}
+                                                            >
+                                                                <span className="text-[9px] font-black uppercase text-muted-foreground group-hover/date:text-foreground">{format(new Date(dateKey), 'MMM dd')}</span>
+                                                                <Badge variant="outline" className="text-[9px] font-black border-border text-primary bg-muted/50 group-hover/date:bg-primary group-hover/date:text-white transition-all">
+                                                                    {stat.count} calls
+                                                                </Badge>
+                                                                <span className="text-[9px] font-mono text-muted-foreground">{formatDuration(stat.duration)}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </React.Fragment>
+                                );
+                            }) : (
                                 <TableRow>
                                     <TableCell colSpan={4} className="h-32 text-center opacity-30 italic font-bold text-foreground">
                                         {syncStatus === 'syncing' ? 'Analyzing interaction data...' : 'No interactions recorded for this period.'}

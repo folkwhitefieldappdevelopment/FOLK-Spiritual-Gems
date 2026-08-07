@@ -61,15 +61,15 @@ export function GoalAlerts() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-2">
+      <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide flex-nowrap">
         {alerts.map(goal => {
           const status = computeGoalStatus(goal);
           const isAchieved = status === 'achieved';
           
           return (
-            <Link key={goal.id} href="/goals">
+            <Link key={goal.id} href="/goals" className="shrink-0">
                 <div className={cn(
-                  "group flex items-center justify-between p-3 rounded-2xl border-l-4 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-sm bg-card",
+                  "group flex items-center justify-between p-3 rounded-2xl border-l-4 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-sm bg-card min-w-[320px] max-w-[320px] h-full",
                   isAchieved 
                     ? "border-l-green-500 hover:bg-green-500/5" 
                     : "border-l-red-500 hover:bg-red-500/5"
@@ -82,20 +82,19 @@ export function GoalAlerts() {
                       {isAchieved ? <Trophy className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold truncate">
+                      <p className="text-xs font-bold truncate">
                         <span className={cn(
-                          "font-black uppercase tracking-tight mr-2",
+                          "font-black uppercase tracking-tight mr-2 block text-[10px]",
                           isAchieved ? "text-green-700 dark:text-green-500" : "text-red-700 dark:text-red-500"
                         )}>
                           {isAchieved ? 'Target Achieved' : 'Deadline Missed'}
                         </span>
-                        <span className="text-foreground">"{goal.title}"</span>
-                        <span className="mx-2 opacity-30">•</span>
-                        <span className="text-muted-foreground font-medium">{goal.enablerName} {isAchieved ? 'reached the goal' : 'crossed the limit'}</span>
+                        <span className="text-foreground block truncate">"{goal.title}"</span>
+                        <span className="text-muted-foreground font-medium block truncate text-[9px] mt-0.5">{goal.enablerName} {isAchieved ? 'reached goal' : 'missed deadline'}</span>
                       </p>
                     </div>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground/20 group-hover:text-foreground group-hover:translate-x-1 transition-all" />
+                  <ChevronRight className="h-4 w-4 text-muted-foreground/20 group-hover:text-foreground group-hover:translate-x-1 transition-all shrink-0" />
                 </div>
             </Link>
           );

@@ -127,7 +127,7 @@ export function computeEnablerStageBreakdown(people: Person[], enablers: AppUser
       if (p.isDeleted) return false;
       const matchesId = p.enablerId === enabler.id;
       // Legacy fallback: check name if ID is missing
-      const matchesName = !p.enablerId && p.enablerInTouchWith && p.enablerInTouchWith.split('::')[0].trim() === enabler.name.trim();
+      const matchesName = !p.enablerId && p.enablerInTouchWith && p.enablerInTouchWith.split('::')[0].trim().toLowerCase() === enabler.name.trim().toLowerCase();
       return matchesId || matchesName;
     });
 
@@ -152,7 +152,7 @@ export function computeEnablerChantingBreakdown(people: Person[], enablers: AppU
     const enablerPeople = people.filter(p => {
       if (p.isDeleted) return false;
       const matchesId = p.enablerId === enabler.id;
-      const matchesName = !p.enablerId && p.enablerInTouchWith && p.enablerInTouchWith.split('::')[0].trim() === enabler.name.trim();
+      const matchesName = !p.enablerId && p.enablerInTouchWith && p.enablerInTouchWith.split('::')[0].trim().toLowerCase() === enabler.name.trim().toLowerCase();
       return matchesId || matchesName;
     });
 
@@ -171,4 +171,34 @@ export function computeEnablerChantingBreakdown(people: Person[], enablers: AppU
     b.rounds3to8 - a.rounds3to8 || 
     b.rounds0to2 - a.rounds0to2
   );
+}
+
+/**
+ * Generic helper to group flat items by the team assigned to an enabler.
+ */
+export function groupByTeam<T>(items: T[], enablers: AppUser[], getEnablerId: (item: T) => string, getEnablerNameFallback?: (item: T) => string) {
+  const groupsMap = new Map<string | null, { teamId: string | null, teamName: string, items: T[] }>();
+  
+  items.forEach(item => {
+    const id = getEnablerId(item);
+    const fallbackName = getEnablerNameFallback?.(item);
+    
+    // Find enabler by ID or by Name fallback
+    const enabler = enablers.find(e => e.id === id) || 
+                   (fallbackName ? enablers.find(e => e.name.trim().toLowerCase() === fallbackName.trim().toLowerCase()) : null);
+                   
+    const teamId = enabler?.team?.teamId || null;
+    const teamName = enabler?.team?.teamName || "Unassigned";
+    
+    if (!groupsMap.has(teamId)) {
+      groupsMap.set(teamId, { teamId, teamName, items: [] });
+    }
+    groupsMap.get(teamId)!.items.push(item);
+  });
+  
+  return Array.from(groupsMap.values()).sort((a, b) => {
+    if (a.teamId === null) return 1;
+    if (b.teamId === null) return -1;
+    return a.teamName.localeCompare(b.teamName);
+  });
 }
