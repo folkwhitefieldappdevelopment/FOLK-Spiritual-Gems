@@ -11,6 +11,7 @@ import { FOLLOW_UP_SLA_DAYS, ELIMINATED_STATUSES, isAssignedToUser } from '@/lib
 import { differenceInDays, isPast } from 'date-fns';
 import { safeDate } from '@/utils/date';
 import { getAssignableUsersForAssignments } from './user-service';
+import { getTeamsForGuide, getAllTeams } from './team-service';
 
 export type FollowUpTier = 'never' | 'overdue' | 'stale';
 
@@ -23,6 +24,16 @@ export type FollowUpItem = {
 export type EnablerFollowUpSummary = {
   enablerId: string;
   enablerName: string;
+  never: number;
+  overdue: number;
+  stale: number;
+  total: number;
+};
+
+export type TeamFollowUpSummary = {
+  teamId: string | null; // null = unassigned
+  teamName: string;      // "Unassigned" when teamId is null
+  enablers: EnablerFollowUpSummary[];
   never: number;
   overdue: number;
   stale: number;
@@ -93,9 +104,9 @@ export async function getFollowUpItemsForCurrentUser(userInfo: AppUser): Promise
 }
 
 /**
- * Returns a roll-up of follow-up needs for all enablers under a guide.
+ * Returns a team-grouped roll-up of follow-up needs for all enablers under a guide.
  */
-export async function getFollowUpSummaryForGuide(guideUserInfo: AppUser): Promise<EnablerFollowUpSummary[]> {
+export async function getFollowUpSummaryForGuide(guideUserInfo: AppUser): Promise<TeamFollowUpSummary[]> {
   const allPeople = await getCachedPeople();
   const enablers = await getAssignableUsersForAssignments(guideUserInfo);
   
@@ -104,7 +115,8 @@ export async function getFollowUpSummaryForGuide(guideUserInfo: AppUser): Promis
     enablers.push(guideUserInfo);
   }
 
-  const summaries: EnablerFollowUpSummary[] = enablers.map(enabler => {
+  // Step 1: Calculate individual enabler summaries
+  const enablerSummaries: EnablerFollowUpSummary[] = enablers.map(enabler => {
     const myPeople = allPeople.filter(p => isAssignedToUser(p, enabler));
     const summary: EnablerFollowUpSummary = {
       enablerId: enabler.id,
@@ -126,7 +138,41 @@ export async function getFollowUpSummaryForGuide(guideUserInfo: AppUser): Promis
     return summary;
   });
 
-  return summaries.sort((a, b) => b.total - a.total);
+  // Step 2: Group enablers by team
+  const teamsMap = new Map<string | null, TeamFollowUpSummary>();
+  
+  enablers.forEach(enabler => {
+      const teamId = enabler.team?.teamId || null;
+      const teamName = enabler.team?.teamName || "Unassigned";
+      
+      if (!teamsMap.has(teamId)) {
+          teamsMap.set(teamId, {
+              teamId,
+              teamName,
+              enablers: [],
+              never: 0,
+              overdue: 0,
+              stale: 0,
+              total: 0
+          });
+      }
+      
+      const teamSummary = teamsMap.get(teamId)!;
+      const eSum = enablerSummaries.find(s => s.enablerId === enabler.id)!;
+      
+      teamSummary.enablers.push(eSum);
+      teamSummary.never += eSum.never;
+      teamSummary.overdue += eSum.overdue;
+      teamSummary.stale += eSum.stale;
+      teamSummary.total += eSum.total;
+  });
+
+  // Step 3: Sort and return
+  return Array.from(teamsMap.values()).sort((a, b) => {
+      if (a.teamId === null) return 1;
+      if (b.teamId === null) return -1;
+      return a.teamName.localeCompare(b.teamName);
+  });
 }
 
 /**

@@ -11,7 +11,9 @@ import {
   Users,
   Search,
   ArrowLeft,
-  CheckCircle2
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useAppToast } from '@/contexts/toast-context';
@@ -21,6 +23,7 @@ import {
   getFollowUpSummaryForGuide,
   getFollowUpItemsForEnabler,
   type FollowUpItem,
+  type TeamFollowUpSummary,
   type EnablerFollowUpSummary
 } from '@/services/follow-up-service';
 import { updatePerson, deletePerson } from '@/services/people-service';
@@ -44,10 +47,11 @@ export default function FollowUpPage() {
   const router = useRouter();
   
   const [items, setItems] = React.useState<FollowUpItem[]>([]);
-  const [summaries, setSummaries] = React.useState<EnablerFollowUpSummary[]>([]);
+  const [teamSummaries, setTeamSummaries] = React.useState<TeamFollowUpSummary[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [drillDownEnabler, setDrillDownEnabler] = React.useState<EnablerFollowUpSummary | null>(null);
+  const [drillDownEnabler, setDrillDownEnabler] = React.useState<{id: string, name: string} | null>(null);
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [expandedTeams, setExpandedTeams] = React.useState<Set<string | null>>(new Set());
 
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [isConfirmSessionDialogOpen, setIsConfirmSessionDialogOpen] = React.useState(false);
@@ -61,10 +65,10 @@ export default function FollowUpPage() {
     try {
       if (isPrivileged && !drillDownEnabler) {
         const summaryData = await getFollowUpSummaryForGuide(appUser);
-        setSummaries(summaryData);
+        setTeamSummaries(summaryData);
       } else {
         const itemData = drillDownEnabler 
-            ? await getFollowUpItemsForEnabler({ id: drillDownEnabler.enablerId, name: drillDownEnabler.enablerName })
+            ? await getFollowUpItemsForEnabler(drillDownEnabler)
             : await getFollowUpItemsForCurrentUser(appUser);
         setItems(itemData);
       }
@@ -78,6 +82,15 @@ export default function FollowUpPage() {
   React.useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const toggleTeam = (teamId: string | null) => {
+    setExpandedTeams(prev => {
+      const next = new Set(prev);
+      if (next.has(teamId)) next.delete(teamId);
+      else next.add(teamId);
+      return next;
+    });
+  };
 
   const handleLogSave = async (personId: string, details: any) => {
     if (!appUser) return;
@@ -131,14 +144,17 @@ export default function FollowUpPage() {
   return (
     <>
       <PageHeader 
-        title={drillDownEnabler ? `Follow-Ups: ${drillDownEnabler.enablerName}` : "Needs Attention"} 
+        title={drillDownEnabler ? `Follow-Ups: ${drillDownEnabler.name}` : "Needs Attention"} 
         description={drillDownEnabler ? "Reviewing neglected contacts for team member." : "Contacts who are slipping through the cracks."}
       >
         <div className="flex items-center gap-2">
             {drillDownEnabler && (
-                <Button variant="outline" size="sm" onClick={() => setDrillDownEnabler(null)} className="h-9 rounded-xl font-bold">
-                    <ArrowLeft className="h-4 w-4 mr-2" /> Team List
-                </Button>
+                <button 
+                  onClick={() => setDrillDownEnabler(null)} 
+                  className="flex items-center gap-2 px-4 py-2 bg-muted/50 border-border border rounded-xl font-bold text-sm text-foreground hover:bg-muted transition-colors"
+                >
+                    <ArrowLeft className="h-4 w-4" /> Team List
+                </button>
             )}
             <Button variant="outline" size="sm" onClick={fetchData} disabled={isLoading} className="h-9 rounded-xl font-bold">
                 <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} /> Refresh
@@ -166,7 +182,7 @@ export default function FollowUpPage() {
                 <Table>
                   <TableHeader className="bg-muted/30">
                     <TableRow className="border-border">
-                      <TableHead className="pl-8 text-[10px] font-black uppercase">Enabler</TableHead>
+                      <TableHead className="pl-8 text-[10px] font-black uppercase">Team / Enabler</TableHead>
                       <TableHead className="text-[10px] font-black uppercase text-center">Never</TableHead>
                       <TableHead className="text-[10px] font-black uppercase text-center">Overdue</TableHead>
                       <TableHead className="text-[10px] font-black uppercase text-center">Stale</TableHead>
@@ -174,30 +190,57 @@ export default function FollowUpPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {summaries.map((s) => (
-                      <TableRow 
-                        key={s.enablerId} 
-                        className="border-border hover:bg-muted/50 cursor-pointer h-16 transition-colors"
-                        onClick={() => setDrillDownEnabler(s)}
-                      >
-                        <TableCell className="pl-8">
+                    {teamSummaries.map((team) => (
+                      <React.Fragment key={team.teamId || 'unassigned'}>
+                        {/* Team Header Row */}
+                        <TableRow 
+                          className="border-border bg-primary/5 hover:bg-primary/10 cursor-pointer h-14 transition-colors font-black"
+                          onClick={() => toggleTeam(team.teamId)}
+                        >
+                          <TableCell className="pl-8">
                             <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-black text-xs">{s.enablerName[0]}</div>
-                                <span className="font-bold text-sm uppercase">{s.enablerName}</span>
+                              {expandedTeams.has(team.teamId) ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                              <span className="text-xs uppercase tracking-wider">{team.teamName}</span>
+                              <Badge variant="outline" className="h-5 px-2 border-primary/20 text-primary bg-primary/5 text-[8px] font-black uppercase">Team Total</Badge>
                             </div>
-                        </TableCell>
-                        <TableCell className="text-center font-bold text-muted-foreground">{s.never}</TableCell>
-                        <TableCell className="text-center font-bold text-red-500">{s.overdue}</TableCell>
-                        <TableCell className="text-center font-bold text-orange-500">{s.stale}</TableCell>
-                        <TableCell className="text-right pr-8">
-                            <Badge variant={s.total > 10 ? 'destructive' : 'secondary'} className="h-7 px-4 rounded-xl font-black text-xs">
-                                {s.total} <ChevronRight className="ml-1 h-3 w-3" />
+                          </TableCell>
+                          <TableCell className="text-center">{team.never}</TableCell>
+                          <TableCell className="text-center text-red-500">{team.overdue}</TableCell>
+                          <TableCell className="text-center text-orange-500">{team.stale}</TableCell>
+                          <TableCell className="text-right pr-8">
+                            <Badge className="bg-primary text-white font-black text-[10px] px-3 h-6">
+                              {team.total}
                             </Badge>
-                        </TableCell>
-                      </TableRow>
+                          </TableCell>
+                        </TableRow>
+                        
+                        {/* Member Rows */}
+                        {expandedTeams.has(team.teamId) && team.enablers.map(s => (
+                          <TableRow 
+                            key={s.enablerId} 
+                            className="border-border hover:bg-muted/50 cursor-pointer h-16 transition-colors group"
+                            onClick={() => setDrillDownEnabler({ id: s.enablerId, name: s.enablerName })}
+                          >
+                            <TableCell className="pl-16">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground font-black text-xs group-hover:bg-primary/10 group-hover:text-primary transition-colors">{s.enablerName[0]}</div>
+                                    <span className="font-bold text-sm uppercase text-foreground/80 group-hover:text-foreground transition-colors">{s.enablerName}</span>
+                                </div>
+                            </TableCell>
+                            <TableCell className="text-center font-bold text-muted-foreground">{s.never}</TableCell>
+                            <TableCell className="text-center font-bold text-red-500">{s.overdue}</TableCell>
+                            <TableCell className="text-center font-bold text-orange-500">{s.stale}</TableCell>
+                            <TableCell className="text-right pr-8">
+                                <Badge variant={s.total > 10 ? 'destructive' : 'secondary'} className="h-7 px-4 rounded-xl font-black text-xs">
+                                    {s.total} <ChevronRight className="ml-1 h-3 w-3" />
+                                </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </React.Fragment>
                     ))}
-                    {summaries.length === 0 && (
-                      <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground opacity-30 italic">No enablers identified.</TableCell></TableRow>
+                    {teamSummaries.length === 0 && (
+                      <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground opacity-30 italic">No enablers or teams identified.</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
@@ -223,13 +266,13 @@ export default function FollowUpPage() {
             </div>
 
             <PersonTable 
-                people={filteredItems.map(i => i.person)}
+                people={filteredMembers}
                 tierByPersonId={Object.fromEntries(filteredItems.map(i => [i.person.id, i.tier]))}
                 renderRowAction={(person) => (
                     <DetailedLogCallDialog 
                         onLogCall={(details) => handleLogSave(person.id, details)}
                         trigger={
-                            <Button className="h-10 px-6 rounded-xl font-black uppercase tracking-widest text-[10px] bg-primary text-primary-foreground shadow-xl shadow-primary/10">
+                            <Button className="h-10 px-6 rounded-xl font-black uppercase tracking-widest text-[10px] bg-primary text-primary-foreground shadow-xl shadow-primary/20">
                                 <PhoneCall className="mr-2 h-4 w-4" /> Resolve Now
                             </Button>
                         }

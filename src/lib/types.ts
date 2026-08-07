@@ -215,6 +215,10 @@ export type AppUser = {
     guideName: string;
     guideFgCode: string;
   } | null;
+  team?: {
+    teamId: string;
+    teamName: string;
+  } | null;
   pausedCallingSession?: {
     event: string;
     peopleIds: string[];
@@ -225,6 +229,13 @@ export type AppUser = {
     coEnablerIds?: string[];
   } | null;
   whatsAppTemplate?: string;
+};
+
+export type Team = {
+  id: string;
+  name: string;
+  guideId: string;
+  createdAt: any;
 };
 
 export type SavedWhatsappQuestion = {
