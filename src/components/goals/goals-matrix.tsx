@@ -50,12 +50,13 @@ export function GoalsMatrix({ goals, enablers, categories, onUpdateProgress, onE
 
   return (
     <div className="bg-card border border-border rounded-[2.5rem] shadow-2xl">
-      <div className="w-full overflow-x-auto scrollbar-hide">
+      <div className="w-full overflow-x-auto overflow-y-visible scrollbar-hide">
         <div className="min-w-max">
             <Table className="border-separate border-spacing-0">
-                <TableHeader className="sticky top-0 z-30">
+                <TableHeader>
+                    {/* Row 1: Categories - Height 64px (h-16) */}
                     <TableRow className="hover:bg-transparent border-none h-16">
-                        <TableHead className="w-[240px] sticky top-0 left-0 z-40 bg-muted border-r border-b border-border font-black text-[10px] uppercase tracking-[0.2em] text-muted-foreground pl-8">
+                        <TableHead className="w-[240px] sticky top-0 left-0 z-50 bg-muted border-r border-b border-border font-black text-[10px] uppercase tracking-[0.2em] text-muted-foreground pl-8">
                             Enabler List
                         </TableHead>
                         {columnsByCat.map(cat => (
@@ -63,7 +64,7 @@ export function GoalsMatrix({ goals, enablers, categories, onUpdateProgress, onE
                                 <TableHead 
                                     key={cat.name} 
                                     colSpan={cat.titles.length}
-                                    className="text-center font-black text-[11px] uppercase tracking-[0.3em] text-primary border-r border-b border-border bg-muted/95 backdrop-blur"
+                                    className="sticky top-0 z-30 text-center font-black text-[11px] uppercase tracking-[0.3em] text-primary border-r border-b border-border bg-muted/95 backdrop-blur"
                                 >
                                     {cat.name}
                                 </TableHead>
@@ -71,11 +72,12 @@ export function GoalsMatrix({ goals, enablers, categories, onUpdateProgress, onE
                         ))}
                     </TableRow>
                     
+                    {/* Row 2: Titles - Height 80px (h-20) - Offset by Row 1 (64px) */}
                     <TableRow className="hover:bg-transparent h-20">
-                        <TableHead className="w-[240px] sticky left-0 z-30 bg-muted/95 backdrop-blur border-r border-b border-border pl-8"></TableHead>
+                        <TableHead className="w-[240px] sticky top-[64px] left-0 z-50 bg-muted/95 backdrop-blur border-r border-b border-border pl-8"></TableHead>
                         {columnsByCat.map(cat => (
                             cat.titles.map(title => (
-                                <TableHead key={`${cat.name}-${title}`} className="px-6 min-w-[180px] border-r border-b border-border/50 text-center bg-muted/90 backdrop-blur">
+                                <TableHead key={`${cat.name}-${title}`} className="px-6 min-w-[180px] sticky top-[64px] z-30 border-r border-b border-border/50 text-center bg-muted/90 backdrop-blur">
                                     <div className="flex flex-col items-center gap-1">
                                         <span className="font-black text-[10px] uppercase tracking-tight text-foreground leading-tight">{title}</span>
                                         <div className="h-0.5 w-8 bg-primary/20 rounded-full" />
@@ -85,8 +87,9 @@ export function GoalsMatrix({ goals, enablers, categories, onUpdateProgress, onE
                         ))}
                     </TableRow>
 
+                    {/* Row 3: Totals - Height 56px (h-14) - Offset by Row 1+2 (144px) */}
                     <TableRow className="hover:bg-transparent bg-muted/30 h-14">
-                      <TableHead className="sticky left-0 z-30 bg-muted/95 backdrop-blur border-r border-b-2 border-border pl-8 font-black text-[10px] uppercase tracking-widest text-muted-foreground">
+                      <TableHead className="sticky top-[144px] left-0 z-50 bg-muted/95 backdrop-blur border-r border-b-2 border-border pl-8 font-black text-[10px] uppercase tracking-widest text-muted-foreground">
                         Total
                       </TableHead>
                       {columnsByCat.map(cat => (
@@ -95,7 +98,7 @@ export function GoalsMatrix({ goals, enablers, categories, onUpdateProgress, onE
                           const totalAchieved = columnGoals.reduce((sum, g) => sum + (g.achievedCount || 0), 0);
                           const totalTarget = columnGoals.reduce((sum, g) => sum + (g.targetCount || 0), 0);
                           return (
-                            <TableCell key={`total-${cat.name}-${title}`} className="text-center border-r border-b-2 border-border/50 bg-muted/80 backdrop-blur font-black text-sm">
+                            <TableCell key={`total-${cat.name}-${title}`} className="sticky top-[144px] z-30 text-center border-r border-b-2 border-border/50 bg-muted/80 backdrop-blur font-black text-sm">
                               {totalAchieved} / {totalTarget}
                             </TableCell>
                           );
