@@ -37,13 +37,15 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { useAuth } from '@/contexts/auth-context';
-import { getFolkGuides } from '@/services/user-service';
+import { getFolkGuides, getAssignableUsersForAssignments } from '@/services/user-service';
 import { getFollowUpItemsForCurrentUser, getFollowUpSummaryForGuide } from '@/services/follow-up-service';
+import { getGoals } from '@/services/goals-service';
+import { getGoalCategories } from '@/services/settings-service';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { callStatuses } from '@/lib/types';
-import type { AppUser, EnablerStageBreakdown, EnablerChantingBreakdown } from '@/lib/types';
+import type { AppUser, Goal } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
   Collapsible,
@@ -54,6 +56,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Separator } from "@/components/ui/separator";
 import { formatDuration } from '@/utils/format';
 import { GoalAlerts } from '@/components/dashboard/goal-alerts';
+import { TeamGoalsSummary } from '@/components/dashboard/team-goals-summary';
 
 export default function DashboardPage() {
   const { appUser } = useAuth();
@@ -68,11 +71,29 @@ export default function DashboardPage() {
   const [folkGuides, setFGuides] = useState<AppUser[]>([]);
   const [followUpCount, setFollowUpCount] = useState<number | null>(null);
   
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [enablers, setEnablers] = useState<AppUser[]>([]);
+  const [goalCategories, setGoalCategories] = useState<string[]>([]);
+  
   const { data, syncStatus, isLoading, isRefetching } = useDashboardStats(dateRange, selectedFolkGuideId);
 
   useEffect(() => {
-    if (appUser?.role.includes('Admin')) {
+    if (!appUser) return;
+    if (appUser.role.includes('Admin')) {
         getFolkGuides().then(setFGuides);
+    }
+    
+    // Fetch goals data for the summary table
+    if (appUser.role.includes('Admin') || appUser.role.includes('Folk Guide')) {
+        Promise.all([
+            getGoals(appUser),
+            getAssignableUsersForAssignments(appUser),
+            getGoalCategories()
+        ]).then(([g, e, c]) => {
+            setGoals(g);
+            setEnablers(e);
+            setGoalCategories(c);
+        });
     }
   }, [appUser]);
 
@@ -96,7 +117,6 @@ export default function DashboardPage() {
   const enablerBreakdown = stats?.enablerBreakdown || [];
   const chantingBreakdown = stats?.chantingBreakdown || [];
 
-  // Unified Merged Data
   const mergedBreakdown = useMemo(() => {
     return enablerBreakdown.map(stageEntry => {
         const chantingEntry = chantingBreakdown.find(c => c.enablerId === stageEntry.enablerId);
@@ -293,7 +313,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Unified Breakdown Section */}
-            <Card className="bg-popover border-none rounded-[2rem] shadow-2xl overflow-hidden">
+            <Card className="bg-popover border-none rounded-[2rem] shadow-2xl overflow-hidden print:hidden">
                 <CardHeader className="p-8 pb-4 flex flex-row items-center justify-between bg-card border-b border-border">
                     <div className="space-y-1">
                         <CardTitle className="text-xl font-black text-foreground uppercase tracking-tight flex items-center gap-3">
@@ -553,7 +573,15 @@ export default function DashboardPage() {
                 </CardContent>
             </Card>
 
-            <Card className="bg-popover border-none rounded-[2rem] shadow-2xl overflow-hidden">
+            {(appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide')) && (
+                <TeamGoalsSummary 
+                    goals={goals} 
+                    enablers={enablers} 
+                    categories={goalCategories} 
+                />
+            )}
+
+            <Card className="bg-popover border-none rounded-[2rem] shadow-2xl overflow-hidden print:hidden">
                 <CardHeader className="p-8 pb-4 flex flex-row items-center justify-between bg-card border-b border-border">
                     <div className="space-y-1">
                         <CardTitle className="text-xl font-black text-foreground uppercase tracking-tight flex items-center gap-3">
@@ -638,7 +666,7 @@ export default function DashboardPage() {
                 </CardContent>
             </Card>
 
-            <div className="grid gap-6 grid-cols-1 lg:grid-cols-12">
+            <div className="grid gap-6 grid-cols-1 lg:grid-cols-12 print:hidden">
                 <Card className="lg:col-span-4 bg-popover border-none rounded-[2rem] shadow-2xl overflow-hidden">
                     <CardHeader className="pb-2 flex flex-row items-center justify-between">
                         <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Manual Log Breakdown</CardTitle>

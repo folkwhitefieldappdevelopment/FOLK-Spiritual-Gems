@@ -129,3 +129,24 @@
 .animate-bounce-subtle {
   animation: bounce-subtle 2s infinite ease-in-out;
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #team-goals-print-area, #team-goals-print-area * {
+    visibility: visible;
+  }
+  #team-goals-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+  @page {
+    size: landscape;
+    margin: 1cm;
+  }
+}

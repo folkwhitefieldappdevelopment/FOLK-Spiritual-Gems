@@ -13,10 +13,76 @@ import {
   serverTimestamp,
   orderBy,
 } from 'firebase/firestore';
-import type { Goal, AppUser } from '@/lib/types';
+import type { Goal, AppUser, TeamGoalsSummary } from '@/lib/types';
 import { logAudit } from '@/services/audit-service';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
+
+/**
+ * Centralized goal aggregation logic for Roster displays.
+ * Identifies unique goal columns, groups by team, and calculates all subtotals.
+ */
+export function getTeamGoalsSummary(goals: Goal[], enablers: AppUser[], categories: string[]): {
+  columns: string[];
+  teams: TeamGoalsSummary[];
+  grandTotals: Record<string, { achieved: number; target: number }>;
+} {
+  // 1. Determine stable column order (grouped by category)
+  const columns: string[] = [];
+  categories.forEach(cat => {
+    const titlesInRange = Array.from(new Set(
+      goals.filter(g => g.category === cat).map(g => g.title)
+    )).sort();
+    columns.push(...titlesInRange);
+  });
+
+  // 2. Group enablers by team
+  const teamsMap = new Map<string | null, { name: string, members: AppUser[] }>();
+  enablers.forEach(e => {
+    const teamId = e.team?.teamId || null;
+    const teamName = e.team?.teamName || "Unassigned";
+    if (!teamsMap.has(teamId)) teamsMap.set(teamId, { name: teamName, members: [] });
+    teamsMap.get(teamId)!.members.push(e);
+  });
+
+  // 3. Process each team and its members
+  const grandTotals: Record<string, { achieved: number; target: number }> = {};
+  columns.forEach(col => grandTotals[col] = { achieved: 0, target: 0 });
+
+  const sortedTeams = Array.from(teamsMap.entries()).sort((a, b) => {
+    if (a[0] === null) return 1;
+    if (b[0] === null) return -1;
+    return a[1].name.localeCompare(b[1].name);
+  });
+
+  const teams: TeamGoalsSummary[] = sortedTeams.map(([teamId, info]) => {
+    const teamTotals: Record<string, { achieved: number; target: number }> = {};
+    columns.forEach(col => teamTotals[col] = { achieved: 0, target: 0 });
+
+    const members = info.members.sort((a, b) => a.name.localeCompare(b.name)).map(enabler => {
+      const enablerCols: Record<string, { achieved: number; target: number }> = {};
+      columns.forEach(title => {
+        const goal = goals.find(g => 
+          (g.enablerId === enabler.id || g.enablerName === enabler.name) && 
+          g.title === title
+        );
+        const achieved = goal?.achievedCount || 0;
+        const target = goal?.targetCount || 0;
+        
+        enablerCols[title] = { achieved, target };
+        teamTotals[title].achieved += achieved;
+        teamTotals[title].target += target;
+        grandTotals[title].achieved += achieved;
+        grandTotals[title].target += target;
+      });
+      return { enablerId: enabler.id, enablerName: enabler.name, columns: enablerCols };
+    });
+
+    return { teamId, teamName: info.name, members, teamTotals };
+  });
+
+  return { columns, teams, grandTotals };
+}
 
 /**
  * Fetches goals based on user role and hierarchy.

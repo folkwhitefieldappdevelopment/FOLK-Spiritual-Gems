@@ -470,7 +470,16 @@ export type Goal = {
   lastReminderStage?: 'none' | 'upcoming' | 'overdue';
 };
 
-export type GoalRecord = Goal; // Alias for clarity if needed
+export type TeamGoalsSummary = {
+  teamId: string | null;
+  teamName: string;
+  members: { 
+    enablerId: string; 
+    enablerName: string; 
+    columns: Record<string, { achieved: number; target: number }> 
+  }[];
+  teamTotals: Record<string, { achieved: number; target: number }>;
+};
 
 export type ExternalCoEnabler = {
   id: string;
