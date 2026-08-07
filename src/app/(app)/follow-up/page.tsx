@@ -68,7 +68,7 @@ export default function FollowUpPage() {
         setTeamSummaries(summaryData);
       } else {
         const itemData = drillDownEnabler 
-            ? await getFollowUpItemsForEnabler(drillDownEnabler)
+            ? await getFollowUpItemsForEnabler({ id: drillDownEnabler.id, name: drillDownEnabler.name })
             : await getFollowUpItemsForCurrentUser(appUser);
         setItems(itemData);
       }
@@ -140,6 +140,8 @@ export default function FollowUpPage() {
     i.person.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     i.person.phone.includes(searchTerm)
   );
+
+  const filteredMembers = React.useMemo(() => filteredItems.map(i => i.person), [filteredItems]);
 
   return (
     <>
