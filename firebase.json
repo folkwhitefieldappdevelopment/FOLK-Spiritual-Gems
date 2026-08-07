@@ -1,4 +1,7 @@
 {
+  "firestore": {
+    "rules": "firestore.rules"
+  },
   "functions": [
     {
       "source": "functions",
@@ -14,10 +17,6 @@
       ]
     }
   ],
-  "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
-  },
   "hosting": {
     "public": "out",
     "ignore": [
@@ -28,33 +27,23 @@
     "trailingSlash": true,
     "rewrites": [
       {
-        "source": "/check-in/:id",
-        "destination": "/check-in/view/index.html"
-      },
-      {
-        "source": "/check-in/:id/:eventId",
-        "destination": "/check-in/view/entry/index.html"
-      },
-      {
-        "source": "/register/:id",
-        "destination": "/register/public/index.html"
-      },
-      {
-        "source": "/co-enabler/:id",
-        "destination": "/co-enabler/portal/index.html"
-      },
-      {
-        "source": "/groups/:id",
-        "destination": "/groups/view/index.html"
-      },
-      {
-        "source": "/contacts/:id",
-        "destination": "/contacts/details/index.html"
-      },
-      {
         "source": "**",
         "destination": "/index.html"
       }
+    ],
+    "headers": [
+      {
+        "source": "/_next/static/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      }
     ]
+  },
+  "storage": {
+    "rules": "storage.rules"
   }
 }
