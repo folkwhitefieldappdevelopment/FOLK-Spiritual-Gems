@@ -9,11 +9,12 @@ export function SplashManager({ children }: { children: React.ReactNode }) {
   const [fadeOut, setFadeOut] = React.useState(false);
 
   React.useEffect(() => {
-    // Optimized duration: 1.2s visible + 0.4s fade out = 1.6s total app lock (down from 4.3s)
+    // Optimized duration: 0.6s visible + 0.2s fade out = 0.8s total (down from 1.6s)
+    // This maintains the dedication branding while significantly reducing the blocking time.
     const timer = setTimeout(() => {
       setFadeOut(true);
-      setTimeout(() => setShowSplash(false), 400);
-    }, 1200); 
+      setTimeout(() => setShowSplash(false), 200);
+    }, 600); 
     
     return () => clearTimeout(timer);
   }, []);
@@ -41,7 +42,7 @@ export function SplashManager({ children }: { children: React.ReactNode }) {
               {/* Caption: Italic, Muted, Serif */}
               <p 
                 className="italic font-serif text-[#929DD8]/80 text-base sm:text-lg animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-both"
-                style={{ animationDelay: '600ms' }}
+                style={{ animationDelay: '300ms' }}
               >
                 Humbly Dedicated to
               </p>
@@ -49,7 +50,7 @@ export function SplashManager({ children }: { children: React.ReactNode }) {
               {/* Title: Large, Bold, Ivory, Serif */}
               <h1 
                 className="font-serif font-bold text-[#fdf6e3] text-2xl sm:text-4xl tracking-tight animate-in fade-in slide-in-from-bottom-4 duration-1000 fill-mode-both"
-                style={{ animationDelay: '1000ms' }}
+                style={{ animationDelay: '500ms' }}
               >
                 Vishwa Guru Srila Prabhupada
               </h1>
