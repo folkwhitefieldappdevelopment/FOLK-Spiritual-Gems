@@ -69,29 +69,29 @@ export function GoalAlerts() {
           return (
             <Link key={goal.id} href="/goals">
                 <div className={cn(
-                  "group flex items-center justify-between p-4 rounded-2xl border-l-4 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-sm bg-card",
+                  "group flex items-center justify-between p-3 rounded-2xl border-l-4 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-sm bg-card",
                   isAchieved 
                     ? "border-l-green-500 hover:bg-green-500/5" 
                     : "border-l-red-500 hover:bg-red-500/5"
                 )}>
-                  <div className="flex items-center gap-4 min-w-0">
+                  <div className="flex items-center gap-4 min-w-0 flex-1">
                     <div className={cn(
-                        "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-inner",
+                        "h-9 w-9 rounded-xl flex items-center justify-center shrink-0 shadow-inner",
                         isAchieved ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-600"
                     )}>
-                      {isAchieved ? <Trophy className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
+                      {isAchieved ? <Trophy className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
                     </div>
-                    <div className="min-w-0">
-                      <p className={cn(
-                          "text-sm font-black uppercase tracking-tight leading-none mb-1",
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold truncate">
+                        <span className={cn(
+                          "font-black uppercase tracking-tight mr-2",
                           isAchieved ? "text-green-700 dark:text-green-500" : "text-red-700 dark:text-red-500"
-                      )}>
-                        {isAchieved ? 'Target Achieved' : 'Deadline Missed'}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate font-bold">
+                        )}>
+                          {isAchieved ? 'Target Achieved' : 'Deadline Missed'}
+                        </span>
                         <span className="text-foreground">"{goal.title}"</span>
                         <span className="mx-2 opacity-30">•</span>
-                        <span>{goal.enablerName} {isAchieved ? 'reached the goal' : 'crossed the limit'}</span>
+                        <span className="text-muted-foreground font-medium">{goal.enablerName} {isAchieved ? 'reached the goal' : 'crossed the limit'}</span>
                       </p>
                     </div>
                   </div>
