@@ -1,19 +1,19 @@
 {
   "name": "FOLK Spiritual Gems",
-  "short_name": "Gems",
-  "description": "Offline-first outreach and CRM tool",
+  "short_name": "FOLK GEMS",
+  "description": "Outreach and Contact Management for FOLK Bangalore.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "background_color": "#11121d",
+  "theme_color": "#3F51B5",
   "icons": [
     {
-      "src": "/icons/icon-192x192.png",
+      "src": "/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/icons/icon-512x512.png",
+      "src": "/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
