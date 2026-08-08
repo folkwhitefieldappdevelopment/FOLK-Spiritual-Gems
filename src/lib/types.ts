@@ -362,11 +362,12 @@ export type DashboardData = {
     byEnabler: Record<string, number>;
     byYear: Record<string, number>;
     byChantingCategory: Record<string, number>;
-    enablerBreakdown?: EnablerStageBreakdown[];
-    chantingBreakdown?: EnablerChantingBreakdown[];
+    enablerBreakdown: EnablerStageBreakdown[];
+    chantingBreakdown: EnablerChantingBreakdown[];
   };
   callingReportAll: CallingReport;
   callingReportMy: CallingReport;
+  teamCallingReports: Record<string, CallingReport>;
   leaderboard: LeaderboardEntry[];
   isPrivileged: boolean;
 };

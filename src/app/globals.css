@@ -134,10 +134,10 @@
   body * {
     visibility: hidden;
   }
-  #team-goals-print-area, #team-goals-print-area * {
+  #printable-report, #printable-report * {
     visibility: visible;
   }
-  #team-goals-print-area {
+  #printable-report {
     position: absolute;
     left: 0;
     top: 0;

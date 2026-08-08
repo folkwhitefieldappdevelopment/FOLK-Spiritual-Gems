@@ -97,3 +97,62 @@ export async function getAllTeams(): Promise<Team[]> {
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as Team));
 }
+
+export type TeamGroup<T> = {
+    teamId: string | null;
+    teamName: string;
+    members: AppUser[];
+    items: T[];
+};
+
+/**
+ * Shared helper to group any type of items by team membership of enablers.
+ */
+export function groupEnablersByTeam<T>(
+    items: T[], 
+    enablers: AppUser[], 
+    getEnablerId: (item: T) => string,
+    getEnablerNameFallback?: (item: T) => string
+): TeamGroup<T>[] {
+    const teamsMap = new Map<string | null, TeamGroup<T>>();
+
+    enablers.forEach(enabler => {
+        const teamId = enabler.team?.teamId || null;
+        const teamName = enabler.team?.teamName || "Unassigned";
+
+        if (!teamsMap.has(teamId)) {
+            teamsMap.set(teamId, {
+                teamId,
+                teamName,
+                members: [],
+                items: []
+            });
+        }
+        teamsMap.get(teamId)!.members.push(enabler);
+    });
+
+    items.forEach(item => {
+        const id = getEnablerId(item);
+        const fallbackName = getEnablerNameFallback?.(item);
+        
+        const enabler = enablers.find(e => e.id === id) || 
+                       (fallbackName ? enablers.find(e => e.name.trim().toLowerCase() === fallbackName.trim().toLowerCase()) : null);
+                       
+        const teamId = enabler?.team?.teamId || null;
+        if (teamsMap.has(teamId)) {
+            teamsMap.get(teamId)!.items.push(item);
+        } else if (teamId === null) {
+            // Handle edge case where enabler list might be incomplete but grouping is needed
+            if (!teamsMap.has(null)) {
+                teamsMap.set(null, { teamId: null, teamName: "Unassigned", members: [], items: [] });
+            }
+            teamsMap.get(null)!.items.push(item);
+        }
+    });
+
+    return Array.from(teamsMap.values()).sort((a, b) => {
+        if (a.teamId === null) return 1;
+        if (b.teamId === null) return -1;
+        return a.teamName.localeCompare(b.teamName);
+    });
+}

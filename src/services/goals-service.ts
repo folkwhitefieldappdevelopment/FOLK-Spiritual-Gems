@@ -17,6 +17,7 @@ import type { Goal, AppUser, TeamGoalsSummary } from '@/lib/types';
 import { logAudit } from '@/services/audit-service';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
+import { groupEnablersByTeam } from './team-service';
 
 /**
  * Centralized goal aggregation logic for Roster displays.
@@ -36,30 +37,18 @@ export function getTeamGoalsSummary(goals: Goal[], enablers: AppUser[], categori
     columns.push(...titlesInRange);
   });
 
-  // 2. Group enablers by team
-  const teamsMap = new Map<string | null, { name: string, members: AppUser[] }>();
-  enablers.forEach(e => {
-    const teamId = e.team?.teamId || null;
-    const teamName = e.team?.teamName || "Unassigned";
-    if (!teamsMap.has(teamId)) teamsMap.set(teamId, { name: teamName, members: [] });
-    teamsMap.get(teamId)!.members.push(e);
-  });
+  // 2. Group enablers by team using shared helper
+  const teamGroups = groupEnablersByTeam(enablers, enablers, e => e.id);
 
   // 3. Process each team and its members
   const grandTotals: Record<string, { achieved: number; target: number }> = {};
   columns.forEach(col => grandTotals[col] = { achieved: 0, target: 0 });
 
-  const sortedTeams = Array.from(teamsMap.entries()).sort((a, b) => {
-    if (a[0] === null) return 1;
-    if (b[0] === null) return -1;
-    return a[1].name.localeCompare(b[1].name);
-  });
-
-  const teams: TeamGoalsSummary[] = sortedTeams.map(([teamId, info]) => {
+  const teams: TeamGoalsSummary[] = teamGroups.map(group => {
     const teamTotals: Record<string, { achieved: number; target: number }> = {};
     columns.forEach(col => teamTotals[col] = { achieved: 0, target: 0 });
 
-    const members = info.members.sort((a, b) => a.name.localeCompare(b.name)).map(enabler => {
+    const members = group.members.sort((a, b) => a.name.localeCompare(b.name)).map(enabler => {
       const enablerCols: Record<string, { achieved: number; target: number }> = {};
       columns.forEach(title => {
         const goal = goals.find(g => 
@@ -78,7 +67,12 @@ export function getTeamGoalsSummary(goals: Goal[], enablers: AppUser[], categori
       return { enablerId: enabler.id, enablerName: enabler.name, columns: enablerCols };
     });
 
-    return { teamId, teamName: info.name, members, teamTotals };
+    return { 
+        teamId: group.teamId, 
+        teamName: group.teamName, 
+        members, 
+        teamTotals 
+    };
   });
 
   return { columns, teams, grandTotals };

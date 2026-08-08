@@ -22,12 +22,6 @@ export function TeamGoalsSummary({ goals, enablers, categories }: TeamGoalsSumma
 
   if (goals.length === 0) return null;
 
-  const handlePrint = () => {
-    if (typeof window !== 'undefined') {
-        window.print();
-    }
-  };
-
   return (
     <Card className="bg-popover border-none rounded-[2rem] shadow-2xl overflow-hidden mt-8">
       <CardHeader className="p-8 pb-4 flex flex-row items-center justify-between bg-card border-b border-border print:hidden">
@@ -40,18 +34,9 @@ export function TeamGoalsSummary({ goals, enablers, categories }: TeamGoalsSumma
             Consolidated spreadsheet view of mission targets and achievements
           </CardDescription>
         </div>
-        <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handlePrint}
-            className="h-10 px-4 rounded-xl border-border bg-muted/50 font-black uppercase text-[10px] tracking-widest gap-2"
-        >
-          <Printer className="h-3.5 w-3.5" />
-          Print / Export PDF
-        </Button>
       </CardHeader>
       
-      <CardContent className="p-0" id="team-goals-print-area">
+      <CardContent className="p-0">
         <div className="overflow-x-auto">
           <Table className="border-collapse">
             <TableHeader className="bg-muted/50">

@@ -31,7 +31,9 @@ import {
     Flame,
     Loader2,
     Sigma,
-    AlertCircle
+    AlertCircle,
+    Printer,
+    FileText
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,9 +42,9 @@ import { Calendar } from '@/components/ui/calendar';
 import { useAuth } from '@/contexts/auth-context';
 import { getFolkGuides, getAssignableUsersForAssignments } from '@/services/user-service';
 import { getFollowUpItemsForCurrentUser, getFollowUpSummaryForGuide } from '@/services/follow-up-service';
-import { getGoals } from '@/services/goals-service';
+import { getGoals, getTeamGoalsSummary } from '@/services/goals-service';
 import { getGoalCategories } from '@/services/settings-service';
-import { groupByTeam } from '@/lib/dynamic-groups';
+import { groupEnablersByTeam } from '@/services/team-service';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -58,7 +60,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Separator } from "@/components/ui/separator";
 import { formatDuration } from '@/utils/format';
 import { GoalAlerts } from '@/components/dashboard/goal-alerts';
-import { TeamGoalsSummary } from '@/components/dashboard/team-goals-summary';
+import { TeamGoalsSummary as TeamGoalsTable } from '@/components/dashboard/team-goals-summary';
+import { PrintableReport } from '@/components/dashboard/printable-report';
 
 export default function DashboardPage() {
   const { appUser } = useAuth();
@@ -85,7 +88,6 @@ export default function DashboardPage() {
         getFolkGuides().then(setFGuides);
     }
     
-    // Fetch goals data for the summary table
     if (appUser.role.includes('Admin') || appUser.role.includes('Folk Guide')) {
         Promise.all([
             getGoals(appUser),
@@ -117,11 +119,10 @@ export default function DashboardPage() {
   const reportAll = data?.callingReportAll;
   const leaderboard = data?.leaderboard || [];
   const enablerBreakdown = stats?.enablerBreakdown || [];
-  const chantingBreakdown = stats?.chantingBreakdown || [];
 
   const mergedBreakdown = useMemo(() => {
     return enablerBreakdown.map(stageEntry => {
-        const chantingEntry = chantingBreakdown.find(c => c.enablerId === stageEntry.enablerId);
+        const chantingEntry = stats?.chantingBreakdown.find(c => c.enablerId === stageEntry.enablerId);
         return {
             ...stageEntry,
             rounds9to15: chantingEntry?.rounds9to15 || 0,
@@ -129,15 +130,19 @@ export default function DashboardPage() {
             rounds0to2: chantingEntry?.rounds0to2 || 0,
         };
     });
-  }, [enablerBreakdown, chantingBreakdown]);
+  }, [enablerBreakdown, stats?.chantingBreakdown]);
 
   const groupedBreakdown = useMemo(() => {
-      return groupByTeam(mergedBreakdown, enablers, (item) => item.enablerId);
+      return groupEnablersByTeam(mergedBreakdown, enablers, (item) => item.enablerId);
   }, [mergedBreakdown, enablers]);
 
   const groupedLeaderboard = useMemo(() => {
-      return groupByTeam(leaderboard, enablers, (item) => item.callerId, (item) => item.callerName);
+      return groupEnablersByTeam(leaderboard, enablers, (item) => item.callerId, (item) => item.callerName);
   }, [leaderboard, enablers]);
+
+  const goalsSummary = useMemo(() => {
+      return getTeamGoalsSummary(goals, enablers, goalCategories);
+  }, [goals, enablers, goalCategories]);
 
   const grandTotals = useMemo(() => {
     return mergedBreakdown.reduce((acc, e) => ({
@@ -151,6 +156,16 @@ export default function DashboardPage() {
       totalContacts: acc.totalContacts + e.totalContacts,
     }), { frp: 0, sgW: 0, sgS: 0, sixteenRounder: 0, rounds9to15: 0, rounds3to8: 0, rounds0to2: 0, totalContacts: 0 });
   }, [mergedBreakdown]);
+
+  const dateLabel = React.useMemo(() => {
+      if (!dateRange?.from) return "All Time";
+      if (dateRange.to && !isSameDay(dateRange.from, dateRange.to)) {
+          return `${format(dateRange.from, "MMM dd")} - ${format(dateRange.to, "MMM dd, yyyy")}`;
+      }
+      return format(dateRange.from, "MMMM dd, yyyy");
+  }, [dateRange]);
+
+  const handlePrintAll = () => { window.print(); };
 
   const navigateToContacts = (params: Record<string, string>, includeDateRange: boolean = false) => {
     const searchParams = new URLSearchParams();
@@ -190,15 +205,17 @@ export default function DashboardPage() {
                         <span className="flex items-center gap-1.5 text-blue-400">
                            <Activity className="h-3 w-3" /> Using Cached Records
                         </span>
-                    ) : syncStatus === 'timeout' ? (
-                        <span className="flex items-center gap-1.5 text-muted-foreground italic">
-                           Offline mode active
-                        </span>
                     ) : "Initializing statistics..."}
                 </div>
             }
         >
             <div className="flex items-center gap-2">
+                {(appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide')) && (
+                    <Button onClick={handlePrintAll} className="h-9 px-4 font-black uppercase text-[10px] tracking-widest rounded-xl bg-orange-500 text-black hover:bg-orange-600 shadow-lg shadow-orange-500/20">
+                        <Printer className="h-3.5 w-3.5 mr-2" />
+                        Print Full Report
+                    </Button>
+                )}
                 {isAdmin && (
                     <Select value={selectedFolkGuideId} onValueChange={setSelectedFolkGuideId}>
                         <SelectTrigger className="w-[180px] h-9 rounded-xl border-border bg-muted/50 text-foreground font-black text-[10px] uppercase">
@@ -248,7 +265,7 @@ export default function DashboardPage() {
         </PageHeader>
 
         <main className={cn(
-            "flex-1 space-y-6 p-4 md:p-8 pt-0 pb-24 relative transition-opacity duration-300",
+            "flex-1 space-y-6 p-4 md:p-8 pt-0 pb-24 relative transition-opacity duration-300 print:hidden",
             isRefetching && "opacity-50 pointer-events-none"
         )}>
             {isRefetching && (
@@ -502,129 +519,11 @@ export default function DashboardPage() {
                             </TableBody>
                         </Table>
                     </div>
-                    <div className="lg:hidden p-6 space-y-8">
-                        {/* Totals Summary Card Mobile */}
-                        {mergedBreakdown.length > 0 && (
-                            <Card className="bg-primary/5 border-2 border-primary/20 p-5 rounded-[1.5rem] shadow-sm">
-                                <div className="flex justify-between items-center mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center">
-                                            <Sigma className="h-3 w-3 text-white" />
-                                        </div>
-                                        <span className="font-black text-xs uppercase text-primary">All Enablers</span>
-                                    </div>
-                                    <Badge className="text-[9px] font-black uppercase bg-primary text-white">{grandTotals.totalContacts} Total</Badge>
-                                </div>
-                                
-                                <div className="space-y-4">
-                                    <div className="space-y-1.5">
-                                        <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Stage Pulse</p>
-                                        <div className="grid grid-cols-4 gap-2">
-                                            <MobileBreakdownItem label="FRP" count={grandTotals.frp} color="text-green-500" />
-                                            <MobileBreakdownItem label="SG-W" count={grandTotals.sgW} color="text-yellow-600" />
-                                            <MobileBreakdownItem label="SG-S" count={grandTotals.sgS} color="text-yellow-600" />
-                                            <MobileBreakdownItem label="16+" count={grandTotals.sixteenRounder} color="text-[#FF9800]" />
-                                        </div>
-                                    </div>
-                                    <Separator className="bg-primary/10" />
-                                    <div className="space-y-1.5">
-                                        <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Chanting Status</p>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            <MobileBreakdownItem label="9-15" count={grandTotals.rounds9to15} color="text-primary" />
-                                            <MobileBreakdownItem label="3-8" count={grandTotals.rounds3to8} color="text-muted-foreground" />
-                                            <MobileBreakdownItem label="0-2" count={grandTotals.rounds0to2} color="text-muted-foreground/60" />
-                                        </div>
-                                    </div>
-                                </div>
-                            </Card>
-                        )}
-
-                        {groupedBreakdown.map((group) => (
-                            <div key={group.teamId || 'unassigned'} className="space-y-4">
-                                <div className="flex items-center gap-2 px-2">
-                                    <Users className="h-3.5 w-3.5 text-primary/40" />
-                                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">{group.teamName}</h4>
-                                </div>
-                                {group.items.map((entry, index) => (
-                                    <Card key={entry.enablerId} className="bg-muted/10 border-border p-5 rounded-[1.5rem] shadow-sm">
-                                        <div 
-                                            className="flex justify-between items-center mb-4 cursor-pointer group"
-                                            onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName }, false)}
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-black text-primary border border-primary/20 shrink-0">
-                                                    {index + 1}
-                                                </div>
-                                                <span className="font-black text-xs uppercase text-foreground group-hover:text-primary transition-colors">{entry.enablerName}</span>
-                                            </div>
-                                            <Badge variant="secondary" className="text-[9px] font-black uppercase bg-muted/50 text-muted-foreground group-hover:bg-primary group-hover:text-white transition-all">{entry.totalContacts} Contacts</Badge>
-                                        </div>
-
-                                        <div className="space-y-4">
-                                            <div className="space-y-1.5">
-                                                <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Stage</p>
-                                                <div className="grid grid-cols-4 gap-2">
-                                                    <MobileBreakdownItem 
-                                                        label="FRP" 
-                                                        count={entry.frp} 
-                                                        color="text-green-500" 
-                                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'FRP' }, false)}
-                                                    />
-                                                    <MobileBreakdownItem 
-                                                        label="SG-W" 
-                                                        count={entry.sgW} 
-                                                        color="text-yellow-600" 
-                                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-W' }, false)}
-                                                    />
-                                                    <MobileBreakdownItem 
-                                                        label="SG-S" 
-                                                        count={entry.sgS} 
-                                                        color="text-yellow-600" 
-                                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-S' }, false)}
-                                                    />
-                                                    <MobileBreakdownItem 
-                                                        label="16+" 
-                                                        count={entry.sixteenRounder} 
-                                                        color="text-[#FF9800]" 
-                                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '16' }, false)}
-                                                    />
-                                                </div>
-                                            </div>
-                                            <Separator className="bg-border/50" />
-                                            <div className="space-y-1.5">
-                                                <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Chanting Rounds</p>
-                                                <div className="grid grid-cols-3 gap-2">
-                                                    <MobileBreakdownItem 
-                                                        label="9-15" 
-                                                        count={entry.rounds9to15} 
-                                                        color="text-primary" 
-                                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '9', chantingRoundsMax: '15' }, false)}
-                                                    />
-                                                    <MobileBreakdownItem 
-                                                        label="3-8" 
-                                                        count={entry.rounds3to8} 
-                                                        color="text-muted-foreground" 
-                                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '3', chantingRoundsMax: '8' }, false)}
-                                                    />
-                                                    <MobileBreakdownItem 
-                                                        label="0-2" 
-                                                        count={entry.rounds0to2} 
-                                                        color="text-muted-foreground/60" 
-                                                        onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, chantingRoundsMin: '0', chantingRoundsMax: '2' }, false)}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </Card>
-                                ))}
-                            </div>
-                        ))}
-                    </div>
                 </CardContent>
             </Card>
 
             {(appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide')) && (
-                <TeamGoalsSummary 
+                <TeamGoalsTable 
                     goals={goals} 
                     enablers={enablers} 
                     categories={goalCategories} 
@@ -827,6 +726,15 @@ export default function DashboardPage() {
                 </div>
             </div>
         </main>
+
+        {(appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide')) && data && (
+            <PrintableReport 
+                data={data} 
+                goalsSummary={goalsSummary} 
+                enablers={enablers} 
+                dateLabel={dateLabel} 
+            />
+        )}
     </>
   );
 }
@@ -924,20 +832,5 @@ function SummaryMetricCard({ title, value, percentage, icon: Icon, color = "bg-p
                 </div>
             )}
         </Card>
-    );
-}
-
-function MobileBreakdownItem({ label, count, color, onClick }: { label: string, count: number, color: string, onClick?: () => void }) {
-    return (
-        <div 
-            className={cn(
-                "flex flex-col items-center gap-1.5 p-2 transition-all rounded-xl",
-                onClick && "cursor-pointer hover:bg-muted active:scale-95"
-            )}
-            onClick={onClick}
-        >
-            <span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest text-center leading-none h-4 flex items-center">{label}</span>
-            <span className={cn("text-xl font-black leading-none", color)}>{count}</span>
-        </div>
     );
 }
