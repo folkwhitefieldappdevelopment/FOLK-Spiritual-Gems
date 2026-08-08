@@ -6,8 +6,6 @@ import type {
     DashboardData, 
     TeamGoalsSummary, 
     AppUser,
-    EnablerStageBreakdown,
-    EnablerChantingBreakdown
 } from '@/lib/types';
 import { formatDuration } from '@/utils/format';
 
@@ -25,7 +23,6 @@ type PrintableReportProps = {
 export function PrintableReport({ data, goalsSummary, enablers, dateLabel }: PrintableReportProps) {
   const { stats, teamCallingReports, callingReportAll } = data;
 
-  // Grouped Breakdown Logic for Table 2
   const mergedBreakdown = stats.enablerBreakdown.map(stageEntry => {
     const chantingEntry = stats.chantingBreakdown.find(c => c.enablerId === stageEntry.enablerId);
     return {
@@ -36,11 +33,13 @@ export function PrintableReport({ data, goalsSummary, enablers, dateLabel }: Pri
     };
   });
 
-  const tableStyle = "w-full border-collapse border border-black mb-12 font-sans text-xs text-black";
-  const headerStyle = "border border-black bg-gray-100 p-2 font-black text-[10px] uppercase text-center";
-  const cellStyle = "border border-black p-2 text-center align-middle";
-  const labelStyle = "border border-black p-2 font-bold text-left";
-  const teamRowStyle = "bg-gray-200 font-black";
+  const tableStyle = "w-full border-collapse border border-black mb-12 font-sans text-black";
+  const headerStyle = "border border-black bg-gray-100 p-2 font-black text-[11px] uppercase text-center";
+  const cellStyle = "border border-black p-2 text-center align-middle text-[10px]";
+  const labelStyle = "border border-black p-2 font-bold text-left text-[10px]";
+  const teamRowStyle = "bg-blue-50 font-black text-sm text-center border border-black p-3 uppercase tracking-wider";
+  const teamTotalStyle = "bg-amber-50 font-black text-[11px] border border-black";
+  const grandTotalStyle = "bg-gray-200 font-black text-sm border-t-2 border-black";
 
   return (
     <div id="printable-report" className="hidden print:block p-8 bg-white">
@@ -72,8 +71,8 @@ export function PrintableReport({ data, goalsSummary, enablers, dateLabel }: Pri
           <tbody>
             {goalsSummary.teams.map(team => (
               <React.Fragment key={team.teamId || 'unassigned'}>
-                <tr className={teamRowStyle}>
-                  <td className={labelStyle} colSpan={1 + goalsSummary.columns.length}>
+                <tr>
+                  <td className={teamRowStyle} colSpan={1 + goalsSummary.columns.length}>
                     TEAM: {team.teamName}
                   </td>
                 </tr>
@@ -90,12 +89,12 @@ export function PrintableReport({ data, goalsSummary, enablers, dateLabel }: Pri
                     })}
                   </tr>
                 ))}
-                <tr className="bg-gray-50 font-bold">
-                    <td className={labelStyle}>TEAM TOTAL</td>
+                <tr className={teamTotalStyle}>
+                    <td className={labelStyle} style={{ background: 'inherit' }}>TEAM TOTAL</td>
                     {goalsSummary.columns.map(col => {
                         const val = team.teamTotals[col];
                         return (
-                          <td key={col} className={cellStyle}>
+                          <td key={col} className={cellStyle} style={{ background: 'inherit' }}>
                             {val.target > 0 ? `${val.achieved} / ${val.target}` : '—'}
                           </td>
                         );
@@ -103,12 +102,12 @@ export function PrintableReport({ data, goalsSummary, enablers, dateLabel }: Pri
                 </tr>
               </React.Fragment>
             ))}
-            <tr className="bg-gray-100 font-black border-t-2 border-black">
-              <td className={labelStyle}>GRAND TOTAL</td>
+            <tr className={grandTotalStyle}>
+              <td className={labelStyle} style={{ background: 'inherit', fontSize: 'inherit' }}>GRAND TOTAL</td>
               {goalsSummary.columns.map(col => {
                 const val = goalsSummary.grandTotals[col];
                 return (
-                  <td key={col} className={cellStyle}>
+                  <td key={col} className={cellStyle} style={{ background: 'inherit', fontSize: 'inherit' }}>
                     {val.achieved} / {val.target}
                   </td>
                 );
@@ -156,8 +155,8 @@ export function PrintableReport({ data, goalsSummary, enablers, dateLabel }: Pri
 
                 return (
                     <React.Fragment key={team.teamId || 'unassigned'}>
-                        <tr className={teamRowStyle}>
-                            <td className={labelStyle} colSpan={9}>TEAM: {team.teamName}</td>
+                        <tr>
+                            <td className={teamRowStyle} colSpan={9}>TEAM: {team.teamName}</td>
                         </tr>
                         {teamMembersBreakdown.map(row => (
                             <tr key={row.enablerId}>
@@ -172,8 +171,8 @@ export function PrintableReport({ data, goalsSummary, enablers, dateLabel }: Pri
                                 <td className={cellStyle}>{row.totalContacts}</td>
                             </tr>
                         ))}
-                        <tr className="bg-gray-50 font-bold">
-                            <td className={labelStyle}>TEAM TOTAL</td>
+                        <tr className={teamTotalStyle}>
+                            <td className={labelStyle} style={{ background: 'inherit' }}>TEAM TOTAL</td>
                             <td className={cellStyle}>{teamTotals.frp}</td>
                             <td className={cellStyle}>{teamTotals.sgW}</td>
                             <td className={cellStyle}>{teamTotals.sgS}</td>
@@ -224,8 +223,8 @@ export function PrintableReport({ data, goalsSummary, enablers, dateLabel }: Pri
                     </tr>
                 );
             })}
-            <tr className="bg-gray-100 font-black border-t-2 border-black">
-              <td className={labelStyle}>GRAND TOTAL</td>
+            <tr className={grandTotalStyle}>
+              <td className={labelStyle} style={{ background: 'inherit', fontSize: 'inherit' }}>GRAND TOTAL</td>
               <td className={cellStyle}>{callingReportAll.totalCalls}</td>
               <td className={cellStyle}>{callingReportAll.picked}</td>
               <td className={cellStyle}>{callingReportAll.notPicked}</td>

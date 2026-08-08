@@ -10,13 +10,16 @@ import {
   Activity, 
   AlertCircle,
   RefreshCw,
-  Sigma
+  Sigma,
+  Columns,
+  Eye,
+  Trash2
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useAppToast } from '@/contexts/toast-context';
-import { getGoals, deleteGoal, updateGoalProgress, createGoal, updateGoal } from '@/services/goals-service';
+import { getGoals, deleteGoal, updateGoalProgress, createGoal, updateGoal, deleteGoalColumn } from '@/services/goals-service';
 import { getAssignableUsersForAssignments } from '@/services/user-service';
-import { getGoalCategories } from '@/services/settings-service';
+import { getGoalCategories, getHiddenGoalColumns, unhideGoalColumn } from '@/services/settings-service';
 import type { Goal, GoalStatus, AppUser } from '@/lib/types';
 import { computeGoalStatus } from '@/lib/data';
 
@@ -38,6 +41,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
@@ -48,6 +59,7 @@ export default function GoalsPage() {
   const [goals, setGoals] = React.useState<Goal[]>([]);
   const [enablers, setEnablers] = React.useState<AppUser[]>([]);
   const [categories, setCategories] = React.useState<string[]>([]);
+  const [hiddenColumns, setHiddenColumns] = React.useState<string[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
 
@@ -69,14 +81,16 @@ export default function GoalsPage() {
     else setIsLoading(true);
     
     try {
-      const [goalsData, enablersData, categoriesData] = await Promise.all([
+      const [goalsData, enablersData, categoriesData, hiddenData] = await Promise.all([
         getGoals(appUser),
         getAssignableUsersForAssignments(appUser),
-        getGoalCategories()
+        getGoalCategories(),
+        getHiddenGoalColumns()
       ]);
       setGoals(goalsData);
       setEnablers(enablersData);
       setCategories(categoriesData);
+      setHiddenColumns(hiddenData);
     } catch (e) {
       console.error(e);
       toast({ variant: 'destructive', title: "Sync Failed" });
@@ -157,6 +171,17 @@ export default function GoalsPage() {
     }
   };
 
+  const handleUnhideColumn = async (title: string) => {
+      if (!appUser) return;
+      try {
+          await unhideGoalColumn(title, appUser);
+          toast({ title: 'Column Restored' });
+          fetchData(true);
+      } catch (e) {
+          toast({ variant: 'destructive', title: 'Action Failed' });
+      }
+  };
+
   const stats = React.useMemo(() => {
     const statuses = goals.map(g => computeGoalStatus(g));
     const totalCommitted = goals.reduce((sum, g) => sum + (g.targetCount || 0), 0);
@@ -201,10 +226,33 @@ export default function GoalsPage() {
                 <RefreshCw className={cn("h-4 w-4 sm:mr-2", isRefreshing && "animate-spin")} />
                 <span className="hidden sm:inline">Refresh</span>
             </Button>
+            
             {isPrivileged && (
-                <Button size="sm" onClick={() => setIsCreateDialogOpen(true)} className="h-9 font-black uppercase tracking-widest text-[10px] rounded-xl px-4">
-                    <Plus className="mr-2 h-4 w-4" /> Add Goal
-                </Button>
+                <>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" className="h-9 font-black uppercase text-[10px] tracking-widest rounded-xl px-4 border-border bg-muted/50">
+                                <Columns className="mr-2 h-4 w-4" /> Manage Columns
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56 bg-popover border-border">
+                            <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Hidden Columns</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {hiddenColumns.length > 0 ? hiddenColumns.map(col => (
+                                <DropdownMenuItem key={col} onSelect={() => handleUnhideColumn(col)} className="flex items-center justify-between p-3 cursor-pointer">
+                                    <span className="text-xs font-bold uppercase truncate max-w-[140px]">{col}</span>
+                                    <Eye className="h-3 w-3 text-primary" />
+                                </DropdownMenuItem>
+                            )) : (
+                                <div className="p-4 text-center text-[10px] text-muted-foreground italic font-medium">No hidden columns.</div>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    <Button size="sm" onClick={() => setIsCreateDialogOpen(true)} className="h-9 font-black uppercase tracking-widest text-[10px] rounded-xl px-4">
+                        <Plus className="mr-2 h-4 w-4" /> Add Goal
+                    </Button>
+                </>
             )}
         </div>
       </PageHeader>
@@ -239,9 +287,11 @@ export default function GoalsPage() {
               goals={goals} 
               enablers={enablers}
               categories={categories}
+              hiddenColumns={hiddenColumns}
               onUpdateProgress={handleUpdateProgress}
               onEditGoal={handleEditGoal}
               onDeleteGoal={handleDeletePrompt}
+              onColumnsChanged={() => fetchData(true)}
               isPrivileged={isPrivileged}
             />
         </div>
@@ -315,4 +365,3 @@ function SummaryCard({ title, value, icon: Icon, color }: { title: string, value
         </Card>
     );
 }
-

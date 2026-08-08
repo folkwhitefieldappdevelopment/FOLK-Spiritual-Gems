@@ -12,6 +12,7 @@ import {
   where,
   serverTimestamp,
   orderBy,
+  writeBatch
 } from 'firebase/firestore';
 import type { Goal, AppUser, TeamGoalsSummary } from '@/lib/types';
 import { logAudit } from '@/services/audit-service';
@@ -23,7 +24,7 @@ import { groupEnablersByTeam } from './team-service';
  * Centralized goal aggregation logic for Roster displays.
  * Identifies unique goal columns, groups by team, and calculates all subtotals.
  */
-export function getTeamGoalsSummary(goals: Goal[], enablers: AppUser[], categories: string[]): {
+export function getTeamGoalsSummary(goals: Goal[], enablers: AppUser[], categories: string[], hiddenColumns: string[] = []): {
   columns: string[];
   teams: TeamGoalsSummary[];
   grandTotals: Record<string, { achieved: number; target: number }>;
@@ -32,7 +33,7 @@ export function getTeamGoalsSummary(goals: Goal[], enablers: AppUser[], categori
   const columns: string[] = [];
   categories.forEach(cat => {
     const titlesInRange = Array.from(new Set(
-      goals.filter(g => g.category === cat).map(g => g.title)
+      goals.filter(g => g.category === cat && !hiddenColumns.includes(g.title)).map(g => g.title)
     )).sort();
     columns.push(...titlesInRange);
   });
@@ -222,4 +223,33 @@ export async function deleteGoal(goalId: string, user: AppUser): Promise<void> {
     errorEmitter.emit('permission-error', permissionError);
     throw err;
   }
+}
+
+/**
+ * Deletes every Goal record with a specific title.
+ */
+export async function deleteGoalColumn(title: string, user: AppUser): Promise<number> {
+    await persistenceReady;
+    const goalsRef = collection(db!, 'goals');
+    const q = query(goalsRef, where('title', '==', title));
+    const snap = await getDocs(q);
+    const count = snap.size;
+    
+    if (count === 0) return 0;
+
+    const batch = writeBatch(db!);
+    snap.docs.forEach(d => batch.delete(d.ref));
+    
+    try {
+        await batch.commit();
+        await logAudit('Delete Goal Column', `Permanently removed column "${title}" and ${count} matching records.`, user);
+        return count;
+    } catch (err: any) {
+        const permissionError = new FirestorePermissionError({
+            path: 'goals',
+            operation: 'delete',
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
+        throw err;
+    }
 }

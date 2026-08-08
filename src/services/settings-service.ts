@@ -66,6 +66,7 @@ export const ensureSettingsDoc = async () => {
                 eventNames: [],
                 goalTitles: [],
                 goalLabels: [],
+                hiddenGoalColumns: [],
             };
             
             await setDoc(settingsDocRef, defaults);
@@ -696,7 +697,7 @@ export const updateWhatsappReportTemplate = async (template: string, userInfo?: 
 
 // --- Autocomplete Helpers ---
 
-type SettingsListKey = 'eventNames' | 'goalTitles' | 'goalLabels' | 'goalCategories';
+type SettingsListKey = 'eventNames' | 'goalTitles' | 'goalLabels' | 'goalCategories' | 'hiddenGoalColumns';
 
 const getGenericList = async (key: SettingsListKey): Promise<string[]> => {
     const settings = await ensureSettingsDoc();
@@ -723,3 +724,25 @@ export const addGoalTitle = (title: string, u?: AppUser) => addGenericItem('goal
 
 export const getGoalLabels = () => getGenericList('goalLabels');
 export const addGoalLabel = (label: string, u?: AppUser) => addGenericItem('goalLabels', label, u);
+
+export const getHiddenGoalColumns = () => getGenericList('hiddenGoalColumns');
+
+export const hideGoalColumn = async (title: string, userInfo?: AppUser) => {
+    const ref = doc(db!, 'settings', 'options');
+    const settings = await ensureSettingsDoc();
+    const current = settings?.hiddenGoalColumns || [];
+    if (!current.includes(title)) {
+        const updated = [...current, title];
+        await updateDoc(ref, { hiddenGoalColumns: updated });
+        if (userInfo) logAudit('Hide Goal Column', `Hid column: ${title}`, userInfo);
+    }
+};
+
+export const unhideGoalColumn = async (title: string, userInfo?: AppUser) => {
+    const ref = doc(db!, 'settings', 'options');
+    const settings = await ensureSettingsDoc();
+    const current = settings?.hiddenGoalColumns || [];
+    const updated = current.filter((t: string) => t !== title);
+    await updateDoc(ref, { hiddenGoalColumns: updated });
+    if (userInfo) logAudit('Unhide Goal Column', `Restored column: ${title}`, userInfo);
+};

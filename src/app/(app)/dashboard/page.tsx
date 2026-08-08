@@ -43,7 +43,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { getFolkGuides, getAssignableUsersForAssignments } from '@/services/user-service';
 import { getFollowUpItemsForCurrentUser, getFollowUpSummaryForGuide } from '@/services/follow-up-service';
 import { getGoals, getTeamGoalsSummary } from '@/services/goals-service';
-import { getGoalCategories } from '@/services/settings-service';
+import { getGoalCategories, getHiddenGoalColumns } from '@/services/settings-service';
 import { groupEnablersByTeam } from '@/services/team-service';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -79,6 +79,7 @@ export default function DashboardPage() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [enablers, setEnablers] = useState<AppUser[]>([]);
   const [goalCategories, setGoalCategories] = useState<string[]>([]);
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>([]);
   
   const { data, syncStatus, isLoading, isRefetching } = useDashboardStats(dateRange, selectedFolkGuideId);
 
@@ -92,11 +93,13 @@ export default function DashboardPage() {
         Promise.all([
             getGoals(appUser),
             getAssignableUsersForAssignments(appUser),
-            getGoalCategories()
-        ]).then(([g, e, c]) => {
+            getGoalCategories(),
+            getHiddenGoalColumns()
+        ]).then(([g, e, c, h]) => {
             setGoals(g);
             setEnablers(e);
             setGoalCategories(c);
+            setHiddenColumns(h);
         });
     }
   }, [appUser]);
@@ -141,8 +144,8 @@ export default function DashboardPage() {
   }, [leaderboard, enablers]);
 
   const goalsSummary = useMemo(() => {
-      return getTeamGoalsSummary(goals, enablers, goalCategories);
-  }, [goals, enablers, goalCategories]);
+      return getTeamGoalsSummary(goals, enablers, goalCategories, hiddenColumns);
+  }, [goals, enablers, goalCategories, hiddenColumns]);
 
   const grandTotals = useMemo(() => {
     return mergedBreakdown.reduce((acc, e) => ({
@@ -209,18 +212,18 @@ export default function DashboardPage() {
                 </div>
             }
         >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
                 {(appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide')) && (
-                    <Button onClick={handlePrintAll} className="h-9 px-4 font-black uppercase text-[10px] tracking-widest rounded-xl bg-orange-500 text-black hover:bg-orange-600 shadow-lg shadow-orange-500/20">
-                        <Printer className="h-3.5 w-3.5 mr-2" />
-                        Print Full Report
+                    <Button onClick={handlePrintAll} className="h-9 sm:px-4 px-2.5 font-black uppercase text-[10px] tracking-widest rounded-xl bg-orange-500 text-black hover:bg-orange-600 shadow-lg shadow-orange-500/20">
+                        <Printer className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline ml-2">Print Full Report</span>
                     </Button>
                 )}
                 {isAdmin && (
                     <Select value={selectedFolkGuideId} onValueChange={setSelectedFolkGuideId}>
-                        <SelectTrigger className="w-[180px] h-9 rounded-xl border-border bg-muted/50 text-foreground font-black text-[10px] uppercase">
-                            <UsersRound className="h-3.5 w-3.5 mr-2" />
-                            <SelectValue placeholder="All Guides" />
+                        <SelectTrigger className="w-10 sm:w-[180px] h-9 rounded-xl border-border bg-muted/50 text-foreground font-black text-[10px] uppercase px-0 sm:px-3 flex justify-center sm:justify-between">
+                            <UsersRound className="h-3.5 w-3.5 shrink-0" />
+                            <span className="hidden sm:inline"><SelectValue placeholder="All Guides" /></span>
                         </SelectTrigger>
                         <SelectContent className="bg-popover border-border text-foreground">
                             <SelectItem value="all">All Teams</SelectItem>
@@ -233,20 +236,20 @@ export default function DashboardPage() {
                 
                 <Popover>
                     <PopoverTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-9 rounded-xl border-border text-foreground bg-muted/50 font-black px-4 gap-2">
+                        <Button variant="outline" size="sm" className="h-9 rounded-xl border-border text-foreground bg-muted/50 font-black px-2.5 sm:px-4 gap-2">
                             {isRefetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CalendarIcon className="h-3.5 w-3.5" />}
                             {isRefetching ? (
-                                <span className="text-[10px] uppercase">Updating...</span>
+                                <span className="hidden sm:inline text-[10px] uppercase">Updating...</span>
                             ) : dateRange?.from ? (
-                                dateRange.to && !isSameDay(dateRange.from, dateRange.to) ? (
-                                    <span className="text-[10px] uppercase">
-                                        {format(dateRange.from, "MMM dd")} - {format(dateRange.to, "MMM dd")}
-                                    </span>
-                                ) : (
-                                    <span className="text-[10px] uppercase">{format(dateRange.from, "MMM dd, yyyy")}</span>
-                                )
+                                <span className="hidden sm:inline text-[10px] uppercase">
+                                    {dateRange.to && !isSameDay(dateRange.from, dateRange.to) ? (
+                                        `${format(dateRange.from, "MMM dd")} - ${format(dateRange.to, "MMM dd")}`
+                                    ) : (
+                                        format(dateRange.from, "MMM dd, yyyy")
+                                    )}
+                                </span>
                             ) : (
-                                <span className="text-[10px] uppercase">Pick date</span>
+                                <span className="hidden sm:inline text-[10px] uppercase">Pick date</span>
                             )}
                         </Button>
                     </PopoverTrigger>
@@ -453,7 +456,7 @@ export default function DashboardPage() {
                                                             onClick={() => navigateToContacts({ scope: 'all', enablerId: entry.enablerId, enablerName: entry.enablerName, stage: 'SG-S' }, false)}
                                                         >
                                                             <Badge variant="outline" className="font-black border-yellow-500/20 text-yellow-600 bg-yellow-500/5 h-7 px-3">
-                                                                {entry.sgS}
+                                                                {entry.sgW}
                                                             </Badge>
                                                         </div>
                                                     </TableCell>
@@ -527,6 +530,7 @@ export default function DashboardPage() {
                     goals={goals} 
                     enablers={enablers} 
                     categories={goalCategories} 
+                    hiddenColumns={hiddenColumns}
                 />
             )}
 
