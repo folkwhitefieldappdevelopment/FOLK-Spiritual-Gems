@@ -3,7 +3,23 @@
 import type { ReactNode } from 'react';
 import * as React from 'react';
 import { Button } from './ui/button';
-import { Menu, Users, Settings, Gem, UserCog, History, UsersRound, Activity, WifiOff, Target } from 'lucide-react';
+import { 
+  Menu, 
+  Users, 
+  Settings, 
+  Gem, 
+  UserCog, 
+  History, 
+  UsersRound, 
+  Activity, 
+  WifiOff, 
+  Target, 
+  AlertCircle, 
+  LayoutGrid, 
+  Clock, 
+  PhoneCall, 
+  Users2 
+} from 'lucide-react';
 import Image from 'next/image';
 import {
   Sheet,
@@ -34,9 +50,14 @@ type NavItem = {
 const allNavItems: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: Gem },
   { href: '/contacts', label: 'Contacts', icon: Users },
+  { href: '/calling-assistant', label: 'Assistant', icon: PhoneCall },
+  { href: '/groups', label: 'Groups', icon: Users2 },
   { href: '/goals', label: 'Goals', icon: Target },
-  { href: '/live-activity', label: 'Live Activity', icon: Activity },
-  { href: '/assignments', label: 'Assignments', icon: UsersRound, roles: ['Admin', 'Folk Guide'] },
+  { href: '/follow-up', label: 'Follow-Up', icon: AlertCircle },
+  { href: '/teams', label: 'Teams', icon: LayoutGrid, roles: ['Admin', 'Folk Guide'] },
+  { href: '/pending-logs', label: 'Pending', icon: Clock },
+  { href: '/live-activity', label: 'Activity', icon: Activity },
+  { href: '/assignments', label: 'Assign', icon: UsersRound, roles: ['Admin', 'Folk Guide'] },
   {
     href: '/user-management',
     label: 'Users',
