@@ -23,7 +23,8 @@ import {
   Layers,
   MessageCircle,
   Pencil,
-  Plus
+  Plus,
+  Target
 } from 'lucide-react';
 import { useAppToast } from '@/contexts/toast-context';
 import { useAuth } from '@/contexts/auth-context';
@@ -75,6 +76,7 @@ import {
   updateWhatsappReportTemplate,
 } from '@/services/settings-service';
 import { backfillMissingFields, backfillEnablerId } from '@/services/people-service';
+import { backfillGoalEnablerIds } from '@/services/goals-service';
 import { 
   getNotificationPermission, 
   requestNotificationPermission, 
@@ -155,6 +157,7 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isBackfilling, setIsBackfilling] = React.useState(false);
   const [isBackfillingIds, setIsBackfillingIds] = React.useState(false);
+  const [isBackfillingGoals, setIsBackfillingGoals] = React.useState(false);
   const isAdmin = appUser?.role.includes('Admin');
   const isPrivileged = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
 
@@ -352,6 +355,22 @@ export default function SettingsPage() {
     } finally {
       setIsBackfillingIds(false);
     }
+  };
+
+  const handleBackfillGoalIds = async () => {
+      if (!appUser) return;
+      setIsBackfillingGoals(true);
+      try {
+          const { totalScanned, totalFixed } = await backfillGoalEnablerIds(appUser);
+          toast({ 
+              title: 'Goal IDs Synced', 
+              description: `Corrected ${totalFixed} goal records across the mission.` 
+          });
+      } catch (e) {
+          toast({ variant: 'destructive', title: 'Goal Migration Failed' });
+      } finally {
+          setIsBackfillingGoals(false);
+      }
   };
 
   const handleEnableNotifications = async () => {
@@ -557,7 +576,7 @@ export default function SettingsPage() {
                           <h4 className="text-sm font-black uppercase tracking-tight">Enabler ID Linkage</h4>
                        </div>
                        <p className="text-xs text-muted-foreground leading-relaxed">
-                          Maps legacy name-based assignments to modern system IDs across the whole mission.
+                          Maps legacy name-based contact assignments to modern system IDs across the mission.
                        </p>
                        <Button 
                           onClick={handleBackfillEnablerIds} 
@@ -566,7 +585,26 @@ export default function SettingsPage() {
                           className="w-full border-primary/20 text-primary hover:bg-primary/5 font-black uppercase text-[10px] tracking-widest"
                        >
                           {isBackfillingIds ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Database className="mr-2 h-4 w-4" />}
-                          Re-map IDs
+                          Re-map Contact IDs
+                       </Button>
+                    </div>
+
+                    <div className="p-4 rounded-xl border border-primary/10 bg-background space-y-3">
+                       <div className="flex items-center gap-2">
+                          <Target className="h-4 w-4 text-primary" />
+                          <h4 className="text-sm font-black uppercase tracking-tight">Goal ID Linkage</h4>
+                       </div>
+                       <p className="text-xs text-muted-foreground leading-relaxed">
+                          Fixes legacy goal records with missing enabler IDs. Required for enablers to see their personal targets.
+                       </p>
+                       <Button 
+                          onClick={handleBackfillGoalIds} 
+                          disabled={isBackfillingGoals}
+                          variant="outline"
+                          className="w-full border-primary/20 text-primary hover:bg-primary/5 font-black uppercase text-[10px] tracking-widest"
+                       >
+                          {isBackfillingGoals ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-3 w-3" />}
+                          Sync Goal IDs
                        </Button>
                     </div>
                   </div>

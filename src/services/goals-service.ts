@@ -12,13 +12,17 @@ import {
   where,
   serverTimestamp,
   orderBy,
-  writeBatch
+  writeBatch,
+  documentId,
+  startAfter,
+  limit
 } from 'firebase/firestore';
 import type { Goal, AppUser, TeamGoalsSummary } from '@/lib/types';
 import { logAudit } from '@/services/audit-service';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { groupEnablersByTeam } from './team-service';
+import { getUsers } from './user-service';
 
 /**
  * Centralized goal aggregation logic for Roster displays.
@@ -81,26 +85,43 @@ export function getTeamGoalsSummary(goals: Goal[], enablers: AppUser[], categori
 
 /**
  * Fetches goals based on user role and hierarchy.
+ * Optimized for Enablers to fetch by both ID and Name to catch legacy records.
  */
 export async function getGoals(user: AppUser): Promise<Goal[]> {
-  const goalsRef = collection(db, 'goals');
+  const goalsRef = collection(db!, 'goals');
   const userRoles = user.role || [];
   
-  let q;
-  if (userRoles.includes('Admin')) {
-    q = query(goalsRef, orderBy('createdAt', 'desc'));
-  } else if (userRoles.includes('Folk Guide')) {
-    q = query(goalsRef, where('folkGuideId', '==', user.id), orderBy('createdAt', 'desc'));
-  } else {
-    q = query(goalsRef, where('enablerId', '==', user.id), orderBy('createdAt', 'desc'));
-  }
-
   try {
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({
-      id: d.id,
-      ...d.data(),
-    } as Goal));
+    if (userRoles.includes('Admin')) {
+      const q = query(goalsRef, orderBy('createdAt', 'desc'));
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ id: d.id, ...d.data() } as Goal));
+    } 
+    
+    if (userRoles.includes('Folk Guide')) {
+      const q = query(goalsRef, where('folkGuideId', '==', user.id), orderBy('createdAt', 'desc'));
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ id: d.id, ...d.data() } as Goal));
+    } 
+    
+    // Enabler Branch: merge by ID and Name to ensure visibility of legacy records
+    const [byId, byName] = await Promise.all([
+      getDocs(query(goalsRef, where('enablerId', '==', user.id), orderBy('createdAt', 'desc'))),
+      getDocs(query(goalsRef, where('enablerName', '==', user.name), orderBy('createdAt', 'desc'))),
+    ]);
+    
+    const merged = new Map<string, Goal>();
+    [...byId.docs, ...byName.docs].forEach(d => {
+        merged.set(d.id, { id: d.id, ...d.data() } as Goal);
+    });
+
+    // Re-sort because the merged arrays lose ordering
+    return Array.from(merged.values()).sort((a, b) => {
+        const da = safeDate(a.createdAt)?.getTime() || 0;
+        const db = safeDate(b.createdAt)?.getTime() || 0;
+        return db - da;
+    });
+
   } catch (err: any) {
     const permissionError = new FirestorePermissionError({
       path: goalsRef.path,
@@ -119,7 +140,7 @@ export async function createGoal(
   user: AppUser
 ): Promise<string> {
   await persistenceReady;
-  const goalRef = doc(collection(db, 'goals'));
+  const goalRef = doc(collection(db!, 'goals'));
   
   const finalData = {
     ...data,
@@ -154,7 +175,7 @@ export async function updateGoalProgress(
   user: AppUser
 ): Promise<void> {
   await persistenceReady;
-  const goalRef = doc(db, 'goals', goalId);
+  const goalRef = doc(db!, 'goals', goalId);
   
   const updates = {
     ...progress,
@@ -184,7 +205,7 @@ export async function updateGoal(
   user: AppUser
 ): Promise<void> {
   await persistenceReady;
-  const goalRef = doc(db, 'goals', goalId);
+  const goalRef = doc(db!, 'goals', goalId);
   
   const updates = {
     ...data,
@@ -210,7 +231,7 @@ export async function updateGoal(
  */
 export async function deleteGoal(goalId: string, user: AppUser): Promise<void> {
   await persistenceReady;
-  const goalRef = doc(db, 'goals', goalId);
+  const goalRef = doc(db!, 'goals', goalId);
   
   try {
     await deleteDoc(goalRef);
@@ -252,4 +273,59 @@ export async function deleteGoalColumn(title: string, user: AppUser): Promise<nu
         errorEmitter.emit('permission-error', permissionError);
         throw err;
     }
+}
+
+/**
+ * Paginates through entire goals collection to link legacy enablerName strings to modern system IDs.
+ */
+export const backfillGoalEnablerIds = async (userInfo: AppUser) => {
+  await persistenceReady;
+  const allUsers = await getUsers(userInfo);
+  const goalsRef = collection(db!, 'goals');
+  
+  const userMap = new Map<string, string>();
+  allUsers.forEach(u => userMap.set(u.name.toLowerCase().trim(), u.id));
+
+  let lastDoc: any = null;
+  let totalScanned = 0;
+  let totalFixed = 0;
+
+  while (true) {
+    let q = query(goalsRef, orderBy(documentId()), limit(500));
+    if (lastDoc) q = query(q, startAfter(lastDoc));
+    const snap = await getDocs(q);
+    if (snap.empty) break;
+
+    const batch = writeBatch(db!);
+    let batchHasWrites = false;
+
+    snap.docs.forEach(d => {
+      const data = d.data();
+      if (data.enablerName && !data.enablerId) {
+        const name = data.enablerName.toLowerCase().trim();
+        const id = userMap.get(name);
+        if (id) {
+          batch.update(d.ref, { enablerId: id });
+          batchHasWrites = true;
+          totalFixed++;
+        }
+      }
+    });
+
+    if (batchHasWrites) await batch.commit();
+
+    totalScanned += snap.docs.length;
+    lastDoc = snap.docs[snap.docs.length - 1];
+  }
+
+  await logAudit('Data Maintenance', `Linked Enabler IDs for ${totalFixed} goal records. Scanned ${totalScanned}.`, { id: userInfo.id, name: userInfo.name, role: userInfo.role });
+  return { totalScanned, totalFixed };
+};
+
+function safeDate(value: any): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  if (value.toDate && typeof value.toDate === 'function') return value.toDate();
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? null : d;
 }
