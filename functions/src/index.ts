@@ -14,7 +14,9 @@ export { cleanupExpiredAssignments } from './co-enabler-expiry';
  * Callable function to provision a new user (Auth + Firestore).
  * Ensures UID consistency and email uniqueness.
  */
-export const createAppUser = onCall(async (request) => {
+export const createAppUser = onCall({
+  invoker: 'public'
+}, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be logged in.");
   }
@@ -114,7 +116,9 @@ export const createAppUser = onCall(async (request) => {
 /**
  * Callable function to delete a user from both Auth and Firestore.
  */
-export const deleteAppUser = onCall(async (request) => {
+export const deleteAppUser = onCall({
+  invoker: 'public'
+}, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be logged in.");
   }
