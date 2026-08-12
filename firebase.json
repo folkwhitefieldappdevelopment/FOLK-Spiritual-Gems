@@ -1,22 +1,8 @@
 {
   "firestore": {
-    "rules": "firestore.rules"
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
   },
-  "functions": [
-    {
-      "source": "functions",
-      "codebase": "default",
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log"
-      ],
-      "predeploy": [
-        "npm --prefix \"$RESOURCE_DIR\" run build"
-      ]
-    }
-  ],
   "hosting": {
     "public": "out",
     "ignore": [
@@ -24,26 +10,47 @@
       "**/.*",
       "**/node_modules/**"
     ],
-    "trailingSlash": true,
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ],
     "headers": [
       {
         "source": "/_next/static/**",
         "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=31536000, immutable"
-          }
+          { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
         ]
       }
+    ],
+    "rewrites": [
+      {
+        "source": "/check-in/:id",
+        "destination": "/check-in/[id]/index.html"
+      },
+      {
+        "source": "/check-in/:id/:eventId",
+        "destination": "/check-in/[id]/[eventId]/index.html"
+      },
+      {
+        "source": "/register/:id",
+        "destination": "/register/[id]/index.html"
+      },
+      {
+        "source": "/contacts/:id",
+        "destination": "/contacts/[id]/index.html"
+      },
+      {
+        "source": "/groups/:id",
+        "destination": "/groups/[id]/index.html"
+      },
+      {
+        "source": "/live-activity/:id",
+        "destination": "/live-activity/[id]/index.html"
+      },
+      {
+        "source": "/co-enabler/:id",
+        "destination": "/co-enabler/[id]/index.html"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
     ]
-  },
-  "storage": {
-    "rules": "storage.rules"
   }
 }

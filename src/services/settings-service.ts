@@ -67,6 +67,7 @@ export const ensureSettingsDoc = async () => {
                 goalTitles: [],
                 goalLabels: [],
                 hiddenGoalColumns: [],
+                goalColumnOrder: [],
             };
             
             await setDoc(settingsDocRef, defaults);
@@ -697,7 +698,7 @@ export const updateWhatsappReportTemplate = async (template: string, userInfo?: 
 
 // --- Autocomplete Helpers ---
 
-type SettingsListKey = 'eventNames' | 'goalTitles' | 'goalLabels' | 'goalCategories' | 'hiddenGoalColumns';
+type SettingsListKey = 'eventNames' | 'goalTitles' | 'goalLabels' | 'goalCategories' | 'hiddenGoalColumns' | 'goalColumnOrder';
 
 const getGenericList = async (key: SettingsListKey): Promise<string[]> => {
     const settings = await ensureSettingsDoc();
@@ -745,4 +746,12 @@ export const unhideGoalColumn = async (title: string, userInfo?: AppUser) => {
     const updated = current.filter((t: string) => t !== title);
     await updateDoc(ref, { hiddenGoalColumns: updated });
     if (userInfo) logAudit('Unhide Goal Column', `Restored column: ${title}`, userInfo);
+};
+
+export const getGoalColumnOrder = () => getGenericList('goalColumnOrder');
+
+export const saveGoalColumnOrder = async (order: string[], userInfo?: AppUser) => {
+    const ref = doc(db!, 'settings', 'options');
+    await updateDoc(ref, { goalColumnOrder: order });
+    if (userInfo) logAudit('Reorder Goal Columns', `New order saved.`, userInfo);
 };

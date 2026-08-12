@@ -19,7 +19,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useAppToast } from '@/contexts/toast-context';
 import { getGoals, deleteGoal, updateGoalProgress, createGoal, updateGoal, deleteGoalColumn } from '@/services/goals-service';
 import { getAssignableUsersForAssignments } from '@/services/user-service';
-import { getGoalCategories, getHiddenGoalColumns, unhideGoalColumn } from '@/services/settings-service';
+import { getGoalCategories, getHiddenGoalColumns, unhideGoalColumn, getGoalColumnOrder } from '@/services/settings-service';
 import type { Goal, GoalStatus, AppUser } from '@/lib/types';
 import { computeGoalStatus } from '@/lib/data';
 
@@ -60,6 +60,7 @@ export default function GoalsPage() {
   const [enablers, setEnablers] = React.useState<AppUser[]>([]);
   const [categories, setCategories] = React.useState<string[]>([]);
   const [hiddenColumns, setHiddenColumns] = React.useState<string[]>([]);
+  const [columnOrder, setColumnOrder] = React.useState<string[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
 
@@ -81,16 +82,18 @@ export default function GoalsPage() {
     else setIsLoading(true);
     
     try {
-      const [goalsData, enablersData, categoriesData, hiddenData] = await Promise.all([
+      const [goalsData, enablersData, categoriesData, hiddenData, orderData] = await Promise.all([
         getGoals(appUser),
         getAssignableUsersForAssignments(appUser),
         getGoalCategories(),
-        getHiddenGoalColumns()
+        getHiddenGoalColumns(),
+        getGoalColumnOrder()
       ]);
       setGoals(goalsData);
       setEnablers(enablersData);
       setCategories(categoriesData);
       setHiddenColumns(hiddenData);
+      setColumnOrder(orderData);
     } catch (e) {
       console.error(e);
       toast({ variant: 'destructive', title: "Sync Failed" });
@@ -288,6 +291,7 @@ export default function GoalsPage() {
               enablers={enablers}
               categories={categories}
               hiddenColumns={hiddenColumns}
+              columnOrder={columnOrder}
               onUpdateProgress={handleUpdateProgress}
               onEditGoal={handleEditGoal}
               onDeleteGoal={handleDeletePrompt}

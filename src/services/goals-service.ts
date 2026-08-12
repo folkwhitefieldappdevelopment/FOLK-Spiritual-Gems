@@ -5,6 +5,7 @@ import {
   collection,
   getDocs,
   doc,
+  getDoc,
   setDoc,
   updateDoc,
   deleteDoc,
@@ -28,24 +29,41 @@ import { getUsers } from './user-service';
  * Centralized goal aggregation logic for Roster displays.
  * Identifies unique goal columns, groups by team, and calculates all subtotals.
  */
-export function getTeamGoalsSummary(goals: Goal[], enablers: AppUser[], categories: string[], hiddenColumns: string[] = []): {
+export function getTeamGoalsSummary(
+  goals: Goal[], 
+  enablers: AppUser[], 
+  categories: string[], 
+  hiddenColumns: string[] = [],
+  columnOrder: string[] = []
+): {
   columns: string[];
   teams: TeamGoalsSummary[];
   grandTotals: Record<string, { achieved: number; target: number }>;
 } {
-  // 1. Determine stable column order (grouped by category)
-  const columns: string[] = [];
-  categories.forEach(cat => {
-    const titlesInRange = Array.from(new Set(
-      goals.filter(g => g.category === cat && !hiddenColumns.includes(g.title)).map(g => g.title)
-    )).sort();
-    columns.push(...titlesInRange);
-  });
+  // 1. Determine all valid titles not hidden
+  const allTitles = Array.from(new Set(
+    goals.filter(g => !hiddenColumns.includes(g.title)).map(g => g.title)
+  ));
 
-  // 2. Group enablers by team using shared helper
+  // 2. Sort columns based on saved order or defaults
+  let columns: string[] = [];
+  if (columnOrder && columnOrder.length > 0) {
+    const ordered = columnOrder.filter(t => allTitles.includes(t));
+    const remaining = allTitles.filter(t => !columnOrder.includes(t)).sort();
+    columns = [...ordered, ...remaining];
+  } else {
+    categories.forEach(cat => {
+      const titlesInRange = Array.from(new Set(
+        goals.filter(g => g.category === cat && !hiddenColumns.includes(g.title)).map(g => g.title)
+      )).sort();
+      columns.push(...titlesInRange);
+    });
+  }
+
+  // 3. Group enablers by team using shared helper
   const teamGroups = groupEnablersByTeam(enablers, enablers, e => e.id);
 
-  // 3. Process each team and its members
+  // 4. Process each team and its members
   const grandTotals: Record<string, { achieved: number; target: number }> = {};
   columns.forEach(col => grandTotals[col] = { achieved: 0, target: 0 });
 

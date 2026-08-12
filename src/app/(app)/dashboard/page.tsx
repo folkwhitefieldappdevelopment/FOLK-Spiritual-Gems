@@ -43,7 +43,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { getFolkGuides, getAssignableUsersForAssignments } from '@/services/user-service';
 import { getFollowUpItemsForCurrentUser, getFollowUpSummaryForGuide } from '@/services/follow-up-service';
 import { getGoals, getTeamGoalsSummary } from '@/services/goals-service';
-import { getGoalCategories, getHiddenGoalColumns } from '@/services/settings-service';
+import { getGoalCategories, getHiddenGoalColumns, getGoalColumnOrder } from '@/services/settings-service';
 import { groupEnablersByTeam } from '@/services/team-service';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -80,6 +80,7 @@ export default function DashboardPage() {
   const [enablers, setEnablers] = useState<AppUser[]>([]);
   const [goalCategories, setGoalCategories] = useState<string[]>([]);
   const [hiddenColumns, setHiddenColumns] = useState<string[]>([]);
+  const [columnOrder, setColumnOrder] = useState<string[]>([]);
   
   const { data, syncStatus, isLoading, isRefetching } = useDashboardStats(dateRange, selectedFolkGuideId);
 
@@ -94,12 +95,14 @@ export default function DashboardPage() {
             getGoals(appUser),
             getAssignableUsersForAssignments(appUser),
             getGoalCategories(),
-            getHiddenGoalColumns()
-        ]).then(([g, e, c, h]) => {
+            getHiddenGoalColumns(),
+            getGoalColumnOrder()
+        ]).then(([g, e, c, h, o]) => {
             setGoals(g);
             setEnablers(e);
             setGoalCategories(c);
             setHiddenColumns(h);
+            setColumnOrder(o);
         });
     }
   }, [appUser]);
@@ -144,8 +147,8 @@ export default function DashboardPage() {
   }, [leaderboard, enablers]);
 
   const goalsSummary = useMemo(() => {
-      return getTeamGoalsSummary(goals, enablers, goalCategories, hiddenColumns);
-  }, [goals, enablers, goalCategories, hiddenColumns]);
+      return getTeamGoalsSummary(goals, enablers, goalCategories, hiddenColumns, columnOrder);
+  }, [goals, enablers, goalCategories, hiddenColumns, columnOrder]);
 
   const grandTotals = useMemo(() => {
     return mergedBreakdown.reduce((acc, e) => ({
