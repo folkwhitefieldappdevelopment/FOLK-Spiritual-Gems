@@ -2,7 +2,10 @@ import * as admin from 'firebase-admin';
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { setGlobalOptions } from "firebase-functions/v2";
 
-admin.initializeApp();
+// Initialize Admin SDK safely
+if (admin.apps.length === 0) {
+  admin.initializeApp();
+}
 
 // Set global options to ensure functions deploy to the correct region
 setGlobalOptions({ region: "asia-south1" });
@@ -13,8 +16,10 @@ export { cleanupExpiredAssignments } from './co-enabler-expiry';
 /**
  * Callable function to provision a new user (Auth + Firestore).
  * Ensures UID consistency and email uniqueness.
+ * 'invoker: public' ensures the Cloud Run IAM policy allows unauthenticated preflight (CORS) requests.
  */
 export const createAppUser = onCall({
+  region: "asia-south1",
   invoker: 'public'
 }, async (request) => {
   if (!request.auth) {
@@ -30,7 +35,8 @@ export const createAppUser = onCall({
     throw new HttpsError("permission-denied", "Only administrators can provision new users.");
   }
 
-  const { name, email, phone, password, role, fgCode, guideId } = request.data;
+  const data = request.data || {};
+  const { name, email, phone, password, role, fgCode, guideId } = data;
 
   if (!email || !name || !role || !password) {
     throw new HttpsError("invalid-argument", "Missing required fields: email, name, role, or password.");
@@ -117,6 +123,7 @@ export const createAppUser = onCall({
  * Callable function to delete a user from both Auth and Firestore.
  */
 export const deleteAppUser = onCall({
+  region: "asia-south1",
   invoker: 'public'
 }, async (request) => {
   if (!request.auth) {
@@ -132,7 +139,8 @@ export const deleteAppUser = onCall({
     throw new HttpsError("permission-denied", "Only administrators can terminate accounts.");
   }
 
-  const { targetUid } = request.data;
+  const data = request.data || {};
+  const { targetUid } = data;
   if (!targetUid) {
     throw new HttpsError("invalid-argument", "Target user ID is required.");
   }
