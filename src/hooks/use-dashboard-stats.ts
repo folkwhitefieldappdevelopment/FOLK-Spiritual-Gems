@@ -93,7 +93,7 @@ export function useDashboardStats(dateRange?: DateRange, folkGuideId?: string) {
 
                 return {
                     stats: {
-                        myContactsCount: 0, // Will be computed by recomputeStats shortly
+                        myContactsCount: 0, 
                         totalContactsCount: counts.totalContactsCount,
                         myNewInRange: 0,
                         allNewInRange: 0,
@@ -105,6 +105,7 @@ export function useDashboardStats(dateRange?: DateRange, folkGuideId?: string) {
                     },
                     callingReportAll: emptyReport,
                     callingReportMy: emptyReport,
+                    teamCallingReports: {}, // Added to prevent undefined access errors in UI
                     leaderboard: [],
                     isPrivileged: appUser.role.includes('Admin') || appUser.role.includes('Folk Guide'),
                 };

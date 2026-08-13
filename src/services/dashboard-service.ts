@@ -227,11 +227,21 @@ export async function getDashboardStats(
   const byYear: Record<string, number> = {};
   const byChanting: Record<string, number> = { '0-1 R': 0, '2-3 R': 0, '4-7 R': 0, '8-15 R': 0, '16+ R': 0 };
   
+  let nonStringFolkIdCount = 0;
   activePeople.forEach(p => {
       const e = p.enablerInTouchWith || 'Unassigned';
       byEnabler[e] = (byEnabler[e] || 0) + 1;
-      const yearMatch = p.folkId?.match(/\d{2}$/);
-      if (yearMatch) byYear[`20${yearMatch[0]}`] = (byYear[`20${yearMatch[0]}`] || 0) + 1;
+      
+      // Defensive check for folkId type to prevent runtime match() errors
+      if (p.folkId !== undefined && p.folkId !== null) {
+          if (typeof p.folkId === 'string') {
+            const yearMatch = p.folkId.match(/\d{2}$/);
+            if (yearMatch) byYear[`20${yearMatch[0]}`] = (byYear[`20${yearMatch[0]}`] || 0) + 1;
+          } else {
+            nonStringFolkIdCount++;
+          }
+      }
+
       const r = p.chantingStatus || 0;
       if (r >= 16) byChanting['16+ R']++; 
       else if (r >= 8) byChanting['8-15 R']++; 
@@ -239,6 +249,10 @@ export async function getDashboardStats(
       else if (r >= 2) byChanting['2-3 R']++; 
       else byChanting['0-1 R']++;
   });
+
+  if (nonStringFolkIdCount > 0) {
+      console.warn(`[Dashboard] Found ${nonStringFolkIdCount} records with non-string folkId. Skipping year breakdown for these records.`);
+  }
 
   let enablerRoster = [...enablers];
   if (appUser.role.includes('Folk Enabler') && !enablerRoster.some(e => e.id === appUser.id)) {

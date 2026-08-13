@@ -208,7 +208,7 @@ export function PrintableReport({ data, goalsSummary, enablers, dateLabel }: Pri
           </thead>
           <tbody>
             {goalsSummary.teams.map(team => {
-                const teamReport = teamCallingReports[team.teamId || "unassigned"];
+                const teamReport = teamCallingReports?.[team.teamId || "unassigned"];
                 if (!teamReport) return null;
 
                 return (
