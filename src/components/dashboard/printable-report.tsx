@@ -21,6 +21,7 @@ type PrintableReportProps = {
 };
 
 export function PrintableReport({ data, goalsSummary, enablers, dateLabel }: PrintableReportProps) {
+  if (!data) return null;
   const { stats, teamCallingReports, callingReportAll } = data;
 
   const mergedBreakdown = stats.enablerBreakdown.map(stageEntry => {
