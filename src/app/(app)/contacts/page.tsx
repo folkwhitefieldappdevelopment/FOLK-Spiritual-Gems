@@ -154,7 +154,7 @@ const ContactsPageComponent = () => {
     if (!appUser?.id) return;
     
     const thisFetchId = ++fetchIdRef.current;
-    if (!lastId && !silent) { setIsLoading(true); setPeople([]); } 
+    if (!lastId && !silent) { setIsLoading(true); } 
     else if (lastId) { setIsLoadingMore(true); }
     
     try {
