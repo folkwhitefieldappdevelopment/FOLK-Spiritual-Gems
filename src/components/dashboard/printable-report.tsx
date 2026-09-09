@@ -21,11 +21,15 @@ type PrintableReportProps = {
 };
 
 export function PrintableReport({ data, goalsSummary, enablers, dateLabel }: PrintableReportProps) {
-  if (!data) return null;
+  if (!data || !goalsSummary) return null;
   const { stats, teamCallingReports, callingReportAll } = data;
 
-  const mergedBreakdown = stats.enablerBreakdown.map(stageEntry => {
-    const chantingEntry = stats.chantingBreakdown.find(c => c.enablerId === stageEntry.enablerId);
+  // Defensive fallbacks for partial data states
+  const enablerBreakdown = stats?.enablerBreakdown || [];
+  const chantingBreakdown = stats?.chantingBreakdown || [];
+
+  const mergedBreakdown = enablerBreakdown.map(stageEntry => {
+    const chantingEntry = chantingBreakdown.find(c => c.enablerId === stageEntry.enablerId);
     return {
         ...stageEntry,
         rounds9to15: chantingEntry?.rounds9to15 || 0,
@@ -218,20 +222,20 @@ export function PrintableReport({ data, goalsSummary, enablers, dateLabel }: Pri
                         <td className={cellStyle}>{teamReport.totalCalls}</td>
                         <td className={cellStyle}>{teamReport.picked}</td>
                         <td className={cellStyle}>{teamReport.notPicked}</td>
-                        <td className={cellStyle}>{teamReport.subCategories['A1 - Coming'] || 0}</td>
-                        <td className={cellStyle}>{teamReport.subCategories['A4 - Tentative'] || 0}</td>
+                        <td className={cellStyle}>{teamReport.subCategories?.['A1 - Coming'] || 0}</td>
+                        <td className={cellStyle}>{teamReport.subCategories?.['A4 - Tentative'] || 0}</td>
                         <td className={cellStyle}>{formatDuration(teamReport.totalDuration)}</td>
                     </tr>
                 );
             })}
             <tr className={grandTotalStyle}>
               <td className={labelStyle} style={{ background: 'inherit', fontSize: 'inherit' }}>GRAND TOTAL</td>
-              <td className={cellStyle}>{callingReportAll.totalCalls}</td>
-              <td className={cellStyle}>{callingReportAll.picked}</td>
-              <td className={cellStyle}>{callingReportAll.notPicked}</td>
-              <td className={cellStyle}>{callingReportAll.subCategories['A1 - Coming'] || 0}</td>
-              <td className={cellStyle}>{callingReportAll.subCategories['A4 - Tentative'] || 0}</td>
-              <td className={cellStyle}>{formatDuration(callingReportAll.totalDuration)}</td>
+              <td className={cellStyle}>{callingReportAll?.totalCalls || 0}</td>
+              <td className={cellStyle}>{callingReportAll?.picked || 0}</td>
+              <td className={cellStyle}>{callingReportAll?.notPicked || 0}</td>
+              <td className={cellStyle}>{callingReportAll?.subCategories?.['A1 - Coming'] || 0}</td>
+              <td className={cellStyle}>{callingReportAll?.subCategories?.['A4 - Tentative'] || 0}</td>
+              <td className={cellStyle}>{formatDuration(callingReportAll?.totalDuration || 0)}</td>
             </tr>
           </tbody>
         </table>
