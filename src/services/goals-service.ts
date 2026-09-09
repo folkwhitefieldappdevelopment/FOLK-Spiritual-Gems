@@ -123,17 +123,25 @@ export async function getGoals(user: AppUser): Promise<Goal[]> {
     } 
     
     // Enabler Branch: merge by ID and Name to ensure visibility of legacy records
-    const [byId, byName] = await Promise.all([
+    // Refactored to allSettled to handle missing indexes gracefully without crashing the whole call
+    const [byIdResult, byNameResult] = await Promise.allSettled([
       getDocs(query(goalsRef, where('enablerId', '==', user.id), orderBy('createdAt', 'desc'))),
       getDocs(query(goalsRef, where('enablerName', '==', user.name), orderBy('createdAt', 'desc'))),
     ]);
     
     const merged = new Map<string, Goal>();
-    [...byId.docs, ...byName.docs].forEach(d => {
-        merged.set(d.id, { id: d.id, ...d.data() } as Goal);
-    });
+    if (byIdResult.status === 'fulfilled') {
+      byIdResult.value.docs.forEach(d => merged.set(d.id, { id: d.id, ...d.data() } as Goal));
+    } else {
+      console.error('[getGoals] enablerId query failed:', byIdResult.reason);
+    }
+    if (byNameResult.status === 'fulfilled') {
+      byNameResult.value.docs.forEach(d => merged.set(d.id, { id: d.id, ...d.data() } as Goal));
+    } else {
+      console.warn('[getGoals] enablerName fallback query failed (likely missing index):', byNameResult.reason);
+    }
 
-    // Re-sort because the merged arrays lose ordering
+    // Re-sort because the merged results lose ordering
     return Array.from(merged.values()).sort((a, b) => {
         const da = safeDate(a.createdAt)?.getTime() || 0;
         const db = safeDate(b.createdAt)?.getTime() || 0;
