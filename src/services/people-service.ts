@@ -37,7 +37,7 @@ import { getFolkGuides, getUsers, getAssignableUsersForAssignments } from '@/ser
 import { getEnablers } from './settings-service';
 import { updateContactCache } from './contact-cache-service';
 
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 50;
 const ADMIN_PAGE_SIZE = 5000;
 const MAX_ADMIN_RECORDS = 60000;
 const SCOPED_LIMIT = 5000;
