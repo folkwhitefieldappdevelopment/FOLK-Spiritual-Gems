@@ -51,6 +51,7 @@ let cachePromise: Promise<Person[]> | null = null;
 let currentSyncStatus: SyncStatus = 'initializing';
 let currentSyncWarning: string | null = null;
 let lastAdminSyncAt: number = 0;
+let nameMatchedCache: Person[] = [];
 
 export const getSyncStatus = () => currentSyncStatus;
 export const getSyncWarning = () => currentSyncWarning;
@@ -98,6 +99,7 @@ export const initMasterPeopleStream = (
           masterUnsubscribe = null;
       }
       cachePromise = null;
+      nameMatchedCache = [];
   }
 
   cachePromise = new Promise((resolve) => {
@@ -186,6 +188,39 @@ export const initMasterPeopleStream = (
           or(where('enablerId', '==', user.id), where('coEnablerId', '==', user.id)),
           limit(SCOPED_LIMIT)
         );
+
+        // FALLBACK: Name-based fetch for legacy records where enablerId is missing (Enablers only)
+        (async () => {
+          try {
+            const nameFallbackQuery = query(
+              peopleRef,
+              where('enablerInTouchWith', '>=', `${user.name}::`),
+              where('enablerInTouchWith', '<', `${user.name}::\uf8ff`),
+              limit(SCOPED_LIMIT)
+            );
+            const fallbackSnap = await getDocs(nameFallbackQuery);
+            nameMatchedCache = fallbackSnap.docs.map(d => processPersonDoc(d));
+            
+            // If the primary stream already emitted, merge manually to avoid waiting for next tick
+            if (masterPeopleCache) {
+              const currentMap = new Map(masterPeopleCache.map(p => [p.id, p]));
+              let hasNew = false;
+              nameMatchedCache.forEach(p => {
+                if (!currentMap.has(p.id)) {
+                  masterPeopleCache!.push(p);
+                  masterPeopleMap.set(p.id, p);
+                  hasNew = true;
+                }
+              });
+              if (hasNew) {
+                dataListeners.forEach(l => l(masterPeopleCache!));
+              }
+            }
+            updateContactCache(nameMatchedCache);
+          } catch (e) {
+            console.warn("[MasterStream] Name fallback query failed:", e);
+          }
+        })();
       }
 
       masterUnsubscribe = onSnapshot(q, async (snap) => {
@@ -196,6 +231,14 @@ export const initMasterPeopleStream = (
           const p = processPersonDoc(d);
           results.push(p);
           newMap.set(p.id, p);
+        });
+
+        // MERGE WITH NAME-MATCHED CACHE
+        nameMatchedCache.forEach(p => {
+          if (!newMap.has(p.id)) {
+            results.push(p);
+            newMap.set(p.id, p);
+          }
         });
 
         masterPeopleCache = results;
@@ -516,7 +559,7 @@ export const createPerson = async (data: Partial<Person>, userInfo: { id: string
     phone: normPhone, 
     createdAt: serverTimestamp(), 
     isDeleted: false, 
-    lastCallStatus: data.lastCallStatus || '', // Ensure field exists for Firestore indexing
+    lastCallStatus: data.lastCallStatus || '', 
     fullName_lowercase: (data.fullName || '').toLowerCase(), 
     progress: data.progress && data.progress.length > 0 ? data.progress : createInitialProgress() 
   });

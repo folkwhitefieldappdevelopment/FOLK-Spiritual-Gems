@@ -284,32 +284,49 @@ export default function GoalsPage() {
           </div>
         )}
 
-        {/* Desktop Matrix View */}
-        <div className="hidden md:block">
-            <GoalsMatrix 
-              goals={goals} 
-              enablers={enablers}
-              categories={categories}
-              hiddenColumns={hiddenColumns}
-              columnOrder={columnOrder}
-              onUpdateProgress={handleUpdateProgress}
-              onEditGoal={handleEditGoal}
-              onDeleteGoal={handleDeletePrompt}
-              onColumnsChanged={() => fetchData(true)}
-              isPrivileged={isPrivileged}
-            />
-        </div>
+        {/* Dynamic Main View */}
+        <div className="space-y-6">
+            {isPrivileged ? (
+                <>
+                    {/* Desktop Matrix View (Admin/Guide Only) */}
+                    <div className="hidden md:block">
+                        <GoalsMatrix 
+                          goals={goals} 
+                          enablers={enablers}
+                          categories={categories}
+                          hiddenColumns={hiddenColumns}
+                          columnOrder={columnOrder}
+                          onUpdateProgress={handleUpdateProgress}
+                          onEditGoal={handleEditGoal}
+                          onDeleteGoal={handleDeletePrompt}
+                          onColumnsChanged={() => fetchData(true)}
+                          isPrivileged={isPrivileged}
+                        />
+                    </div>
 
-        {/* Mobile List View */}
-        <div className="md:hidden">
-            <GoalsMobileList 
-              goals={goals} 
-              onUpdateProgress={handleUpdateProgress}
-              onEditGoal={handleEditGoal}
-              onDeleteGoal={handleDeletePrompt}
-              isPrivileged={isPrivileged}
-              currentUserId={appUser?.id}
-            />
+                    {/* Mobile List View (Admin/Guide Only) */}
+                    <div className="md:hidden">
+                        <GoalsMobileList 
+                          goals={goals} 
+                          onUpdateProgress={handleUpdateProgress}
+                          onEditGoal={handleEditGoal}
+                          onDeleteGoal={handleDeletePrompt}
+                          isPrivileged={isPrivileged}
+                          currentUserId={appUser?.id}
+                        />
+                    </div>
+                </>
+            ) : (
+                /* Plain Enablers see the focused card list view on all devices */
+                <GoalsMobileList 
+                  goals={goals} 
+                  onUpdateProgress={handleUpdateProgress}
+                  onEditGoal={handleEditGoal}
+                  onDeleteGoal={handleDeletePrompt}
+                  isPrivileged={isPrivileged}
+                  currentUserId={appUser?.id}
+                />
+            )}
         </div>
       </main>
 
