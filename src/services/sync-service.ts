@@ -11,24 +11,36 @@ let syncInterval: any = null;
 let lastSyncTimestamp = 0;
 const MIN_SYNC_COOLDOWN = 1000 * 60 * 5; // 5 minutes
 
-async function syncAllCallLogs(appUser: AppUser, isForegroundTrigger = false) {
+/**
+ * Standard sync logic with time-of-day and cooldown gates.
+ */
+async function syncAllCallLogs(appUser: AppUser, isForegroundTrigger = false, isManual = false) {
   if (!appUser || !appUser.id) return;
   
   if (!Capacitor.isNativePlatform()) {
     return;
   }
 
-  // Throttle foreground triggers
   const now = Date.now();
-  if (isForegroundTrigger && (now - lastSyncTimestamp < MIN_SYNC_COOLDOWN)) {
-    return;
+  const hour = new Date().getHours();
+
+  // Gates: Manual bypasses everything. 
+  // Automatic checks time window (9 AM - 9 PM) and foreground cooldown.
+  if (!isManual) {
+      if (hour < 9 || hour >= 21) {
+          console.log('[Sync] Outside operating hours (9AM-9PM), skipping automatic sync.');
+          return;
+      }
+      if (isForegroundTrigger && (now - lastSyncTimestamp < MIN_SYNC_COOLDOWN)) {
+          return;
+      }
   }
   
   lastSyncTimestamp = now;
   
   try {
     const { people } = await getPeople(appUser, { scope: 'my', ignoreLimit: true });
-    if (people.length === 0) return;
+    if (people.length === 0) return 0;
 
     const callLogCollection = collection(db!, 'call-logs');
     const batch = writeBatch(db!);
@@ -70,14 +82,25 @@ async function syncAllCallLogs(appUser: AppUser, isForegroundTrigger = false) {
     if (totalSynced > 0) {
         await batch.commit();
     }
+    return totalSynced;
   } catch (error) {
     console.error('[Sync] Error:', error);
+    return 0;
   }
+}
+
+/**
+ * Force an immediate sync, bypassing time-of-day and cooldown gates.
+ */
+export async function syncNow(appUser: AppUser): Promise<{ synced: number }> {
+    const count = await syncAllCallLogs(appUser, false, true);
+    return { synced: count };
 }
 
 export function startBackgroundSync(appUser: AppUser) {
   if (syncInterval) clearInterval(syncInterval);
 
+  // Initial delay to let the app hydrate
   setTimeout(() => syncAllCallLogs(appUser), 10000);
   
   if (Capacitor.isNativePlatform()) {
@@ -90,6 +113,7 @@ export function startBackgroundSync(appUser: AppUser) {
     }).catch(err => console.warn("Capacitor App plugin load failed", err));
   }
 
+  // Periodic interval
   syncInterval = setInterval(() => {
     syncAllCallLogs(appUser);
   }, 15 * 60 * 1000);

@@ -24,7 +24,8 @@ import {
   MessageCircle,
   Pencil,
   Plus,
-  Target
+  Target,
+  PhoneCall
 } from 'lucide-react';
 import { useAppToast } from '@/contexts/toast-context';
 import { useAuth } from '@/contexts/auth-context';
@@ -77,6 +78,7 @@ import {
 } from '@/services/settings-service';
 import { backfillMissingFields, backfillEnablerId } from '@/services/people-service';
 import { backfillGoalEnablerIds } from '@/services/goals-service';
+import { syncNow } from '@/services/sync-service';
 import { 
   getNotificationPermission, 
   requestNotificationPermission, 
@@ -158,6 +160,8 @@ export default function SettingsPage() {
   const [isBackfilling, setIsBackfilling] = React.useState(false);
   const [isBackfillingIds, setIsBackfillingIds] = React.useState(false);
   const [isBackfillingGoals, setIsBackfillingGoals] = React.useState(false);
+  const [isSyncingNow, setIsSyncingNow] = React.useState(false);
+
   const isAdmin = appUser?.role.includes('Admin');
   const isPrivileged = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
 
@@ -254,17 +258,24 @@ export default function SettingsPage() {
 
   React.useEffect(() => { fetchData(); }, [fetchData]);
 
-  React.useEffect(() => {
-    if (Capacitor.isNativePlatform()) {
-        const onVisible = () => {
-            if (document.visibilityState === 'visible') {
-                refreshOverlayStatus();
-            }
-        };
-        document.addEventListener('visibilitychange', onVisible);
-        return () => document.removeEventListener('visibilitychange', onVisible);
-    }
-  }, [refreshOverlayStatus]);
+  const handleManualSync = async () => {
+      if (!appUser || !Capacitor.isNativePlatform()) {
+          toast({ title: "Mobile Required", description: "Call log syncing is a native mobile feature." });
+          return;
+      }
+      setIsSyncingNow(true);
+      try {
+          const result = await syncNow(appUser);
+          toast({ 
+              title: "Sync Complete", 
+              description: result.synced > 0 ? `Captured ${result.synced} new interactions.` : "Your log is already up to date." 
+          });
+      } catch (e) {
+          toast({ variant: 'destructive', title: "Sync Failed" });
+      } finally {
+          setIsSyncingNow(false);
+      }
+  };
 
   const handleUpdateLabels = async () => {
       setIsUpdatingLabels(true);
@@ -421,7 +432,7 @@ export default function SettingsPage() {
                   </Badge>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <Button 
                     variant="outline" 
                     onClick={handleEnableNotifications}
@@ -432,10 +443,18 @@ export default function SettingsPage() {
                   </Button>
                   <Button 
                     onClick={handleTestAlarm}
-                    className="h-14 rounded-2xl bg-primary text-primary-foreground shadow-xl shadow-primary/20 font-black uppercase text-[10px] tracking-widest"
+                    className="h-14 rounded-2xl bg-muted border-border text-foreground font-black uppercase text-[10px] tracking-widest"
                   >
                     <Smartphone className="mr-3 h-4 w-4" />
-                    Send Test Alarm
+                    Test Alarm
+                  </Button>
+                  <Button 
+                    onClick={handleManualSync}
+                    disabled={isSyncingNow}
+                    className="h-14 rounded-2xl bg-primary text-primary-foreground shadow-xl shadow-primary/20 font-black uppercase text-[10px] tracking-widest"
+                  >
+                    {isSyncingNow ? <Loader2 className="mr-3 h-4 w-4 animate-spin" /> : <PhoneCall className="mr-3 h-4 w-4" />}
+                    Sync Logs Now
                   </Button>
                 </div>
 
@@ -443,9 +462,7 @@ export default function SettingsPage() {
                   <Info className="h-5 w-5 text-primary" />
                   <AlertTitle className="text-xs font-black uppercase tracking-widest ml-1 mb-2">Technical Note</AlertTitle>
                   <AlertDescription className="text-[11px] text-muted-foreground font-bold leading-relaxed">
-                    Caller ID Overlay only works in the installed app, not in this browser preview. 
-                    On Android, also enable <b>'Display over other apps'</b> in your phone's system settings 
-                    for the overlay to appear during incoming calls.
+                    Automatic call log syncing only occurs between <b>9 AM and 9 PM</b>. Use the "Sync Logs Now" button above to manually capture interactions outside these hours.
                   </AlertDescription>
                 </Alert>
               </CardContent>
