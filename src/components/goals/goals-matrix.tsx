@@ -217,6 +217,11 @@ export function GoalsMatrix({
       <div className="bg-card border border-border rounded-[2.5rem] shadow-2xl">
         <div className="w-full overflow-x-auto overflow-y-visible scrollbar-hide">
           <div className="min-w-max">
+            <DndContext 
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
               <Table className="border-separate border-spacing-0">
                   <TableHeader>
                       {/* Row 1: Categories */}
@@ -244,26 +249,20 @@ export function GoalsMatrix({
                       {/* Row 2: Titles */}
                       <TableRow className="hover:bg-transparent h-20">
                           <TableHead className="w-[240px] sticky top-[64px] left-0 z-[60] bg-muted/95 backdrop-blur border-r border-b border-border pl-8"></TableHead>
-                          <DndContext 
-                            sensors={sensors}
-                            collisionDetection={closestCenter}
-                            onDragEnd={handleDragEnd}
+                          <SortableContext 
+                              items={summary.columns}
+                              strategy={horizontalListSortingStrategy}
                           >
-                            <SortableContext 
-                                items={summary.columns}
-                                strategy={horizontalListSortingStrategy}
-                            >
-                                {summary.columns.map(title => (
-                                    <SortableHeader 
-                                        key={title} 
-                                        id={title} 
-                                        isPrivileged={isPrivileged}
-                                        onHide={handleHideColumn}
-                                        onDelete={setColumnToDelete}
-                                    />
-                                ))}
-                            </SortableContext>
-                          </DndContext>
+                              {summary.columns.map(title => (
+                                  <SortableHeader 
+                                      key={title} 
+                                      id={title} 
+                                      isPrivileged={isPrivileged}
+                                      onHide={handleHideColumn}
+                                      onDelete={setColumnToDelete}
+                                  />
+                              ))}
+                          </SortableContext>
                       </TableRow>
 
                       {/* Row 3: Grand Totals */}
@@ -390,6 +389,7 @@ export function GoalsMatrix({
                       ))}
                   </TableBody>
               </Table>
+            </DndContext>
           </div>
         </div>
       </div>
