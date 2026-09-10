@@ -60,7 +60,15 @@ export function useDashboardStats(dateRange?: DateRange, folkGuideId?: string, s
     }
   }, [appUser]);
 
+  // Sections that actually need the full people cache to compute their stats.
+  // Keep this in sync with the `loadStats` / `loadGoals` logic in getDashboardStats.
+  const PEOPLE_DEPENDENT_SECTIONS = ['all', 'enabler-breakdown', 'calling-report', 'leaderboard', 'goal-alerts', 'team-goals'];
+
   // Initial Fast Summary Load
+  // Only the cheap, count-based summary loads eagerly here. The full
+  // org-wide people sync (initMasterPeopleStream) is deferred to the
+  // "Lazy Section Loading" effect below, and only runs if the section
+  // actually in view needs it — not on every dashboard mount.
   useEffect(() => {
     if (!appUser) return;
 
@@ -77,7 +85,6 @@ export function useDashboardStats(dateRange?: DateRange, folkGuideId?: string, s
     };
 
     refreshFastStats();
-    initMasterPeopleStream(appUser);
 
     const unsubStatus = subscribeToSyncStatus((status) => {
         setSyncStatus(status);
@@ -90,8 +97,16 @@ export function useDashboardStats(dateRange?: DateRange, folkGuideId?: string, s
   // Lazy Section Loading
   useEffect(() => {
     if (!appUser || !selectedSection) return;
+
+    if (PEOPLE_DEPENDENT_SECTIONS.includes(selectedSection)) {
+      // Warm the master cache only now that a section needing it is in view.
+      // Subsequent selections reuse the cache (see initMasterPeopleStream's
+      // internal cachePromise/staleness guard), so this is cheap after the first call.
+      initMasterPeopleStream(appUser);
+    }
+
     recomputeStats([selectedSection]);
-  }, [appUser, selectedSection, dateRange?.from?.getTime(), dateRange?.to?.getTime(), folkGuideId]);
+  }, [appUser, selectedSection, dateRange?.from?.getTime(), dateRange?.to?.getTime(), folkGuideId, recomputeStats]);
 
   return { 
     data, 

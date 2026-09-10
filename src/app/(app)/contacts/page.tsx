@@ -162,7 +162,9 @@ const ContactsPageComponent = () => {
       
       // For admins, reuse the cache if it's fresh (less than 5 mins old) on automatic mount
       // But always force a resync if the Refresh button (passed as silent: false with no lastId) was clicked
-      if (!lastId && appUser.role.includes('Admin')) {
+      // Only needed when the "All Contacts" (org-wide) tab is actually in view —
+      // "My Contacts" uses a small scoped/paginated getPeople call below and never touches this cache.
+      if (!lastId && appUser.role.includes('Admin') && fetchScope === 'all') {
           const force = !silent; // true on explicit refresh
           await initMasterPeopleStream(appUser, { 
             force, 
