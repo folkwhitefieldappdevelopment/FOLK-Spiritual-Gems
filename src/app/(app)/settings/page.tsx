@@ -514,6 +514,7 @@ export default function SettingsPage() {
                   </Button>
                 </CardHeader>
                 <CardContent className="p-0">
+                  <div className="overflow-x-auto">
                   <Table>
                     <TableHeader className="bg-muted/30">
                       <TableRow className="border-border">
@@ -540,6 +541,7 @@ export default function SettingsPage() {
                       )}
                     </TableBody>
                   </Table>
+                  </div>
                 </CardContent>
               </Card>
             )}

@@ -67,6 +67,7 @@ export function BackgroundJobsWidget() {
                           <DialogTitle className="font-black uppercase tracking-tight">Import Error Log</DialogTitle>
                         </DialogHeader>
                         <ScrollArea className="h-80 mt-4 rounded-xl border">
+                          <div className="overflow-x-auto">
                           <Table>
                             <TableHeader className="bg-muted">
                               <TableRow>
@@ -85,6 +86,7 @@ export function BackgroundJobsWidget() {
                               ))}
                             </TableBody>
                           </Table>
+                          </div>
                         </ScrollArea>
                       </DialogContent>
                     </Dialog>

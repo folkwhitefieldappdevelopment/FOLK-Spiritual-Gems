@@ -199,6 +199,7 @@ export default function SessionDetailsClient({ sessionId }: { sessionId: string 
               </div>
             </CardHeader>
             <CardContent className="p-0">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/10 hover:bg-muted/10">
@@ -256,6 +257,7 @@ export default function SessionDetailsClient({ sessionId }: { sessionId: string 
                   })}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         </main>

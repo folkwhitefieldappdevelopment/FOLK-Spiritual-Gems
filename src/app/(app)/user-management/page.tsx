@@ -185,6 +185,7 @@ export default function UserManagementPage() {
                                 <p className="text-[10px] font-black uppercase tracking-[0.4em]">Querying Registry...</p>
                             </div>
                         ) : (
+                            <div className="overflow-x-auto">
                             <Table>
                                 <TableHeader className="bg-muted/50">
                                     <TableRow className="border-border">
@@ -244,6 +245,7 @@ export default function UserManagementPage() {
                                     )}
                                 </TableBody>
                             </Table>
+                            </div>
                         )}
                     </div>
                 </CardContent>

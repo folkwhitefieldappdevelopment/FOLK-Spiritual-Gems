@@ -238,10 +238,12 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
                   <TabsContent value="attendance" className="mt-6 space-y-6">
                       <div className="bg-card/30 border border-border rounded-[2.5rem] overflow-hidden">
                           {events.length > 0 ? (
+                              <div className="overflow-x-auto">
                               <Table><TableHeader><TableRow className="border-border"><TableHead className="text-muted-foreground">Name</TableHead><TableHead className="text-muted-foreground">Mark</TableHead><TableHead className="text-right text-muted-foreground">Action</TableHead></TableRow></TableHeader>
                               <TableBody>{events.map(event => (
                                   <TableRow key={event.id} className="border-border"><TableCell className="font-bold text-foreground uppercase">{event.name}</TableCell><TableCell><Button size="sm" variant="outline" onClick={() => handleMarkAttendance(event)}>Mark Present</Button></TableCell><TableCell className="text-right"><Button variant="ghost" size="icon" onClick={async () => { await deleteDoc(doc(db, 'groups', groupId, 'events', event.id)); fetchData(); }} className="text-muted-foreground hover:text-foreground"><Trash2 className="h-4 w-4" /></Button></TableCell></TableRow>
                               ))}</TableBody></Table>
+                              </div>
                           ) : <div className="py-24 text-center text-muted-foreground opacity-30">No history logged yet.</div>}
                       </div>
                   </TabsContent>

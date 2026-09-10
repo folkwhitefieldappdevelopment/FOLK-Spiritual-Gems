@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -116,6 +115,7 @@ export function CustomFieldsManager({ initialFields, onSave }: CustomFieldsManag
           </Button>
         </div>
         <div className="border rounded-md">
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -165,6 +165,7 @@ export function CustomFieldsManager({ initialFields, onSave }: CustomFieldsManag
               )}
             </TableBody>
           </Table>
+          </div>
         </div>
       </CardContent>
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

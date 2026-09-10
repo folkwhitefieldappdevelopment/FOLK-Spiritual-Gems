@@ -404,6 +404,7 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
                   <TabsContent value="attendance" className="mt-6 space-y-6">
                       <div className="bg-card/30 border border-border rounded-[2.5rem] overflow-hidden shadow-xl">
                           {events.length > 0 ? (
+                            <div className="overflow-x-auto">
                               <Table>
                                 <TableHeader className="bg-muted/50">
                                   <TableRow className="border-border h-14">
@@ -458,6 +459,7 @@ export default function GroupDetailClient({ groupId }: { groupId: string }) {
                                   ))}
                                 </TableBody>
                               </Table>
+                            </div>
                           ) : (
                             <div className="py-24 text-center space-y-6">
                               <CalendarDays className="h-16 w-16 mx-auto mb-2 text-muted-foreground opacity-20" />

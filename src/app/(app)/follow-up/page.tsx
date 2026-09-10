@@ -181,6 +181,7 @@ export default function FollowUpPage() {
                 <CardDescription className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Attention gaps across the preaching roster.</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader className="bg-muted/30">
                     <TableRow className="border-border">
@@ -246,6 +247,7 @@ export default function FollowUpPage() {
                     )}
                   </TableBody>
                 </Table>
+                </div>
               </CardContent>
             </Card>
           </div>

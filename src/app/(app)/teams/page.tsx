@@ -215,6 +215,7 @@ export default function TeamsPage() {
               <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-2">Enabler Roster</h3>
               <Card className="bg-popover border-none rounded-[2.5rem] shadow-xl overflow-hidden">
                 <CardContent className="p-0">
+                  <div className="overflow-x-auto">
                   <Table>
                     <TableHeader className="bg-muted/30">
                       <TableRow className="border-border">
@@ -261,6 +262,7 @@ export default function TeamsPage() {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
                 </CardContent>
               </Card>
             </div>
