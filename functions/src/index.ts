@@ -88,7 +88,7 @@ export const createAppUser = onCall({
 
     if (userData.role.includes("Folk Enabler") && guideId) {
       const guideDoc = await db.collection("users").doc(guideId).get();
-      if (guideDoc.exists()) {
+      if (guideDoc.exists) {
         const g = guideDoc.data();
         userData.reportsTo = {
           guideId: guideDoc.id,
