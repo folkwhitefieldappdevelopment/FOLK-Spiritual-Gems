@@ -28,7 +28,7 @@ import { safeDate } from '@/utils/date';
 import { updateUser } from '@/services/user-service';
 import { cn } from '@/lib/utils';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 export default function SessionDetailsClient({ sessionId }: { sessionId: string }) {
   const router = useRouter();
@@ -214,7 +214,6 @@ export default function SessionDetailsClient({ sessionId }: { sessionId: string 
           </CardHeader>
           <CardContent className="p-0">
             <ScrollArea className="h-[600px]">
-              <div className="overflow-x-auto">
               <Table>
                 <TableHeader className="bg-muted/30">
                   <TableRow className="hover:bg-transparent border-border h-14">
@@ -242,7 +241,7 @@ export default function SessionDetailsClient({ sessionId }: { sessionId: string 
                             <div className="min-w-0">
                                 <div className="flex items-center gap-1.5">
                                   <p className="font-black text-base text-foreground uppercase truncate">{person.fullName}</p>
-                                  {person.verifiedByFg === 'Yes' && <BadgeCheck className="h-3 w-3 text-blue-500" />}
+                                  {person.verifiedByFg === 'Yes' && <BadgeCheck className="h-4 w-4 text-blue-500 shrink-0" />}
                                 </div>
                                 <p className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase">{person.phone}</p>
                             </div>
@@ -275,7 +274,7 @@ export default function SessionDetailsClient({ sessionId }: { sessionId: string 
                   })}
                 </TableBody>
               </Table>
-              </div>
+              <ScrollBar orientation="horizontal" />
             </ScrollArea>
           </CardContent>
         </Card>

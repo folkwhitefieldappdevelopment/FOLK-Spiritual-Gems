@@ -88,6 +88,7 @@ import { format } from "date-fns";
 import { assignCoEnablerToPeople } from "@/services/people-service";
 import { AssignCoEnablerDialog } from "@/components/assign-helper-dialog";
 import { getFastSummaryStats } from '@/services/dashboard-service';
+import { connectionManager } from "@/contexts/connectivity-context";
 
 const EMPTY_FILTERS: FilterState = {
     name: '', phone: '', location: '', eventName: '', callerName: '', 
@@ -146,12 +147,15 @@ const ContactsPageComponent = () => {
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const fetchIdRef = React.useRef(0);
+  const appUserRef = React.useRef(appUser);
+  appUserRef.current = appUser;
   
   const isSelectionActive = selectedIds.size > 0;
   const isSyncStable = syncStatus === 'synced' || syncStatus === 'cached';
 
   const fetchContacts = React.useCallback(async (lastId?: string, silent = false) => {
-    if (!appUser?.id) return;
+    const user = appUserRef.current;
+    if (!user?.id) return;
     
     const thisFetchId = ++fetchIdRef.current;
     if (!lastId && !silent) { setIsLoading(true); } 
@@ -160,35 +164,41 @@ const ContactsPageComponent = () => {
     try {
       const fetchScope = activeTab === 'all-contacts' ? 'all' : 'my';
       
-      // For admins, reuse the cache if it's fresh (less than 5 mins old) on automatic mount
-      // But always force a resync if the Refresh button (passed as silent: false with no lastId) was clicked
-      // Only needed when the "All Contacts" (org-wide) tab is actually in view —
-      // "My Contacts" uses a small scoped/paginated getPeople call below and never touches this cache.
-      if (!lastId && appUser.role.includes('Admin') && fetchScope === 'all') {
+      if (!lastId && user.role.includes('Admin') && fetchScope === 'all') {
           const force = !silent; // true on explicit refresh
-          await initMasterPeopleStream(appUser, { 
+          await initMasterPeopleStream(user, { 
             force, 
             forceIfStaleMs: force ? undefined : 5 * 60 * 1000 
           });
       }
 
-      // Update global total first via server count
-      const counts = await getFastSummaryStats(appUser);
-      // Only set org total optimistically; "My Contacts" will be determined by getPeople result shortly
-      if (fetchScope === 'all') setTotalCount(counts.totalContactsCount);
+      let peopleResolved = false;
+      if (fetchScope === 'all') {
+          getFastSummaryStats(user)
+            .then(c => { 
+                if (!peopleResolved && thisFetchId === fetchIdRef.current) setTotalCount(c.totalContactsCount); 
+            })
+            .catch(e => console.warn('[Contacts] org count failed (non-blocking):', e));
+      }
 
-      const result = await getPeople(appUser, { 
-        scope: fetchScope, 
-        lastDocId: lastId,
-        filters: filters
-      });
-      if (thisFetchId !== fetchIdRef.current) return;
-      setPeople(prev => lastId ? [...prev, ...result.people] : result.people);
-      setLastDocId(result.lastDocId);
-      setHasMore(result.lastDocId !== null);
-      
-      // Update with exact filtered/scoped count from the result
-      setTotalCount(result.totalCount);
+      connectionManager.reportRequestStart();
+      try {
+        const result = await getPeople(user, { 
+          scope: fetchScope, 
+          lastDocId: lastId,
+          filters: filters
+        });
+        
+        peopleResolved = true;
+        if (thisFetchId !== fetchIdRef.current) return;
+        
+        setPeople(prev => lastId ? [...prev, ...result.people] : result.people);
+        setLastDocId(result.lastDocId);
+        setHasMore(result.lastDocId !== null);
+        setTotalCount(result.totalCount);
+      } finally {
+        connectionManager.reportRequestEnd();
+      }
       
     } catch (error) { 
       console.error('[Contacts] fetchContacts failed:', error);
@@ -202,7 +212,7 @@ const ContactsPageComponent = () => {
         setIsLoadingMore(false); 
       }
     }
-  }, [appUser, activeTab, toast, filters]);
+  }, [user?.id, user?.role?.join(','), activeTab, toast, filters]);
 
   React.useEffect(() => {
     return subscribeToSyncStatus((status) => setSyncStatus(status));
@@ -413,7 +423,19 @@ const ContactsPageComponent = () => {
 
   return (
     <>
-      <PageHeader title="Outreach" description={totalCount !== null ? `Managing ${totalCount} records.` : "Outreach management."}>
+      <PageHeader 
+        title="Outreach" 
+        description={
+          <div className="flex items-center gap-2">
+            {isLoading && <Loader2 className="h-3 w-3 animate-spin" />}
+            <span>
+              {isLoading && totalCount === null ? "Loading contacts..." : 
+               totalCount !== null ? `Managing ${totalCount} records.` : 
+               "Outreach management."}
+            </span>
+          </div>
+        }
+      >
         <div className="flex items-center gap-1.5 py-1">
             {isPrivileged && (
               <Button 
@@ -523,7 +545,7 @@ const ContactsPageComponent = () => {
                 <PersonTable 
                   people={people} 
                   onEdit={setEditingPerson} 
-                  onDelete={id => deletePerson(id, appUser!).then(() => fetchContacts(undefined, true))} 
+                  onDelete={id => deletePerson(id, appUserRef.current!).then(() => fetchContacts(undefined, true))} 
                   onStartCall={p => { setPersonToCall(p); setIsConfirmSessionDialogOpen(true); }} 
                   selectedIds={selectedIds} 
                   setSelectedIds={setSelectedIds} 
@@ -544,7 +566,7 @@ const ContactsPageComponent = () => {
                     <PersonTable 
                       people={people} 
                       onEdit={setEditingPerson} 
-                      onDelete={id => deletePerson(id, appUser!).then(() => fetchContacts(undefined, true))} 
+                      onDelete={id => deletePerson(id, appUserRef.current!).then(() => fetchContacts(undefined, true))} 
                       onStartCall={p => { setPersonToCall(p); setIsConfirmSessionDialogOpen(true); }} 
                       selectedIds={selectedIds} 
                       setSelectedIds={setSelectedIds} 
@@ -606,8 +628,8 @@ const ContactsPageComponent = () => {
       </Dialog>
 
       <AddContactMethodDialog isOpen={isAddMethodDialogOpen} setIsOpen={setIsAddMethodDialogOpen} onSelectManual={() => { setEditingPerson(undefined); setIsPersonDialogOpen(true); }} onSelectQR={() => setIsQrDialogOpen(true)} onSelectNewGroup={() => { setEditingGroup(undefined); setIsGroupDialogOpen(true); }} />
-      <CreateUpdatePersonDialog isOpen={isPersonDialogOpen} setIsOpen={setIsPersonDialogOpen} onSave={async d => { const r = editingPerson ? await updatePerson(editingPerson.id, d, appUser!) : await createPerson(d, appUser!); if (r.success) fetchContacts(undefined, true); return r; }} person={editingPerson} allPeople={people} />
-      <CreateUpdateGroupDialog isOpen={isGroupDialogOpen} setIsOpen={setIsGroupDialogOpen} group={editingGroup} onSave={async (d) => { editingGroup ? await updateGroupSvc(editingGroup.id, d, appUser!) : await createGroup(d, appUser!); getStaticGroups(appUser!).then(setGroups); }} />
+      <CreateUpdatePersonDialog isOpen={isPersonDialogOpen} setIsOpen={setIsPersonDialogOpen} onSave={async d => { const r = editingPerson ? await updatePerson(editingPerson.id, d, appUserRef.current!) : await createPerson(d, appUserRef.current!); if (r.success) fetchContacts(undefined, true); return r; }} person={editingPerson} allPeople={people} />
+      <CreateUpdateGroupDialog isOpen={isGroupDialogOpen} setIsOpen={setIsGroupDialogOpen} group={editingGroup} onSave={async (d) => { editingGroup ? await updateGroupSvc(editingGroup.id, d, appUserRef.current!) : await createGroup(d, appUserRef.current!); getStaticGroups(appUserRef.current!).then(setGroups); }} />
       <ConfirmSessionDialog isOpen={isConfirmSessionDialogOpen} setIsOpen={setIsConfirmSessionDialogOpen} onStartSession={handleStartSession} onResumeSession={() => router.push('/session')} singlePersonName={personToCall?.fullName || editingGroup?.name} pausedSession={appUser?.pausedCallingSession} totalCount={personToCall ? 1 : (isSelectionActive ? selectedIds.size : (editingGroup?.peopleIds?.length || 0))} />
       <ContactGalleryDialog isOpen={isGalleryOpen} onClose={() => setIsGalleryOpen(false)} people={people} />
       <FreshLeadQRDialog isOpen={isQrDialogOpen} setIsOpen={setIsQrDialogOpen} />
@@ -623,7 +645,7 @@ const ContactsPageComponent = () => {
         isOpen={isAssignCoEnablerDialogOpen} 
         setIsOpen={setIsAssignCoEnablerDialogOpen} 
         onSave={async (u) => { 
-            if (u) await assignCoEnablerToPeople(Array.from(selectedIds), u, appUser!); 
+            if (u) await assignCoEnablerToPeople(Array.from(selectedIds), u, appUserRef.current!); 
             fetchContacts(undefined, true); 
             setSelectedIds(new Set()); 
         }} 
