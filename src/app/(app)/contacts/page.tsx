@@ -212,7 +212,7 @@ const ContactsPageComponent = () => {
         setIsLoadingMore(false); 
       }
     }
-  }, [user?.id, user?.role?.join(','), activeTab, toast, filters]);
+  }, [appUser?.id, appUser?.role?.join(','), activeTab, toast, filters]);
 
   React.useEffect(() => {
     return subscribeToSyncStatus((status) => setSyncStatus(status));
@@ -452,7 +452,7 @@ const ContactsPageComponent = () => {
             </Button>
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-9 font-bold px-2.5 rounded-xl border-2 border-border bg-muted/50 text-foreground"><FileSpreadsheet className="h-4 w-4 sm:mr-2" /> <span className="hidden xs:inline">Data</span></Button>
+                    <Button variant="outline" size="sm" className="h-9 font-bold px-2.5 rounded-xl border-border bg-muted/50 text-foreground"><FileSpreadsheet className="h-4 w-4 sm:mr-2" /> <span className="hidden xs:inline">Data</span></Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-popover border-border max-w-[240px]">
                     <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest text-primary/70 px-2 py-1">Import & Export</DropdownMenuLabel>
