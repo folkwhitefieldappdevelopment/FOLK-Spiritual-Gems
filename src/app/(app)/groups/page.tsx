@@ -3,7 +3,7 @@ import * as React from "react";
 import { PlusCircle, Users as UsersIcon, User, UserCog, PhoneCall, Search, Filter, RefreshCw, UsersRound, Plus, Loader2 } from "lucide-react";
 import type { Group, AppUser, Person, UserRole } from "@/lib/types";
 import { useAppToast } from "@/contexts/toast-context";
-import { getAllGroups, deleteGroup, getStaticGroups, createGroup, updateGroup } from "@/services/groups-service";
+import { getAllGroups, deleteGroup, getStaticGroups, createGroup, updateGroup, canUserSeeGroup } from "@/services/groups-service";
 import { getDynamicGroupCounts, getLiveGroupMemberCounts } from "@/services/people-service";
 import { getEnablers, type EnablerOption } from "@/services/settings-service";
 import { useAuth } from "@/contexts/auth-context";
@@ -71,9 +71,8 @@ export default function GroupsPage() {
     else setIsLoading(true);
     
     try {
-      const userInfo = { id: appUser.id, name: appUser.name, role: appUser.role };
       const [groupsData, enablersData] = await Promise.all([
-          getStaticGroups(userInfo),
+          getStaticGroups(appUser),
           getEnablers(appUser, 'filter')
       ]);
 
@@ -135,10 +134,10 @@ export default function GroupsPage() {
                         creatorNameLower === myNameLower ||
                         (g.sharedWithUserIds && g.sharedWithUserIds.includes(appUser.id));
         
-        const isVisibleByRole = g.visibility && g.visibility.some(role => appUser.role.includes(role));
-        const isAdmin = appUser.role.includes('Admin');
+        // Use the new visibility helper for the "Shared" view
+        const canSee = canUserSeeGroup(g, appUser);
 
-        return !isOwner && (isVisibleByRole || isAdmin);
+        return !isOwner && canSee;
       });
       result = othersStatic;
     }

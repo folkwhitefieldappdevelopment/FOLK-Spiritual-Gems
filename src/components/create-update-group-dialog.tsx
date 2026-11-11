@@ -4,9 +4,9 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import type { Group, UserRole, AppUser } from "@/lib/types";
+import type { Group, UserRole, AppUser, Team, VisibilityScope } from "@/lib/types";
 import { userRoles } from "@/lib/types";
-import { Camera, Upload, SwitchCamera, Loader2, Users, UserPlus, X, Clock, Mail } from "lucide-react";
+import { Camera, Upload, SwitchCamera, Loader2, Users, UserPlus, X, Clock, Mail, ShieldCheck, Check } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -34,7 +34,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "./ui/scroll-area";
-import { getAssignableUsersForAssignments } from "@/services/user-service";
+import { getAssignableUsersForAssignments, getFolkGuides } from "@/services/user-service";
+import { getAllTeams } from "@/services/team-service";
 import {
   Select,
   SelectContent,
@@ -42,6 +43,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Badge } from "./ui/badge";
+import { cn } from "@/lib/utils";
 
 const groupFormSchema = z.object({
   name: z.string().min(2, { message: "Group name must be at least 2 characters." }),
@@ -50,6 +54,24 @@ const groupFormSchema = z.object({
   assignedToId: z.string().optional(),
   reportingEnabled: z.boolean().default(false),
   reportTime: z.string().optional(),
+  visibilityScope: z.enum(['private', 'all-enablers', 'teams', 'guide-enablers', 'everyone']).optional(),
+  visibleTeamIds: z.array(z.string()).optional(),
+  visibleGuideIds: z.array(z.string()).optional(),
+}).superRefine((data, ctx) => {
+  if (data.visibilityScope === 'teams' && (!data.visibleTeamIds || data.visibleTeamIds.length === 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Select at least one team.',
+      path: ['visibleTeamIds'],
+    });
+  }
+  if (data.visibilityScope === 'guide-enablers' && (!data.visibleGuideIds || data.visibleGuideIds.length === 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Select at least one Folk Guide.',
+      path: ['visibleGuideIds'],
+    });
+  }
 });
 
 type GroupFormValues = z.infer<typeof groupFormSchema>;
@@ -65,29 +87,81 @@ export function CreateUpdateGroupDialog({ isOpen, setIsOpen, onSave, group }: Cr
   const { toast } = useToast();
   const { appUser } = useAuth();
   const isPrivileged = appUser?.role.includes('Admin') || appUser?.role.includes('Folk Guide');
+  
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const [showCamera, setShowCamera] = React.useState(false);
-  const [isProcessingPhoto, setIsProcessingPhoto] = React.useState(false);
   const [cameraMode, setCameraMode] = React.useState<'user' | 'environment'>('user');
   const [assignableUsers, setAssignableUsers] = React.useState<AppUser[]>([]);
+  const [availableTeams, setAvailableTeams] = React.useState<Team[]>([]);
+  const [availableGuides, setAvailableGuides] = React.useState<AppUser[]>([]);
+  const [isLoadingMetadata, setIsLoadingMetadata] = React.useState(false);
+
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const form = useForm<GroupFormValues>({
     resolver: zodResolver(groupFormSchema),
-    defaultValues: { name: "", description: "", visibility: [], assignedToId: "", reportingEnabled: false, reportTime: "20:00" },
+    defaultValues: { 
+      name: "", 
+      description: "", 
+      visibility: [], 
+      assignedToId: "", 
+      reportingEnabled: false, 
+      reportTime: "20:00",
+      visibilityScope: 'private',
+      visibleTeamIds: [],
+      visibleGuideIds: []
+    },
   });
+
+  const visibilityScope = form.watch('visibilityScope');
 
   useEffect(() => {
     if (isOpen) {
       if (group) {
-        form.reset({ name: group.name, description: group.description, visibility: group.visibility || [], assignedToId: group.sharedWithUserIds?.[0] || "", reportingEnabled: group.reportingEnabled || false, reportTime: group.reportTime || "20:00" });
+        form.reset({ 
+          name: group.name, 
+          description: group.description, 
+          visibility: group.visibility || [], 
+          assignedToId: group.sharedWithUserIds?.[0] || "", 
+          reportingEnabled: group.reportingEnabled || false, 
+          reportTime: group.reportTime || "20:00",
+          visibilityScope: group.visibilityScope || 'private',
+          visibleTeamIds: group.visibleTeamIds || [],
+          visibleGuideIds: group.visibleGuideIds || []
+        });
         setPhotoPreview(group.photoUrl || null);
       } else {
-        form.reset({ name: "", description: "", visibility: [], assignedToId: "", reportingEnabled: false, reportTime: "20:00" });
+        form.reset({ 
+          name: "", 
+          description: "", 
+          visibility: [], 
+          assignedToId: "", 
+          reportingEnabled: false, 
+          reportTime: "20:00",
+          visibilityScope: 'private',
+          visibleTeamIds: [],
+          visibleGuideIds: []
+        });
         setPhotoPreview(null);
       }
-      if (isPrivileged && appUser) getAssignableUsersForAssignments(appUser).then(setAssignableUsers);
+      
+      if (isPrivileged && appUser) {
+        setIsLoadingMetadata(true);
+        Promise.all([
+          getAssignableUsersForAssignments(appUser),
+          getAllTeams(),
+          getFolkGuides()
+        ]).then(([users, teams, guides]) => {
+          setAssignableUsers(users);
+          setAvailableTeams(teams);
+          setAvailableGuides(guides);
+          setIsLoadingMetadata(false);
+        }).catch(err => {
+          console.error("Failed to load dialog metadata", err);
+          setIsLoadingMetadata(false);
+        });
+      }
     }
   }, [group, form, isOpen, isPrivileged, appUser]);
 
@@ -103,7 +177,19 @@ export function CreateUpdateGroupDialog({ isOpen, setIsOpen, onSave, group }: Cr
 
   const onSubmit = (data: GroupFormValues) => {
     const selectedAssignee = assignableUsers.find(u => u.id === data.assignedToId);
-    onSave({ ...data, photoUrl: photoPreview || '', sharedWithUserIds: data.assignedToId ? [data.assignedToId] : [], assignedToName: selectedAssignee?.name || null });
+    
+    // Legacy role mapping for visibility array
+    let roles: UserRole[] = [];
+    if (data.visibilityScope === 'all-enablers') roles = ['Folk Enabler'];
+    else if (data.visibilityScope === 'everyone') roles = ['Admin', 'Folk Guide', 'Folk Enabler'];
+    
+    onSave({ 
+      ...data, 
+      photoUrl: photoPreview || '', 
+      sharedWithUserIds: data.assignedToId ? [data.assignedToId] : [], 
+      assignedToName: selectedAssignee?.name || null,
+      visibility: roles.length > 0 ? roles : data.visibility
+    });
     setIsOpen(false);
   };
 
@@ -118,20 +204,146 @@ export function CreateUpdateGroupDialog({ isOpen, setIsOpen, onSave, group }: Cr
           <div className="p-8 space-y-8">
             <div className="flex flex-col items-center gap-6">
               <Avatar className="h-32 w-48 rounded-3xl border-4 border-primary/20 bg-muted shadow-2xl"><AvatarImage src={photoPreview || ''} className="object-cover" /><AvatarFallback className="rounded-3xl"><Users className="h-12 w-12 text-muted-foreground opacity-30" /></AvatarFallback></Avatar>
-              <div className="flex gap-3"><Button type="button" variant="outline" size="sm" className="rounded-xl bg-muted/50 border-border font-bold h-10 px-4 text-foreground hover:bg-muted" onClick={() => fileInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Gallery</Button><Button type="button" variant="outline" size="sm" className="rounded-xl bg-muted/50 border-border font-bold h-10 px-4 text-foreground hover:bg-muted" onClick={() => setShowCamera(true)}><Camera className="mr-2 h-4 w-4" /> Camera</Button></div>
+              <div className="flex gap-3">
+                <Button type="button" variant="outline" size="sm" className="rounded-xl bg-muted/50 border-border font-bold h-10 px-4 text-foreground hover:bg-muted" onClick={() => fileInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Gallery</Button>
+                <Button type="button" variant="outline" size="sm" className="rounded-xl bg-muted/50 border-border font-bold h-10 px-4 text-foreground hover:bg-muted" onClick={() => setShowCamera(true)}><Camera className="mr-2 h-4 w-4" /> Camera</Button>
+              </div>
               <input type="file" ref={fileInputRef} onChange={e => { const f = e.target.files?.[0]; if(f){ const r = new FileReader(); r.onload=ev=>setPhotoPreview(ev.target?.result as string); r.readAsDataURL(f); } }} className="hidden" accept="image/*" />
             </div>
-            <Form {...form}><form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Group Name</FormLabel><FormControl><Input placeholder="e.g. ITPL Batch" {...field} className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5" /></FormControl><FormMessage /></FormItem>)} />
-              <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Context</FormLabel><FormControl><Textarea placeholder="Brief context..." className="rounded-xl border-border bg-muted text-foreground font-bold p-5 min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>)} />
-              {isPrivileged && <div className="space-y-8 pt-8 border-t border-border">
-                <FormField control={form.control} name="reportingEnabled" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-[1.5rem] border border-border bg-muted p-6 shadow-inner"><div className="space-y-1"><FormLabel className="text-base font-black text-foreground flex items-center gap-2 uppercase tracking-tight"><Mail className="h-4 w-4 text-[#FF9800]" /> Daily Email Pulse</FormLabel><FormDescription className="text-[10px] font-bold text-muted-foreground leading-tight">Receive automated summary.</FormDescription></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
-                <FormField control={form.control} name="assignedToId" render={({ field }) => (<FormItem><div className="flex items-center gap-2 mb-1"><UserPlus className="h-4 w-4 text-primary" /><FormLabel className="text-[10px] font-black uppercase text-primary tracking-widest">Assign to Enabler</FormLabel></div><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5"><SelectValue placeholder="Select Assignee..." /></SelectTrigger></FormControl><SelectContent className="bg-popover border-border text-foreground">{assignableUsers.map(u => (<SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>))}</SelectContent></Select></FormItem>)} />
-              </div>}
-            </form></Form>
+
+            {showCamera && (
+              <div className="space-y-4">
+                <div className="relative"><video ref={videoRef} className="w-full aspect-video rounded-3xl bg-black object-cover shadow-2xl border-2 border-border" autoPlay muted playsInline /><Button variant="ghost" size="icon" onClick={() => setShowCamera(false)} className="absolute top-4 right-4 rounded-full bg-black/50 text-white"><X className="h-4 w-4" /></Button></div>
+                <div className="flex justify-center gap-4"><Button type="button" variant="outline" className="rounded-xl font-bold border-border text-foreground" onClick={() => setCameraMode(p => p === 'user' ? 'environment' : 'user')}><SwitchCamera className="h-4 w-4 mr-2" /> Switch</Button><Button size="lg" className="rounded-xl font-black bg-[#FF9800] text-black px-10" onClick={handleCapture}>Capture</Button></div>
+              </div>
+            )}
+
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Group Name</FormLabel><FormControl><Input placeholder="e.g. ITPL Batch" {...field} className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5" /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Context</FormLabel><FormControl><Textarea placeholder="Brief context..." className="rounded-xl border-border bg-muted text-foreground font-bold p-5 min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                
+                {isPrivileged && (
+                  <div className="space-y-8 pt-8 border-t border-border">
+                    <FormField control={form.control} name="visibilityScope" render={({ field }) => (
+                      <FormItem>
+                        <div className="flex items-center gap-2 mb-1">
+                          <ShieldCheck className="h-4 w-4 text-primary" />
+                          <FormLabel className="text-[10px] font-black uppercase text-primary tracking-widest">Who can see this group?</FormLabel>
+                        </div>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5">
+                              <SelectValue placeholder="Select visibility..." />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="bg-popover border-border text-foreground">
+                            <SelectItem value="private" className="font-bold py-3">Only me and assignee (Private)</SelectItem>
+                            <SelectItem value="all-enablers" className="font-bold py-3">All Enablers</SelectItem>
+                            <SelectItem value="teams" className="font-bold py-3">Particular team(s)</SelectItem>
+                            <SelectItem value="guide-enablers" className="font-bold py-3">Particular Folk Guide's enablers</SelectItem>
+                            <SelectItem value="everyone" className="font-bold py-3">Everyone in the system</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+
+                    {visibilityScope === 'teams' && (
+                      <FormField control={form.control} name="visibleTeamIds" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Select Teams</FormLabel>
+                          <div className="flex flex-wrap gap-2 mb-2 min-h-[40px] p-3 rounded-xl bg-muted border border-border">
+                              {(field.value || []).map(tid => {
+                                const t = availableTeams.find(x => x.id === tid);
+                                return (
+                                  <Badge key={tid} variant="secondary" className="gap-1 font-bold">
+                                    {t?.name || tid}
+                                    <button onClick={() => field.onChange((field.value || []).filter(id => id !== tid))} className="hover:text-destructive"><X className="h-3 w-3"/></button>
+                                  </Badge>
+                                );
+                              })}
+                              {(field.value || []).length === 0 && <span className="text-xs text-muted-foreground opacity-50 italic">None selected</span>}
+                          </div>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className="w-full justify-between font-bold h-12 rounded-xl">
+                                Add Teams... <ChevronDown className="h-4 w-4 opacity-50"/>
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[300px] p-0" align="start">
+                                <ScrollArea className="h-64 p-2">
+                                  {availableTeams.map(t => (
+                                    <div key={t.id} className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md cursor-pointer" onClick={() => {
+                                      const next = (field.value || []).includes(t.id) ? field.value!.filter(id => id !== t.id) : [...(field.value || []), t.id];
+                                      field.onChange(next);
+                                    }}>
+                                      <Checkbox checked={(field.value || []).includes(t.id)} />
+                                      <span className="text-sm font-bold uppercase">{t.name}</span>
+                                    </div>
+                                  ))}
+                                </ScrollArea>
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    )}
+
+                    {visibilityScope === 'guide-enablers' && (
+                      <FormField control={form.control} name="visibleGuideIds" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Select Folk Guides</FormLabel>
+                          <div className="flex flex-wrap gap-2 mb-2 min-h-[40px] p-3 rounded-xl bg-muted border border-border">
+                              {(field.value || []).map(gid => {
+                                const g = availableGuides.find(x => x.id === gid);
+                                return (
+                                  <Badge key={gid} variant="secondary" className="gap-1 font-bold">
+                                    {g?.name || gid}
+                                    <button onClick={() => field.onChange((field.value || []).filter(id => id !== gid))} className="hover:text-destructive"><X className="h-3 w-3"/></button>
+                                  </Badge>
+                                );
+                              })}
+                              {(field.value || []).length === 0 && <span className="text-xs text-muted-foreground opacity-50 italic">None selected</span>}
+                          </div>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className="w-full justify-between font-bold h-12 rounded-xl">
+                                Add Guides... <ChevronDown className="h-4 w-4 opacity-50"/>
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[300px] p-0" align="start">
+                                <ScrollArea className="h-64 p-2">
+                                  {availableGuides.map(g => (
+                                    <div key={g.id} className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md cursor-pointer" onClick={() => {
+                                      const next = (field.value || []).includes(g.id) ? field.value!.filter(id => id !== g.id) : [...(field.value || []), g.id];
+                                      field.onChange(next);
+                                    }}>
+                                      <Checkbox checked={(field.value || []).includes(g.id)} />
+                                      <span className="text-sm font-bold uppercase">{g.name} ({g.fgCode})</span>
+                                    </div>
+                                  ))}
+                                </ScrollArea>
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    )}
+
+                    <FormField control={form.control} name="reportingEnabled" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-[1.5rem] border border-border bg-muted p-6 shadow-inner"><div className="space-y-1"><FormLabel className="text-base font-black text-foreground flex items-center gap-2 uppercase tracking-tight"><Mail className="h-4 w-4 text-[#FF9800]" /> Daily Email Pulse</FormLabel><FormDescription className="text-[10px] font-bold text-muted-foreground leading-tight">Receive automated summary.</FormDescription></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
+                    
+                    <FormField control={form.control} name="assignedToId" render={({ field }) => (<FormItem><div className="flex items-center gap-2 mb-1"><UserPlus className="h-4 w-4 text-primary" /><FormLabel className="text-[10px] font-black uppercase text-primary tracking-widest">Assign to Enabler</FormLabel></div><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-14 rounded-xl border-border bg-muted text-foreground font-bold px-5"><SelectValue placeholder="Select Assignee..." /></SelectTrigger></FormControl><SelectContent className="bg-popover border-border text-foreground">{assignableUsers.map(u => (<SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>))}</SelectContent></Select></FormItem>)} />
+                  </div>
+                )}
+              </form>
+            </Form>
           </div>
         </ScrollArea>
-        <DialogFooter className="p-8 border-t border-border bg-card gap-4"><Button variant="ghost" type="button" onClick={() => setIsOpen(false)} className="rounded-xl font-bold text-muted-foreground hover:text-foreground">Cancel</Button><Button type="submit" className="rounded-xl font-black uppercase tracking-widest bg-primary text-primary-foreground hover:bg-primary/90 px-10 h-14 shadow-xl shadow-primary/20" onClick={form.handleSubmit(onSubmit)}>Save Group</Button></DialogFooter>
+        <DialogFooter className="p-8 border-t border-border bg-card gap-4">
+          <Button variant="ghost" type="button" onClick={() => setIsOpen(false)} className="rounded-xl font-bold text-muted-foreground hover:text-foreground">Cancel</Button>
+          <Button type="submit" className="rounded-xl font-black uppercase tracking-widest bg-primary text-primary-foreground hover:bg-primary/90 px-10 h-14 shadow-xl shadow-primary/20" onClick={form.handleSubmit(onSubmit)}>Save Group</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

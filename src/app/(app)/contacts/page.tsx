@@ -41,7 +41,9 @@ import {
   getSyncStatus,
   type SyncStatus,
   checkDuplicatePhone,
-  initMasterPeopleStream
+  initMasterPeopleStream,
+  isPeopleCacheReady,
+  subscribeToPeopleData
 } from '@/services/people-service';
 import { createGroup, getStaticGroups, addPeopleToGroup, updateGroup as updateGroupSvc } from "@/services/groups-service";
 import { getEnablers, getContactSources, getStayingWithOptions, getCustomPersonFields, type EnablerOption } from "@/services/settings-service";
@@ -113,6 +115,7 @@ const ContactsPageComponent = () => {
   const [totalCount, setTotalCount] = React.useState<number | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isLoadingMore, setIsLoadingMore] = React.useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = React.useState(false);
   const [lastDocId, setLastDocId] = React.useState<string | null>(null);
   const [hasMore, setHasMore] = React.useState(false);
   const [isSelectingAll, setIsSelectingAll] = React.useState(false);
@@ -222,7 +225,10 @@ const ContactsPageComponent = () => {
       setPeople(prev => lastId ? [...prev, ...result.people] : result.people);
       setLastDocId(result.lastDocId);
       setHasMore(result.lastDocId !== null);
+      
+      // Exact filtered total count from result
       setTotalCount(result.totalCount);
+      setHasLoadedOnce(true);
       
     } catch (error) { 
       console.error('[Contacts] fetchContacts failed:', error);
@@ -236,6 +242,26 @@ const ContactsPageComponent = () => {
       }
     }
   }, [activeTab, toast, filters]);
+
+  // Initial load effect
+  React.useEffect(() => {
+    if (appUser?.id) {
+        if (isPeopleCacheReady()) {
+            setHasLoadedOnce(true);
+            fetchContacts(undefined, true);
+        }
+    }
+  }, [appUser?.id]);
+
+  // Stream subscription to trigger first full UI fill
+  React.useEffect(() => {
+    return subscribeToPeopleData((data) => {
+      if (data.length > 0 && !hasLoadedOnce) {
+        fetchContacts(undefined, true);
+        setHasLoadedOnce(true);
+      }
+    });
+  }, [hasLoadedOnce, fetchContacts]);
 
   React.useEffect(() => {
     return subscribeToSyncStatus((status) => setSyncStatus(status));
@@ -450,9 +476,9 @@ const ContactsPageComponent = () => {
         title="Outreach" 
         description={
           <div className="flex items-center gap-2">
-            {isLoading && <Loader2 className="h-3 w-3 animate-spin" />}
+            {(isLoading && !hasLoadedOnce) && <Loader2 className="h-3 w-3 animate-spin" />}
             <span>
-              {isLoading && totalCount === null ? "Loading contacts..." : 
+              {!hasLoadedOnce ? "Loading contacts..." : 
                totalCount !== null ? `Managing ${totalCount} records.` : 
                "Outreach management."}
             </span>
@@ -491,7 +517,7 @@ const ContactsPageComponent = () => {
       </PageHeader>
       
       <main className="flex-1 p-4 sm:px-6 space-y-6 pb-20 relative">
-        {isLoading && people.length > 0 && (
+        {(isLoading && hasLoadedOnce && people.length > 0) && (
           <div className="absolute top-0 left-0 right-0 z-50 flex justify-center pt-2 pointer-events-none">
               <div className="bg-primary/90 text-white px-4 py-1.5 rounded-full flex items-center gap-2 shadow-2xl animate-in slide-in-from-top-4">
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -574,7 +600,7 @@ const ContactsPageComponent = () => {
             </div>
 
             <TabsContent value="my-contacts" className="mt-0 focus-visible:outline-none">
-                <div className={cn("transition-opacity duration-300", isLoading && people.length > 0 && "opacity-60")}>
+                <div className={cn("transition-opacity duration-300", (isLoading && hasLoadedOnce) && "opacity-60")}>
                     <PersonTable 
                       people={people} 
                       onEdit={setEditingPerson} 
@@ -584,17 +610,24 @@ const ContactsPageComponent = () => {
                       setSelectedIds={setSelectedIds} 
                       showEnablerColumn={true} 
                       totalCount={totalCount} 
-                      isLoading={isLoading} 
+                      isLoading={isLoading || !hasLoadedOnce} 
                       navigationContext={{ scope: 'my' }} 
                       onSelectAllGlobal={handleSelectAllGlobal} 
                       onSelectRangeGlobal={handleSelectRangeGlobal}
                       isSelectingAll={isSelectingAll} 
                       isSelectionActive={isSelectionActive} 
                     />
-                    {people.length === 0 && !isLoading && (
+                    {people.length === 0 && hasLoadedOnce && !isLoading && (
                         <div className="py-24 text-center bg-muted/20 rounded-[2.5rem] border-2 border-dashed mx-4">
                             <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-20" />
                             <p className="text-muted-foreground font-black uppercase tracking-widest text-xs">No contacts found.</p>
+                        </div>
+                    )}
+                    {people.length === 0 && !hasLoadedOnce && isLoading && syncStatus === 'timeout' && (
+                        <div className="py-24 text-center bg-muted/20 rounded-[2.5rem] border-2 border-dashed mx-4">
+                            <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-amber-500 opacity-40" />
+                            <p className="text-muted-foreground font-black uppercase tracking-widest text-xs">Loading timed out.</p>
+                            <Button variant="outline" size="sm" onClick={() => fetchContacts()} className="mt-4 rounded-xl">Retry Sync</Button>
                         </div>
                     )}
                 </div>
@@ -603,7 +636,7 @@ const ContactsPageComponent = () => {
             
             {isPrivileged && (
                 <TabsContent value="all-contacts" className="mt-0 focus-visible:outline-none">
-                    <div className={cn("transition-opacity duration-300", isLoading && people.length > 0 && "opacity-60")}>
+                    <div className={cn("transition-opacity duration-300", (isLoading && hasLoadedOnce) && "opacity-60")}>
                         <PersonTable 
                           people={people} 
                           onEdit={setEditingPerson} 
@@ -613,17 +646,24 @@ const ContactsPageComponent = () => {
                           setSelectedIds={setSelectedIds} 
                           showEnablerColumn={true} 
                           totalCount={totalCount} 
-                          isLoading={isLoading} 
+                          isLoading={isLoading || !hasLoadedOnce} 
                           navigationContext={{ scope: 'all' }} 
                           onSelectAllGlobal={handleSelectAllGlobal} 
                           onSelectRangeGlobal={handleSelectRangeGlobal}
                           isSelectingAll={isSelectingAll} 
                           isSelectionActive={isSelectionActive} 
                         />
-                        {people.length === 0 && !isLoading && (
+                        {people.length === 0 && hasLoadedOnce && !isLoading && (
                             <div className="py-24 text-center bg-muted/20 rounded-[2.5rem] border-2 border-dashed mx-4">
                                 <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-20" />
                                 <p className="text-muted-foreground font-black uppercase tracking-widest text-xs">No contacts found.</p>
+                            </div>
+                        )}
+                        {people.length === 0 && !hasLoadedOnce && isLoading && syncStatus === 'timeout' && (
+                            <div className="py-24 text-center bg-muted/20 rounded-[2.5rem] border-2 border-dashed mx-4">
+                                <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-amber-500 opacity-40" />
+                                <p className="text-muted-foreground font-black uppercase tracking-widest text-xs">Loading timed out.</p>
+                                <Button variant="outline" size="sm" onClick={() => fetchContacts()} className="mt-4 rounded-xl">Retry Sync</Button>
                             </div>
                         )}
                     </div>

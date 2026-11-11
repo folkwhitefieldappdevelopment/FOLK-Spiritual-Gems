@@ -55,6 +55,7 @@ let nameMatchedCache: Person[] = [];
 
 export const getSyncStatus = () => currentSyncStatus;
 export const getSyncWarning = () => currentSyncWarning;
+export const isPeopleCacheReady = () => masterPeopleCache !== null;
 
 const updateSyncStatus = (status: SyncStatus, warning: string | null = null) => {
   currentSyncStatus = status;
@@ -266,6 +267,10 @@ export const initMasterPeopleStream = (
 
 export const getCachedPeople = async (): Promise<Person[]> => {
   if (masterPeopleCache) return masterPeopleCache;
+  if (cachePromise) {
+    await cachePromise;
+    return masterPeopleCache || [];
+  }
   return []; 
 };
 

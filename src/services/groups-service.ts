@@ -26,12 +26,52 @@ type UserInfo = { id: string; name: string; role: UserRole[] };
 const groupsCache = new Map<string, { data: Group[], timestamp: number }>();
 const CACHE_TTL = 30000; // 30 seconds
 
-export const getAllGroups = async (userInfo: UserInfo): Promise<Group[]> => {
+/**
+ * Checks if a user has permission to see a specific group based on visibility settings.
+ */
+export function canUserSeeGroup(group: Group, user: AppUser | UserInfo): boolean {
+  if (!user || !user.id) return false;
+  
+  // Admin bypass
+  if (user.role.includes('Admin')) return true;
+
+  // Owner/Explicit access
+  if (group.createdBy === user.id) return true;
+  if (group.sharedWithUserIds?.includes(user.id)) return true;
+  
+  // Name-based owner check (legacy)
+  const myNameLower = (user.name || '').toLowerCase();
+  const creatorNameLower = (group.createdByName || '').toLowerCase();
+  if (creatorNameLower === myNameLower) return true;
+
+  // If no specific scope, use the existing role-based visibility array
+  if (!group.visibilityScope || group.visibilityScope === 'private') {
+      return group.visibility?.some(role => user.role.includes(role as UserRole)) || false;
+  }
+
+  // New Scopes
+  switch (group.visibilityScope) {
+      case 'all-enablers':
+          return user.role.includes('Folk Enabler');
+      case 'everyone':
+          return true;
+      case 'teams':
+          const teamId = (user as AppUser).team?.teamId;
+          return !!teamId && (group.visibleTeamIds || []).includes(teamId);
+      case 'guide-enablers':
+          const guideId = (user as AppUser).reportsTo?.guideId;
+          return !!guideId && (group.visibleGuideIds || []).includes(guideId);
+      default:
+          return false;
+  }
+}
+
+export const getAllGroups = async (userInfo: AppUser): Promise<Group[]> => {
   const staticGroups = await getStaticGroups(userInfo);
   return staticGroups.sort((a,b) => a.name.localeCompare(b.name));
 };
 
-export const getStaticGroups = async (userInfo: UserInfo): Promise<Group[]> => {
+export const getStaticGroups = async (userInfo: AppUser | UserInfo): Promise<Group[]> => {
   if (!userInfo?.id) return [];
   
   const cacheKey = `groups_${userInfo.id}`;
@@ -52,9 +92,12 @@ export const getStaticGroups = async (userInfo: UserInfo): Promise<Group[]> => {
       const allGroups = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Group));
       const validGroups = filterAndCleanupExpired(allGroups);
       
+      // Filter based on visibility settings
+      const visibleGroups = validGroups.filter(g => canUserSeeGroup(g, userInfo));
+      
       // Update cache
-      groupsCache.set(cacheKey, { data: validGroups, timestamp: Date.now() });
-      return validGroups;
+      groupsCache.set(cacheKey, { data: visibleGroups, timestamp: Date.now() });
+      return visibleGroups;
     } finally {
       connectionManager.reportRequestEnd();
     }

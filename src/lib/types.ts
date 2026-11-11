@@ -68,8 +68,8 @@ export const callStatuses: CallStatus[] = [
   'D - Switch Off',
   'E - Not Reachable',
   'F - Callback',
-  'G - Completely Shifted to Another city',
-  'Z - Already Attended',
+  'G - Completely Shifted to Another city'
+  | 'Z - Already Attended',
   'Device: Incoming',
   'Device: Outgoing',
   'Device: Missed'
@@ -372,6 +372,8 @@ export type DashboardData = {
   isPrivileged: boolean;
 };
 
+export type VisibilityScope = 'private' | 'all-enablers' | 'teams' | 'guide-enablers' | 'everyone';
+
 export type Group = {
   id: string;
   name: string;
@@ -394,6 +396,10 @@ export type Group = {
   reportingEnabled?: boolean;
   reportTime?: string;
   reportRecipients?: string[];
+  // New visibility fields
+  visibilityScope?: VisibilityScope;
+  visibleTeamIds?: string[];
+  visibleGuideIds?: string[];
 };
 
 export type GroupEvent = {
