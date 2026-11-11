@@ -141,7 +141,6 @@ const ContactsPageComponent = () => {
   const [isConfirmSessionDialogOpen, setIsConfirmSessionDialogOpen] = React.useState(false);
   const [isBulkEditOpen, setIsBulkEditOpen] = React.useState(false);
 
-  // Import Preview State
   const [importPreview, setImportPreview] = React.useState<{ new: any[], duplicates: any[] } | null>(null);
   const [isImportPreviewOpen, setIsImportPreviewOpen] = React.useState(false);
 
@@ -161,58 +160,82 @@ const ContactsPageComponent = () => {
     if (!lastId && !silent) { setIsLoading(true); } 
     else if (lastId) { setIsLoadingMore(true); }
     
-    try {
-      const fetchScope = activeTab === 'all-contacts' ? 'all' : 'my';
-      
-      if (!lastId && user.role.includes('Admin') && fetchScope === 'all') {
-          const force = !silent; // true on explicit refresh
-          await initMasterPeopleStream(user, { 
-            force, 
-            forceIfStaleMs: force ? undefined : 5 * 60 * 1000 
-          });
-      }
+    const fetchScope = activeTab === 'all-contacts' ? 'all' : 'my';
 
-      let peopleResolved = false;
-      if (fetchScope === 'all') {
-          getFastSummaryStats(user)
-            .then(c => { 
-                if (!peopleResolved && thisFetchId === fetchIdRef.current) setTotalCount(c.totalContactsCount); 
-            })
-            .catch(e => console.warn('[Contacts] org count failed (non-blocking):', e));
-      }
-
-      connectionManager.reportRequestStart();
+    // Retry wrapper for people fetch
+    const fetchWithRetry = async (retries = 1): Promise<any> => {
       try {
-        const result = await getPeople(user, { 
+        if (!lastId && user.role.includes('Admin') && fetchScope === 'all') {
+            const force = !silent;
+            await initMasterPeopleStream(user, { 
+              force, 
+              forceIfStaleMs: force ? undefined : 5 * 60 * 1000 
+            });
+        }
+
+        connectionManager.reportRequestStart();
+        
+        // Start primary and secondary fetches in parallel
+        const peoplePromise = getPeople(user, { 
           scope: fetchScope, 
           lastDocId: lastId,
           filters: filters
         });
-        
-        peopleResolved = true;
-        if (thisFetchId !== fetchIdRef.current) return;
-        
-        setPeople(prev => lastId ? [...prev, ...result.people] : result.people);
-        setLastDocId(result.lastDocId);
-        setHasMore(result.lastDocId !== null);
-        setTotalCount(result.totalCount);
+
+        const auxPromises = (!lastId) ? Promise.allSettled([
+          getEnablers(user),
+          getContactSources(),
+          getStayingWithOptions(),
+          getStaticGroups(user),
+          fetchScope === 'all' ? getFastSummaryStats(user) : Promise.resolve(null)
+        ]) : Promise.resolve(null);
+
+        const [result, auxResults] = await Promise.all([peoplePromise, auxPromises]);
+        return { result, auxResults };
+      } catch (err) {
+        if (retries > 0) {
+          await new Promise(r => setTimeout(r, 1000));
+          return fetchWithRetry(retries - 1);
+        }
+        throw err;
       } finally {
         connectionManager.reportRequestEnd();
       }
+    };
+
+    try {
+      const { result, auxResults } = await fetchWithRetry();
+      
+      if (thisFetchId !== fetchIdRef.current) return;
+
+      // Handle auxiliary results
+      if (auxResults && Array.isArray(auxResults)) {
+        if (auxResults[0].status === 'fulfilled') setEnablerOptions(auxResults[0].value);
+        if (auxResults[1].status === 'fulfilled') setSourceOptions(auxResults[1].value);
+        if (auxResults[2].status === 'fulfilled') setStayingWithOptions(auxResults[2].value);
+        if (auxResults[3].status === 'fulfilled') setGroups(auxResults[3].value);
+        if (auxResults[4]?.status === 'fulfilled' && auxResults[4].value) {
+           setTotalCount(auxResults[4].value.totalContactsCount);
+        }
+      }
+      
+      setPeople(prev => lastId ? [...prev, ...result.people] : result.people);
+      setLastDocId(result.lastDocId);
+      setHasMore(result.lastDocId !== null);
+      setTotalCount(result.totalCount);
       
     } catch (error) { 
       console.error('[Contacts] fetchContacts failed:', error);
       if (thisFetchId === fetchIdRef.current) {
           toast({ variant: 'destructive', title: "Sync Error" }); 
       }
-    } 
-    finally { 
+    } finally { 
       if (thisFetchId === fetchIdRef.current) {
         setIsLoading(false); 
         setIsLoadingMore(false); 
       }
     }
-  }, [appUser?.id, appUser?.role?.join(','), activeTab, toast, filters]);
+  }, [activeTab, toast, filters]);
 
   React.useEffect(() => {
     return subscribeToSyncStatus((status) => setSyncStatus(status));
@@ -250,15 +273,6 @@ const ContactsPageComponent = () => {
   React.useEffect(() => { 
     if (appUser?.id) { fetchContacts(undefined, true); }
   }, [fetchContacts, appUser?.id, isSyncStable]);
-
-  React.useEffect(() => {
-    if (appUser) {
-        getEnablers(appUser).then(setEnablerOptions);
-        getContactSources().then(setSourceOptions);
-        getStayingWithOptions().then(setStayingWithOptions);
-        getStaticGroups(appUser).then(setGroups);
-    }
-  }, [appUser]);
 
   const handleSelectAllGlobal = async () => {
     if (!appUser) return;
@@ -421,6 +435,15 @@ const ContactsPageComponent = () => {
     return people.filter(p => selectedIds.has(p.id));
   }, [people, selectedIds]);
 
+  if (!appUser) {
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="mt-4 text-xs font-black uppercase tracking-[0.4em] text-muted-foreground">Authenticating Session...</p>
+      </div>
+    );
+  }
+
   return (
     <>
       <PageHeader 
@@ -467,7 +490,16 @@ const ContactsPageComponent = () => {
         <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={handleFileSelection} />
       </PageHeader>
       
-      <main className="flex-1 p-4 sm:px-6 space-y-6 pb-20">
+      <main className="flex-1 p-4 sm:px-6 space-y-6 pb-20 relative">
+        {isLoading && people.length > 0 && (
+          <div className="absolute top-0 left-0 right-0 z-50 flex justify-center pt-2 pointer-events-none">
+              <div className="bg-primary/90 text-white px-4 py-1.5 rounded-full flex items-center gap-2 shadow-2xl animate-in slide-in-from-top-4">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Refreshing...</span>
+              </div>
+          </div>
+        )}
+
         <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); }} className="w-full">
             <TabsList className="mb-8 flex w-full h-auto p-1.5 bg-card border-none rounded-2xl gap-1.5">
                 <TabsTrigger value="my-contacts" className="flex-1 py-3 px-8 text-[10px] font-black uppercase tracking-widest rounded-xl data-[state=active]:bg-primary">CONTACTS (MINE)</TabsTrigger>
@@ -526,7 +558,7 @@ const ContactsPageComponent = () => {
                     <ContactFilterPanel 
                         filters={filters} 
                         onChange={setFilters} 
-                        onApply={fetchContacts} 
+                        onApply={() => fetchContacts(undefined)} 
                         onReset={() => setFilters(EMPTY_FILTERS)}
                         enablerOptions={enablerOptions}
                         sourceOptions={sourceOptions}
@@ -542,27 +574,7 @@ const ContactsPageComponent = () => {
             </div>
 
             <TabsContent value="my-contacts" className="mt-0 focus-visible:outline-none">
-                <PersonTable 
-                  people={people} 
-                  onEdit={setEditingPerson} 
-                  onDelete={id => deletePerson(id, appUserRef.current!).then(() => fetchContacts(undefined, true))} 
-                  onStartCall={p => { setPersonToCall(p); setIsConfirmSessionDialogOpen(true); }} 
-                  selectedIds={selectedIds} 
-                  setSelectedIds={setSelectedIds} 
-                  showEnablerColumn={true} 
-                  totalCount={totalCount} 
-                  isLoading={isLoading} 
-                  navigationContext={{ scope: 'my' }} 
-                  onSelectAllGlobal={handleSelectAllGlobal} 
-                  onSelectRangeGlobal={handleSelectRangeGlobal}
-                  isSelectingAll={isSelectingAll} 
-                  isSelectionActive={isSelectionActive} 
-                />
-                {hasMore && !isLoading && <div className="flex justify-center pb-12 pt-6"><Button onClick={() => fetchContacts(lastDocId || undefined)} disabled={isLoadingMore} variant="outline" className="font-bold px-8 h-12 rounded-xl border-border text-foreground bg-muted/50 uppercase tracking-widest text-[10px]">Load More Records</Button></div>}
-            </TabsContent>
-            
-            {isPrivileged && (
-                <TabsContent value="all-contacts" className="mt-0 focus-visible:outline-none">
+                <div className={cn("transition-opacity duration-300", isLoading && people.length > 0 && "opacity-60")}>
                     <PersonTable 
                       people={people} 
                       onEdit={setEditingPerson} 
@@ -573,12 +585,48 @@ const ContactsPageComponent = () => {
                       showEnablerColumn={true} 
                       totalCount={totalCount} 
                       isLoading={isLoading} 
-                      navigationContext={{ scope: 'all' }} 
+                      navigationContext={{ scope: 'my' }} 
                       onSelectAllGlobal={handleSelectAllGlobal} 
                       onSelectRangeGlobal={handleSelectRangeGlobal}
                       isSelectingAll={isSelectingAll} 
                       isSelectionActive={isSelectionActive} 
                     />
+                    {people.length === 0 && !isLoading && (
+                        <div className="py-24 text-center bg-muted/20 rounded-[2.5rem] border-2 border-dashed mx-4">
+                            <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-20" />
+                            <p className="text-muted-foreground font-black uppercase tracking-widest text-xs">No contacts found.</p>
+                        </div>
+                    )}
+                </div>
+                {hasMore && !isLoading && <div className="flex justify-center pb-12 pt-6"><Button onClick={() => fetchContacts(lastDocId || undefined)} disabled={isLoadingMore} variant="outline" className="font-bold px-8 h-12 rounded-xl border-border text-foreground bg-muted/50 uppercase tracking-widest text-[10px]">Load More Records</Button></div>}
+            </TabsContent>
+            
+            {isPrivileged && (
+                <TabsContent value="all-contacts" className="mt-0 focus-visible:outline-none">
+                    <div className={cn("transition-opacity duration-300", isLoading && people.length > 0 && "opacity-60")}>
+                        <PersonTable 
+                          people={people} 
+                          onEdit={setEditingPerson} 
+                          onDelete={id => deletePerson(id, appUserRef.current!).then(() => fetchContacts(undefined, true))} 
+                          onStartCall={p => { setPersonToCall(p); setIsConfirmSessionDialogOpen(true); }} 
+                          selectedIds={selectedIds} 
+                          setSelectedIds={setSelectedIds} 
+                          showEnablerColumn={true} 
+                          totalCount={totalCount} 
+                          isLoading={isLoading} 
+                          navigationContext={{ scope: 'all' }} 
+                          onSelectAllGlobal={handleSelectAllGlobal} 
+                          onSelectRangeGlobal={handleSelectRangeGlobal}
+                          isSelectingAll={isSelectingAll} 
+                          isSelectionActive={isSelectionActive} 
+                        />
+                        {people.length === 0 && !isLoading && (
+                            <div className="py-24 text-center bg-muted/20 rounded-[2.5rem] border-2 border-dashed mx-4">
+                                <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-20" />
+                                <p className="text-muted-foreground font-black uppercase tracking-widest text-xs">No contacts found.</p>
+                            </div>
+                        )}
+                    </div>
                     {hasMore && !isLoading && <div className="flex justify-center pb-12 pt-6"><Button onClick={() => fetchContacts(lastDocId || undefined)} disabled={isLoadingMore} variant="outline" className="font-bold px-8 h-12 rounded-xl border-border text-foreground bg-muted/50 uppercase tracking-widest text-[10px]">Load More Records</Button></div>}
                 </TabsContent>
             )}

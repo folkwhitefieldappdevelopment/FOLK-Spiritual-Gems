@@ -74,11 +74,6 @@ export const subscribeToPeopleData = (callback: (people: Person[]) => void) => {
   return () => dataListeners.delete(callback);
 };
 
-/**
- * Initializes a role-aware master stream to optimize Firestore costs.
- * Admins use paginated getDocs (one-time fetch) to handle 10k+ records.
- * Guides and Enablers use real-time onSnapshot for scoped data.
- */
 export const initMasterPeopleStream = (
   user: AppUser, 
   options: boolean | { force?: boolean; forceIfStaleMs?: number } = false
@@ -86,7 +81,6 @@ export const initMasterPeopleStream = (
   const force = typeof options === 'boolean' ? options : (options.force || false);
   const forceIfStaleMs = typeof options === 'object' ? options.forceIfStaleMs : undefined;
 
-  // Staleness check
   if (!force && forceIfStaleMs && masterPeopleCache && (Date.now() - lastAdminSyncAt < forceIfStaleMs)) {
       return Promise.resolve(masterPeopleCache);
   }
@@ -118,7 +112,6 @@ export const initMasterPeopleStream = (
     }, 15000);
 
     if (isAdmin) {
-      // Use paginated getDocs for Admin to bypass the 10k limit and handle scale up to 60k
       (async () => {
         updateSyncStatus('syncing');
         let lastDoc = null;
@@ -149,7 +142,6 @@ export const initMasterPeopleStream = (
             totalFetched += snap.docs.length;
             lastDoc = snap.docs[snap.docs.length - 1];
             
-            // Resolve promise on first page to unblock initial UI
             if (isFirstPage && !resolved) {
               resolved = true;
               clearTimeout(safetyTimeout);
@@ -160,9 +152,8 @@ export const initMasterPeopleStream = (
 
           lastAdminSyncAt = Date.now();
 
-          // Accuracy verification
-          const countSnap = await getCountFromServer(peopleRef);
-          const serverCount = countSnap.data().count;
+          const countSnap = await getCountFromServer(peopleRef).catch(() => null);
+          const serverCount = countSnap?.data().count || (masterPeopleCache?.length || 0);
           let warning = null;
           if (serverCount > (masterPeopleCache?.length || 0)) {
             warning = `Loaded ${(masterPeopleCache?.length || 0).toLocaleString()} of ${serverCount.toLocaleString()} contacts — use manual refresh for latest data.`;
@@ -178,7 +169,6 @@ export const initMasterPeopleStream = (
         }
       })();
     } else {
-      // Use real-time onSnapshot for Guides and Enablers (limits safely under 10k)
       let q;
       if (isGuide) {
         q = query(peopleRef, where('folkGuideId', '==', user.id), limit(SCOPED_LIMIT));
@@ -189,7 +179,6 @@ export const initMasterPeopleStream = (
           limit(SCOPED_LIMIT)
         );
 
-        // FALLBACK: Name-based fetch for legacy records where enablerId is missing (Enablers only)
         (async () => {
           try {
             const nameFallbackQuery = query(
@@ -201,7 +190,6 @@ export const initMasterPeopleStream = (
             const fallbackSnap = await getDocs(nameFallbackQuery);
             nameMatchedCache = fallbackSnap.docs.map(d => processPersonDoc(d));
             
-            // If the primary stream already emitted, merge manually to avoid waiting for next tick
             if (masterPeopleCache) {
               const currentMap = new Map(masterPeopleCache.map(p => [p.id, p]));
               let hasNew = false;
@@ -233,7 +221,6 @@ export const initMasterPeopleStream = (
           newMap.set(p.id, p);
         });
 
-        // MERGE WITH NAME-MATCHED CACHE
         nameMatchedCache.forEach(p => {
           if (!newMap.has(p.id)) {
             results.push(p);
@@ -492,7 +479,14 @@ export const getPeople = async (
     return (a.fullName || '').localeCompare(b.fullName || '');
   });
 
-  if (ignoreLimit) return { people: sorted, lastDocId: null, totalCount: sorted.length };
+  let totalCountVal: number | null = null;
+  try {
+     totalCountVal = sorted.length;
+  } catch (e) {
+     totalCountVal = 0;
+  }
+
+  if (ignoreLimit) return { people: sorted, lastDocId: null, totalCount: totalCountVal };
   
   let startIndex = 0;
   if (options.lastDocId) {
@@ -501,7 +495,7 @@ export const getPeople = async (
   }
   const slice = sorted.slice(startIndex, startIndex + PAGE_SIZE);
   const lastId = (startIndex + PAGE_SIZE) < sorted.length ? sorted[startIndex + PAGE_SIZE - 1].id : null;
-  return { people: slice, lastDocId: lastId, totalCount: sorted.length };
+  return { people: slice, lastDocId: lastId, totalCount: totalCountVal };
 };
 
 export const getUnassignedPeople = async (userInfo: AppUser) => {
@@ -817,10 +811,6 @@ export const mergeContacts = async (keepId: string, discardIds: string[], userIn
   await logAudit('Merge Contacts', `Merged ${discardIds.length} duplicates into ${keepData.fullName}`, userInfo);
 };
 
-/**
- * Paginates through entire collection to backfill missing mandatory query fields.
- * Required for Dashboard and statistical accuracy in Firestore.
- */
 export const backfillMissingFields = async (userInfo: { id: string; name: string; role: UserRole[] }) => {
   await persistenceReady;
   const peopleRef = collection(db!, 'people');
@@ -859,9 +849,6 @@ export const backfillMissingFields = async (userInfo: { id: string; name: string
   return { totalScanned, totalFixed };
 };
 
-/**
- * Paginates through entire collection to link legacy name-based enabler strings to modern system IDs.
- */
 export const backfillEnablerId = async (allUsers: AppUser[], userInfo: { id: string; name: string; role: UserRole[] }) => {
   await persistenceReady;
   const peopleRef = collection(db!, 'people');
